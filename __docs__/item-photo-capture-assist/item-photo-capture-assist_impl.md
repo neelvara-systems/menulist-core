@@ -46,7 +46,7 @@ The new component creates a local image input. It does not write Firestore, crea
 
 The result is display-only and is not persisted.
 
-If browser-local image sampling fails, the helper keeps the existing ready-to-save fallback and logs bounded `item_photo_readiness_stats_failed` diagnostics with prepared-image dimensions, size, image type, MIME type presence/length, and data URL presence only. It does not log raw image data, filenames, checksums, or media IDs.
+If browser-local image sampling fails, the helper keeps the existing ready-to-save fallback and logs bounded `item_photo_readiness_stats_failed` diagnostics with prepared-image dimensions, size, image type, MIME type presence/length, and data URL presence only. If browser camera startup fails, the shared capture component keeps the existing upload fallback and logs bounded `item_photo_camera_start_failed` diagnostics with capture-mode/item-name presence-length metadata, camera API availability, and video element presence only. It does not log camera frames, raw image data, filenames, checksums, media IDs, raw item text, or browser exception text.
 
 ### Browser camera fallback
 
@@ -101,7 +101,7 @@ No API route is added.
 | Concern | Handling |
 | --- | --- |
 | Camera permission | Browser permission prompt only. |
-| Sensitive logs | No camera data logged. |
+| Sensitive logs | No camera frames, photo bytes, filenames, raw item text, or browser exception text logged; startup, capture, and readiness failures use bounded diagnostics only. |
 | File validation | Captured file still enters `prepareMediaImage`; selected files still pass magic-byte validation. |
 | Tenant isolation | Existing upload/save path keeps current project and tenant checks. |
 | Public data | No public route change. |

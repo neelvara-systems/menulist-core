@@ -117,6 +117,7 @@ Important rules:
 - Deleted or renamed project slugs do not define installed app identity.
 - `MANIFEST_START_URL_DEGRADED` is no longer part of this architecture.
 - `pwaInstallSurface` is analytics source context only.
+- If the cached project-summary read used to choose `/menu` fails, the manifest keeps the existing `/` start-url fallback and logs capped `customer_app_manifest_start_url_lookup_failed` diagnostics with store-id and summary-doc presence/length metadata only.
 - Unexpected manifest generation failures still return the existing empty 404 manifest fallback, but internal diagnostics use bounded secure logging: hostname presence/length, domain type, client-domain booleans, store-id presence/length, and error name only.
 
 ---
@@ -139,6 +140,10 @@ Owner dashboard can keep `next-pwa`/Workbox behavior through `public/sw.js`, but
 Platform public website routes do not install the owner Workbox worker, but they preserve an already-registered `public/sw.js` owner worker. Standalone platform launches are treated as owner-app context so an installed owner PWA can repair/register `public/sw.js` even if iOS opens it at `/`. This keeps a normal visit to `menulist.online/` from removing the owner PWA offline fallback for the same origin.
 
 Service-worker cleanup is best-effort but observable. If unregistering a stale or wrong-scope worker fails, `src/components/ServiceWorkerRegister.tsx` logs `service_worker_unregister_failed` with only bounded worker labels (`owner`, `customer`, `mycodex`, `none`, or `unknown`), cleanup reason, controller presence, and source error name/code/status. It does not log tenant hostnames, raw service-worker URLs, store IDs, tenant IDs, or route paths.
+
+Service-worker domain-resolution failures log bounded `service_worker_domain_resolution_failed` diagnostics once per browser session. The failure policy stays fail-closed for worker registration: if `resolveDomain(window.location.host)` throws, MenuList registers no worker rather than attaching the owner, customer, or MyCodex worker to an unknown origin. The diagnostic records only host presence/length, window/location availability, fixed failure policy, and normalized source error metadata.
+
+Malformed registered service-worker script URLs log bounded `service_worker_script_url_label_parse_failed` diagnostics before falling back to the safe `unknown` worker label. Failed public service-worker cleanup reload session guards log bounded `service_worker_public_cleanup_reload_storage_failed` diagnostics before using the existing reload-without-session-guard fallback. These diagnostics record only script URL and reload-key presence/length metadata, URL shape booleans, controller/storage availability, fixed fallback policies, and normalized source error metadata; raw hostnames, raw script URLs, route paths, store IDs, tenant IDs, customer identity, and exception text are not logged.
 
 Local development has an additional root-layout cleanup guard because stale Workbox registrations can serve old `_next` chunks during localhost testing. That guard remains development-only and browser-local; failed registration lookup or unregister attempts emit bounded `get_registrations_failed` / `unregister_failed` dev console diagnostics with host presence/length and source error name/code/status only.
 
@@ -262,12 +267,18 @@ Prompt storage:
 - Visit count uses `localStorage`.
 - Dismissal timestamp uses `localStorage`.
 - Session/open dedupe uses `sessionStorage` where appropriate.
+- Failed prompt visit-count or dismissal localStorage paths log bounded `customer_app_prompt_*` diagnostics once per operation and create no fallback Firestore write.
+- Failed install-mode detection and shortcut/direct-intent URL parsing log bounded Customer App diagnostics once per failure path and keep the existing fail-closed behavior.
+- Failed prompt-shown timestamp storage for iOS inference logs bounded `customer_app_prompt_shown_*` diagnostics once per operation and creates no fallback Firestore write.
+- Failed standalone-open storage availability, session guard, or iOS install-inference storage paths log bounded `customer_app_open_*` diagnostics once per operation and create no fallback Firestore write.
+- Failed install-fired de-dupe storage availability/read/write paths log bounded `customer_app_install_dedupe_*` diagnostics once per operation and create no fallback Firestore write.
 
 Prompt analytics:
 
 - Prompt shown, dismissed, and install-started events fire from `InstallPrompt.tsx`.
 - Native `appinstalled` is handled by `CustomerAppController`.
 - iOS manual install is inferred on first standalone launch through `standaloneDetector.ts`.
+- If browser storage blocks standalone-open de-dupe or iOS prompt lookup, Customer App tracking remains non-blocking and records bounded diagnostics only.
 
 ---
 
@@ -351,6 +362,7 @@ Diagnostics:
 - Diagnostics record only store/tenant/platform/source/surface presence and length metadata, timezone/cutoff booleans, location-inclusion boolean, storage-availability boolean, settings booleans, language counts, and normalized source error name/code.
 - Raw analytics exceptions, raw store IDs, raw tenant IDs, URLs, storage values, owner-entered short names, icon data, and provider/browser exceptions must not be direct-console logged.
 - If localStorage is unavailable and install tracking fails, the failure stays non-fatal and the customer app continues to load.
+- If install de-dupe storage availability/read/write fails, the failure logs bounded `customer_app_install_dedupe_*` diagnostics only; no customer identity, fingerprint, fallback write, or separate install document is introduced.
 
 Important wording:
 

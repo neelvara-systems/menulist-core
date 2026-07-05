@@ -19,6 +19,10 @@ function assertNotIncludes(source, token, label) {
   assert(!source.includes(token), `${label} must not include ${token}`);
 }
 
+function assertNotMatches(source, pattern, label) {
+  assert(!pattern.test(source), `${label} must not match ${pattern}`);
+}
+
 function assertOrder(source, tokens, label) {
   let lastIndex = -1;
   for (const token of tokens) {
@@ -36,6 +40,8 @@ function verifyRoute(route) {
     'const EXTRACTION_OPERATION_LIMIT = 300;',
     'const BUSINESS_HEALTH_EVENT_LIMIT = 200;',
     'const ALERT_LIMIT = 30;',
+    'const MAX_TIMESTAMP_PARSE_DIAGNOSTIC_SHAPES = 25;',
+    'const reportedTimestampParseShapes = new Set<string>();',
     'days: z.coerce.number().int().min(1).max(90).optional().default(30)',
     'function cleanText(value: unknown, max = 260): string',
     "replace(/[\\u0000-\\u001f\\u007f]/g, ' ')",
@@ -45,6 +51,12 @@ function verifyRoute(route) {
     'function buildSafeModeReasonSummary',
     'function buildCostAlertResponseId',
     "createHash('sha256').update(docId).digest('hex').slice(0, 12)",
+    'function getTimestampParseContext',
+    "logRuntimeFailure('platform_cost_posture_timestamp_parse_failed'",
+    "fallbackPolicy: 'omit_timestamp'",
+    'reportedTimestampParseShapes.add(shapeKey)',
+    'return date instanceof Date && Number.isFinite(date.getTime()) ? date : null',
+    'if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;',
     'async function readDocuments(',
     ".orderBy(orderField, 'desc')",
     '.limit(readLimit)',
@@ -96,11 +108,12 @@ function verifyRoute(route) {
     'safeMode.reason ? `: ${safeMode.reason}`',
     'key: `platform-cost-posture:${userId}`',
     '.set(',
-    '.add(',
     '.delete(',
     'writeBatch',
     'runTransaction',
   ].forEach((token) => assertNotIncludes(route, token, 'Platform Cost Posture API boundary'));
+
+  assertNotMatches(route, /\.collection\([^)]*\)\s*\.add\s*\(/, 'Platform Cost Posture API Firestore write boundary');
 }
 
 function verifyDal(dal) {
@@ -235,7 +248,7 @@ function verifyTypes(types) {
   ].forEach((token) => assertIncludes(types, token, 'Platform Cost Posture types'));
 }
 
-function verifyDocsAndPackage(packageJson, readme, implDoc, firebaseDoc, mobileDoc, auditDoc) {
+function verifyDocsAndPackage(packageJson, readme, implDoc, firebaseDoc, mobileDoc, auditDoc, changelog) {
   assertIncludes(
     packageJson,
     '"verify:platform-cost-posture-boundary": "node scripts/verification/verify-platform-cost-posture-boundary.js"',
@@ -248,6 +261,7 @@ function verifyDocsAndPackage(packageJson, readme, implDoc, firebaseDoc, mobileD
     'bounded Admin SDK source reads',
     '256KB browser response guard',
     'platform-only mobile wrapper',
+    'timestamp parser diagnostics',
   ].forEach((token) => assertIncludes(readme, token, 'Platform Cost Posture README source gate'));
 
   [
@@ -256,12 +270,16 @@ function verifyDocsAndPackage(packageJson, readme, implDoc, firebaseDoc, mobileD
     'fixed read limits',
     'hashed alert row IDs',
     'SAFE_MODE reason summary',
+    'timestamp parser diagnostics',
+    'platform_cost_posture_timestamp_parse_failed',
     'same-origin manual-redirect browser fetch policy',
   ].forEach((token) => assertIncludes(implDoc, token, 'Platform Cost Posture implementation source gate'));
 
   [
     'Source gate: `npm run verify:platform-cost-posture-boundary`',
     'no Firestore writes',
+    'timestamp parser diagnostics',
+    'platform_cost_posture_timestamp_parse_failed',
     'no Storage operations, provider calls, Cloud Functions, cache tags, rules, indexes, or deploy requirement',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Platform Cost Posture Firebase source gate'));
 
@@ -275,7 +293,15 @@ function verifyDocsAndPackage(packageJson, readme, implDoc, firebaseDoc, mobileD
   [
     'Platform cost posture boundary source gate: `npm run verify:platform-cost-posture-boundary`',
     'source-only platform API admission, bounded Admin SDK reads, browser response guard, desktop/mobile navigation, and docs gate',
+    'Platform Cost Posture timestamp diagnostics checkpoint',
+    'platform_cost_posture_timestamp_parse_failed',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit platform cost posture checkpoint'));
+
+  [
+    'Platform Cost Posture Timestamp Diagnostics',
+    'platform_cost_posture_timestamp_parse_failed',
+    'timestamp parser diagnostics',
+  ].forEach((token) => assertIncludes(changelog, token, 'Changelog platform cost posture timestamp diagnostics'));
 }
 
 function verifyPlatformCostPostureBoundary() {
@@ -296,6 +322,7 @@ function verifyPlatformCostPostureBoundary() {
     firebaseDoc: read('__docs__/platform-cost-posture/platform-cost-posture_firebase.md'),
     mobileDoc: read('__docs__/platform-cost-posture/platform-cost-posture_mobile-support.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
+    changelog: read('__docs__/CHANGELOG.md'),
   };
 
   verifyRoute(files.route);
@@ -310,7 +337,15 @@ function verifyPlatformCostPostureBoundary() {
     files.horizontalSidebar,
   );
   verifyTypes(files.types);
-  verifyDocsAndPackage(files.packageJson, files.readme, files.implDoc, files.firebaseDoc, files.mobileDoc, files.auditDoc);
+  verifyDocsAndPackage(
+    files.packageJson,
+    files.readme,
+    files.implDoc,
+    files.firebaseDoc,
+    files.mobileDoc,
+    files.auditDoc,
+    files.changelog,
+  );
 
   console.log('Platform Cost Posture boundary verifier passed');
 }

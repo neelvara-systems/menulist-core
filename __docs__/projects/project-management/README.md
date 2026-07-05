@@ -30,16 +30,16 @@ Runtime behavior is source-of-truth. The active model is not the older `projects
 
 | Function | Runtime contract |
 | --- | --- |
-| `addProject()` | Creates a full project doc, writes summary entry, applies a stable slug, supports atomic default handoff, and invalidates public cache through `syncProjectToSummary()`. |
+| `addProject()` | Creates a full project doc, writes summary entry, applies a stable slug, treats unknown deleted-slug reservation state as reserved, supports atomic default handoff, and invalidates public cache through `syncProjectToSummary()`. |
 | `getProjectsList()` / `getProjectsListWithoutLoader()` | Reads summary and auto-creates a default project if none exist. Use only for editor/onboarding flows where default creation is intentional. |
 | `getExistingProjectsListWithoutLoader()` | Reads summary without writes. Use for dashboard, output, print, share, analytics, and other read-only surfaces. |
 | `getProjectData()` | Reads full project doc for editing/rendering. |
-| `updateProjectMetadata()` | Updates summary fields, supports atomic default handoff, and revalidates public cache. |
+| `updateProjectMetadata()` | Updates summary fields, refuses rename/backfill slugs when recently deleted slug reservation state cannot be confirmed, supports atomic default handoff, and revalidates public cache. |
 | `updateProject()` / `updateProjectWithoutLoader()` | Saves full project data, runs optional correctness hooks, and revalidates public cache. |
 | `publishProject()` | Saves publish data, increments menu version, creates optional snapshots/events, and revalidates public cache. |
 | `deleteProject()` | Soft-deletes full project doc, removes summary entry, stores a `deletedSummary` tombstone, promotes a fallback default when needed, and revalidates public cache. |
 | `restoreProject()` | Restores lifecycle flags and rebuilds summary from `deletedSummary` when available. |
-| `duplicateProject()` | Clones full project data and writes a new summary entry with a new slug. |
+| `duplicateProject()` | Clones full project data and writes a new summary entry with a new slug, suffixing the slug when deleted-slug reservation state cannot be confirmed. |
 
 ## Related Documents
 

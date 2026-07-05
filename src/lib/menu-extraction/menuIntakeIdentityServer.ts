@@ -34,6 +34,9 @@ const SUPPORTED_MIME_TYPES = new Set<string>(OWNER_MENU_UPLOAD_MIME_TYPES);
 const SUPPORTED_TEXT_MIME_TYPES = new Set<string>(MENU_LINK_IMPORT_TEXT_MIME_TYPES);
 const MAX_MENU_INTAKE_TEXT_CHARS = 60_000;
 const MENU_INTAKE_IDENTITY_MODEL = GEMINI_MODELS.TEXT_GEN;
+const MAX_MENU_INTAKE_IDENTITY_PARSE_DIAGNOSTICS = 25;
+
+const reportedMenuIntakeIdentityParseFailures = new Set<string>();
 
 type MenuIntakeOperationContext = {
   billingMode?: "free" | "internal" | "public";
@@ -52,6 +55,18 @@ const getMenuIntakeOperationLogContext = (operation?: MenuIntakeOperationContext
   ...getBoundedMenuProcessingStringContext("userId", operation?.uId),
   ...getBoundedMenuProcessingStringContext("source", operation?.source),
   ...getBoundedMenuProcessingStringContext("billingMode", operation?.billingMode),
+});
+
+const getMenuIntakeFileLogContext = (
+  file: MenuIntakeFileInput,
+  index: number,
+  operation?: MenuIntakeOperationContext,
+) => ({
+  ...getMenuIntakeOperationLogContext(operation),
+  ...getBoundedMenuProcessingStringContext("fileType", file.type),
+  fallbackPolicy: "skip_file",
+  fileIndex: index,
+  fileSizeBytes: Number.isFinite(Number(file.size)) ? Math.max(0, Math.trunc(Number(file.size))) : 0,
 });
 
 export type MenuIntakeIdentityServerResult = MenuIntakeAnalysisResult & {
@@ -232,19 +247,80 @@ function extractExistingCategoryNames(projectData: any): string[] {
   return Array.from(names);
 }
 
-function safeJsonParse(text: string): RawMenuIntakeIdentityResult | null {
+function logMenuIntakeIdentityParseFailure(
+  error: unknown,
+  context: {
+    candidateLength: number;
+    hasFence: boolean;
+    hasObjectFragment: boolean;
+    operation?: MenuIntakeOperationContext;
+    stage: "full_response" | "object_fragment" | "object_fragment_missing";
+    textLength: number;
+    trimmedTextLength: number;
+  },
+): void {
+  const failureKey = [
+    context.stage,
+    context.textLength,
+    context.trimmedTextLength,
+    context.candidateLength,
+    context.hasFence ? "fenced" : "unfenced",
+    context.hasObjectFragment ? "object-fragment" : "no-object-fragment",
+  ].join(":");
+
+  if (reportedMenuIntakeIdentityParseFailures.has(failureKey)) return;
+  if (reportedMenuIntakeIdentityParseFailures.size >= MAX_MENU_INTAKE_IDENTITY_PARSE_DIAGNOSTICS) return;
+  reportedMenuIntakeIdentityParseFailures.add(failureKey);
+
+  logMenuProcessingFailure("menu_intake_identity_provider_response_parse_failed", error, {
+    ...getMenuIntakeOperationLogContext(context.operation),
+    ...getBoundedMenuProcessingStringContext("parseStage", context.stage),
+    candidateLength: context.candidateLength,
+    fallbackPolicy: "use_low_confidence_identity_fallback",
+    hasFence: context.hasFence,
+    hasObjectFragment: context.hasObjectFragment,
+    textLength: context.textLength,
+    trimmedTextLength: context.trimmedTextLength,
+  });
+}
+
+function safeJsonParse(
+  text: string,
+  operation?: MenuIntakeOperationContext,
+): RawMenuIntakeIdentityResult | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
   const candidate = fenced ? fenced[1].trim() : trimmed;
   try {
     return JSON.parse(candidate);
-  } catch {
+  } catch (error) {
     const objectMatch = candidate.match(/\{[\s\S]*\}/);
-    if (!objectMatch) return null;
+    if (!objectMatch) {
+      logMenuIntakeIdentityParseFailure(error, {
+        candidateLength: candidate.length,
+        hasFence: Boolean(fenced),
+        hasObjectFragment: false,
+        operation,
+        stage: "object_fragment_missing",
+        textLength: text.length,
+        trimmedTextLength: trimmed.length,
+      });
+      return null;
+    }
+
     try {
       return JSON.parse(objectMatch[0]);
-    } catch {
+    } catch (fragmentError) {
+      logMenuIntakeIdentityParseFailure(fragmentError, {
+        candidateLength: candidate.length,
+        hasFence: Boolean(fenced),
+        hasObjectFragment: true,
+        operation,
+        stage: "object_fragment",
+        textLength: text.length,
+        trimmedTextLength: trimmed.length,
+      });
       return null;
     }
   }
@@ -282,7 +358,12 @@ async function buildGeminiParts(
           },
         });
       }
-    } catch {
+    } catch (error) {
+      logMenuProcessingFailure(
+        "menu_intake_identity_preflight_file_unreadable",
+        error,
+        getMenuIntakeFileLogContext(file, index, operation),
+      );
       // Skip unreadable file in preflight. Full extraction will still surface
       // file-specific failures if the owner continues.
     }
@@ -385,7 +466,7 @@ export async function analyzeMenuIntakeIdentity(params: {
         },
       })
       : null;
-    const raw = geminiResult ? safeJsonParse(geminiResult?.text || "") : null;
+    const raw = geminiResult ? safeJsonParse(geminiResult?.text || "", params.operation) : null;
     const analysis = buildMenuIntakeAnalysis(raw || fallbackRaw(analyzedFileCount), analyzedFileCount, context);
 
     if (geminiResult) {

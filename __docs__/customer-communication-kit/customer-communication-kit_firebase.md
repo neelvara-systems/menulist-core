@@ -25,6 +25,8 @@ The store document (name, address, phone, working hours) is already in memory wh
 
 Desktop copy and WhatsApp handoff failures now log `use_menulist_communication_kit_copy_failed` and `use_menulist_communication_kit_whatsapp_open_failed` through bounded Use MenuList diagnostics. Mobile copy, native share, and WhatsApp handoff failures log through mobile owner diagnostics. Copy actions wait for Clipboard API or acknowledged textarea fallback success before copied feedback, and failed copy diagnostics may add clipboard/fallback support booleans to the existing bounded template/message metadata. WhatsApp handoffs open with `noopener,noreferrer`; failed opens may record generated URL length but not the raw URL or message body.
 
+Today-hours diagnostics are browser-local only. Invalid timezone fallback logs bounded `communication_kit_today_hours_timezone_fallback_failed` metadata, and malformed current-day time ranges log bounded `communication_kit_today_hours_range_invalid` metadata before hours copy is omitted.
+
 This adds no Firestore reads/writes, Storage operations, Cloud Functions, API routes, durable artifacts, cache invalidations, indexes, rules, Firebase deploy requirement, Vercel deploy action, or owner-facing settings. Message generation, clipboard writes, native share, and WhatsApp handoff remain browser-local owner actions.
 
 ## Source Gate

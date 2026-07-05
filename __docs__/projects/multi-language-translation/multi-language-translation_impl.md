@@ -211,6 +211,12 @@ const generationConfig = {
 };
 ```
 
+### Provider Response Parse Contract
+
+`src/app/api/translations/route.ts` parses Gemini translation JSON through a bounded helper before normalization and accounting. Fenced JSON and extractable object-fragment JSON can be recovered without spending the retry call. Empty, malformed non-object, or malformed object-fragment provider responses log capped `translation_provider_response_parse_failed` diagnostics with fixed `retry_once_then_return_translation_failed` policy, attempt, response length, trimmed length, candidate length, parse stage, fenced-response flag, and object-fragment flag only.
+
+The retry contract is unchanged: the first unrecoverable parse failure retries once; the retry unrecoverable parse failure returns the existing generic translation failure and consumes no credits. Raw provider response text, prompt/input JSON, menu text, translated strings, language names, project/file/store/tenant/user IDs, response preview text, raw prompt input/language payloads, and exception text are not logged. AI accounting input and local success/error logs store bounded input, language, coverage, request, response, and transaction summaries instead of raw translation input, language payloads, coverage arrays, or normalized translation output.
+
 ---
 
 ## Key Type Definitions
@@ -1298,7 +1304,7 @@ Prompt-input boundary:
 
 - `TranslationRequestSchema` caps translation keys at 240 characters, translation values at 2000 characters, and request maps at 1000 entries before `/api/translations` proceeds past validation.
 - `src/app/api/translations/prompt.ts` keeps original keys unchanged for the model response contract, but serializes `promptInputJson`, a prompt-only copy whose values strip control/template characters, normalize whitespace, and stay capped at 2000 characters.
-- The original validated `inputJson` remains the source for linked-outlet target extraction, fallback response normalization, transaction context, and client merge behavior.
+- The original validated `inputJson` remains the source for linked-outlet target extraction, fallback response normalization, and client merge behavior; AI transaction context now stores bounded input, language, and coverage summaries instead of raw `inputJson` or language payloads.
 - `scripts/verification/verify-ai-accounting-hardening.js` guards the schema caps, prompt sanitizer, sanitized JSON serialization, and absence of direct raw `inputJson` prompt serialization.
 
 Required callers:

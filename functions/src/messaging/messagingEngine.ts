@@ -31,6 +31,10 @@ import {
 } from './types';
 
 const logger = functions.logger;
+const MESSAGING_FLAG_CHECK_FAILED = 'MESSAGING_FLAG_CHECK_FAILED';
+const MESSAGING_IDEMPOTENCY_CHECK_FAILED = 'MESSAGING_IDEMPOTENCY_CHECK_FAILED';
+const MESSAGING_RATE_LIMIT_CHECK_FAILED = 'MESSAGING_RATE_LIMIT_CHECK_FAILED';
+const MESSAGING_RETRY_MARK_FAILED = 'MESSAGING_RETRY_MARK_FAILED';
 
 // ================================================================
 // FEATURE FLAG CHECK
@@ -74,6 +78,15 @@ function getMessagingIdLogContext(label: string, value: unknown): Record<string,
   };
 }
 
+function getMessagingBoundedStringLogContext(label: string, value: unknown): Record<string, boolean | number | string> {
+  const normalized = value === undefined || value === null ? '' : String(value).trim();
+  return {
+    [`${label}Present`]: normalized.length > 0,
+    [`${label}Length`]: normalized.length,
+    [`${label}ValueType`]: typeof value,
+  };
+}
+
 function getMessagingOperationLogContext(context: {
   eventType?: unknown;
   referenceId?: unknown;
@@ -83,8 +96,8 @@ function getMessagingOperationLogContext(context: {
   tenantId?: unknown;
 }): Record<string, boolean | number | string> {
   return {
-    eventType: typeof context.eventType === 'string' ? context.eventType : String(context.eventType || ''),
-    status: typeof context.status === 'string' ? context.status : String(context.status || ''),
+    ...getMessagingBoundedStringLogContext('eventType', context.eventType),
+    ...getMessagingBoundedStringLogContext('status', context.status),
     ...getMessagingIdLogContext('storeId', context.storeId),
     ...getMessagingIdLogContext('tenantId', context.tenantId),
     ...getMessagingIdLogContext('referenceId', context.referenceId),
@@ -102,8 +115,11 @@ async function isMessagingEnabled(): Promise<boolean> {
     cachedFlag = data?.ENABLE_LIFECYCLE_MESSAGING === true;
     cachedFlagAt = Date.now();
     return cachedFlag;
-  } catch {
-    // Fail-open: if we can't check, don't send (conservative)
+  } catch (error) {
+    logger.error('[Messaging] Feature flag check failed, skipping send', {
+      failureCode: MESSAGING_FLAG_CHECK_FAILED,
+      error: getErrorLogContext(error),
+    });
     return false;
   }
 }
@@ -124,11 +140,12 @@ async function isDuplicate(storeId: string, eventType: string, referenceId: stri
       .get();
     return !snapshot.empty;
   } catch (error) {
-    logger.error('[Messaging] Idempotency check failed', {
+    logger.error('[Messaging] Idempotency check failed, skipping send', {
+      failureCode: MESSAGING_IDEMPOTENCY_CHECK_FAILED,
       ...getMessagingOperationLogContext({ storeId, eventType, referenceId }),
       error: getErrorLogContext(error),
     });
-    return false; // Fail-open: allow send if check fails
+    return true;
   }
 }
 
@@ -150,8 +167,13 @@ async function isRateLimited(storeId: string): Promise<boolean> {
       .get();
 
     return snapshot.size >= MAX_MESSAGES_PER_STORE_PER_DAY;
-  } catch {
-    return false; // Fail-open
+  } catch (error) {
+    logger.error('[Messaging] Rate limit check failed, skipping send', {
+      failureCode: MESSAGING_RATE_LIMIT_CHECK_FAILED,
+      ...getMessagingOperationLogContext({ storeId }),
+      error: getErrorLogContext(error),
+    });
+    return true;
   }
 }
 
@@ -246,7 +268,7 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
   // 1. Feature flag
   const enabled = await isMessagingEnabled();
   if (!enabled) {
-    logger.info('[Messaging] Feature disabled, skipping', { eventType });
+    logger.info('[Messaging] Feature disabled, skipping', getMessagingOperationLogContext({ eventType }));
     return false;
   }
 
@@ -283,7 +305,7 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
   const templateMeta = { ...metadata, storeName: storeInfo.storeName };
   const template = resolveTemplate(eventType, templateMeta);
   if (!template) {
-    logger.warn('[Messaging] No template for event', { eventType });
+    logger.warn('[Messaging] No template for event', getMessagingOperationLogContext({ eventType }));
     return false;
   }
 
@@ -484,7 +506,17 @@ export async function retryFailedMessages(): Promise<{ retried: number; succeede
 
         // Mark original as retried (regardless of outcome)
         await msgDoc.ref.update({ retryCount: 1, retriedAt: Timestamp.now() });
-      } catch {
+      } catch (error) {
+        logger.error('[Messaging] Retry send failed while marking retry consumed', {
+          failureCode: MESSAGING_RETRY_MARK_FAILED,
+          ...getMessagingOperationLogContext({
+            storeId: msg.storeId,
+            tenantId: msg.tenantId,
+            eventType: msg.eventType,
+            referenceId: msg.referenceId,
+          }),
+          error: getErrorLogContext(error),
+        });
         await msgDoc.ref.update({ retryCount: 1, retriedAt: Timestamp.now() });
       }
     }

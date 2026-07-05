@@ -15,6 +15,7 @@
  */
 
 import { getStoreStatus } from "@lib/hours/hoursEngine";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import type {
     ConfidenceState,
     HoursConfidenceInput,
@@ -31,6 +32,11 @@ const STALE_THRESHOLD_DAYS = 30;
 /** Days before hours data is considered very stale (BROKEN) */
 const VERY_STALE_THRESHOLD_DAYS = 180;
 
+/** Maximum distinct timestamp parse diagnostics per runtime session. */
+const MAX_HOURS_TIMESTAMP_PARSE_DIAGNOSTICS = 25;
+
+const reportedHoursTimestampParseFailures = new Set<string>();
+
 // ─────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────
@@ -39,33 +45,83 @@ const VERY_STALE_THRESHOLD_DAYS = 180;
  * Extract a Date from various Firestore timestamp formats.
  * Returns null if unparseable.
  */
-function parseTimestamp(value: any): Date | null {
+function toValidDate(value: Date): Date | null {
+    return Number.isFinite(value.getTime()) ? value : null;
+}
+
+function safeHasTimestampProperty(value: unknown, property: string, expectedType: "function" | "number"): boolean {
+    if (!value || typeof value !== "object") return false;
+
+    try {
+        return typeof (value as Record<string, unknown>)[property] === expectedType;
+    } catch {
+        return false;
+    }
+}
+
+function getTimestampValueKind(value: unknown): string {
+    if (value === undefined) return "undefined";
+    if (value === null) return "null";
+    if (value instanceof Date) return "date";
+    if (safeHasTimestampProperty(value, "toDate", "function")) return "toDate";
+    if (safeHasTimestampProperty(value, "seconds", "number")) return "seconds";
+    if (Array.isArray(value)) return "array";
+    return typeof value;
+}
+
+function logHoursTimestampParseFailure(error: unknown, value: unknown): void {
+    const valueKind = getTimestampValueKind(value);
+    const failureKey = [
+        valueKind,
+        typeof value === "string" ? value.length : "non-string",
+        typeof value === "number" && Number.isFinite(value) ? "finite-number" : "non-finite-number",
+        safeHasTimestampProperty(value, "toDate", "function") ? "toDate" : "no-toDate",
+        safeHasTimestampProperty(value, "seconds", "number") ? "seconds" : "no-seconds",
+    ].join(":");
+
+    if (reportedHoursTimestampParseFailures.has(failureKey)) return;
+    if (reportedHoursTimestampParseFailures.size >= MAX_HOURS_TIMESTAMP_PARSE_DIAGNOSTICS) return;
+    reportedHoursTimestampParseFailures.add(failureKey);
+
+    logRuntimeFailure("hours_confidence_timestamp_parse_failed", error, {
+        ...getBoundedRuntimeStringContext("timestampValueKind", valueKind),
+        stringLength: typeof value === "string" ? value.length : 0,
+        isDateValue: value instanceof Date,
+        isNumberValue: typeof value === "number",
+        isFiniteNumber: typeof value === "number" ? Number.isFinite(value) : undefined,
+        hasToDate: safeHasTimestampProperty(value, "toDate", "function"),
+        hasSeconds: safeHasTimestampProperty(value, "seconds", "number"),
+    });
+}
+
+function parseTimestamp(value: unknown): Date | null {
     if (!value) return null;
 
     try {
         // Firestore Timestamp with toDate()
-        if (typeof value?.toDate === "function") {
-            return value.toDate();
+        if (safeHasTimestampProperty(value, "toDate", "function")) {
+            const date = (value as { toDate: () => unknown }).toDate();
+            return date instanceof Date ? toValidDate(date) : null;
         }
         // Serialized Firestore Timestamp {seconds, nanoseconds}
-        if (typeof value?.seconds === "number") {
-            return new Date(value.seconds * 1000);
+        if (safeHasTimestampProperty(value, "seconds", "number")) {
+            const seconds = (value as { seconds: number }).seconds;
+            return Number.isFinite(seconds) ? toValidDate(new Date(seconds * 1000)) : null;
         }
         // ISO string
         if (typeof value === "string") {
-            const d = new Date(value);
-            return isNaN(d.getTime()) ? null : d;
+            return toValidDate(new Date(value));
         }
         // Already a Date
         if (value instanceof Date) {
-            return isNaN(value.getTime()) ? null : value;
+            return toValidDate(value);
         }
         // Epoch number
         if (typeof value === "number") {
-            return new Date(value);
+            return Number.isFinite(value) ? toValidDate(new Date(value)) : null;
         }
-    } catch {
-        // Silent fail
+    } catch (error) {
+        logHoursTimestampParseFailure(error, value);
     }
     return null;
 }

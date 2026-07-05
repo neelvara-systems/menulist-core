@@ -38,6 +38,8 @@ Billing entitlement boundary source gate: `npm run verify:billing-entitlement-bo
 
 The webhook handler fails cheap before Firebase work: missing signature/secret returns immediately, declared payloads above 256KB return 413 before the `WEBHOOK` rate limit is charged, and accepted requests pass the shared IP limiter plus a bounded raw-body reader before HMAC verification. Invalid signatures and malformed JSON do not create Firestore documents.
 
+July 5 normal-path debug cleanup is Firebase-cost neutral. Plan lookup no longer emits the `Searching for Razorpay plan` debug breadcrumb, and webhook handling no longer emits the `Unhandled webhook event type` debug breadcrumb. Existing plan found/create/failure diagnostics and the local `RAZORPAY_WEBHOOK_UNHANDLED_EVENT` audit row remain. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner settings, Firebase deploy requirement, or Vercel deploy action.
+
 | Operation | Collection | Count per event | Type | Description |
 |-----------|-----------|----------------|------|-------------|
 | Create/read/update | `razorpayWebhookEvents` | 1 transaction + 1 status write | READ/WRITE | Durable replay guard. Claims the event before processing, skips already processed or locked duplicates, and marks processed/failed after handling. |

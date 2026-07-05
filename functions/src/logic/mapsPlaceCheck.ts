@@ -45,7 +45,6 @@ export interface MapsPlaceCheckResult {
         proposedFacts: MapsPlaceCheckProposedFacts;
         sources: MapsPlaceCheckSource[];
     } | null;
-    rawText?: string;
 }
 
 type ParsedMapsPlaceFacts = {
@@ -57,7 +56,6 @@ type ParsedMapsPlaceFacts = {
 
 const logger = functions.logger;
 const MAX_TEXT_LENGTH = 500;
-const MAX_RAW_TEXT_LENGTH = 2000;
 const MAX_FACT_LIST_ITEMS = 8;
 
 function cleanRequiredText(value: unknown, fieldName: string, maxLength = MAX_TEXT_LENGTH): string {
@@ -276,6 +274,8 @@ export async function runMapsPlaceCheck(input: MapsPlaceCheckInput): Promise<Map
             sourceCount: sources.length,
             attributionRequired,
             hasFacts,
+            responseTextLength: responseText.length,
+            parsedResponse: Boolean(parsed),
             model: MAPS_PLACE_CHECK_MODEL,
             promptTokenCount: response.usageMetadata?.promptTokenCount,
             candidatesTokenCount: response.usageMetadata?.candidatesTokenCount,
@@ -289,7 +289,6 @@ export async function runMapsPlaceCheck(input: MapsPlaceCheckInput): Promise<Map
                 checkedAt: new Date().toISOString(),
                 model: MAPS_PLACE_CHECK_MODEL,
                 candidate: null,
-                ...(responseText ? { rawText: responseText.slice(0, MAX_RAW_TEXT_LENGTH) } : {}),
             };
         }
 
@@ -305,7 +304,6 @@ export async function runMapsPlaceCheck(input: MapsPlaceCheckInput): Promise<Map
                 proposedFacts,
                 sources,
             },
-            ...(!parsed && responseText ? { rawText: responseText.slice(0, MAX_RAW_TEXT_LENGTH) } : {}),
         };
     } catch (error) {
         logger.error("[mapsPlaceCheck] Failed", {

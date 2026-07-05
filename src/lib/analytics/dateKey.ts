@@ -1,18 +1,9 @@
 import { DEFAULT_FOOD_BUSINESS_DAY_END_TIME, getAnalyticsSettlementCycleDateKey } from './businessDay';
-
-function isValidTimeZone(timeZone?: string): timeZone is string {
-  if (!timeZone) return false;
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { isValidAnalyticsTimeZone } from './timeZoneDiagnostics';
 
 function formatParts(date: Date, timeZone?: string): { year: string; month: string; day: string; hour?: string; minute?: string } {
   const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: isValidTimeZone(timeZone) ? timeZone : 'UTC',
+    timeZone: isValidAnalyticsTimeZone(timeZone, 'analytics_date_key') ? timeZone : 'UTC',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

@@ -271,9 +271,9 @@ export function buildWhatsAppReplyPackReport(input: WhatsAppReplyPackInput): Wha
   const whatsappNumber = trimToSingleLine(input.whatsappNumber);
   const phoneDigits = normalizePhoneDigits(whatsappNumber);
   const validPhone = isLikelyWhatsAppPhone(whatsappNumber);
-  const validCustomerLink = isValidHttpUrl(currentCustomerLink);
+  const validCustomerLink = isValidHttpUrl(currentCustomerLink, 'whatsapp_reply_pack_current_customer_link');
   const hasCustomerLink = currentCustomerLink.length > 0;
-  const validActionLink = isValidHttpUrl(actionLink);
+  const validActionLink = isValidHttpUrl(actionLink, 'whatsapp_reply_pack_action_link');
   const hasActionLink = actionLink.length > 0;
   const hasIdentity = hasUsefulText(businessName, 2) && hasUsefulText(cityOrArea || locationOrServiceArea, 2);
   const hasOffer = hasUsefulText(offerSummary, 12);

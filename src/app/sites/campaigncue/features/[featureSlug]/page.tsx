@@ -83,6 +83,10 @@ function withBasePath(basePath: string, href: string): string {
     return `${basePath}${href}`;
 }
 
+function getActionLabel(title: string): string {
+    return title.split(/\s+/)[0]?.replace(/[^A-Za-z]/g, "") || "Work";
+}
+
 function BrandMark() {
     return (
         <span className="campaigncue-brand-mark" aria-hidden="true">
@@ -277,9 +281,9 @@ function TemplatePreview() {
         <MiniChrome title="Reusable template">
             <div className="campaigncue-feature-template-preview">
                 {[
-                    ["01", "Save useful pack", "Lunch, slot-fill, event, or approval pack"],
-                    ["02", "Update facts", "Price, date, photo, location, and CTA"],
-                    ["03", "Export again", "Checked files and copy for manual use"],
+                    ["Save", "Save useful pack", "Lunch, slot-fill, event, or approval pack"],
+                    ["Refresh", "Update facts", "Price, date, photo, location, and CTA"],
+                    ["Export", "Export again", "Checked files and copy for manual use"],
                 ].map(([label, title, detail]) => (
                     <section key={title}>
                         <span>{label}</span>
@@ -394,9 +398,9 @@ export default function CampaignCueFeaturePage({ params }: PageProps) {
 
             <FeatureSection eyebrow="How it works" title={`${feature.title} in the owner workflow.`}>
                 <div className="campaigncue-feature-steps">
-                    {feature.steps.map((step, index) => (
+                    {feature.steps.map((step) => (
                         <article key={step.title}>
-                            <span>{String(index + 1).padStart(2, "0")}</span>
+                            <span>{getActionLabel(step.title)}</span>
                             <strong>{step.title}</strong>
                             <p>{step.detail}</p>
                         </article>

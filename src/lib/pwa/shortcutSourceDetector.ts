@@ -32,6 +32,17 @@ const SHORTCUT_EVENT_MAP: Record<ShortcutSource, TrackingEvent> = {
   order: TrackingEvent.CUSTOMER_APP_SHORTCUT_ORDER,
 };
 
+let reportedShortcutSourceParseFailure = false;
+
+function logShortcutSourceParseFailure(error: unknown, search: string): void {
+  if (reportedShortcutSourceParseFailure) return;
+  reportedShortcutSourceParseFailure = true;
+
+  logPwaTrackingFailure('customer_app_shortcut_source_parse_failed', error, {
+    ...getBoundedPwaStringContext('search', search),
+  });
+}
+
 /**
  * Parse ?entry_source=shortcut-xxx from the current URL and return the source,
  * or null if not present or not a recognized value.
@@ -45,7 +56,8 @@ export function parseShortcutSource(search: string): ShortcutSource | null {
     const match = raw.match(/^shortcut-(menu|call|directions|whatsapp|reservation|order)$/);
     if (!match) return null;
     return match[1] as ShortcutSource;
-  } catch {
+  } catch (error) {
+    logShortcutSourceParseFailure(error, search);
     return null;
   }
 }

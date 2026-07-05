@@ -1,6 +1,11 @@
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+
 export type OBPSocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'website' | 'youtube';
 
 const PUBLIC_LINK_MAX_LENGTH = 2048;
+const MAX_OBP_PUBLIC_LINK_PARSE_DIAGNOSTICS = 25;
+
+const reportedOBPPublicLinkParseFailures = new Set<string>();
 
 const SOCIAL_LINK_CONFIG: Record<Exclude<OBPSocialPlatform, 'website'>, {
     fallbackBase: string;
@@ -54,6 +59,46 @@ function buildHttpsCandidate(value: unknown, fallbackBase?: string): string {
     return fallbackBase ? `${fallbackBase}${stripped}` : '';
 }
 
+function getPublicLinkValueKind(value: unknown): string {
+    if (value === undefined) return 'undefined';
+    if (value === null) return 'null';
+    if (Array.isArray(value)) return 'array';
+    return typeof value;
+}
+
+function logOBPPublicLinkParseFailure(
+    error: unknown,
+    value: unknown,
+    candidate: string,
+    options: {
+        allowedHostBases?: string[];
+        fallbackBase?: string;
+    },
+): void {
+    const valueKind = getPublicLinkValueKind(value);
+    const valueLength = typeof value === 'string' ? value.trim().length : 0;
+    const failureKey = [
+        valueKind,
+        valueLength,
+        candidate.length,
+        options.allowedHostBases?.length || 0,
+        options.fallbackBase ? 'fallback' : 'no-fallback',
+    ].join(':');
+
+    if (reportedOBPPublicLinkParseFailures.has(failureKey)) return;
+    if (reportedOBPPublicLinkParseFailures.size >= MAX_OBP_PUBLIC_LINK_PARSE_DIAGNOSTICS) return;
+    reportedOBPPublicLinkParseFailures.add(failureKey);
+
+    logRuntimeFailure('obp_public_link_url_parse_failed', error, {
+        ...getBoundedRuntimeStringContext('valueKind', valueKind),
+        valueStringLength: valueLength,
+        candidateLength: candidate.length,
+        allowedHostBaseCount: options.allowedHostBases?.length || 0,
+        hasFallbackBase: Boolean(options.fallbackBase),
+        hasProtocol: /^[a-z][a-z\d+\-.]*:/i.test(candidate),
+    });
+}
+
 export function normalizeOBPExternalHttpsUrl(
     value: unknown,
     options: {
@@ -75,7 +120,8 @@ export function normalizeOBPExternalHttpsUrl(
         }
 
         return parsed.toString();
-    } catch {
+    } catch (error) {
+        logOBPPublicLinkParseFailure(error, value, candidate, options);
         return null;
     }
 }

@@ -26,6 +26,7 @@ import { withPlatformAuth } from '../../../../middleware/auth';
 const EXTRACTION_OPERATION_LIMIT = 300;
 const BUSINESS_HEALTH_EVENT_LIMIT = 200;
 const ALERT_LIMIT = 30;
+const MAX_TIMESTAMP_PARSE_DIAGNOSTIC_SHAPES = 25;
 
 const QuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(90).optional().default(30),
@@ -35,6 +36,7 @@ type SourceReadResult<T> = {
   docs: T[];
   coverage: PlatformCostSourceCoverage;
 };
+const reportedTimestampParseShapes = new Set<string>();
 
 function safeNumber(value: unknown): number {
   const numberValue = Number(value || 0);
@@ -94,24 +96,67 @@ function buildCostAlertResponseId(docId: string): string {
   return `cost-alert-${createHash('sha256').update(docId).digest('hex').slice(0, 12)}`;
 }
 
-function toDate(value: any): Date | null {
+function getTimestampParseContext(value: unknown, source: string): Record<string, boolean | number | string> {
+  const valueType = value instanceof Date ? 'Date' : Array.isArray(value) ? 'array' : typeof value;
+  const asRecord = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  return {
+    source,
+    valueType,
+    hasToDate: typeof asRecord.toDate === 'function',
+    hasSeconds: typeof asRecord.seconds === 'number',
+    isDate: value instanceof Date,
+    isFiniteNumber: typeof value === 'number' && Number.isFinite(value),
+    stringLength: typeof value === 'string' ? value.length : 0,
+  };
+}
+
+function logTimestampParseFailure(source: string, value: unknown, error: unknown): void {
+  const context = getTimestampParseContext(value, source);
+  const shapeKey = [
+    context.source,
+    context.valueType,
+    context.hasToDate,
+    context.hasSeconds,
+    context.isDate,
+    context.isFiniteNumber,
+    context.stringLength,
+  ].join(':');
+
+  if (reportedTimestampParseShapes.has(shapeKey)) return;
+  if (reportedTimestampParseShapes.size >= MAX_TIMESTAMP_PARSE_DIAGNOSTIC_SHAPES) return;
+  reportedTimestampParseShapes.add(shapeKey);
+
+  logRuntimeFailure('platform_cost_posture_timestamp_parse_failed', error, {
+    ...context,
+    fallbackPolicy: 'omit_timestamp',
+  });
+}
+
+function toDate(value: any, source = 'unknown'): Date | null {
   if (!value) return null;
   try {
-    if (typeof value.toDate === 'function') return value.toDate();
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
-    if (value instanceof Date) return value;
+    if (typeof value.toDate === 'function') {
+      const date = value.toDate();
+      return date instanceof Date && Number.isFinite(date.getTime()) ? date : null;
+    }
+    if (typeof value.seconds === 'number' && Number.isFinite(value.seconds)) {
+      const date = new Date(value.seconds * 1000);
+      return Number.isFinite(date.getTime()) ? date : null;
+    }
+    if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;
     if (typeof value === 'string' || typeof value === 'number') {
       const date = new Date(value);
       return Number.isFinite(date.getTime()) ? date : null;
     }
-  } catch {
+  } catch (error) {
+    logTimestampParseFailure(source, value, error);
     return null;
   }
   return null;
 }
 
-function toIso(value: any): string | null {
-  return toDate(value)?.toISOString() || null;
+function toIso(value: any, source = 'unknown'): string | null {
+  return toDate(value, source)?.toISOString() || null;
 }
 
 function maxIso(left: string | null, right: string | null): string | null {
@@ -121,11 +166,11 @@ function maxIso(left: string | null, right: string | null): string | null {
 }
 
 function getDocumentDate(data: Record<string, any>): Date | null {
-  return toDate(data.createdAt)
-    || toDate(data.createdOn)
-    || toDate(data.created_at)
-    || toDate(data.timestamp)
-    || toDate(data.modifiedOn);
+  return toDate(data.createdAt, 'createdAt')
+    || toDate(data.createdOn, 'createdOn')
+    || toDate(data.created_at, 'created_at')
+    || toDate(data.timestamp, 'timestamp')
+    || toDate(data.modifiedOn, 'modifiedOn');
 }
 
 function inPeriod(data: Record<string, any>, periodStartMs: number): boolean {
@@ -188,7 +233,7 @@ async function readSystemConfig(): Promise<{
   try {
     const snap = await firestoreAdmin.collection(DB_COLLECTIONS.OPS_CONFIG).doc('system').get();
     const data = snap.exists ? snap.data() || {} : {};
-    const alertsMutedUntil = toIso(data.alertsMutedUntil);
+    const alertsMutedUntil = toIso(data.alertsMutedUntil, 'alertsMutedUntil');
     const mutedUntilMs = alertsMutedUntil ? new Date(alertsMutedUntil).getTime() : 0;
 
     return {
@@ -338,7 +383,7 @@ function serializeCostAlert(doc: FirebaseFirestore.QueryDocumentSnapshot): Platf
     severity: cleanText(data.severity || data.level || 'info', 40) || 'info',
     type: getCostAlertDisplayType(data),
     message: buildCostAlertMessage(data),
-    timestamp: toIso(data.timestamp || data.createdAt || data.createdOn),
+    timestamp: toIso(data.timestamp || data.createdAt || data.createdOn, 'costAlertTimestamp'),
   };
 }
 

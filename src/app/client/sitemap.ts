@@ -35,6 +35,7 @@ import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { normalizePublicOutletSlug, normalizePublicProjectSlug } from '@lib/publicRouting/pathSegments';
 import { evaluatePublicTruthIndexability } from '@lib/seo/publicTruthIndexing';
+import { secureError } from '@lib/security/secureLogger';
 import { MetadataRoute } from 'next';
 import { unstable_cache } from 'next/cache';
 import { headers } from 'next/headers';
@@ -61,6 +62,86 @@ type OutletSitemapEntry = {
     storeId: string;
     modifiedOn: Date;
     publicStore: Record<string, any>;
+};
+
+type TenantSitemapFailureType =
+    | 'master_store_lookup_failed'
+    | 'outlets_lookup_failed'
+    | 'projects_lookup_failed';
+
+const MAX_TENANT_SITEMAP_DIAGNOSTICS = 25;
+const reportedTenantSitemapFailures = new Set<string>();
+
+const TENANT_SITEMAP_FAILURE_CODES: Record<TenantSitemapFailureType, string> = {
+    master_store_lookup_failed: 'tenant_sitemap_master_store_lookup_failed',
+    outlets_lookup_failed: 'tenant_sitemap_outlets_lookup_failed',
+    projects_lookup_failed: 'tenant_sitemap_projects_lookup_failed',
+};
+
+const TENANT_SITEMAP_FALLBACK_POLICIES: Record<TenantSitemapFailureType, string> = {
+    master_store_lookup_failed: 'return_empty_sitemap',
+    outlets_lookup_failed: 'omit_outlet_sitemap_entries',
+    projects_lookup_failed: 'omit_project_sitemap_entries',
+};
+
+const getBoundedSitemapStringContext = (
+    label: string,
+    value: unknown,
+): Record<string, boolean | number> => {
+    const normalized = value === undefined || value === null ? '' : String(value).trim();
+    return {
+        [`${label}Present`]: normalized.length > 0,
+        [`${label}Length`]: normalized.length,
+    };
+};
+
+const getTenantSitemapFailureContext = (
+    context: {
+        subdomain?: unknown;
+        customDomain?: unknown;
+        storeId?: unknown;
+        masterStoreId?: unknown;
+        tenantId?: unknown;
+    },
+): Record<string, boolean | number> => ({
+    ...getBoundedSitemapStringContext('subdomain', context.subdomain),
+    ...getBoundedSitemapStringContext('customDomain', context.customDomain),
+    ...getBoundedSitemapStringContext('storeId', context.storeId),
+    ...getBoundedSitemapStringContext('masterStoreId', context.masterStoreId),
+    ...getBoundedSitemapStringContext('tenantId', context.tenantId),
+});
+
+const logTenantSitemapFailure = (
+    failureType: TenantSitemapFailureType,
+    error: unknown,
+    context: {
+        subdomain?: unknown;
+        customDomain?: unknown;
+        storeId?: unknown;
+        masterStoreId?: unknown;
+        tenantId?: unknown;
+    } = {},
+): void => {
+    const failureCode = TENANT_SITEMAP_FAILURE_CODES[failureType];
+    const boundedContext = getTenantSitemapFailureContext(context);
+    const errorName = error instanceof Error ? error.name : typeof error;
+    const failureKey = JSON.stringify({
+        failureType,
+        errorName,
+        boundedContext,
+    });
+
+    if (reportedTenantSitemapFailures.has(failureKey)) return;
+    if (reportedTenantSitemapFailures.size >= MAX_TENANT_SITEMAP_DIAGNOSTICS) return;
+    reportedTenantSitemapFailures.add(failureKey);
+
+    secureError('[Client Sitemap] Tenant sitemap generation degraded', new Error(failureCode), {
+        failureCode,
+        failureType,
+        fallbackPolicy: TENANT_SITEMAP_FALLBACK_POLICIES[failureType],
+        ...boundedContext,
+        errorName,
+    });
 };
 
 const getRequestHostname = (value: string | null): string => {
@@ -156,7 +237,11 @@ const getMasterStoreSeed = unstable_cache(
                 modifiedOn: readModifiedOn(data?.modifiedOn),
                 publicStore: buildSitemapPublicStore(storeDoc.id, data),
             };
-        } catch {
+        } catch (error) {
+            logTenantSitemapFailure('master_store_lookup_failed', error, {
+                subdomain,
+                customDomain,
+            });
             return null;
         }
     },
@@ -191,7 +276,10 @@ const getProjectsForSitemap = unstable_cache(
                 });
             }
             return entries;
-        } catch {
+        } catch (error) {
+            logTenantSitemapFailure('projects_lookup_failed', error, {
+                storeId,
+            });
             return [];
         }
     },
@@ -249,7 +337,11 @@ const getOutletsForSitemap = unstable_cache(
                 });
             }
             return outlets;
-        } catch {
+        } catch (error) {
+            logTenantSitemapFailure('outlets_lookup_failed', error, {
+                tenantId,
+                masterStoreId,
+            });
             return [];
         }
     },

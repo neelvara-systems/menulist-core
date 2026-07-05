@@ -224,21 +224,21 @@ export const FEATURE_FLAGS = {
     /**
      * Enable Sentry error tracking and monitoring
      *
-     * ✅ PRODUCTION-READY - Dual dev/prod projects configured!
+     * Source gate: Sentry initializes only when the matching DSN env vars are configured.
      *
-     * true: Enable Sentry tracking
+     * true: Allow Sentry tracking when a DSN is configured
      * false: Disable Sentry completely (no events sent, no overhead)
      *
      * How It Works (Dual Projects):
      * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      *
      * 🔧 DEVELOPMENT:
-     *    - Errors → Dev Sentry project
+     *    - Errors → Dev Sentry project when NEXT_PUBLIC_SENTRY_DEV_DSN or SENTRY_DEV_DSN is configured
      *    - Clean separation from production
      *    - Full context: tenant, store, subscription
      *
      * 🚀 PRODUCTION:
-     *    - Errors → Production Sentry project
+     *    - Errors → Production Sentry project when NEXT_PUBLIC_SENTRY_DSN or SENTRY_DSN is configured
      *    - Release tracking with git commit SHA
      *    - User context with email-friendly username
      *    - Session replay for visual debugging

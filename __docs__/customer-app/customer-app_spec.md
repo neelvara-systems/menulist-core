@@ -203,6 +203,8 @@ New customers see updated branding
 | shortcuts        | Dynamic based on store data    | See Feature 4                                           |
 | description      | Auto-generated                 | "Official menu, contact and directions for {storeName}" |
 
+If the cached project-summary lookup used to choose `/menu` is unavailable, the manifest stays valid and falls back to `/` for that response. That degraded path is observable through capped `customer_app_manifest_start_url_lookup_failed` diagnostics with shape-only metadata; it does not change the normal `/menu` policy when the summary read succeeds.
+
 **Routing Model (Canonical):** Each store is served from its own subdomain (`{subdomain}.menulist.ai`) or verified custom domain (`joespizza.com`). The manifest is served from the tenant origin root: `https://joespizza.menulist.ai/manifest.webmanifest`. Path-based manifests (e.g., `menulist.ai/{slug}/manifest.webmanifest`) are NOT used — they would split scope across tenants and weaken install identity. The manifest ignores route-level `?start=` identity and always represents one store-level Customer App. See `src/middleware.ts` and `src/lib/multiTenant/domainResolver.ts` for the existing domain resolution layer.
 
 ### 2. App Icon System
@@ -254,7 +256,7 @@ New customers see updated branding
 | Samsung Internet | Uses `beforeinstallprompt` or manual instructions           |
 | Safari iOS       | Shows custom instructions: "Tap Share → Add to Home Screen" |
 
-**Visit Persistence:** Visit count is persisted in `localStorage` (not `sessionStorage`) so the 3rd-visit trigger works across separate browsing sessions. Dismissal timestamp is also persisted in `localStorage` for the 30-day suppression window.
+**Visit Persistence:** Visit count is persisted in `localStorage` (not `sessionStorage`) so the 3rd-visit trigger works across separate browsing sessions. Dismissal timestamp is also persisted in `localStorage` for the 30-day suppression window. Visit-count and dismissal-storage failures log bounded `customer_app_prompt_*` diagnostics only, preserve the existing prompt fallback behavior, and create no fallback write path.
 
 ### 4. App Shortcuts
 
@@ -489,6 +491,10 @@ Read directly from `stores.pwaSettings.*` — no event writes needed.
 | --------------------- | ----------------------------------------- | --------- |
 | `CUSTOMER_APP_OPENED` | Page load with `display-mode: standalone` | Yes       |
 
+`CUSTOMER_APP_OPENED` uses a browser-local `sessionStorage` guard to avoid repeated standalone-open writes inside one tab session. If storage availability, guard read/write, or iOS install-inference prompt lookup fails, tracking remains non-blocking, bounded `customer_app_open_*` diagnostics are logged once per operation, and no fallback write path is created.
+
+Install-mode detection and shortcut/direct-intent parse failures log bounded diagnostics only. `detectInstalled()` still returns `false` when browser install-mode APIs fail, shortcut parsing still returns `null` when `entry_source` cannot be parsed, and direct-install intent still returns `false` when the `pwa` query cannot be parsed. Diagnostics keep browser capability booleans or URL search presence/length metadata only; no raw query strings, store IDs, customer identity, or fallback write path is created.
+
 #### Layer 4 — Shortcut Utility (Events)
 
 | Event Name                         | When Fired                               | Priority |
@@ -519,7 +525,7 @@ Nothing else. No heatmaps, no session duration, no per-user profiling.
 | `totalInstalled`        | Raw `appinstalled` event count (includes reinstalls)                                   |
 | `uniqueInstallSessions` | Distinct `sessionId` count on install events — best available proxy for unique devices |
 
-This prevents reinstalls from inflating the "Installed Customers" metric. The existing analytics session system (`src/lib/analytics/session.ts`) provides session IDs.
+Browser-local install de-dupe caps `CUSTOMER_APP_INSTALLED` to one event per device/store when localStorage is available. If install de-dupe storage availability/read/write fails, tracking remains non-blocking, bounded `customer_app_install_dedupe_*` diagnostics are logged once per operation, and no fallback write path or customer/device identity is created. The existing analytics session system (`src/lib/analytics/session.ts`) provides session IDs for best-available unique-install reporting.
 
 #### Reuse Existing Infrastructure (Not a New Collection)
 

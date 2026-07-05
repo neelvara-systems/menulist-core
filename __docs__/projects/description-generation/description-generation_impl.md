@@ -2,8 +2,8 @@
 
 **Feature:** AI-Powered Menu Item Description Generation  
 **Status:** Implemented source evidence; not current launch certification
-**Last Updated:** January 31, 2026  
-**Version:** 2.0  
+**Last Updated:** July 5, 2026
+**Version:** 2.1
 **Source of Truth:** Codebase (`src/app/api/descriptions/`, `src/services/ai/description/`)
 
 **Launch boundary:** This implementation note documents the description-generation feature. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, AI accounting/source gates, provider smoke, browser/mobile editor QA, and deploy evidence for the target environment.
@@ -132,6 +132,14 @@
 ## June 29 Response Diagnostics
 
 `src/services/ai/description/generateDescriptionViaAPI.ts` now parses successful `/api/descriptions` responses through `readAiServiceResponseJson()` with a 1MB cap. Malformed, oversized, empty, or non-object responses log `ai_description_response_parse_failed` / `ai_description_response_invalid` with bounded project/file/count metadata, then preserve the existing null fallback and owner-visible description failure behavior.
+
+## July 5 Provider Response Parse Diagnostics
+
+`src/app/api/descriptions/route.ts` now parses Gemini text through `parseDescriptionProviderResponse()`. The parser strips JSON fences, accepts extractable object-fragment JSON before failure, and logs capped `description_provider_response_parse_failed` diagnostics for empty responses, malformed object fragments, or responses with no parseable object. The fixed fallback policy is `return_description_generation_failed`, which preserves the existing owner-safe failure response and prevents AI accounting writes or credit consumption when the provider response is unusable.
+
+The route no longer logs raw response previews on parse failure and no longer hands full provider response objects to the local `API_RESPONSE` log. Local response logging is limited to model/request metadata, response-text presence, response-text length, and usage metadata. Local success/error logs use bounded request, response, and transaction summaries, and the AI accounting input carries bounded item/language summaries instead of raw prompt item/language payloads. Raw provider response text, prompt/menu/item copy, generated descriptions, project/file/store/tenant/user IDs, response preview text, full provider response objects, raw prompt item/language payloads, and exception text are not logged.
+
+`src/components/templates/main-app/projects/editorView/descriptionGeneration.shared.ts` logs returned-error results from the service layer through `menu_editor_description_generation_returned_error_message`. That diagnostic uses bounded menu-editor project, file, result-message, and message-type presence-length metadata only, and `npm run verify:public-business-truth` rejects the old raw `logger.warn()` branch, raw `resultMessage`, and raw `file.uid` fields.
 
 ## File Structure
 
@@ -761,10 +769,23 @@ let transactionObject = {
 const LOG_FILE = "descriptions.log";
 
 // Logged events:
-await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'API_RESPONSE', data: response });
+await writeLogEntry({
+  logFileName: LOG_FILE,
+  userId,
+  projectId,
+  fileId,
+  logType: 'API_RESPONSE',
+  data: {
+    model: AI_MODEL,
+    requestId,
+    responseTextPresent: Boolean(response.text),
+    responseTextLength: response.text?.length || 0,
+    responseUsage: response.usageMetadata || null,
+  },
+});
 await writeLogEntry({ logFileName: LOG_FILE, ..., logType: 'SUCCESS_RESPONSE', data: { ... } });
 await writeErrorLogEntry(LOG_FILE, error);
-await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, rawData);
+await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, attemptedData);
 ```
 
 ### Security Logging (Sentry)

@@ -3,9 +3,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuChevronDown, LuGlobe } from 'react-icons/lu';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Project } from '../../types';
 import { MenuMoodConfig } from '../designSystem';
 import { menuFadeTransition, menuPanelMotion, menuSpringTransition } from './menuMotion';
+
+type MenuLanguageStorageOperation = 'read' | 'write';
+
+const reportedMenuLanguageStorageFailures = new Set<MenuLanguageStorageOperation>();
 
 interface MenuLanguageSwitcherProps {
     projectData: Project;
@@ -15,6 +20,34 @@ interface MenuLanguageSwitcherProps {
     restoreStoredLanguage?: boolean;
     compact?: boolean;
     style?: React.CSSProperties;
+}
+
+function logMenuLanguageStorageFailure(
+    operation: MenuLanguageStorageOperation,
+    error: unknown,
+    context: {
+        languageStorageKey: string | null;
+        activeLanguage?: string;
+        projectLanguageCount?: number;
+        restoreStoredLanguage?: boolean;
+    },
+): void {
+    if (reportedMenuLanguageStorageFailures.has(operation)) return;
+    reportedMenuLanguageStorageFailures.add(operation);
+
+    const projectLanguageCount = Number(context.projectLanguageCount || 0);
+    const failureCode = operation === 'read'
+        ? 'public_menu_language_storage_read_failed'
+        : 'public_menu_language_storage_write_failed';
+
+    logRuntimeFailure(failureCode, error, {
+        operation,
+        ...getBoundedRuntimeStringContext('languageStorageKey', context.languageStorageKey),
+        ...getBoundedRuntimeStringContext('activeLanguage', context.activeLanguage),
+        projectLanguageCount: Number.isFinite(projectLanguageCount) ? projectLanguageCount : 0,
+        restoreStoredLanguage: Boolean(context.restoreStoredLanguage),
+        hasWindow: typeof window !== 'undefined',
+    });
 }
 
 function MenuLanguageSwitcher({
@@ -58,8 +91,13 @@ function MenuLanguageSwitcher({
             if (restoreStoredLanguage && !didCheckStoredLanguageRef.current) return;
             try {
                 localStorage.setItem(languageStorageKey, activeLanguage);
-            } catch {
-                // Local storage may be unavailable in private browsing.
+            } catch (error) {
+                logMenuLanguageStorageFailure('write', error, {
+                    languageStorageKey,
+                    activeLanguage,
+                    projectLanguageCount: projectData.languages?.length || 0,
+                    restoreStoredLanguage,
+                });
             }
         }
     }, [activeLanguage, languageStorageKey, restoreStoredLanguage]);
@@ -75,8 +113,13 @@ function MenuLanguageSwitcher({
             if (savedLang && projectData.languages?.includes(savedLang) && savedLang !== activeLanguage) {
                 setActiveLanguage(savedLang);
             }
-        } catch {
-            // Local storage may be unavailable in private browsing.
+        } catch (error) {
+            logMenuLanguageStorageFailure('read', error, {
+                languageStorageKey,
+                activeLanguage,
+                projectLanguageCount: projectData.languages?.length || 0,
+                restoreStoredLanguage,
+            });
         } finally {
             didCheckStoredLanguageRef.current = true;
         }

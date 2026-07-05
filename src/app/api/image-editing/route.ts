@@ -6,10 +6,10 @@ import { PERMISSIONS } from "@constant/permissions";
 import { GenerateContentResponse, Modality } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
-import { sanitizeImageGenerationConfigForLogging, summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
+import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { getImageAsBase64, type ImageFetchStorageScope } from "@lib/apiUtils";
 import { genAIClient } from "@lib/google/genAi";
-import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { logger } from "@lib/monitoring/logger";
 import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
 import { requireAnyStorePermission } from "@lib/permissions/server";
@@ -28,6 +28,24 @@ const AI_MODEL = GEMINI_MODELS.IMAGE_GEN;
 const ACTION = AI_ACTIONS_TYPES.IMAGE_EDITING;
 const LOG_FILE = "image-editing.log"
 const IMAGE_EDITING_AI_MAX_BODY_BYTES = 64 * 1024 * 1024;
+
+const getImageEditingConfigLogSummary = (config: Record<string, any> | undefined | null) => ({
+    hasPrompt: typeof config?.prompt === 'string' && config.prompt.length > 0,
+    hasReferenceImage: Boolean(config?.referanceImage?.url),
+    promptImageCount: Array.isArray(config?.promptImages) ? config.promptImages.length : 0,
+    promptLength: typeof config?.prompt === 'string' ? config.prompt.length : 0,
+});
+
+const getImageItemDetailsLogSummary = (itemDetails: Record<string, any> | undefined | null) => ({
+    attributeCount: Array.isArray(itemDetails?.attributes) ? itemDetails.attributes.length : 0,
+    categoryLength: typeof itemDetails?.category === 'string' ? itemDetails.category.length : 0,
+    descriptionLength: typeof itemDetails?.description === 'string' ? itemDetails.description.length : 0,
+    hasCategory: Boolean(itemDetails?.category),
+    hasDescription: Boolean(itemDetails?.description),
+    hasId: Boolean(itemDetails?.id),
+    hasName: Boolean(itemDetails?.name),
+    nameLength: typeof itemDetails?.name === 'string' ? itemDetails.name.length : 0,
+});
 
 async function editImageViaFlash(
     generationConfig: { prompt?: string, referanceImage: UserUploadedFileType, promptImages?: UserUploadedFileType[] },
@@ -59,8 +77,6 @@ async function editImageViaFlash(
                 responseModalities: [Modality.TEXT, Modality.IMAGE],
             },
         });
-        logger.debug('Started image edit via flash', { promptLength: generationConfig.prompt?.length })
-
         let genratedImages: { base64: string; mimeType: string }[] = [];
         if (response.candidates && response.candidates.length > 0 && response.candidates[0].content && response.candidates[0].content.parts) {
             for (const part of response.candidates[0].content.parts) {
@@ -71,8 +87,6 @@ async function editImageViaFlash(
                 }
             }
         }
-
-        logger.debug('Completed image edit via flash', { imageCount: genratedImages.length })
         return { images: genratedImages, response };
     } catch (error) {
         logAIRouteFailure('image_editing_flash_failed', error, {
@@ -128,14 +142,16 @@ export const POST = withAuth(async (request, session) => {
                 requestId,
             }, 'high'); // HIGH severity - very expensive
 
-            await writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId, rawData?.fileId, {
+            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, {
                 error: errorMsg,
-                hasGenerationConfig: !!rawData?.generationConfig,
-                hasPrompt: !!rawData?.generationConfig?.prompt,
-                hasPromptImages: Array.isArray(rawData?.generationConfig?.promptImages),
-                hasReferenceImage: !!rawData?.generationConfig?.referanceImage?.url,
-                projectId: rawData?.projectId,
-                fileId: rawData?.fileId,
+                attemptedData: getAIRouteLogContext({
+                    hasGenerationConfig: !!rawData?.generationConfig,
+                    hasPrompt: !!rawData?.generationConfig?.prompt,
+                    hasPromptImages: Array.isArray(rawData?.generationConfig?.promptImages),
+                    hasReferenceImage: !!rawData?.generationConfig?.referanceImage?.url,
+                    projectId: rawData?.projectId,
+                    fileId: rawData?.fileId,
+                }),
             });
 
             return NextResponse.json({
@@ -194,7 +210,6 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Image editing needs a valid editing prompt' }, { status: 400 });
         }
         generationConfig.prompt = generatedPrompt;
-        logger.debug('Prompt generated for image edit', { promptLength: generationConfig.prompt?.length })
         const promptImages = (generationConfig.promptImages || []).filter((image): image is UserUploadedFileType => Boolean(image?.url));
         let imageEditGemeiniResponse = await editImageViaFlash({
             ...generationConfig,
@@ -215,9 +230,11 @@ export const POST = withAuth(async (request, session) => {
                 fileId,
                 logType: 'NO_IMAGE_EDIT_GENERATED',
                 data: {
-                    generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
-                    itemDetails,
-                    response: summarizeImageProviderResponse(imageEditGemeiniResponse?.response),
+                    requestSummary: {
+                        generationConfig: getImageEditingConfigLogSummary(generationConfig as Record<string, any>),
+                        itemDetails: getImageItemDetailsLogSummary(itemDetails as Record<string, any>),
+                    },
+                    responseSummary: summarizeImageProviderResponse(imageEditGemeiniResponse?.response),
                 },
             });
             return NextResponse.json({ error: 'Image editing produced no image' }, { status: 502 });
@@ -228,8 +245,8 @@ export const POST = withAuth(async (request, session) => {
             transactionId: null,
             action: ACTION,
             unitsConsumed: 0,
-            itemDetails,
-            generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
+            itemSummary: getImageItemDetailsLogSummary(itemDetails as Record<string, any>),
+            generationConfigSummary: getImageEditingConfigLogSummary(generationConfig as Record<string, any>),
             projectId,
             fileId,
             processingTime,
@@ -247,6 +264,26 @@ export const POST = withAuth(async (request, session) => {
             ourChargePaise: getOurChargePaise(ACTION),
             marginPaise: getOurChargePaise(ACTION) - getRealCostPaise(ACTION),
         };
+        const getTransactionLogSummary = () => ({
+            action: transactionObject.action,
+            candidatesTokenCount: transactionObject.candidatesTokenCount,
+            fileId: transactionObject.fileId,
+            imageCount: imageEditGemeiniResponse.images.length,
+            model: transactionObject.model,
+            processingTime: transactionObject.processingTime,
+            projectId: transactionObject.projectId,
+            promptTokenCount: transactionObject.promptTokenCount,
+            responseSummary: {
+                generatedImageCount: imageEditGemeiniResponse.images.length,
+                mimeTypes: imageEditGemeiniResponse.images.map((image: { mimeType: string }) => image.mimeType),
+                providerResponse: summarizeImageProviderResponse(imageEditGemeiniResponse.response),
+            },
+            totalCharge: transactionObject.totalCharge,
+            totalCredits: transactionObject.totalCredits,
+            totalTokenCount: transactionObject.totalTokenCount,
+            transactionId: transactionObject.transactionId,
+            unitsConsumed: transactionObject.unitsConsumed,
+        });
 
         // Add the operation to the database
         let remainingBalance = null;
@@ -276,7 +313,7 @@ export const POST = withAuth(async (request, session) => {
             if (transactionError && typeof transactionError === 'object') {
                 (transactionError as Record<string, unknown>).__imageEditingLogged = true;
             }
-            await writeLogEntry({ logFileName: LOG_FILE, userId: "N/A", projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
+            await writeLogEntry({ logFileName: LOG_FILE, userId: "N/A", projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: getTransactionLogSummary(), error: getAIErrorDiagnostics(transactionError) });
             throw transactionError;
         }
 
@@ -288,11 +325,12 @@ export const POST = withAuth(async (request, session) => {
             fileId,
             logType: 'SUCCESS_RESPONSE',
             data: {
-                imageEditResponse: {
-                    imageCount: imageEditGemeiniResponse.images.length,
-                    response: summarizeImageProviderResponse(imageEditGemeiniResponse.response),
+                requestSummary: {
+                    generationConfig: getImageEditingConfigLogSummary(generationConfig as Record<string, any>),
+                    itemDetails: getImageItemDetailsLogSummary(itemDetails as Record<string, any>),
                 },
-                transactionObject,
+                responseSummary: getTransactionLogSummary().responseSummary,
+                transaction: getTransactionLogSummary(),
             },
         });
 

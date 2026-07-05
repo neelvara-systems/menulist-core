@@ -519,12 +519,25 @@ contains(
   'src/lib/menu-extraction/menuIntakeIdentityServer.ts',
   [
     'getMenuIntakeOperationLogContext',
+    'getMenuIntakeFileLogContext',
     'menu_intake_identity_operation_log_failed',
     'menu_intake_identity_preflight_completed',
     'menu_intake_identity_preflight_failed',
+    'menu_intake_identity_preflight_file_unreadable',
+    'menu_intake_identity_provider_response_parse_failed',
     'logMenuProcessingDiagnostic',
     'logMenuProcessingFailure',
+    'logMenuIntakeIdentityParseFailure',
+    'MAX_MENU_INTAKE_IDENTITY_PARSE_DIAGNOSTICS',
+    'reportedMenuIntakeIdentityParseFailures',
     "getMenuProcessingProjectLogContext(operation?.projectId)",
+    'getBoundedMenuProcessingStringContext("fileType", file.type)',
+    'getBoundedMenuProcessingStringContext("parseStage", context.stage)',
+    'fallbackPolicy: "skip_file"',
+    'fallbackPolicy: "use_low_confidence_identity_fallback"',
+    'candidateLength: context.candidateLength',
+    'trimmedTextLength: context.trimmedTextLength',
+    'hasObjectFragment: context.hasObjectFragment',
     'validateServerNetworkTargetUrl(file.url',
     'function getStoragePathFromUploadUrl',
     'function isAllowedMenuIntakeStoragePath',
@@ -546,6 +559,9 @@ notContains(
     '[MenuIntakeIdentity] Preflight completed',
     '[MenuIntakeIdentity] Preflight failed',
     'reasons: analysis.decision.reasons',
+    '} catch {\n      // Skip unreadable file in preflight',
+    '} catch {\n    const objectMatch = candidate.match',
+    '} catch {\n      return null;',
     'fetch(file.url)',
     'Buffer.from(await response.arrayBuffer())',
   ],
@@ -602,8 +618,14 @@ contains(
   '__docs__/menu-extraction-pipeline/README.md',
   [
     'menu_extraction_owner_upload_metadata_lookup_failed',
+    'menu_intake_identity_preflight_file_unreadable',
+    'menu_intake_identity_provider_response_parse_failed',
+    'getProcessedFile.ts',
+    'stays quiet on normal job start, active-job reuse, and job-created paths',
+    'desktop_menu_upload_job_create_failed',
     'job creation still continues',
     'the fingerprint is skipped for that request',
+    'low-confidence fallback analysis',
     'without raw file names, URLs, paths, or identifiers',
   ],
   'Menu extraction README documents owner-upload metadata lookup fallback diagnostics',
@@ -613,8 +635,13 @@ contains(
   '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
   [
     'menu_extraction_owner_upload_metadata_lookup_failed',
+    'menu_intake_identity_preflight_file_unreadable',
+    'menu_intake_identity_provider_response_parse_failed',
+    'getProcessedFile.ts` no longer writes client debug breadcrumbs',
+    'raw `logger.debug()` breadcrumbs',
     'continues without a fingerprint for that request',
     'Metadata lookup failures remain non-blocking',
+    'fixed `use_low_confidence_identity_fallback` policy',
   ],
   'Menu extraction implementation doc documents owner-upload metadata lookup fallback diagnostics',
 );
@@ -623,10 +650,41 @@ contains(
   '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
   [
     'menu_extraction_owner_upload_metadata_lookup_failed',
+    'menu_intake_identity_preflight_file_unreadable',
+    'menu_intake_identity_provider_response_parse_failed',
+    'desktop job-start debug breadcrumb cleanup is Firebase-cost neutral',
+    'no longer emits normal-path client debug logs',
     'continues without completed-job fingerprint reuse for that request',
     'adds no new Firestore reads/writes/deletes',
+    'extra provider calls',
   ],
   'Menu extraction Firebase doc documents owner-upload metadata lookup fallback cost boundary',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Desktop menu upload job-start debug breadcrumb checkpoint',
+    'raw `logger.debug()` breadcrumbs',
+    'desktop_menu_upload_job_create_failed',
+    'Menu-intake identity provider response parse diagnostics checkpoint',
+    'menu_intake_identity_provider_response_parse_failed',
+    'use_low_confidence_identity_fallback',
+  ],
+  'Production-readiness audit records desktop upload job diagnostics and menu-intake provider-response parse diagnostics',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  [
+    'Desktop Menu Upload Job Diagnostics',
+    'Desktop job-start debug breadcrumbs were removed',
+    'desktop_menu_upload_job_create_failed',
+    'Menu-Intake Identity Provider Response Parse Diagnostics',
+    'menu_intake_identity_provider_response_parse_failed',
+    'use_low_confidence_identity_fallback',
+  ],
+  'Changelog records desktop upload job diagnostics and menu-intake provider-response parse diagnostics',
 );
 
 contains(
@@ -720,11 +778,16 @@ contains(
 notContains(
   'src/components/templates/main-app/projects/getProcessedFile.ts',
   [
+    '@lib/monitoring/logger',
+    'logger.debug(',
+    "[createProcessingJob] Creating job",
+    "[createProcessingJob] Found existing active job",
+    "[createProcessingJob] Job created",
     'const errorMessage = error?.message',
     'logger.error(',
     'Menu processing failed: ${errorMessage}',
   ],
-  'Desktop processing job creation does not propagate raw job failure text',
+  'Desktop processing job creation does not log raw job/project breadcrumbs or propagate raw job failure text',
 );
 
 contains(
@@ -1109,6 +1172,18 @@ notContains(
 contains(
   'src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx',
   [
+    'CREATE_MENU_SUCCESS_URL_MAX_LENGTH',
+    'CREATE_MENU_SUCCESS_INVALID_URL_REPORT_LIMIT',
+    'normalizeCreateMenuSuccessUrl',
+    'public_create_menu_success_url_invalid',
+    "const rawMenuUrl = searchParams.get('menuUrl') || '';",
+    "const rawOfficialPageUrl = searchParams.get('officialPageUrl') || '';",
+    "normalizeCreateMenuSuccessUrl('menuUrl', rawMenuUrl)",
+    "normalizeCreateMenuSuccessUrl('officialPageUrl', rawOfficialPageUrl)",
+    "if (parsed.protocol !== 'https:')",
+    'if (parsed.username || parsed.password)',
+    'trimmedValueLength',
+    'invalidUrlReason',
     'copyCreateMenuSuccessLinkToClipboard',
     'public_create_menu_success_copy_unavailable',
     'public_create_menu_success_copy_fallback_failed',
@@ -1137,6 +1212,8 @@ contains(
 notContains(
   'src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx',
   [
+    "const menuUrl = searchParams.get('menuUrl') || '';",
+    "const officialPageUrl = searchParams.get('officialPageUrl') || '';",
     'document.body.appendChild(input);\n                input.select();',
     'navigator.clipboard.writeText(menuUrl);\n            } catch',
     'await navigator.clipboard.writeText(menuUrl);\n        return;\n    }',
@@ -1342,6 +1419,10 @@ notContains(
 	    'const renderTarget = await assertSafeUrl(renderUrl, deadlineMs);',
 	    'if (net.isIP(renderTarget.hostname)) return null;',
 	    'renderTarget,',
+	    'MENU_LINK_IMPORT_RENDER_FALLBACK_FAILED',
+	    'logMenuProcessingFailure(MENU_LINK_IMPORT_RENDER_FALLBACK_FAILED',
+	    "fallbackPolicy: 'skip_rendered_html'",
+	    'renderFallbackUserDataDirCreated: Boolean(userDataDir)',
 	    'MENU_LINK_IMPORT_RENDER_TMP_CLEANUP_FAILED',
 	    'logMenuProcessingFailure(MENU_LINK_IMPORT_RENDER_TMP_CLEANUP_FAILED',
 	    "cleanupTarget: 'chrome_user_data_dir'",
@@ -1353,10 +1434,51 @@ notContains(
 	notContains(
 	  'src/lib/menu-link-import/sourceAcquisition.ts',
 	  [
+	    '} catch {\n        return null;\n    } finally {',
 	    'await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined)',
 	  ],
-	  'Menu link import render fallback cleanup failures are not silently swallowed',
+	  'Menu link import render fallback and cleanup failures are not silently swallowed',
 	);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
+  [
+    'menu_link_import_render_fallback_failed',
+    'skip_rendered_html',
+    'render fallback failures',
+  ],
+  'Menu extraction implementation doc records render fallback diagnostics',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  [
+    'menu_link_import_render_fallback_failed',
+    'skip_rendered_html',
+    'adds no Firestore reads/writes/deletes',
+  ],
+  'Menu extraction Firebase doc records render fallback diagnostics cost boundary',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Menu Link Import render fallback diagnostics checkpoint',
+    'menu_link_import_render_fallback_failed',
+    'skip_rendered_html',
+  ],
+  'Production-readiness audit records menu-link render fallback diagnostics',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  [
+    'Menu Link Import Render Fallback Diagnostics',
+    'menu_link_import_render_fallback_failed',
+    'skip_rendered_html',
+  ],
+  'Changelog records menu-link render fallback diagnostics',
+);
 
 contains(
   'src/lib/menu-link-import/sourceAcquisition.ts',

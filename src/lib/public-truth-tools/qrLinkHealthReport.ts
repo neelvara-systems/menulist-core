@@ -162,7 +162,7 @@ export function buildQrLinkHealthReport(input: QrLinkHealthInput): QrLinkHealthR
   const businessName = trimToSingleLine(input.businessName);
   const cityOrArea = trimToSingleLine(input.cityOrArea);
   const qrTargetUrl = trimToSingleLine(input.qrTargetUrl);
-  const url = parsePublicHttpsUrl(qrTargetUrl);
+  const url = parsePublicHttpsUrl(qrTargetUrl, 'qr_link_health_target_url');
   const hasTarget = qrTargetUrl.length > 0;
   const hasValidTargetUrl = Boolean(url);
   const appearsMenuListOwned = appearsMenuListCustomerLink(url);

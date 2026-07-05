@@ -21,11 +21,34 @@ import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTe
 import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { normalizePublicProjectSlug } from "@lib/publicRouting/pathSegments";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import BrandOBPContent from "./BrandOBPContent";
 import OBPResolvedSurface, { type ObpMenuInfo } from "./OBPResolvedSurface";
 import StarterActivationHoldingPage from "@/components/customer/StarterActivationHoldingPage";
+
+type ObpServerFailureContext = {
+    storeId?: unknown;
+    tenantId?: unknown;
+    tenantType?: unknown;
+    activeSpecialMenuId?: unknown;
+    operation: string;
+};
+
+function logObpServerResolutionFailure(
+    failureCode: string,
+    error: unknown,
+    context: ObpServerFailureContext,
+): void {
+    logRuntimeFailure(failureCode, error, {
+        ...getBoundedRuntimeStringContext('storeId', context.storeId),
+        ...getBoundedRuntimeStringContext('tenantId', context.tenantId),
+        ...getBoundedRuntimeStringContext('tenantType', context.tenantType),
+        ...getBoundedRuntimeStringContext('activeSpecialMenuId', context.activeSpecialMenuId),
+        ...getBoundedRuntimeStringContext('operation', context.operation),
+    });
+}
 
 async function withTimeout<T>(promise: Promise<T>, ms: number = 5000): Promise<T> {
     return Promise.race([
@@ -122,7 +145,12 @@ const getObpMenuInfo = unstable_cache(
                 defaultSlug: normalizePublicProjectSlug(defaultProj?.slug) || undefined,
                 projects,
             };
-        } catch {
+        } catch (error) {
+            logObpServerResolutionFailure('public_obp_menu_info_lookup_failed', error, {
+                storeId,
+                activeSpecialMenuId,
+                operation: 'menu_info_lookup',
+            });
             return empty;
         }
     },
@@ -142,7 +170,11 @@ const countActiveStoresForTenant = unstable_cache(
             return Object.values(stores).filter(
                 (store: any) => store.tId === tenantId && store.active !== false && !isPlatformEntityBlocked(store),
             ).length;
-        } catch {
+        } catch (error) {
+            logObpServerResolutionFailure('public_obp_store_count_lookup_failed', error, {
+                tenantId,
+                operation: 'store_count_lookup',
+            });
             return 1;
         }
     },
@@ -217,7 +249,16 @@ export default async function OBPContent({
     }
 
     const menuInfo = await withTimeout(getObpMenuInfo(storeData.storeId, storeData.activeSpecialMenuId))
-        .catch(() => ({ hasMenu: false, defaultSlug: undefined, projects: [] } as ObpMenuInfo));
+        .catch((error) => {
+            logObpServerResolutionFailure('public_obp_menu_info_resolution_failed', error, {
+                storeId: storeData.storeId,
+                tenantId: storeData.tenantId,
+                tenantType,
+                activeSpecialMenuId: storeData.activeSpecialMenuId,
+                operation: 'menu_info_resolution',
+            });
+            return { hasMenu: false, defaultSlug: undefined, projects: [] } as ObpMenuInfo;
+        });
 
     return (
         <OBPResolvedSurface

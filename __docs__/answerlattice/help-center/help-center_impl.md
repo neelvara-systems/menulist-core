@@ -656,6 +656,7 @@ KB source generation and embedding helpers in `functions/src/logic/startGenerati
 
 - `getArticles()` in `src/database/knowledgeBase/articles.ts` is deprecated but scoped: non-platform sessions require tenant/store scope, while platform admins can still use the global administrative read.
 - `getIngestionJobs()` in `src/database/kb-generation/jobs.ts` is also deprecated but scoped: non-platform callers require tenant/store scope, while platform admins can use the administrative list path.
+- KB article, category, and job compatibility reads log bounded session lookup failures and do not treat a thrown session lookup as platform/global scope.
 
 ### 8.2 Non-Atomic Feedback Update
 

@@ -11,6 +11,7 @@
 | Local readiness feedback added | PASS | `src/lib/media/itemPhotoCaptureAssist.ts:138` |
 | Readiness stats failures are bounded | PASS | `src/lib/media/itemPhotoCaptureAssist.ts` logs `item_photo_readiness_stats_failed`; `scripts/verification/verify-auth-security-failure-matrix.js` guards against silent stats catches. |
 | Shared capture component added | PASS | `src/components/shared/media/ItemPhotoCaptureAssist.tsx:23` |
+| Camera startup failures are bounded | PASS | `src/components/shared/media/ItemPhotoCaptureAssist.tsx` logs `item_photo_camera_start_failed`; `scripts/verification/verify-auth-security-failure-matrix.js` guards against the old silent startup catch. |
 | Camera stream stops on cleanup | PASS | `src/components/shared/media/ItemPhotoCaptureAssist.tsx:48` |
 | Captured image becomes a `File` | PASS | `src/components/shared/media/ItemPhotoCaptureAssist.tsx:153` |
 | Existing modal upload flow reused | PASS | `src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx:455` |
@@ -38,7 +39,7 @@
 | Item | Status | Evidence |
 | --- | --- | --- |
 | No new protected route | PASS | No route file added. |
-| No camera data logged | PASS | Capture component contains no logger or console calls. |
+| No camera/photo data logged | PASS | Startup, capture, and readiness diagnostics log bounded shape metadata only; no camera frames, photo bytes, filenames, raw item text, or browser exception text are logged. |
 | Existing file validation remains | PASS | Captured and uploaded files enter `prepareMediaImage` at `src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx:459`. |
 | Camera permission is browser-managed | PASS | `navigator.mediaDevices.getUserMedia` is called at `src/components/shared/media/ItemPhotoCaptureAssist.tsx:83`. |
 
@@ -73,7 +74,7 @@
 
 ## Manual Verification Gap
 
-Camera permission and real-device capture were not manually exercised in a browser during this pass. The component is guarded with upload fallback behavior when camera access is unavailable or blocked.
+Camera permission and real-device capture were not manually exercised in a browser during this pass. The component is guarded with upload fallback behavior when camera access is unavailable or blocked, and camera startup failures now emit bounded diagnostics for follow-up without exposing camera/photo data.
 
 ## Current Release Boundary
 

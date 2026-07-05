@@ -37,6 +37,8 @@ The following files exist but are not wired into the active editor save path:
 | `src/lib/pricing/molLogger.ts` | Defines MOL price/PDF logging helpers for the dormant pricing engine path. |
 | `src/lib/pricing/index.ts` | Exports the dormant pricing helpers for future wiring. |
 
+PDF failure reason persistence follow-up (July 5, 2026): `markPDFFailed()` still belongs to the dormant pricing engine scaffold, but it no longer persists arbitrary caller text into `pricingIntegrity.pdf.lastFailureReason`. Code-shaped reasons matching the bounded local-code pattern are retained; arbitrary text collapses to `pricing_pdf_generation_failed`. Diagnostics record the stored code plus raw input presence/length metadata only.
+
 ## Public Claim Boundary
 
 Implementation docs, website copy, help copy, and sales copy must use the current source-backed claim:

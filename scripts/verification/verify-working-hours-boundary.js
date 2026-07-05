@@ -152,8 +152,20 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
   ].forEach((token) => assertIncludes(mobileMore, token, 'Mobile More hours/time-slot route boundary'));
 }
 
-function verifyPublicHoursOutput(features, hoursEngine, storeStatusBadge, clientWebsite, trustSignals) {
+function verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHoursStatus, storeStatusBadge, clientWebsite, trustSignals) {
   assertIncludes(features, 'ENABLE_HOURS_STATUS_DISPLAY: true', 'Hours status feature flag');
+
+  [
+    'hours_status_timezone_fallback_failed',
+    'hours_status_time_range_invalid',
+    'MAX_HOURS_STATUS_TIMEZONE_DIAGNOSTICS',
+    'MAX_HOURS_STATUS_INVALID_TIME_RANGE_DIAGNOSTICS',
+    'reportedHoursStatusTimeZoneFailures',
+    'reportedHoursStatusInvalidTimeRanges',
+    'getBoundedRuntimeStringContext("timeZone", timeZone)',
+    'logRuntimeFailure("hours_status_timezone_fallback_failed"',
+    'logRuntimeDiagnostic("hours_status_time_range_invalid"',
+  ].forEach((token) => assertIncludes(hoursDiagnostics, token, 'Hours status diagnostics boundary'));
 
   [
     'export function getStoreStatus(',
@@ -162,7 +174,23 @@ function verifyPublicHoursOutput(features, hoursEngine, storeStatusBadge, client
     'if (endMinutes < startMinutes) {',
     'export function getMinutesUntilStoreStatusChange(',
     'return getStoreStatus(workingHours, timeZone, timeFormat);',
+    'logHoursStatusTimeZoneFallback(error, timeZone, "hours_engine_day_key", "local_day_key")',
+    'logHoursStatusTimeZoneFallback(error, timeZone, "hours_engine_time", "local_time")',
+    'logHoursStatusInvalidTimeRange(currentDay, todayHours, "hours_engine_current_status")',
+    'logHoursStatusInvalidTimeRange(checkDay, hours, "hours_engine_next_open")',
+    'if (!Number.isFinite(currentMinutes))',
+    'if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes))',
   ].forEach((token) => assertIncludes(hoursEngine, token, 'Hours engine boundary'));
+  assertNotIncludes(hoursEngine, '    } catch {\n        // Fallback', 'Hours engine timezone fallback must not be silent');
+
+  [
+    "logHoursStatusTimeZoneFallback(error, timeZone, 'obp_hours_status_now', 'browser_local_time')",
+    "logHoursStatusInvalidTimeRange(dayKey, range, 'obp_hours_status_current_status')",
+    'let hasValidRange = false;',
+    "return { isOpen: false, statusText: 'Hours not available' };",
+    'hasValidTimeRange(hours)',
+  ].forEach((token) => assertIncludes(obpHoursStatus, token, 'OBP hours status boundary'));
+  assertNotIncludes(obpHoursStatus, '    } catch {\n        now = new Date();\n    }', 'OBP hours status timezone fallback must not be silent');
 
   [
     'getStoreStatus(workingHours, timezone)',
@@ -205,12 +233,14 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
     '## Source Gate',
     'This implementation doc is source-gated by `npm run verify:working-hours-boundary`.',
     'Historical blueprint sections below are not launch approval',
+    'Hours status fallback diagnostics',
   ].forEach((token) => assertIncludes(impl, token, 'Working hours implementation source gate'));
 
   [
     '## Source Gate',
     '`npm run verify:working-hours-boundary`',
     'updateTimeSlotPresets()',
+    'Hours status fallback diagnostics',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Working hours Firebase source gate'));
 
   [
@@ -256,6 +286,7 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
   [
     'Working Hours and time-slot boundary checkpoint',
     '`npm run verify:working-hours-boundary`',
+    'Hours status fallback diagnostics checkpoint',
   ].forEach((token) => assertIncludes(audit, token, 'Production audit working-hours source gate'));
 
   [
@@ -266,6 +297,7 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
   [
     'Working Hours and Time-Slot Boundary',
     '`npm run verify:working-hours-boundary`',
+    'Hours Status Fallback Diagnostics',
   ].forEach((token) => assertIncludes(changelog, token, 'Changelog working-hours source gate'));
 
   [
@@ -337,6 +369,8 @@ function main() {
   const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
   const features = read('src/config/features.ts');
   const hoursEngine = read('src/lib/hours/hoursEngine.ts');
+  const hoursDiagnostics = read('src/lib/hours/hoursDiagnostics.ts');
+  const obpHoursStatus = read('src/lib/obp/hoursStatus.ts');
   const storeStatusBadge = read('src/components/atoms/StoreStatusBadge/index.tsx');
   const clientWebsite = read('src/components/templates/website/clientWebsite/index.tsx');
   const trustSignals = read('src/components/atoms/TrustSignals.tsx');
@@ -358,7 +392,7 @@ function main() {
   verifyProjectCascade(projectsDal);
   verifyDesktopSettings(businessSettings, timeSlotPresetsTab);
   verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, mobileMore);
-  verifyPublicHoursOutput(features, hoursEngine, storeStatusBadge, clientWebsite, trustSignals);
+  verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHoursStatus, storeStatusBadge, clientWebsite, trustSignals);
   verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, marketingDoc, inventory, report, audit, changelog);
 
   console.log('Working Hours and time-slot boundary verifier passed');

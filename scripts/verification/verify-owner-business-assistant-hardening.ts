@@ -239,6 +239,18 @@ assert.match(contextPacketCache, /serverPacketIndexPrefix/);
 assert.match(contextPacketCache, /redis\.sadd/);
 assert.match(contextPacketCache, /redis\.smembers/);
 assert.match(contextPacketCache, /isNotReadyFallbackPacket/);
+assert.match(contextPacketCache, /getOwnerBusinessAssistantPacketCacheContext/);
+assert.match(contextPacketCache, /logRuntimeFailure\('owner_business_assistant_packet_cache_index_read_failed'/);
+assert.match(contextPacketCache, /logRuntimeFailure\('owner_business_assistant_packet_cache_read_failed'/);
+assert.match(contextPacketCache, /logRuntimeFailure\('owner_business_assistant_packet_cache_write_failed'/);
+assert.match(contextPacketCache, /logRuntimeFailure\('owner_business_assistant_packet_cache_invalidate_failed'/);
+assert.match(contextPacketCache, /getBoundedRuntimeStringContext\('cacheKey', params\.cacheKey\)/);
+assert.match(contextPacketCache, /getBoundedRuntimeStringContext\('indexKey', params\.indexKey\)/);
+assert.match(contextPacketCache, /fallbackPolicy: 'cache_miss'/);
+assert.match(contextPacketCache, /fallbackPolicy: 'skip_cache_write'/);
+assert.match(contextPacketCache, /fallbackPolicy: 'best_effort_invalidation'/);
+assert.doesNotMatch(contextPacketCache, /catch\s*\{\s*return null;/);
+assert.doesNotMatch(contextPacketCache, /catch\s*\{\s*return \{ attempted: true/);
 
 const locationsHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessLocationsSummary.ts'), 'utf8');
 assert.match(locationsHook, /browserLocationsPrefix/);

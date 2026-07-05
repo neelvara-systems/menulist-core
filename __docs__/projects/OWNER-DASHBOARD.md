@@ -20,6 +20,7 @@ The current source-backed owner dashboard is a Today-first live dashboard, not a
 - `showHistorical` starts `false` and changes only when the owner selects a non-today dashboard tab.
 - Past Activity remains disabled unless `ENABLE_PAST_ACTIVITY_HISTORY` is enabled. `/today/history` redirects to `/today` on desktop and falls back to Today in `MobileShell` when disabled.
 - `npm run verify:owner-dashboard-today-boundary` source-gates the route, hook, mobile, campaign acknowledgement, Past Activity, and docs boundary.
+- OBP overview summary read diagnostics: the settled OBP overview still builds WTD/MTD/history from daily docs if the optional `{tId}_{sId}_obp_overall_summary` read fails. That degraded path now logs bounded `owner_dashboard_obp_summary_read_failed` diagnostics with tenant/store/project/summary-doc presence-length metadata only, keeps `viewsChange` as `null`, and adds no fallback read or write.
 
 This section supersedes older historical examples in this document that describe an overview-first initial load.
 

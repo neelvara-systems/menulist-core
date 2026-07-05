@@ -1,4 +1,8 @@
 import { formatClockTime } from '@util/dateTime';
+import {
+    logHoursStatusInvalidTimeRange,
+    logHoursStatusTimeZoneFallback,
+} from '@lib/hours/hoursDiagnostics';
 
 /**
  * OBP Hours Status Calculator
@@ -54,7 +58,8 @@ export function getStoreOpenStatus(
             parseInt(get('hour')),
             parseInt(get('minute')),
         );
-    } catch {
+    } catch (error) {
+        logHoursStatusTimeZoneFallback(error, timeZone, 'obp_hours_status_now', 'browser_local_time');
         now = new Date();
     }
 
@@ -73,6 +78,7 @@ export function getStoreOpenStatus(
 
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     const timeRanges = todayHours.split(',').map(r => r.trim());
+    let hasValidRange = false;
 
     for (const range of timeRanges) {
         const [openStr, closeStr] = range.split('-').map(t => t.trim());
@@ -81,7 +87,12 @@ export function getStoreOpenStatus(
         const openMinutes = parseTimeToMinutes(openStr);
         const closeMinutes = parseTimeToMinutes(closeStr);
 
-        if (openMinutes === null || closeMinutes === null) continue;
+        if (openMinutes === null || closeMinutes === null) {
+            logHoursStatusInvalidTimeRange(dayKey, range, 'obp_hours_status_current_status');
+            continue;
+        }
+
+        hasValidRange = true;
 
         const effectiveClose = closeMinutes <= openMinutes ? closeMinutes + 1440 : closeMinutes;
         const effectiveCurrent = currentMinutes < openMinutes && closeMinutes <= openMinutes
@@ -95,6 +106,10 @@ export function getStoreOpenStatus(
                 nextChange: `Closes ${formatClockTime(minutesToTimeString(closeMinutes))}`,
             };
         }
+    }
+
+    if (!hasValidRange) {
+        return { isOpen: false, statusText: 'Hours not available' };
     }
 
     const firstOpen = timeRanges[0]?.split('-')[0]?.trim();
@@ -142,10 +157,20 @@ function findNextOpenDay(
         const nextIndex = (currentDayIndex + i) % 7;
         const dayKey = DAY_KEYS[nextIndex];
         const hours = workingHours[dayKey];
-        if (hours && hours.toLowerCase() !== 'closed') {
+        if (hours && hours.toLowerCase() !== 'closed' && hasValidTimeRange(hours)) {
             if (i === 1) return 'tomorrow';
             return dayNames[nextIndex];
         }
     }
     return null;
+}
+
+function hasValidTimeRange(hours: string): boolean {
+    const ranges = hours.split(',').map(range => range.trim());
+
+    return ranges.some((range) => {
+        const [openStr, closeStr] = range.split('-').map(value => value.trim());
+        if (!openStr || !closeStr) return false;
+        return parseTimeToMinutes(openStr) !== null && parseTimeToMinutes(closeStr) !== null;
+    });
 }

@@ -608,19 +608,19 @@ const PROOF_DECK_PREVIEW_ROWS: ProofDeckPreviewRow[] = [
 
 const TEMPLATE_REUSE_STEPS: WorkflowStep[] = [
     {
-        label: '01',
+        label: 'Save',
         title: 'Save the useful pack',
         detail: 'A proven lunch, slot-fill, event, or approval pack becomes a reusable base for the workspace.',
         icon: LuWalletCards,
     },
     {
-        label: '02',
+        label: 'Refresh',
         title: 'Update the facts',
         detail: 'Change price, date, product, photo, location, or CTA while the source checks stay visible.',
         icon: LuRefreshCcw,
     },
     {
-        label: '03',
+        label: 'Export',
         title: 'Export again',
         detail: 'Download the refreshed pack, send for approval, or mark manual use without connecting accounts.',
         icon: LuDownload,

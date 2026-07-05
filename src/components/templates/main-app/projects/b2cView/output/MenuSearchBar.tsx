@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { LuSearch, LuX } from 'react-icons/lu';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { MenuMoodConfig } from '../designSystem';
 
 interface MenuSearchBarProps {
@@ -64,6 +65,39 @@ const getSearchPlaceholder = (businessType?: string, businessCategory?: string):
     }
 };
 
+type MenuSearchFocusFailureCode =
+    | 'public_menu_search_focus_prevent_scroll_failed'
+    | 'public_menu_search_focus_fallback_failed';
+
+const reportedMenuSearchFocusFailures = new Set<MenuSearchFocusFailureCode>();
+
+const logMenuSearchFocusFailure = (
+    failureCode: MenuSearchFocusFailureCode,
+    error: unknown,
+    context: {
+        expanded: boolean;
+        isFocused: boolean;
+        isMobile: boolean;
+        compact: boolean;
+        preventScrollAttempted: boolean;
+        activeElementIsSearchInput: boolean;
+    },
+): void => {
+    if (reportedMenuSearchFocusFailures.has(failureCode)) return;
+    reportedMenuSearchFocusFailures.add(failureCode);
+
+    logRuntimeFailure(failureCode, error, {
+        expanded: context.expanded,
+        isFocused: context.isFocused,
+        isMobile: context.isMobile,
+        compact: context.compact,
+        preventScrollAttempted: context.preventScrollAttempted,
+        activeElementIsSearchInput: context.activeElementIsSearchInput,
+        hasWindow: typeof window !== 'undefined',
+        hasDocument: typeof document !== 'undefined',
+    });
+};
+
 function MenuSearchBar({
     searchTerm,
     onSearchChange,
@@ -87,10 +121,34 @@ function MenuSearchBar({
         const input = inputRef.current;
         if (!input) return;
 
+        const getFocusContext = (preventScrollAttempted: boolean) => ({
+            expanded,
+            isFocused,
+            isMobile,
+            compact,
+            preventScrollAttempted,
+            activeElementIsSearchInput: typeof document !== 'undefined' && document.activeElement === input,
+        });
+
         try {
             input.focus({ preventScroll: true });
-        } catch {
+            return;
+        } catch (error) {
+            logMenuSearchFocusFailure(
+                'public_menu_search_focus_prevent_scroll_failed',
+                error,
+                getFocusContext(true),
+            );
+        }
+
+        try {
             input.focus();
+        } catch (error) {
+            logMenuSearchFocusFailure(
+                'public_menu_search_focus_fallback_failed',
+                error,
+                getFocusContext(false),
+            );
         }
     };
 

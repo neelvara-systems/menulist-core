@@ -13,6 +13,7 @@ It is not a new media system. Captured photos still use the existing MenuList me
 - Browser-local camera capture when available.
 - Existing upload/drag/drop fallback remains available.
 - Browser-local photo readiness feedback before the photo enters the existing upload list.
+- Bounded camera-start, capture, and readiness diagnostics only; no camera frames, photo bytes, filenames, or raw item text are logged.
 - No new Firestore collection, API route, Cloud Function, Storage path family, or public schema.
 
 ## Navigation
@@ -30,4 +31,3 @@ It is not a new media system. Captured photos still use the existing MenuList me
 ## Operating Rule
 
 Capture guidance must end at `prepareMediaImage`. The source photo may be guided, but the saved image stays a `menuItem` media image.
-

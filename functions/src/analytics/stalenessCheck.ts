@@ -48,6 +48,7 @@ export interface StalenessCheckResult {
 const STALENESS_COOLDOWN_DAYS = 90;
 const MAX_DETECTIONS_PER_NIGHT = 50;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const STALENESS_LIFECYCLE_DELIVERY_FAILED = 'STALENESS_LIFECYCLE_DELIVERY_FAILED';
 const STALENESS_LOG_RETENTION_DAYS = Math.max(
     STALENESS_COOLDOWN_DAYS + 1,
     FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS,
@@ -135,21 +136,31 @@ export async function checkStalenessForAllStores(): Promise<StalenessCheckResult
                     },
                 });
 
+                const staleReferenceId = `menu-stale-${sId}-${new Date().toISOString().slice(0, 10)}`;
                 try {
                     const { sendLifecycleMessage } = await import('../messaging/messagingEngine');
                     await sendLifecycleMessage({
                         storeId: String(sId),
                         tenantId: String(storeData.tId),
                         eventType: 'MENU_STALE',
-                        referenceId: `menu-stale-${sId}-${new Date().toISOString().slice(0, 10)}`,
+                        referenceId: staleReferenceId,
                         metadata: {
                             reason: 'Menu information may be older than expected.',
                             daysSincePublish: storeData.daysSincePublish,
                             truthScore: storeData.score,
                         },
                     });
-                } catch {
-                    // Detection cooldown remains intact even if delivery fails.
+                } catch (deliveryError) {
+                    analyticsLogger.warn('[StalenessCheck] Lifecycle message delivery failed after detection log', {
+                        failureCode: STALENESS_LIFECYCLE_DELIVERY_FAILED,
+                        eventType: 'MENU_STALE',
+                        storeId: getAnalyticsIdContext(sId),
+                        tenantId: getAnalyticsIdContext(storeData.tId),
+                        referenceId: getAnalyticsIdContext(staleReferenceId),
+                        messageLogWritten: true,
+                        fallbackPolicy: 'keep_detection_cooldown_and_continue',
+                        error: getAnalyticsErrorContext(deliveryError),
+                    });
                 }
 
                 result.writesCount++;

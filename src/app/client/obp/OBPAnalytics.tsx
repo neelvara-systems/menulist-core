@@ -17,7 +17,8 @@ import { secureError } from '@lib/security/secureLogger';
 import { useEffect } from 'react';
 
 const OBP_LANGUAGE_STORAGE_PREFIX = 'menulist_obp_language_v1';
-type OBPAnalyticsFailureType = 'view_tracking' | 'setup' | 'language_adoption';
+type OBPAnalyticsFailureType = 'view_tracking' | 'setup' | 'language_adoption' | 'language_storage';
+type OBPLanguageStorageOperation = 'read' | 'write';
 
 interface OBPAnalyticsProps {
     tenantId: number;
@@ -38,6 +39,8 @@ const buildOBPAnalyticsLogContext = (
         storeId?: number | null;
         activeLanguage?: string | null;
         previousLanguage?: string | null;
+        storageKey?: string | null;
+        storageOperation?: OBPLanguageStorageOperation;
         includeLocation?: boolean;
         hasStoreTimeZone?: boolean;
         hasBusinessDayEndTime?: boolean;
@@ -48,9 +51,11 @@ const buildOBPAnalyticsLogContext = (
     const storeId = String(metadata.storeId ?? '').trim();
     const activeLanguage = String(metadata.activeLanguage ?? '').trim();
     const previousLanguage = String(metadata.previousLanguage ?? '').trim();
+    const storageKey = String(metadata.storageKey ?? '').trim();
 
     return {
         failureType,
+        storageOperation: metadata.storageOperation,
         tenantIdPresent: Boolean(tenantId),
         tenantIdLength: tenantId.length,
         storeIdPresent: Boolean(storeId),
@@ -59,6 +64,8 @@ const buildOBPAnalyticsLogContext = (
         activeLanguageLength: activeLanguage.length,
         previousLanguagePresent: Boolean(previousLanguage),
         previousLanguageLength: previousLanguage.length,
+        storageKeyPresent: Boolean(storageKey),
+        storageKeyLength: storageKey.length,
         includeLocation: Boolean(metadata.includeLocation),
         hasStoreTimeZone: Boolean(metadata.hasStoreTimeZone),
         hasBusinessDayEndTime: Boolean(metadata.hasBusinessDayEndTime),
@@ -145,10 +152,24 @@ export default function OBPAnalytics({
         const localDate = getBusinessAnalyticsDateKey(new Date(), storeTimeZone, businessDayEndTime);
         const storageKey = `${OBP_LANGUAGE_STORAGE_PREFIX}|${tenantId}|${storeId}|${localDate}`;
         let previousLanguage: string | null = null;
+        let storageOperation: OBPLanguageStorageOperation = 'read';
         try {
             previousLanguage = window.sessionStorage.getItem(storageKey);
+            storageOperation = 'write';
             window.sessionStorage.setItem(storageKey, activeLanguage);
-        } catch {
+        } catch (error) {
+            logOBPAnalyticsFailure('language_storage', {
+                tenantId,
+                storeId,
+                activeLanguage,
+                previousLanguage,
+                storageKey,
+                storageOperation,
+                includeLocation,
+                hasStoreTimeZone: Boolean(storeTimeZone),
+                hasBusinessDayEndTime: Boolean(businessDayEndTime),
+                error,
+            });
             previousLanguage = null;
         }
 

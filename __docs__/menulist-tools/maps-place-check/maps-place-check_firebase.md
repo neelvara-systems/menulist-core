@@ -27,6 +27,7 @@
 - No scheduler.
 - No saved report history.
 - No source snapshot persistence.
+- No raw provider response text is returned to the callable client.
 
 ## Storage Policy
 
@@ -42,6 +43,7 @@ Owner-confirmed canonical fields require a separate write path and public cache 
 ## Disallowed Storage
 
 - Raw grounded response text
+- Raw provider response text in callable output
 - Review snippets
 - Photos
 - Broad Maps source snapshots

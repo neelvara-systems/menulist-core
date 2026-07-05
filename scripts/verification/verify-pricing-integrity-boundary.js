@@ -107,12 +107,19 @@ requireOrder(
 
 [
   'export async function runPricingIntegrity',
+  'const PRICING_PDF_FAILURE_REASON_FALLBACK = "pricing_pdf_generation_failed";',
+  'const PRICING_PDF_FAILURE_REASON_PATTERN = /^[a-z0-9_:-]{1,80}$/i;',
+  'function normalizePricingPdfFailureReason(reason: string): string',
   'transaction.update(dataRef,',
   'pricingIntegrity: updatedIntegrity',
   'logPriceChange({',
   'if (isBackgroundPDFRegenEnabled())',
   'enqueuePDFRegen({',
+  'const failureReason = normalizePricingPdfFailureReason(error);',
+  '"pricingIntegrity.pdf.lastFailureReason": failureReason',
+  'failureReason,',
 ].forEach((token) => requireToken(pricingEngine, token, 'Dormant pricing engine scaffold'));
+forbidToken(pricingEngine, '"pricingIntegrity.pdf.lastFailureReason": error', 'Pricing PDF failure reason persistence');
 
 [
   'const ENABLE_BACKGROUND_PDF_REGEN = false;',
@@ -196,7 +203,11 @@ for (const [label, content] of activeDocs) {
   ['Pricing README', readme, '`runPricingIntegrity()` has no current caller'],
   ['Pricing spec', spec, '`runPricingIntegrity()` has no current caller'],
   ['Pricing implementation', impl, 'No background PDF job is created by this share path.'],
+  ['Pricing implementation', impl, 'PDF failure reason persistence follow-up'],
+  ['Pricing implementation', impl, '`pricingIntegrity.pdf.lastFailureReason`'],
   ['Pricing Firebase', firebaseDoc, 'There is no active background PDF queue cost.'],
+  ['Pricing Firebase', firebaseDoc, 'July 5, 2026 PDF failure reason persistence update'],
+  ['Pricing Firebase', firebaseDoc, '`pricing_pdf_generation_failed`'],
   ['Pricing mobile', mobileDoc, 'Mobile does not have a separate Pricing Integrity UI.'],
   ['Pricing website', websiteDoc, 'Background PDF regeneration is not active runtime.'],
   ['Pricing helpdoc', helpDoc, 'MenuList does not currently run a background PDF regeneration job after every price edit.'],
@@ -211,8 +222,10 @@ for (const [label, content] of activeDocs) {
   ['report', report, '`npm run verify:pricing-integrity-boundary`'],
   ['audit', audit, 'Pricing Integrity current-runtime public-claim checkpoint'],
   ['audit', audit, '`npm run verify:pricing-integrity-boundary`'],
+  ['audit', audit, 'Pricing Integrity PDF failure reason persistence checkpoint'],
   ['changelog', changelog, 'Pricing Integrity Current Runtime Boundary'],
   ['changelog', changelog, '`npm run verify:pricing-integrity-boundary`'],
+  ['changelog', changelog, 'Pricing Integrity PDF Failure Reason Persistence'],
 ].forEach(([label, source, token]) => requireToken(source, token, `Pricing ledger ${label}`));
 
 if (failures.length > 0) {

@@ -10,7 +10,7 @@
 
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
 
-The latest analytics pass adds consent-gated Plausible Cloud support for the MenuList and Answerlattice public marketing websites only. The scripts mount only after analytics consent and only when the product-specific Plausible domain env var is configured. GA4 remains available for paid-ad/conversion continuity, Microsoft Clarity remains MenuList-only for visual behavior observation, and product analytics plus owner-facing business truth stay in the existing MenuList-owned analytics pipeline.
+The latest analytics pass adds consent-gated Plausible Cloud support for the MenuList and Answerlattice public marketing websites only. The scripts mount only after analytics consent and only when the product-specific Plausible domain env var is configured. GA4 remains available for paid-ad/conversion continuity, Microsoft Clarity remains MenuList-only and env-gated by `NEXT_PUBLIC_CLARITY_ID` for visual behavior observation, and product analytics plus owner-facing business truth stay in the existing MenuList-owned analytics pipeline.
 
 ```
 Route Group: src/app/(website)/
@@ -127,7 +127,7 @@ LocalisationProvider (locale from next-intl/server)
       → {children}
 ```
 
-`src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx` is the shared compact public-site cookie banner used by MenuList and sibling public product/brand websites. MenuList uses it for optional analytics consent; it must not be mounted on owner dashboards, customer menu/OBP output, or widget surfaces without a separate privacy review.
+`src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx` is the shared compact public-site cookie banner used by MenuList and sibling public product/brand websites. MenuList uses it for optional analytics consent; it must not be mounted on owner dashboards, customer menu/OBP output, or widget surfaces without a separate privacy review. Public website consent storage diagnostics are bounded: failed consent reads log `public_cookie_consent_storage_failed` and show the consent panel again, failed writes keep the page-local runtime choice, and Plausible helper consent-read failures log `public_website_plausible_consent_read_failed` before skipping Plausible events until consent can be read. Raw storage keys, event names, page URLs, referrers, user identifiers, tenant/store/project identifiers, or browser exception messages must not be logged by this fallback.
 
 `src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` is the shared footer-level AI summary shortcut used by MenuList, AnswerLattice, and CampaignCue public marketing websites. MenuList mounts it in `Footer.tsx` with a localized label and a product-boundary prompt that points to the canonical website and `llms.txt`.
 

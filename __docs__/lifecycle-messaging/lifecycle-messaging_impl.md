@@ -45,7 +45,7 @@ System Events (Razorpay webhook, publish, scheduler, credit consumption)
 ┌───────────────────────────────────────────────┐
 │ SMTP ADAPTER (nodemailer — free)              │
 │  Gmail SMTP: 500/day personal, 2000/day WS   │
-│  SMTP_HOST, SMTP_USER, SMTP_PASS             │
+│  SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS  │
 └───────────────────────────────────────────────┘
 ```
 
@@ -135,7 +135,21 @@ All templates follow infrastructure tone:
 | `functions/src/messaging/providers/resend.ts` | nodemailer SMTP adapter (file named resend.ts but uses nodemailer) |
 | `functions/src/messaging/templates.ts`        | All email templates (subject + HTML body)                          |
 
-`functions/src/messaging/messagingEngine.ts` logs identifiers as presence/length metadata and caps source error name/code/status values before recording failure diagnostics. This applies to idempotency, store lookup, message-log write, owner-notification fallback, renewal/suspension reminder, retry, and digest failure paths without changing send, rate-limit, retry, or message-log behavior.
+`functions/src/messaging/messagingEngine.ts` logs identifiers as presence/length metadata and caps source error name/code/status values before recording failure diagnostics. This applies to idempotency, store lookup, message-log write, owner-notification fallback, renewal/suspension reminder, retry, and digest failure paths without logging raw store, tenant, reference, recipient, subject, or source exception text.
+
+Functions legacy lifecycle fail-closed follow-up (July 5, 2026): when the feature flag cannot be read, the engine still skips sending. When the idempotency or daily rate-limit read cannot be completed, it now logs `MESSAGING_IDEMPOTENCY_CHECK_FAILED` or `MESSAGING_RATE_LIMIT_CHECK_FAILED` with bounded identifier metadata and skips the legacy email send instead of sending optimistically. Retry-send exceptions now log `MESSAGING_RETRY_MARK_FAILED` before the original failed message is marked retried. Valid sends, duplicate skips, rate-limited skips, owner-notification migration fallback, SMTP send behavior, scheduler cadence, and message-log schema are unchanged.
+
+Legacy lifecycle event/status diagnostics follow-up (July 5, 2026): `functions/src/messaging/messagingEngine.ts` no longer logs raw lifecycle `eventType` or message `status` values in Cloud Functions diagnostics; event type and delivery status values are logged as presence/length/type metadata only. The feature-disabled/no-template branches use that same bounded context. Stored `messageLogs.eventType` and `messageLogs.status` remain unchanged because they are part of idempotency, retry, and digest behavior.
+
+Owner-notification migration flag-read follow-up (July 5, 2026): when the queue-first owner-notification processor cannot read `ops_config/system.ENABLE_LIFECYCLE_MESSAGING`, it still skips delivery before event creation, but now logs `owner_notification_lifecycle_flag_check_failed` with bounded source error metadata. Unknown trigger types in the owner-notification migration path are logged with trigger presence/length/type metadata only, and stored unknown-trigger events keep the stable skipped `unknown_trigger` update.
+
+SMTP port fail-closed follow-up (July 5, 2026): `functions/src/messaging/providers/resend.ts` no longer falls back to port `587` when `SMTP_PORT` is absent, and the root app senders now share `src/lib/notifications/smtpConfig.ts` for the same explicit-port boundary. The Functions adapter and app-side senders in `src/lib/messaging/index.ts`, `src/lib/notifications/index.ts`, and `src/lib/owner-notifications/channels/email.ts` require `SMTP_HOST`, numeric `SMTP_PORT`, `SMTP_USER`, and non-empty `SMTP_PASS`; if `SMTP_PORT` is missing, malformed, or outside `1..65535`, they return not-configured without creating a transporter or attempting a send. The Functions adapter logs only bounded `hasPort` / `smtpPortValid` metadata. Raw host, user, password, recipient, subject, provider response, and exception text are not logged.
+
+App-side notification fail-closed follow-up (July 5, 2026): `src/lib/messaging/index.ts` and `src/lib/notifications/index.ts` now skip sending when duplicate or rate-limit safety reads fail. The failure paths log bounded `lifecycle_message_duplicate_check_failed`, `lifecycle_message_rate_limit_check_failed`, `notification_duplicate_check_failed`, or `notification_rate_limit_check_failed` diagnostics and return the same duplicate/rate-limited control value used to stop a send. Valid SMTP sends, duplicate skips, normal rate-limit skips, message-log writes, owner-notification migration fallback, templates, and owner settings are unchanged.
+
+Staleness lifecycle delivery diagnostics follow-up (July 5, 2026): `functions/src/analytics/stalenessCheck.ts` still writes the staleness detection row before attempting `MENU_STALE` lifecycle delivery. If that delivery call throws, the cooldown row remains in place and the nightly scan continues, but the catch now logs `STALENESS_LIFECYCLE_DELIVERY_FAILED` with bounded store, tenant, and reference presence-length metadata plus the fixed `keep_detection_cooldown_and_continue` fallback policy. Raw store IDs, tenant IDs, reference IDs, owner recipients, provider responses, and exception text are not logged.
+
+Template output boundary follow-up (July 5, 2026): the Next and Functions lifecycle template mirrors (`src/lib/messaging/templates.ts` and `functions/src/messaging/templates.ts`) now strip control characters from subject/text values, escape all metadata before HTML output, validate email links as `http:`/`https:` before rendering, and include the missing `MENU_PUBLISH_FAILED` app-side template. Publish verification failure codes are mapped to fixed owner copy, so arbitrary `failureReason` strings cannot print into owner emails. Valid event routing, SMTP delivery, idempotency, rate limits, message logs, and owner-notification migration fallback are unchanged.
 
 ### Frontend (types + entry point)
 
@@ -166,7 +180,7 @@ All templates follow infrastructure tone:
 ## 5. Security Checklist
 
 - [x] No PII in logs (email masked in error logs)
-- [x] SMTP credentials in Firebase secrets (SMTP_HOST, SMTP_USER, SMTP_PASS)
+- [x] SMTP credentials in Firebase secrets (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS)
 - [x] Rate limit: max 10 messages per store per 24h
 - [x] Idempotency prevents duplicate billing confirmations
 - [x] Feature flag defaults OFF (zero cost when disabled)

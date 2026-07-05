@@ -13,6 +13,8 @@
 - Working-hours saves use `updateStore()` and require explicit write acknowledgement before local success state is treated as confirmed.
 - Time-slot preset saves use `updateTimeSlotPresets()`; the shared store DAL refreshes public menu/OBP cache after the store-level preset write.
 - Preset edit/delete cascades update project category snapshots and keep their existing per-project public cache revalidation.
+- Hours status fallback diagnostics are browser/runtime logging only; invalid timezone fallback and malformed time-range handling do not add Firebase reads, writes, deletes, listeners, Storage objects, or Cloud Functions.
+- Output Control timestamp diagnostics are browser/runtime logging only; malformed freshness metadata still degrades locally to the existing `Check with store` fallback.
 - No holiday-calendar collection, exception collection, Cloud Function, Storage object, provider call, or extra listener exists in current source.
 
 ---
@@ -44,6 +46,10 @@
 Mobile full-hours and Today quick-hours saves require an explicit `updateStore()` acknowledgement before saved copy or local baselines change. This does not add reads/writes/deletes; it only prevents `apiCallComposer()` fallback values from being treated as confirmed working-hours persistence.
 
 Desktop and mobile time-slot preset saves require an explicit `updateTimeSlotPresets()` acknowledgement before local preset state changes. The shared store DAL now revalidates the public menu/OBP cache after the preset merge so public surfaces do not keep stale store-level preset truth. Editing or deleting a preset still runs the existing project-category cascade; those project writes keep their existing per-project cache revalidation.
+
+Hours status fallback diagnostics add no Firebase reads, writes, deletes, listeners, Storage operations, Cloud Functions, or cache invalidations. The shared hours diagnostics helper logs bounded `hours_status_timezone_fallback_failed` and `hours_status_time_range_invalid` metadata in memory when public hours status has to fall back from invalid timezone resolution or suppress malformed time ranges.
+
+Output Control timestamp diagnostics add no Firebase reads, writes, deletes, listeners, Storage operations, Cloud Functions, or cache invalidations. The resolver validates `hoursLastUpdatedAt` shapes in memory and logs bounded `hours_confidence_timestamp_parse_failed` metadata only when an unexpected parser exception forces the existing untrusted-output fallback.
 
 ### Deletes
 

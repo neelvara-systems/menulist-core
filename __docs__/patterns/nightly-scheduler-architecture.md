@@ -411,6 +411,7 @@ Analytics settlement uses targeted logs only. The scheduler records Sentry-backe
 - Weekly/monthly rollup cache misses that fall back to daily-doc reads
 - Late-event correction applied for menu, Customer App, or OBP daily rows
 - Missing/stale `intelligence_7d` snapshots
+- Malformed scheduler-hour timezones that fall back to the UTC settlement hour through bounded `scheduler_hour_timezone_validation_failed` / `SCHEDULER_HOUR_TIMEZONE_VALIDATION_FAILED` diagnostics
 
 Successful per-event customer tracking is not logged. Successful nightly loops are visible through `schedulerRunLogs` and Telegram, not Sentry issue spam.
 

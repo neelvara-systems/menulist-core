@@ -2,6 +2,7 @@ import {
   getUrlWithPublicHttpsProtocol,
   isPublicHttpsUrl as isValidHttpUrl,
 } from './publicUrlValidation';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type {
   WhatsAppActionLinkCheckId,
   WhatsAppActionLinkEvidence,
@@ -10,6 +11,9 @@ import type {
   WhatsAppActionLinkReport,
   WhatsAppActionLinkResult,
 } from './whatsappActionLinkTypes';
+
+const MAX_WHATSAPP_ACTION_LINK_PARSE_DIAGNOSTICS = 25;
+const reportedWhatsAppActionLinkParseFailures = new Set<string>();
 
 const REQUIRED_CHECKS = new Set<WhatsAppActionLinkCheckId>([
   'whatsapp_number',
@@ -56,12 +60,54 @@ function getUrlWithProtocol(value: string): string {
   return getUrlWithPublicHttpsProtocol(value);
 }
 
+function hasExplicitProtocol(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
+}
+
+function getWhatsAppLinkValueKind(value: unknown): string {
+  if (value === undefined) return 'undefined';
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+function logWhatsAppActionLinkParseFailure(error: unknown, value: unknown, candidate: string): void {
+  const valueKind = getWhatsAppLinkValueKind(value);
+  const valueLength = typeof value === 'string' ? value.trim().length : 0;
+  const candidateLooksLikeWhatsAppScheme = /^whatsapp:\/\//i.test(candidate);
+  const candidateLooksLikeWhatsAppHost = /^(?:https:\/\/)?(?:wa\.me|api\.whatsapp\.com|web\.whatsapp\.com)\//i.test(candidate);
+  const failureKey = [
+    valueKind,
+    valueLength,
+    candidate.length,
+    hasExplicitProtocol(candidate) ? 'explicit-protocol' : 'implicit-protocol',
+    candidateLooksLikeWhatsAppScheme ? 'whatsapp-scheme' : 'no-whatsapp-scheme',
+    candidateLooksLikeWhatsAppHost ? 'whatsapp-host' : 'no-whatsapp-host',
+  ].join(':');
+
+  if (reportedWhatsAppActionLinkParseFailures.has(failureKey)) return;
+  if (reportedWhatsAppActionLinkParseFailures.size >= MAX_WHATSAPP_ACTION_LINK_PARSE_DIAGNOSTICS) return;
+  reportedWhatsAppActionLinkParseFailures.add(failureKey);
+
+  logRuntimeFailure('whatsapp_action_link_url_parse_failed', error, {
+    valueKind,
+    valueStringLength: valueLength,
+    candidateLength: candidate.length,
+    candidateHasExplicitProtocol: hasExplicitProtocol(candidate),
+    candidateLooksLikeWhatsAppScheme,
+    candidateLooksLikeWhatsAppHost,
+    fallbackPolicy: 'treat_as_invalid_whatsapp_link',
+  });
+}
+
 function parseWhatsAppUrl(value: string): URL | null {
   if (!value) return null;
+  const candidate = getUrlWithProtocol(value);
 
   try {
-    return new URL(getUrlWithProtocol(value));
-  } catch {
+    return new URL(candidate);
+  } catch (error) {
+    logWhatsAppActionLinkParseFailure(error, value, candidate);
     return null;
   }
 }
@@ -221,8 +267,9 @@ export function buildWhatsAppActionLinkReport(input: WhatsAppActionLinkInput): W
   const hasUnclearLink = Boolean(existingWhatsappLink) && !validLinkPhone;
   const messageLooksUseful = suggestedMessage.length >= 12 && hasMessageActionHint(suggestedMessage);
   const intentLooksUseful = input.messageIntent !== 'other' || hasMessageActionHint(suggestedMessage);
-  const hasCustomerLink = input.menuOrServiceLinkAttached || isValidHttpUrl(currentCustomerLink);
-  const hasInvalidCustomerLink = Boolean(currentCustomerLink) && !isValidHttpUrl(currentCustomerLink);
+  const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink, 'whatsapp_action_link_current_customer_link');
+  const hasCustomerLink = input.menuOrServiceLinkAttached || validCurrentCustomerLink;
+  const hasInvalidCustomerLink = Boolean(currentCustomerLink) && !validCurrentCustomerLink;
   const hasHoursExpectation = input.hoursExpectationSet || hasHoursHint(suggestedMessage);
   const previewPhone = validLinkPhone || (validPhone ? enteredDigits : '');
   const previewLink = makePreviewLink(previewPhone, suggestedMessage);
@@ -269,7 +316,7 @@ export function buildWhatsAppActionLinkReport(input: WhatsAppActionLinkInput): W
       hasCustomerLink ? 'present' : hasInvalidCustomerLink ? 'unclear' : 'missing',
       input.menuOrServiceLinkAttached
         ? 'owner_selected'
-        : isValidHttpUrl(currentCustomerLink)
+        : validCurrentCustomerLink
           ? 'customer_link_format'
           : hasInvalidCustomerLink
             ? 'customer_link_format'

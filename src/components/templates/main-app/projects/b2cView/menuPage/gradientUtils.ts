@@ -1,3 +1,4 @@
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Color } from 'antd/es/color-picker';
 
 export interface GradientColor {
@@ -9,6 +10,47 @@ export interface GradientConfig {
   type: 'gradient';
   angle: number;
   colors: GradientColor[];
+}
+
+const MAX_GRADIENT_PARSE_DIAGNOSTICS = 25;
+const reportedGradientParseFailures = new Set<string>();
+
+function getGradientValueKind(value: unknown): string {
+  if (value === undefined) return 'undefined';
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+function getApproximateGradientStopCount(value: string): number {
+  const innerMatch = value.match(/linear-gradient\((.*)\)/);
+  if (!innerMatch?.[1]) return 0;
+  return innerMatch[1].split(',').length;
+}
+
+function logGradientParseFailure(error: unknown, gradientStr: unknown): void {
+  const valueKind = getGradientValueKind(gradientStr);
+  const value = typeof gradientStr === 'string' ? gradientStr.trim() : '';
+  const failureKey = [
+    valueKind,
+    value.length,
+    value.includes('linear-gradient') ? 'linear-gradient' : 'not-linear-gradient',
+    /\d+deg/.test(value) ? 'angle-token' : 'no-angle-token',
+    getApproximateGradientStopCount(value),
+  ].join(':');
+
+  if (reportedGradientParseFailures.has(failureKey)) return;
+  if (reportedGradientParseFailures.size >= MAX_GRADIENT_PARSE_DIAGNOSTICS) return;
+  reportedGradientParseFailures.add(failureKey);
+
+  logRuntimeFailure('public_menu_gradient_parse_failed', error, {
+    valueKind,
+    gradientStringLength: value.length,
+    hasLinearGradientToken: value.includes('linear-gradient'),
+    hasAngleToken: /\d+deg/.test(value),
+    approximateStopCount: getApproximateGradientStopCount(value),
+    fallbackPolicy: 'use_existing_gradient_fallback',
+  });
 }
 
 /**
@@ -76,7 +118,8 @@ export const parseGradientString = (gradientStr: string): { angle: number; color
     });
 
     return { angle, colors: parsedColors };
-  } catch {
+  } catch (error) {
+    logGradientParseFailure(error, gradientStr);
     return null;
   }
 };

@@ -3,7 +3,7 @@
 > **Feature family:** MenuList Public Truth Tools
 > **Status:** Active family - sixteen public tools, five public asset makers, a public shareable report layer, and eighteen owner readiness modules with exact fix targets and owner fix lists implemented
 > **Last Updated:** July 4, 2026
-> **Version:** 2.10
+> **Version:** 2.12
 
 ---
 
@@ -51,6 +51,10 @@ Public Truth Tools are not:
 - a review/reputation manipulation tool
 - an MCP-first product
 - a rankings or AI-citation promise
+
+Owner-entered public/customer links use shared public HTTPS URL validation with bounded parse diagnostics. Malformed URL syntax is treated as a missing/invalid local hint and logs `public_truth_tool_url_parse_failed` with stable source labels and shape metadata only; raw entered URLs are not logged.
+
+Logged-in owner readiness uses bounded owner menu URL generation diagnostics. If the derived MenuList customer link cannot be generated from the current store/project summary, `public_truth_owner_menu_url_generation_failed` logs only domain/project shape metadata and the owner readiness report omits `menuUrl` as before.
 
 ---
 

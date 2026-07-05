@@ -1,6 +1,7 @@
 'use client';
 
 import GlobalLanguagesList from '@data/languages';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
 import { useSearchParams } from 'next/navigation';
 import styles from './obp.module.scss';
@@ -13,11 +14,34 @@ const ATTRIBUTION_PARAMS = [
     'utm_content',
 ];
 
+let reportedLanguageSwitcherAttributionFailure = false;
+
 interface OBPLanguageSwitcherProps {
     activeLanguage: string;
     ariaLabel: string;
     baseUrl: string;
     languages: string[];
+}
+
+function logLanguageSwitcherAttributionFailure(
+    error: unknown,
+    context: {
+        baseUrl: string;
+        languageCode: string;
+        languageUrl: string;
+        hasSearchParams: boolean;
+    },
+): void {
+    if (reportedLanguageSwitcherAttributionFailure) return;
+    reportedLanguageSwitcherAttributionFailure = true;
+
+    logAnalyticsFailure('obp_language_switcher_attribution_preserve_failed', error, {
+        ...getBoundedAnalyticsStringContext('baseUrl', context.baseUrl),
+        ...getBoundedAnalyticsStringContext('languageCode', context.languageCode),
+        ...getBoundedAnalyticsStringContext('languageUrl', context.languageUrl),
+        attributionParamCount: ATTRIBUTION_PARAMS.length,
+        hasSearchParams: context.hasSearchParams,
+    });
 }
 
 export default function OBPLanguageSwitcher({
@@ -43,7 +67,13 @@ export default function OBPLanguageSwitcher({
             return languageUrl.startsWith('/')
                 ? `${parsed.pathname}${parsed.search}${parsed.hash}`
                 : parsed.toString();
-        } catch {
+        } catch (error) {
+            logLanguageSwitcherAttributionFailure(error, {
+                baseUrl,
+                languageCode,
+                languageUrl,
+                hasSearchParams: true,
+            });
             return languageUrl;
         }
     };

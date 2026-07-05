@@ -1,7 +1,12 @@
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { resolveRenderLanguage } from './languageResolver';
 import { normalizeProjectLanguages, normalizeStoreLanguagePolicy } from './languagePolicy';
 import { getProjectDefaultLanguage } from './projectContent';
+
+const PUBLIC_LANGUAGE_PARAM_DIAGNOSTIC_LIMIT = 25;
+
+const reportedPublicLanguageParamFailures = new Set<string>();
 
 export const normalizePublicLanguageCode = (value?: string | string[] | null): string | null => {
     const raw = Array.isArray(value) ? value[0] : value;
@@ -149,6 +154,29 @@ export function getNextIntlLocaleForPublicLanguage(language?: string | null): st
     }
 }
 
+function logPublicLanguageParamFailure(error: unknown, url: string, language: string): void {
+    const failureKey = [
+        url.length,
+        language.length,
+        url.startsWith('/') ? 'relative' : 'absolute',
+        url.includes('?') ? 'query' : 'no-query',
+        url.includes('#') ? 'hash' : 'no-hash',
+    ].join(':');
+
+    if (reportedPublicLanguageParamFailures.has(failureKey)) return;
+    if (reportedPublicLanguageParamFailures.size >= PUBLIC_LANGUAGE_PARAM_DIAGNOSTIC_LIMIT) return;
+    reportedPublicLanguageParamFailures.add(failureKey);
+
+    logRuntimeFailure('public_language_param_url_parse_failed', error, {
+        ...getBoundedRuntimeStringContext('languageParamUrl', url),
+        ...getBoundedRuntimeStringContext('language', language),
+        isRelativeUrl: url.startsWith('/'),
+        hasQuery: url.includes('?'),
+        hasHash: url.includes('#'),
+        fallbackPolicy: 'return_original_url',
+    });
+}
+
 export function appendPublicLanguageParam(url: string, language?: string | null): string {
     const normalizedLanguage = normalizePublicLanguageCode(language);
     if (!url || !normalizedLanguage) return url;
@@ -159,9 +187,9 @@ export function appendPublicLanguageParam(url: string, language?: string | null)
         return url.startsWith('/')
             ? `${parsed.pathname}${parsed.search}${parsed.hash}`
             : parsed.toString();
-    } catch {
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}lang=${encodeURIComponent(normalizedLanguage)}`;
+    } catch (error) {
+        logPublicLanguageParamFailure(error, url, normalizedLanguage);
+        return url;
     }
 }
 

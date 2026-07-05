@@ -55,6 +55,8 @@ AI: Gemini 2.5 Flash
 Languages: 90+ including 5 RTL
 ```
 
+Provider-response parsing is bounded and fail-closed: fenced JSON and extractable object-fragment JSON can recover before the retry call, while unrecoverable parse failures log capped `translation_provider_response_parse_failed` diagnostics with fixed `retry_once_then_return_translation_failed` policy and no raw response/menu/translation text.
+
 ---
 
 ## Key Files in Codebase
@@ -87,6 +89,7 @@ Languages: 90+ including 5 RTL
 
 | Version | Date         | Changes                                                                                                 |
 | ------- | ------------ | ------------------------------------------------------------------------------------------------------- |
+| 3.5     | Jul 5, 2026  | Added bounded provider-response parse diagnostics, fenced/object-fragment JSON recovery before retry, and raw prompt input/language payload exclusion from transaction input and local success/error logs |
 | 3.4     | Jun 30, 2026 | Added request key/value caps plus sanitized prompt-only translation payload serialization                |
 | 3.3     | Mar 14, 2026 | Prompt hardening (entity preservation, anti-injection), temperature 0.8→0.3, JSON retry, ChatGPT review |
 | 3.2     | Feb 1, 2026  | Added feature classification, doctrine guardrails, fixed UI copy                                        |

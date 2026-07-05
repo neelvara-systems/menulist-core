@@ -215,8 +215,8 @@ async function postGuestFeedback(req: NextRequest) {
         }
 
         storeFeedbackDefaults = resolveFeedbackDefaults(storeData?.feedbackDefaults || null);
-        reviewUrl = normalizeGuestFeedbackReviewUrl(storeData?.reviewUrl)
-            || normalizeGuestFeedbackReviewUrl(storeData?.publicPresence?.googleReviewUrl)
+        reviewUrl = normalizeGuestFeedbackReviewUrl(storeData?.reviewUrl, 'store_review_url')
+            || normalizeGuestFeedbackReviewUrl(storeData?.publicPresence?.googleReviewUrl, 'public_presence_google_review_url')
             || null;
     } catch (error) {
         logGuestFeedbackFailure('public_guest_feedback_scope_verification_failed', error, {

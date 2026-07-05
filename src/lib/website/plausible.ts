@@ -1,3 +1,5 @@
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
+
 type PlausibleWindow = Window & {
     gtag?: (...args: unknown[]) => void;
     plausible?: PlausibleFunction;
@@ -10,6 +12,7 @@ type PlausibleFunction = ((eventName: string, options?: { interactive?: boolean 
 
 const MENULIST_ANALYTICS_CONSENT_KEY = 'menulist_website_analytics_consent_v1';
 const ANSWERLATTICE_ANALYTICS_CONSENT_KEY = 'answerlattice_website_analytics_consent_v1';
+const reportedPlausibleConsentStorageFailures = new Set<string>();
 
 function normalizeEventName(eventName?: string | null): string | undefined {
     const normalized = eventName?.trim();
@@ -37,10 +40,30 @@ function getActivePublicWebsiteConsentKey(): string {
     return MENULIST_ANALYTICS_CONSENT_KEY;
 }
 
+function getActivePublicWebsiteKind(): 'answerlattice' | 'menulist' {
+    return isAnswerlatticePublicWebsite() ? 'answerlattice' : 'menulist';
+}
+
+function logPlausibleConsentStorageFailure(error: unknown, consentKey: string) {
+    const siteKind = getActivePublicWebsiteKind();
+    const shapeKey = `${siteKind}:${consentKey.length}`;
+    if (reportedPlausibleConsentStorageFailures.has(shapeKey)) return;
+    reportedPlausibleConsentStorageFailures.add(shapeKey);
+
+    logAnalyticsFailure('public_website_plausible_consent_read_failed', error, {
+        fallbackPolicy: 'skip_plausible_event_until_consent_known',
+        siteKind,
+        ...getBoundedAnalyticsStringContext('consentKey', consentKey),
+    });
+}
+
 function hasAcceptedPublicWebsiteAnalyticsConsent(): boolean {
+    const consentKey = getActivePublicWebsiteConsentKey();
+
     try {
-        return window.localStorage.getItem(getActivePublicWebsiteConsentKey()) === 'accepted';
-    } catch {
+        return window.localStorage.getItem(consentKey) === 'accepted';
+    } catch (error) {
+        logPlausibleConsentStorageFailure(error, consentKey);
         return false;
     }
 }

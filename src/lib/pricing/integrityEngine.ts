@@ -34,6 +34,9 @@ import {
     logPricingFailure,
 } from "./pricingDiagnostics";
 
+const PRICING_PDF_FAILURE_REASON_FALLBACK = "pricing_pdf_generation_failed";
+const PRICING_PDF_FAILURE_REASON_PATTERN = /^[a-z0-9_:-]{1,80}$/i;
+
 /**
  * Parameters for running pricing integrity
  */
@@ -68,6 +71,13 @@ export function getDefaultIntegrityState(): PricingIntegrityState {
             version: 0,
         },
     };
+}
+
+function normalizePricingPdfFailureReason(reason: string): string {
+    const normalized = String(reason || "").trim();
+    return PRICING_PDF_FAILURE_REASON_PATTERN.test(normalized)
+        ? normalized
+        : PRICING_PDF_FAILURE_REASON_FALLBACK;
 }
 
 /**
@@ -265,6 +275,7 @@ export async function markPDFFailed(params: {
     error: string;
 }): Promise<void> {
     const { projectId, tId, sId, error } = params;
+    const failureReason = normalizePricingPdfFailureReason(error);
     const metadataPath = `projectsMetadata/${tId}/${sId}`;
     const metadataRef = doc(db, metadataPath, projectId);
 
@@ -272,11 +283,12 @@ export async function markPDFFailed(params: {
         metadataRef,
         replaceUndefined({
             "pricingIntegrity.pdf.status": "FAILED",
-            "pricingIntegrity.pdf.lastFailureReason": error,
+            "pricingIntegrity.pdf.lastFailureReason": failureReason,
         }),
     );
 
     logPricingDiagnostic("pricing_integrity_pdf_marked_failed", {
+        failureReason,
         ...getBoundedPricingStringContext("projectId", projectId),
         ...getBoundedPricingStringContext("tenantId", tId),
         ...getBoundedPricingStringContext("storeId", sId),

@@ -695,12 +695,13 @@ const isSlugReservedByRecentlyDeleted = async (
             if (previousSlugs.some((s) => s.toLowerCase() === normalized)) return true;
         }
     } catch (error) {
-        // Fail-open on infrastructure errors — create/rename validation is
-        // a best-effort guard, not a security boundary. Log for visibility.
+        // Treat unknown reservation state as reserved so QR/public URL permanence
+        // does not depend on a best-effort lookup succeeding.
         logProjectPersistenceFailure('deleted_project_slug_reservation_check_failed', error, {
             ...getBoundedProjectPersistenceStringContext('slug', normalized),
             slugReservationWindowDays: SLUG_RESERVATION_WINDOW_MS / (24 * 60 * 60 * 1000),
         });
+        return true;
     }
 
     return false;

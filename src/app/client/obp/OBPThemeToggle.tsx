@@ -2,17 +2,42 @@
 
 import { useEffect, useState } from 'react';
 import { LuMoon, LuSun } from 'react-icons/lu';
+import { secureError } from '@lib/security/secureLogger';
 import styles from './obp.module.scss';
 
 type OBPTheme = 'light' | 'dark';
+type OBPThemeStorageOperation = 'read' | 'write';
 
 const STORAGE_KEY = 'menulist:obp-theme';
+const reportedOBPThemeStorageFailures = new Set<OBPThemeStorageOperation>();
+
+function logOBPThemeStorageFailure(
+    operation: OBPThemeStorageOperation,
+    error: unknown,
+    theme?: OBPTheme,
+) {
+    if (reportedOBPThemeStorageFailures.has(operation)) return;
+    reportedOBPThemeStorageFailures.add(operation);
+
+    const storageKey = STORAGE_KEY;
+    const themeValue = String(theme ?? '').trim();
+
+    secureError('[OBP Theme] Preference storage failed', new Error(`obp_theme_storage_${operation}_failed`), {
+        operation,
+        storageKeyPresent: Boolean(storageKey),
+        storageKeyLength: storageKey.length,
+        themePresent: Boolean(themeValue),
+        themeLength: themeValue.length,
+        errorName: error instanceof Error ? error.name : typeof error,
+    });
+}
 
 function getStoredTheme(): OBPTheme | null {
     try {
         const value = window.localStorage.getItem(STORAGE_KEY);
         return value === 'dark' || value === 'light' ? value : null;
-    } catch {
+    } catch (error) {
+        logOBPThemeStorageFailure('read', error);
         return null;
     }
 }
@@ -65,8 +90,8 @@ export default function OBPThemeToggle({
         const nextTheme: OBPTheme = theme === 'dark' ? 'light' : 'dark';
         try {
             window.localStorage.setItem(STORAGE_KEY, nextTheme);
-        } catch {
-            // Theme switching is a visual preference; keep the page usable if storage is blocked.
+        } catch (error) {
+            logOBPThemeStorageFailure('write', error, nextTheme);
         }
         applyTheme(nextTheme);
         setTheme(nextTheme);

@@ -41,6 +41,7 @@ Core URL routing infrastructure for MenuList's public pages:
 - **Multi-store location routing** (`brand.menulist.ai/pune/menu`)
 - **safe outlet path segments** for brand OBP location cards, outlet OBP links, sitemap outlet entries, and outlet canonical redirects
 - **safe project path segments** for menu lookup, sitemap project URLs, old-slug redirects, canonical menu URLs, and OBP menu CTA links
+- **public language parameter parse fallback** that preserves valid `?lang=` links but returns the original URL unchanged if URL parsing fails
 - **Permanent project slugs** (stored, not derived from names)
 - **Old slug → 301 redirects** (QR codes never break)
 - **Reserved slug namespace** (prevent future conflicts)
@@ -174,6 +175,8 @@ Customer opens: storypizza.menulist.ai/pune/menu
 ```
 
 Public client pages use `src/lib/multiTenant/getTenantFromHeaders.ts` for middleware-set tenant headers and host fallbacks. Missing-host diagnostics are bounded: the helper logs header-presence booleans through secure logging and does not emit raw request header values. Domain lookup failure diagnostics in `src/lib/multiTenant/domainLookup.ts` are bounded the same way: lookup type and value length only, not raw subdomain/custom-domain values.
+
+Tenant sitemap lookup failures in `src/app/client/sitemap.ts` keep the same public fallback behavior, but now log capped `tenant_sitemap_*_failed` diagnostics with fallback-policy labels. Master-store lookup failure returns an empty sitemap, outlet lookup failure omits outlet sitemap entries, and project lookup failure omits project sitemap entries. The diagnostic context includes only tenant/subdomain/custom-domain/store identifier presence and length metadata plus source error name, never raw hostnames, domains, store IDs, tenant IDs, project slugs, sitemap URLs, or exception text.
 
 The public menu resolver at `src/app/client/[[...slug]]/page.tsx` follows the same logging rule for fallback paths. Multi-outlet linked-project failures and special-menu graceful degradation keep the existing public behavior, but diagnostics log only failure type, ID presence/length, and error name.
 

@@ -2338,8 +2338,14 @@ function verifyAnalyticsErrorBoundary() {
   const analyticsDiagnostics = read('src/lib/analytics/analyticsDiagnostics.ts');
   const analyticsDatabase = read('src/database/analytics/index.ts');
   const analyticsUnified = read('src/lib/analytics/unified.ts');
+  const analyticsSearchDedup = read('src/lib/analytics/searchDedup.ts');
   const analyticsDevice = read('src/lib/analytics/device.ts');
   const analyticsGeo = read('src/lib/analytics/geo.ts');
+  const analyticsDateKey = read('src/lib/analytics/dateKey.ts');
+  const analyticsBusinessDay = read('src/lib/analytics/businessDay.ts');
+  const analyticsTimeZoneDiagnostics = read('src/lib/analytics/timeZoneDiagnostics.ts');
+  const appSchedulerHour = read('src/lib/utils/schedulerHour.ts');
+  const functionsSchedulerHour = read('functions/src/utils/schedulerHour.ts');
   const analyticsSession = read('src/lib/analytics/session.ts');
   const analyticsDal = read('src/lib/analytics/dal.ts');
   const ownerDashboardDal = read('src/database/ownerDashboard/index.ts');
@@ -2355,6 +2361,13 @@ function verifyAnalyticsErrorBoundary() {
   const googleLocationInsights = read('src/components/templates/main-app/dashboard/googleAnalytics/LocationInsights.tsx');
   const googleTrendAnalysis = read('src/components/templates/main-app/dashboard/googleAnalytics/TrendAnalysis.tsx');
   const googleDateRangeSelector = read('src/components/templates/main-app/dashboard/googleAnalytics/DateRangeSelector.tsx');
+  const analyticsImplDoc = read('__docs__/client-menu/analytics-tracking/_impl.md');
+  const analyticsFirebaseDoc = read('__docs__/client-menu/analytics-tracking/analytics-tracking_firebase.md');
+  const aiSystemReadme = read('__docs__/ai-system-layer/README.md');
+  const aiSystemImplDoc = read('__docs__/ai-system-layer/ai-system-layer_impl.md');
+  const aiSystemFirebaseDoc = read('__docs__/ai-system-layer/ai-system-layer_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
   const legacyAnalyticsRoutes = [
     ['src/app/api/analytics/route.ts', 'analytics_realtime_api_failed', 'overview'],
     ['src/app/api/analytics/locations/route.ts', 'analytics_locations_api_failed', 'locations'],
@@ -2488,7 +2501,16 @@ function verifyAnalyticsErrorBoundary() {
       '[PERMISSIONS.VIEW_ANALYTICS]',
       'if (permissionError) return permissionError;',
       'const WEEKLY_NARRATIVE_CATEGORY_MAX_LENGTH = 80;',
+      'const WEEKLY_NARRATIVE_OUTPUT_TEXT_MAX_LENGTH = 500;',
+      'const WEEKLY_NARRATIVE_OUTPUT_LIST_ITEM_MAX_LENGTH = 220;',
+      'const WEEKLY_NARRATIVE_OUTPUT_LIST_MAX_ITEMS = 5;',
       'const WEEKLY_NARRATIVE_TOP_QUESTIONS_SCAN_LIMIT = 25;',
+      'const cleanWeeklyNarrativeOutputText = (',
+      /replace\(\s*\/\[\\u0000-\\u001f\\u007f\]\/g,\s*' '\s*\)/,
+      ".replace(/[{}<>`$\\\\]/g, '')",
+      'normalizeWeeklyNarrativeOutputText(parsed?.narrative, fallback.narrative)',
+      'normalizeWeeklyNarrativeOutputList(parsed?.highlights, fallback.highlights)',
+      'normalizeWeeklyNarrativeOutputList(parsed?.recommendations, fallback.recommendations)',
       'normalizeWeeklyNarrativeMetric(data.totalChats)',
       'normalizeWeeklyNarrativeCategory(q?.category)',
       'const categories: Record<string, number> = Object.create(null);',
@@ -2514,6 +2536,13 @@ function verifyAnalyticsErrorBoundary() {
   assert(!weeklyNarrativeRouteForAuth.includes('getActiveSession'), 'weekly narrative local route must use withAuth instead of direct session lookup');
   assert(!weeklyNarrativeRouteForAuth.includes('key: `weekly-narrative:${session.uId}:${tId}:${sId}`'), 'weekly narrative local route must not store raw user/tenant/store IDs in rate-limit keys');
   assert(!weeklyNarrativeRouteForAuth.includes('categories[q.category]'), 'weekly narrative route must not index category totals with raw analytics category text');
+  assert(!weeklyNarrativeRouteForAuth.includes('? parsed.narrative.trim()'), 'weekly narrative route must not persist raw generated narrative text through trim-only normalization');
+  assert(!weeklyNarrativeRouteForAuth.includes('.map((entry) => entry.trim())'), 'weekly narrative route must not persist generated list entries through trim-only normalization');
+  assert(aiSystemReadme.includes('Weekly narrative output boundary'), 'AI System README weekly narrative output boundary missing');
+  assert(aiSystemImplDoc.includes('July 5 weekly narrative output boundary'), 'AI System implementation weekly narrative output boundary missing');
+  assert(aiSystemFirebaseDoc.includes('July 5 weekly narrative output boundary is Firebase-cost neutral'), 'AI System Firebase weekly narrative output boundary missing');
+  assert(productionAudit.includes('Weekly narrative output boundary checkpoint'), 'Production audit weekly narrative output boundary checkpoint missing');
+  assert(changelog.includes('Weekly Narrative Output Boundary'), 'Changelog weekly narrative output boundary checkpoint missing');
   assertIncludes(
     'src/app/api/analytics/weekly-narrative/regenerate/route.ts',
     [
@@ -2826,38 +2855,190 @@ function verifyAnalyticsErrorBoundary() {
       'analytics_session_milestones_read_failed',
       'analytics_session_milestones_write_failed',
       'analytics_session_source_read_failed',
-      'analytics_session_source_write_failed',
-      'analytics_active_filter_read_failed',
-      'analytics_active_filter_write_failed',
-      'getAnalyticsSessionStorageContext',
-      'getSessionMilestoneStateContext',
-      "getBoundedAnalyticsStringContext('storageKey', key)",
-      "getBoundedAnalyticsStringContext('serializedState', serializedState)",
-      "getBoundedAnalyticsStringContext('entrySource', entrySource)",
-      "getBoundedAnalyticsStringContext('filterLabel', label)",
-    ],
-    'analytics unified client bounded diagnostics',
-  );
+	      'analytics_session_source_write_failed',
+	      'analytics_active_filter_read_failed',
+	      'analytics_active_filter_write_failed',
+	      'analytics_entry_source_inference_failed',
+	      'getAnalyticsSessionStorageContext',
+	      'getSessionMilestoneStateContext',
+	      'logEntrySourceInferenceFailure',
+	      'MAX_ENTRY_SOURCE_INFERENCE_DIAGNOSTICS',
+	      'reportedEntrySourceInferenceFailures',
+	      "getBoundedAnalyticsStringContext('storageKey', key)",
+	      "getBoundedAnalyticsStringContext('serializedState', serializedState)",
+	      "getBoundedAnalyticsStringContext('entrySource', entrySource)",
+	      "getBoundedAnalyticsStringContext('filterLabel', label)",
+	      "getBoundedAnalyticsStringContext('locationSearch', locationSearch)",
+	      "getBoundedAnalyticsStringContext('referrer', referrer)",
+	    ],
+	    'analytics unified client bounded diagnostics',
+	  );
   assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(analyticsUnified), 'analytics unified helper must not direct-console tracking failures');
   assert(!/\blogger\.(?:error|warn|log)\s*\(/.test(analyticsUnified), 'analytics unified helper must not raw-log tracking failures');
   assert(!analyticsUnified.includes('} catch {\n    return null;\n  }'), 'analytics unified sessionStorage helpers must not silently return null on storage/parse failures');
-  assert(!analyticsUnified.includes('Session milestones are additive analytics only; never block customer UX.'), 'analytics unified session milestone writes must not silently swallow storage failures');
-  assert(!analyticsUnified.includes('Source quality is additive analytics only; never block customer UX.'), 'analytics unified source writes must not silently swallow storage failures');
-  assert(!analyticsUnified.includes('Filter intent is additive analytics only; never block customer UX.'), 'analytics unified filter writes must not silently swallow storage failures');
+	  assert(!analyticsUnified.includes('Session milestones are additive analytics only; never block customer UX.'), 'analytics unified session milestone writes must not silently swallow storage failures');
+	  assert(!analyticsUnified.includes('Source quality is additive analytics only; never block customer UX.'), 'analytics unified source writes must not silently swallow storage failures');
+	  assert(!analyticsUnified.includes('Filter intent is additive analytics only; never block customer UX.'), 'analytics unified filter writes must not silently swallow storage failures');
+	  assert(!analyticsUnified.includes("} catch {\n    return 'direct';\n  }"), 'analytics unified entry-source inference must not silently downgrade to direct');
+
+  assertIncludes(
+    'src/lib/analytics/searchDedup.ts',
+    [
+      "import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';",
+      'reportedSearchDedupStorageAvailabilityFailures',
+      'analytics_search_dedup_storage_unavailable',
+      'analytics_search_dedup_read_failed',
+      'analytics_search_dedup_write_failed',
+      "getBoundedAnalyticsStringContext('storageKey', key)",
+      "getBoundedAnalyticsStringContext('storedSearchTerms', rawTerms)",
+      "getBoundedAnalyticsStringContext('normalizedSearchTerm', normalizedTerm)",
+      "getBoundedAnalyticsStringContext('serializedSearchTerms', serializedTerms)",
+    ],
+    'analytics search de-dupe bounded diagnostics',
+  );
+  assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(analyticsSearchDedup), 'analytics search de-dupe helper must not direct-console storage failures');
+  assert(!/\blogger\.(?:error|warn|log)\s*\(/.test(analyticsSearchDedup), 'analytics search de-dupe helper must not raw-log storage failures');
+  assert(!analyticsSearchDedup.includes('} catch {\n    return false;\n  }'), 'analytics search de-dupe reads must not silently swallow storage/parse failures');
+  assert(!analyticsSearchDedup.includes('} catch {\n    /* noop */\n  }'), 'analytics search de-dupe writes must not silently swallow storage/parse failures');
+
+  assertIncludes(
+    'src/lib/analytics/session.ts',
+    [
+      "import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';",
+      'ANALYTICS_SESSION_STORAGE_FAILURE_CODES',
+      'analytics_session_get_failed',
+      'analytics_session_refresh_failed',
+      'analytics_session_clear_failed',
+      'reportedAnalyticsSessionStorageFailures',
+      'getAnalyticsSessionStorageFailureContext',
+      'logAnalyticsSessionStorageFailure',
+      "getBoundedAnalyticsStringContext('sessionIdKey', SESSION_ID_KEY)",
+      "getBoundedAnalyticsStringContext('sessionTimestampKey', SESSION_TIMESTAMP_KEY)",
+      "getBoundedAnalyticsStringContext('existingSessionId', values.existingId)",
+      "getBoundedAnalyticsStringContext('sessionTimestamp', values.timestamp)",
+      "fallback: operation === 'get' ? 'new_anonymous_session_id' : 'skip_session_storage_update'",
+      "logAnalyticsSessionStorageFailure('get', error",
+      "logAnalyticsSessionStorageFailure('refresh', error",
+      "logAnalyticsSessionStorageFailure('clear', error)",
+    ],
+    'analytics session storage bounded diagnostics',
+  );
+  assert(!analyticsSession.includes('logAnalyticsFailure(\'analytics_session_get_failed\', error);'), 'analytics session get must include bounded storage context');
+  assert(!analyticsSession.includes('logAnalyticsFailure(\'analytics_session_refresh_failed\', error);'), 'analytics session refresh must include bounded storage context');
+  assert(!analyticsSession.includes('logAnalyticsFailure(\'analytics_session_clear_failed\', error);'), 'analytics session clear must include bounded storage context');
 
   assertIncludes(
     'src/lib/analytics/geo.ts',
     [
+      "import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';",
       'analytics_geolocation_position_failed',
+      'analytics_location_lookup_failed',
       'isGeolocationPermissionDenied',
       'GEOLOCATION_PERMISSION_DENIED_CODE',
       'getGeolocationAttemptContext',
+      'hasIntlDateTimeFormat',
+      'getLocationLookupFailureContext',
+      "getBoundedAnalyticsStringContext('timeZone', timeZone)",
       "fallback: 'timezone'",
+      "fallback: 'unknown'",
       "typeof navigator !== 'undefined'",
+      "logAnalyticsFailure('analytics_location_lookup_failed', error, getLocationLookupFailureContext(timeZone))",
     ],
     'analytics geolocation fallback bounded diagnostics',
   );
   assert(!analyticsGeo.includes('}).catch(() => null);'), 'analytics geolocation lookup must not silently swallow position failures');
+  assert(!analyticsGeo.includes("logAnalyticsFailure('analytics_location_lookup_failed', error);"), 'analytics location lookup failures must include bounded fallback context');
+
+  assertIncludes(
+    'src/lib/analytics/timeZoneDiagnostics.ts',
+    [
+      "import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';",
+      'analytics_timezone_validation_failed',
+      'logAnalyticsTimeZoneFallback',
+      'MAX_ANALYTICS_TIME_ZONE_DIAGNOSTICS',
+      'reportedAnalyticsTimeZoneFailures',
+      "getBoundedAnalyticsStringContext('timeZone', timeZone)",
+      "getBoundedAnalyticsStringContext('source', source)",
+      "fallbackTimeZone: 'UTC'",
+      "hasWindow: typeof window !== 'undefined'",
+    ],
+    'analytics timezone validation fallback diagnostics',
+  );
+  assertIncludes(
+    'src/lib/analytics/dateKey.ts',
+    [
+      "import { isValidAnalyticsTimeZone } from './timeZoneDiagnostics';",
+      "isValidAnalyticsTimeZone(timeZone, 'analytics_date_key') ? timeZone : 'UTC'",
+    ],
+    'analytics date-key timezone validation diagnostics',
+  );
+  assertIncludes(
+    'src/lib/analytics/businessDay.ts',
+    [
+      "import { isValidAnalyticsTimeZone } from './timeZoneDiagnostics';",
+      "isValidAnalyticsTimeZone(timeZone, 'analytics_business_day') ? timeZone : 'UTC'",
+    ],
+    'analytics business-day timezone validation diagnostics',
+  );
+  assert(analyticsImplDoc.includes('Shared analytics timezone diagnostics'), 'Analytics implementation timezone diagnostics missing');
+  assert(analyticsImplDoc.includes('Entry-source inference diagnostics'), 'Analytics implementation entry-source inference diagnostics missing');
+  assert(analyticsImplDoc.includes('Session ID storage diagnostics'), 'Analytics implementation session storage diagnostics missing');
+  assert(analyticsImplDoc.includes('Location lookup diagnostics'), 'Analytics implementation location lookup diagnostics missing');
+  assert(analyticsFirebaseDoc.includes('Analytics timezone diagnostics rule'), 'Analytics Firebase timezone diagnostics rule missing');
+  assert(analyticsFirebaseDoc.includes('Entry-source inference diagnostics rule'), 'Analytics Firebase entry-source inference diagnostics rule missing');
+  assert(analyticsFirebaseDoc.includes('Session ID storage diagnostics rule'), 'Analytics Firebase session storage diagnostics rule missing');
+  assert(analyticsFirebaseDoc.includes('Location fallback diagnostics rule'), 'Analytics Firebase location diagnostics rule missing');
+  assert(productionAudit.includes('Analytics timezone validation diagnostics checkpoint'), 'Production audit analytics timezone diagnostics checkpoint missing');
+  assert(productionAudit.includes('Analytics entry-source inference diagnostics checkpoint'), 'Production audit analytics entry-source diagnostics checkpoint missing');
+  assert(productionAudit.includes('Analytics session ID storage diagnostics checkpoint'), 'Production audit analytics session storage diagnostics checkpoint missing');
+  assert(productionAudit.includes('Analytics location fallback diagnostics checkpoint'), 'Production audit analytics location diagnostics checkpoint missing');
+  assert(changelog.includes('Analytics Timezone Validation Diagnostics'), 'Changelog analytics timezone diagnostics checkpoint missing');
+  assert(changelog.includes('Analytics Entry Source Inference Diagnostics'), 'Changelog analytics entry-source diagnostics checkpoint missing');
+  assert(changelog.includes('Analytics Session ID Storage Diagnostics'), 'Changelog analytics session storage diagnostics checkpoint missing');
+  assert(changelog.includes('Analytics Location Fallback Diagnostics'), 'Changelog analytics location diagnostics checkpoint missing');
+  assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(analyticsTimeZoneDiagnostics), 'analytics timezone diagnostics helper must not direct-console failures');
+  assert(!/\blogger\.(?:error|warn|log)\s*\(/.test(analyticsTimeZoneDiagnostics), 'analytics timezone diagnostics helper must not raw-log failures');
+  assert(!analyticsDateKey.includes('} catch {\n    return false;\n  }'), 'analytics date-key timezone validation must not silently swallow invalid timezone failures');
+  assert(!analyticsBusinessDay.includes('} catch {\n    return false;\n  }'), 'analytics business-day timezone validation must not silently swallow invalid timezone failures');
+
+  assertIncludes(
+    'src/lib/utils/schedulerHour.ts',
+    [
+      "import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';",
+      'scheduler_hour_timezone_validation_failed',
+      'MAX_SCHEDULER_HOUR_TIMEZONE_DIAGNOSTICS',
+      'reportedSchedulerHourTimeZoneFailures',
+      'logSchedulerHourTimeZoneFallback',
+      'isSchedulerTimeZoneValid',
+      "getBoundedAnalyticsStringContext('timeZone', timeZone)",
+      "fallbackPolicy: 'use_utc_settlement_hour'",
+      "hasIntl: typeof Intl !== 'undefined'",
+      'if (!isSchedulerTimeZoneValid(timeZone, targetLocalHour)) return fallbackHour;',
+    ],
+    'app scheduler-hour timezone fallback diagnostics',
+  );
+  assertIncludes(
+    'functions/src/utils/schedulerHour.ts',
+    [
+      "import { analyticsLogger, getAnalyticsErrorContext, getAnalyticsIdContext } from '../analytics/analyticsDiagnostics';",
+      'SCHEDULER_HOUR_TIMEZONE_VALIDATION_FAILED',
+      'MAX_SCHEDULER_HOUR_TIMEZONE_DIAGNOSTICS',
+      'reportedSchedulerHourTimeZoneFailures',
+      "analyticsLogger.warn('[SchedulerHour] Timezone validation failed, using UTC settlement hour'",
+      'timeZone: getAnalyticsIdContext(timeZone)',
+      "fallbackPolicy: 'use_utc_settlement_hour'",
+      "hasIntl: typeof Intl !== 'undefined'",
+      'error: getAnalyticsErrorContext(error)',
+      'if (!isSchedulerTimeZoneValid(timeZone, targetLocalHour)) return fallbackHour;',
+    ],
+    'Functions scheduler-hour timezone fallback diagnostics',
+  );
+  assert(!appSchedulerHour.includes('} catch {\n        return fallbackHour;\n    }'), 'app scheduler-hour fallback must not silently swallow timezone failures');
+  assert(!functionsSchedulerHour.includes('} catch {\n        return fallbackHour;\n    }'), 'Functions scheduler-hour fallback must not silently swallow timezone failures');
+  assert(analyticsImplDoc.includes('Scheduler-hour timezone diagnostics'), 'Analytics implementation scheduler-hour diagnostics missing');
+  assert(analyticsFirebaseDoc.includes('Scheduler-hour timezone diagnostics rule'), 'Analytics Firebase scheduler-hour diagnostics rule missing');
+  assert(productionAudit.includes('Scheduler-hour timezone diagnostics checkpoint'), 'Production audit scheduler-hour timezone diagnostics checkpoint missing');
+  assert(changelog.includes('Scheduler-Hour Timezone Diagnostics'), 'Changelog scheduler-hour timezone diagnostics checkpoint missing');
 
   [
     ['src/lib/analytics/device.ts', analyticsDevice, 'analytics_device_user_agent_parse_failed'],
@@ -3070,6 +3251,7 @@ function verifyOwnerUtilitySecureLogging() {
   const notificationClient = read('src/lib/notifications/client.ts');
   const lifecycleMessaging = read('src/lib/messaging/index.ts');
   const notificationService = read('src/lib/notifications/index.ts');
+  const smtpConfig = read('src/lib/notifications/smtpConfig.ts');
   const legacyNotificationService = read('src/lib/notifications/notificationService.ts');
   const ownerNotificationService = read('src/lib/owner-notifications/index.ts');
   const ownerNotificationEmail = read('src/lib/owner-notifications/channels/email.ts');
@@ -3650,10 +3832,30 @@ function verifyOwnerUtilitySecureLogging() {
       'messaging_onboarding_event_failed',
       'getBoundedMessagingEventErrorCode(record.error)',
     ]],
+    ['src/lib/notifications/smtpConfig.ts', [
+      'const SMTP_MIN_PORT = 1;',
+      'const SMTP_MAX_PORT = 65535;',
+      'export function parseSmtpPort(rawPort: string | undefined): number | null',
+      'if (!/^\\d+$/.test(normalizedPort)) return null;',
+      'Number.isSafeInteger(port) && port >= SMTP_MIN_PORT && port <= SMTP_MAX_PORT',
+      'export function getSmtpConfigFromEnv(env: NodeJS.ProcessEnv = process.env): SmtpConfig | null',
+      'const port = parseSmtpPort(env.SMTP_PORT);',
+      'pass.trim().length === 0',
+      'secure: port === 465',
+      'export function isSmtpConfigured',
+      'return getSmtpConfigFromEnv(env) !== null;',
+    ]],
     ['src/lib/messaging/index.ts', [
+      "import { getSmtpConfigFromEnv } from '@lib/notifications/smtpConfig';",
       'getLifecycleMessageLogContext',
       'function getLifecycleDeliveryError',
       "error: getLifecycleDeliveryError(result)",
+      'const smtpConfig = getSmtpConfigFromEnv();',
+      'if (!smtpConfig) return null;',
+      'host: smtpConfig.host',
+      'port: smtpConfig.port',
+      'secure: smtpConfig.secure',
+      'auth: { user: smtpConfig.user, pass: smtpConfig.pass }',
       "error: 'smtp_not_configured'",
       "error: 'smtp_verify_failed'",
       "error: 'smtp_send_failed'",
@@ -3671,8 +3873,16 @@ function verifyOwnerUtilitySecureLogging() {
       'logNotificationFailure',
     ]],
     ['src/lib/notifications/index.ts', [
+      "import { getSmtpConfigFromEnv, isSmtpConfigured } from './smtpConfig';",
+      'return isSmtpConfigured();',
       'function getNotificationDeliveryError',
       "error: getNotificationDeliveryError(result)",
+      'const smtpConfig = getSmtpConfigFromEnv();',
+      'if (!smtpConfig) return null;',
+      'host: smtpConfig.host',
+      'port: smtpConfig.port',
+      'secure: smtpConfig.secure',
+      'auth: { user: smtpConfig.user, pass: smtpConfig.pass }',
       "error: 'smtp_not_configured'",
       "error: 'smtp_send_failed'",
       'notification_duplicate_check_failed',
@@ -3719,6 +3929,15 @@ function verifyOwnerUtilitySecureLogging() {
       'logNotificationFailure',
     ]],
     ['src/lib/owner-notifications/channels/email.ts', [
+      "import { getSmtpConfigFromEnv, isSmtpConfigured } from '@lib/notifications/smtpConfig';",
+      'const smtpConfig = getSmtpConfigFromEnv();',
+      'if (!smtpConfig) return null;',
+      'host: smtpConfig.host',
+      'port: smtpConfig.port',
+      'secure: smtpConfig.secure',
+      'auth: { user: smtpConfig.user, pass: smtpConfig.pass }',
+      'return isSmtpConfigured();',
+      "skippedReason: 'smtp_not_configured'",
       "error: 'smtp_send_failed'",
     ]],
     ['src/lib/owner-notifications/channels/whatsapp.ts', [
@@ -4729,8 +4948,16 @@ function verifyOwnerUtilitySecureLogging() {
     ['src/lib/messaging/index.ts', 'result.error ||'],
     ['src/lib/messaging/index.ts', 'catch { /* non-blocking */ }'],
     ['src/lib/messaging/index.ts', 'logging failure is non-blocking'],
+    ['src/lib/messaging/index.ts', "process.env.SMTP_PORT || '587'"],
+    ['src/lib/messaging/index.ts', 'parseInt(process.env.SMTP_PORT'],
+    ['src/lib/messaging/index.ts', 'return false; // On error, allow the send (fail-open)'],
+    ['src/lib/messaging/index.ts', 'return false; // Fail-open'],
     ['src/lib/notifications/index.ts', 'Unknown SMTP error'],
     ['src/lib/notifications/index.ts', 'result.error ||'],
+    ['src/lib/notifications/index.ts', "process.env.SMTP_PORT || '587'"],
+    ['src/lib/notifications/index.ts', 'parseInt(process.env.SMTP_PORT'],
+    ['src/lib/notifications/index.ts', 'return false; // On error, allow the send (fail-open)'],
+    ['src/lib/notifications/index.ts', 'return false; // Fail-open'],
     ['src/lib/notifications/index.ts', "secureError('[Notification] Duplicate check failed'"],
     ['src/lib/notifications/index.ts', "secureError('[Notification] Rate-limit check failed'"],
     ['src/lib/notifications/index.ts', "secureError('[Notification] Log write failed'"],
@@ -4745,6 +4972,8 @@ function verifyOwnerUtilitySecureLogging() {
     ['src/lib/owner-notifications/index.ts', "secureError('[OwnerNotifications] Processing failed'"],
     ['src/lib/owner-notifications/channels/email.ts', 'Unknown SMTP error'],
     ['src/lib/owner-notifications/channels/email.ts', 'error instanceof Error ? error.message'],
+    ['src/lib/owner-notifications/channels/email.ts', "process.env.SMTP_PORT || '587'"],
+    ['src/lib/owner-notifications/channels/email.ts', 'parseInt(process.env.SMTP_PORT'],
     ['src/lib/owner-notifications/channels/whatsapp.ts', 'WhatsApp send failed:'],
     ['src/lib/owner-notifications/channels/whatsapp.ts', 'response.text()'],
     ['src/lib/owner-notifications/channels/whatsapp.ts', 'const responseText'],
@@ -4790,6 +5019,7 @@ function verifyOwnerUtilitySecureLogging() {
     ['src/lib/pricing/integrityEngine.ts', 'secureError("[Pricing Integrity] Failed to update price"'],
     ['src/lib/pricing/integrityEngine.ts', 'secureLog("[Pricing Integrity] PDF marked as fresh"'],
     ['src/lib/pricing/integrityEngine.ts', 'secureLog("[Pricing Integrity] PDF marked as failed"'],
+    ['src/lib/pricing/integrityEngine.ts', '"pricingIntegrity.pdf.lastFailureReason": error'],
     ['functions/src/triggers/operations.ts', "logger.error('[BudgetAlert] Error processing webhook:', error)"],
     ['functions/src/triggers/operations.ts', "logger.info('[backfillStoresSummary] Started by user:', request.auth?.uid)"],
     ['functions/src/triggers/operations.ts', 'Verification failed: '],
@@ -4807,6 +5037,28 @@ function verifyOwnerUtilitySecureLogging() {
   ].forEach(([relPath, rawDiagnostic]) => {
     assert(!read(relPath).includes(rawDiagnostic), `${relPath} must not keep old raw diagnostic string ${rawDiagnostic}`);
   });
+
+  assertOrder(
+    'src/lib/messaging/index.ts',
+    [
+      'lifecycle_message_duplicate_check_failed',
+      'return true;',
+      'lifecycle_message_rate_limit_check_failed',
+      'return true;',
+    ],
+    'Lifecycle messaging duplicate/rate-limit failures fail closed',
+  );
+
+  assertOrder(
+    'src/lib/notifications/index.ts',
+    [
+      'notification_duplicate_check_failed',
+      'return true;',
+      'notification_rate_limit_check_failed',
+      'return true;',
+    ],
+    'Notification duplicate/rate-limit failures fail closed',
+  );
 
   assertIncludes(
     'src/lib/pricing/pricingDiagnostics.ts',
@@ -4829,10 +5081,16 @@ function verifyOwnerUtilitySecureLogging() {
       "getBoundedPricingStringContext(\"projectId\", params.projectId)",
     ]],
     ['src/lib/pricing/integrityEngine.ts', [
+      'PRICING_PDF_FAILURE_REASON_FALLBACK',
+      'PRICING_PDF_FAILURE_REASON_PATTERN',
+      'function normalizePricingPdfFailureReason(reason: string): string',
       'pricing_integrity_price_update_succeeded',
       'pricing_integrity_price_update_failed',
       'pricing_integrity_pdf_marked_fresh',
       'pricing_integrity_pdf_marked_failed',
+      'const failureReason = normalizePricingPdfFailureReason(error);',
+      '"pricingIntegrity.pdf.lastFailureReason": failureReason',
+      'failureReason,',
       'logPricingDiagnostic',
       'logPricingFailure',
       "getBoundedPricingStringContext(\"projectId\", projectId)",
@@ -4992,12 +5250,37 @@ function verifyPublicOperationalSignalCheapFail() {
       "getBoundedSecurityStringContext('sourceFile', violation.sourceFile)",
       "getBoundedSecurityStringContext('userAgent', violation.userAgent)",
       "logger.security('CSP Violation Detected', getCspViolationLogContext(violation), severity)",
+      "logSecurityDiagnostic(\n                    'csp_report_json_parse_failed'",
+      "fallbackPolicy: 'ignore_malformed_report'",
+      'const MAX_CSP_REPORT_JSON_PARSE_DIAGNOSTICS = 25;',
+      'reportedCspReportJsonParseFailures',
+      'bodyShapeKind: getBodyShapeKind(trimmedBody)',
+      "getBoundedSecurityStringContext('contentType', request.headers.get('content-type'))",
+      "getBoundedSecurityStringContext('reportUrl', request.headers.get('referer'))",
       "getBoundedSecurityStringContext('requestUrl', request.url)",
       "getBoundedSecurityStringContext('requestIpHash', hashPublicRateLimitValue(getClientIp(request)))",
     ],
     'CSP report bounded failure diagnostics',
   );
+  assert(!read('src/app/api/csp-report/route.ts').includes('JSON.parse(body);\n        } catch {\n            return new Response(null, { status: 204 });'), 'CSP report must not silently drop malformed JSON reports without diagnostics');
+  assert(!read('src/app/api/csp-report/route.ts').includes('body.slice'), 'CSP report malformed JSON diagnostics must not log raw body previews');
   assert(!read('src/app/api/csp-report/route.ts').includes("getBoundedSecurityStringContext('requestIp', getClientIp(request))"), 'CSP report must not log raw request IPs');
+  assertIncludes(
+    '__docs__/security/csp/complete-guide.md',
+    [
+      'logs malformed JSON envelopes as capped `csp_report_json_parse_failed` diagnostics',
+      'returning the same non-blocking 204 response',
+    ],
+    'CSP security guide malformed JSON diagnostics docs parity',
+  );
+  assertIncludes(
+    '__docs__/audits/menulist-production-readiness-audit.md',
+    [
+      'CSP report malformed JSON diagnostics checkpoint: fixed.',
+      '`npm run verify:menulist-api-tenant-safety` source-gates the diagnostic code, capped guard, fallback policy, CSP docs parity, and raw body preview exclusion.',
+    ],
+    'Production readiness audit CSP malformed JSON diagnostics docs parity',
+  );
 
   assertOrder(
     'src/app/api/screen/seen/route.ts',
@@ -5158,6 +5441,8 @@ function verifyPaymentWebhookCheapFail() {
   assert(!webhookRoute.includes('Error: ${paymentEntity?.error_description'), 'Razorpay webhook alert must not include raw provider failure messages');
   assert(!webhookRoute.includes('paymentEntity.error_description || paymentEntity.error_reason'), 'Razorpay webhook status remarks must not persist raw provider failure messages');
   assert(!webhookRoute.includes('Payment ${event.event ==='), 'Razorpay webhook alert titles must not embed raw store context');
+  assert(!webhookRoute.includes("logger.debug('Unhandled webhook event type'"), 'Razorpay webhook must not debug-log normal unhandled-event breadcrumbs');
+  assert(webhookRoute.includes("logType: 'RAZORPAY_WEBHOOK_UNHANDLED_EVENT'"), 'Razorpay webhook keeps durable local audit rows for unhandled events');
 }
 
 function verifyPaymentMutationBoundedJson() {
@@ -5248,6 +5533,7 @@ function verifyPaymentMutationBoundedJson() {
   assert(!razorpayPlanHandler.includes('providerPlanId: foundPlan.id'), 'Razorpay plan handler must not log raw provider plan IDs');
   assert(!razorpayPlanHandler.includes('planId: newPlan.id'), 'Razorpay plan handler must not log raw provider plan IDs as planId');
   assert(!razorpayPlanHandler.includes('{ lookupKey, price, currency }'), 'Razorpay plan handler must not log raw lookup keys');
+  assert(!razorpayPlanHandler.includes("logger.debug('Searching for Razorpay plan'"), 'Razorpay plan handler must not debug-log normal plan lookup breadcrumbs');
 
   assert(
     !fs.existsSync(path.join(ROOT, 'src/app/api/internal/reconcile-subscriptions/route.ts')),

@@ -27,6 +27,7 @@
 | Response text contains JSON object | Proposed facts parsed into bounded fields |
 | Response text is not valid JSON | Sources still returned; proposed facts empty |
 | Grounded content returned | `attributionRequired: true` |
+| Provider returns text with no grounding or malformed JSON | No raw provider response text is returned |
 
 ## Write Safety
 

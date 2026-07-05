@@ -21,6 +21,7 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { NextRequest, NextResponse } from 'next/server';
@@ -34,6 +35,9 @@ const OverrideSchema = z.object({
     content: z.string().max(15000).optional(),
 });
 const COMPLIANCE_OVERRIDE_MAX_BODY_BYTES = 32 * 1024;
+type ComplianceStoreLookupResult =
+    | { ok: true; store: any | null }
+    | { ok: false };
 
 /**
  * GET /api/compliance — Get compliance pages status for dashboard
@@ -52,8 +56,15 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     }
 
     // Get store data for template generation
-    const store = await getStoreData(sId);
-    const inputs = store ? extractComplianceInputs(store) : null;
+    const storeLookup = await getStoreData(sId, tId);
+    if (!storeLookup.ok) {
+        return NextResponse.json(
+            { error: 'Unable to load compliance page details' },
+            { status: 500 },
+        );
+    }
+
+    const inputs = storeLookup.store ? extractComplianceInputs(storeLookup.store) : null;
 
     if (!inputs) {
         return NextResponse.json({
@@ -192,15 +203,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 /**
  * Helper: Get store data by storeId
  */
-async function getStoreData(sId: number): Promise<any | null> {
+async function getStoreData(sId: number, tId?: number): Promise<ComplianceStoreLookupResult> {
     try {
         const snapshot = await firestoreAdmin
             .collection(DB_COLLECTIONS.STORES)
             .doc(String(sId))
             .get();
-        if (!snapshot.exists || snapshot.data()?.active === false) return null;
-        return snapshot.data();
-    } catch {
-        return null;
+        if (!snapshot.exists || snapshot.data()?.active === false) return { ok: true, store: null };
+        return { ok: true, store: snapshot.data() };
+    } catch (error) {
+        logRuntimeFailure('compliance_store_lookup_failed', error, {
+            ...getBoundedRuntimeStringContext('storeId', sId),
+            ...getBoundedRuntimeStringContext('tenantId', tId),
+            failurePolicy: 'return_500',
+        });
+        return { ok: false };
     }
 }

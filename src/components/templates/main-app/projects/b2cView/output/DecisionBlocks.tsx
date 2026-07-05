@@ -32,6 +32,7 @@ import { trackDecisionBlockClick, trackDecisionBlocksRendered } from '@lib/analy
 import { getMenuItemImageAltText } from '@lib/media/altText';
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -78,6 +79,18 @@ const OWNER_PINNED_TITLES: Record<DecisionBlockType, string> = {
     quickPick: 'Quick choice',
     bestValue: 'Value choice',
 };
+
+let reportedDecisionBlocksTimezoneFailure = false;
+
+function logDecisionBlocksTimezoneFailure(error: unknown, timeZone?: string): void {
+    if (reportedDecisionBlocksTimezoneFailure) return;
+    reportedDecisionBlocksTimezoneFailure = true;
+
+    logRuntimeFailure('public_menu_decision_blocks_timezone_failed', error, {
+        ...getBoundedRuntimeStringContext('timeZone', timeZone),
+        hasWindow: typeof window !== 'undefined',
+    });
+}
 
 function getLocalizedMenuText(value: unknown, language: string, fallback = ''): string {
     if (typeof value === 'string') return value || fallback;
@@ -191,7 +204,9 @@ function getCurrentStoreMinutes(timeZone?: string): number {
             if (Number.isFinite(hour) && Number.isFinite(minute)) {
                 return hour * 60 + minute;
             }
-        } catch {
+            logDecisionBlocksTimezoneFailure(new Error('invalid_decision_block_time_parts'), timeZone);
+        } catch (error) {
+            logDecisionBlocksTimezoneFailure(error, timeZone);
             // Fall back to browser time if the store timezone is invalid.
         }
     }

@@ -19,6 +19,246 @@ Current MenuList Functions retry evidence must start with `npm run verify:functi
 
 ## Fix Ledger
 
+### July 5 follow-up: Public menu Decision Blocks timezone diagnostics
+
+Status: Fixed.
+
+Public menu Decision Blocks already kept menus usable when store-timezone formatting failed by falling back to browser time and continuing to hide unavailable blocks. The remaining gap was observability: invalid store timezone data could silently degrade runtime availability filtering, making it hard to distinguish valid store-time filtering from fallback filtering.
+
+`src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx` now logs `public_menu_decision_blocks_timezone_failed` through bounded runtime diagnostics when store-time parsing falls back. Diagnostics keep only timezone presence-length metadata, window availability, and normalized source error metadata. Valid store-time availability filtering, block labels, block ordering, and click analytics remain unchanged; failed timezone parsing adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. `scripts/verification/verify-public-business-truth.js` now requires the failure code, bounded context, one-per-session guard, client-menu docs parity, and absence of the old silent timezone fallback.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid public menu Decision Blocks store-time availability filtering, block labels, block ordering, click analytics, Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is public menu Decision Blocks diagnostic hardening only.
+
+### July 5 follow-up: Public menu footer freshness diagnostics
+
+Status: Fixed.
+
+Public menu footer metadata already hid malformed freshness values from customers, but the `data-last-updated` attribute still called `toISOString()` through the render path and could throw if stored publish metadata resolved to an invalid Date. The remaining observability gap was silent relative-date fallback when malformed `lastPublishedAt` values made the footer omit freshness text.
+
+`src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx` now resolves footer timestamps through guarded helpers before rendering visible freshness text or machine-readable ISO metadata. Invalid or malformed timestamps omit unverified freshness text and log bounded `public_menu_footer_freshness_relative_failed` / `public_menu_footer_freshness_iso_failed` diagnostics. Diagnostics keep only timestamp type, toDate/date booleans, failure type, window availability, and normalized source error metadata. Valid update-date display and menu version display remain unchanged; malformed freshness metadata adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. `scripts/verification/verify-public-business-truth.js` now requires the failure codes, guarded timestamp helpers, safe `data-last-updated` rendering, client-menu docs parity, and absence of the old unguarded ISO conversion and silent timestamp catch.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid public menu footer update-date display, menu version display, footer actions, feedback/review links, analytics writes, Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is public menu footer freshness resilience and diagnostic hardening only.
+
+### July 5 follow-up: Public menu feedback nudge storage diagnostics
+
+Status: Fixed.
+
+Public menu feedback nudges already kept feedback/review links usable when tab-scoped session de-dupe storage failed. The remaining gap was observability: blocked, full, unavailable, or malformed browser sessionStorage could silently skip the once-per-session guard for the inline feedback nudge.
+
+`src/components/templates/main-app/projects/b2cView/output/FeedbackNudge.tsx` now logs `public_menu_feedback_nudge_storage_read_failed` and `public_menu_feedback_nudge_storage_write_failed` through bounded runtime diagnostics when the browser-local session guard falls back. The diagnostic keeps only session-key and project-id presence-length metadata, operation, window availability, and normalized source error metadata. Valid nudge timing, scroll-depth triggering, feedback links, review links, and submitted feedback behavior remain unchanged; failed storage adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. `scripts/verification/verify-public-business-truth.js` now requires the failure codes, bounded context, one-per-operation guard, client-menu and Guest Feedback docs parity, and absence of the old silent sessionStorage catches.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid public menu feedback nudge timing, scroll-depth behavior, feedback/review links, submitted feedback payloads, analytics writes, Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is public menu feedback-nudge diagnostic hardening only.
+
+### July 5 follow-up: Public menu language preference storage diagnostics
+
+Status: Fixed.
+
+Public menu language selection already kept the menu usable when project-scoped language preference storage failed. The remaining gap was observability: blocked or malformed browser localStorage could silently skip restored or persisted language preferences, leaving only the current in-memory language state.
+
+`src/components/templates/main-app/projects/b2cView/output/MenuLanguageSwitcher.tsx` now logs `public_menu_language_storage_read_failed` and `public_menu_language_storage_write_failed` through bounded runtime diagnostics when project-scoped language preference storage falls back. The diagnostic keeps only storage-key and active-language presence-length metadata, project language count, restore setting, window availability, and normalized source error metadata. Valid language selection, valid stored-language restoration, route `?lang=` behavior, menu rendering, and breadcrumb language preservation remain unchanged; failed storage adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. `scripts/verification/verify-public-business-truth.js` now requires the failure codes, bounded context, one-per-operation guard, client-menu docs parity, and absence of the old silent localStorage catches.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid public menu language selection, route `?lang=` behavior, language dropdown rendering, breadcrumb language preservation, analytics writes, Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is public menu language-preference diagnostic hardening only.
+
+### July 5 follow-up: Public menu breadcrumb language preservation diagnostics
+
+Status: Fixed.
+
+Public menu breadcrumbs already kept navigation usable when current-language preservation failed. The remaining gap was observability: if parsing the current localized URL failed, Business/Outlet breadcrumb navigation could silently drop the current `?lang=` context and send the customer to the destination default language.
+
+`src/app/client/[[...slug]]/MenuBreadcrumb.tsx` now logs `public_menu_breadcrumb_language_preserve_failed` through bounded runtime diagnostics when breadcrumb language preservation falls back to the original href. The diagnostic keeps only breadcrumb href and current URL presence-length metadata, window availability, and normalized source error metadata. Valid breadcrumb links, valid `?lang=` preservation, menu rendering, and OBP routing remain unchanged; failed preservation adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. `scripts/verification/verify-public-business-truth.js` now requires the failure code, bounded context, one-per-session guard, client-menu docs parity, and absence of the old silent breadcrumb fallback.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid public menu breadcrumb URLs, selected-language persistence, public menu rendering, OBP routing, analytics writes, Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is public menu breadcrumb diagnostic hardening only.
+
+### July 5 follow-up: OBP resolved surface fallback diagnostics
+
+Status: Fixed.
+
+OBP resolved-surface rendering already kept public pages usable when timezone/day-key resolution, Google Maps embed URL parsing, or modified-on freshness timestamp parsing failed. The remaining gap was observability: those fallbacks could hide wrong today-hour context, missing map embeds, or missing freshness text without a stable diagnostic.
+
+`src/app/client/obp/OBPResolvedSurface.tsx` now logs `public_obp_today_day_key_timezone_failed`, `public_obp_google_maps_embed_url_parse_failed`, and `public_obp_freshness_timestamp_parse_failed` through bounded runtime diagnostics for those render fallback paths. The diagnostic keeps only time-zone, Google Maps URL, and modified-on value-type presence-length metadata plus normalized source error metadata. Valid hours display, valid map embed output, valid freshness text, and fallback display behavior remain unchanged; failed parsing adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. `scripts/verification/verify-public-business-truth.js` now requires the failure codes, bounded context, one-per-code guard, OBP docs parity, invalid-date handling, and absence of the old silent render fallbacks.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid OBP hours, map embed, freshness, language, action, analytics, Firestore read/write, Storage, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is public OBP render diagnostic hardening only.
+
+### July 5 follow-up: OBP language switch attribution diagnostics
+
+Status: Fixed.
+
+OBP language switch links already preserved source and UTM attribution when URL parsing succeeded, and already kept the language switch usable by returning the generated language URL when preservation failed. The remaining gap was observability: losing `entry_source` or UTM preservation on malformed language URLs could be silent.
+
+`src/app/client/obp/OBPLanguageSwitcher.tsx` now logs `obp_language_switcher_attribution_preserve_failed` through bounded analytics diagnostics when attribution preservation falls back to the generated language URL. The diagnostic keeps only base URL, language code, and generated language URL presence-length metadata, attribution parameter count, search-param presence, and normalized source error metadata. Valid language links, valid attribution preservation, language rendering, and analytics event shapes remain unchanged; failed preservation adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. `scripts/verification/verify-public-business-truth.js` now requires the failure code, bounded context, one-per-session guard, OBP docs parity, and absence of the old silent language-link fallback.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid OBP language switch URLs, attribution parameter preservation on valid URLs, public language rendering, OBP analytics writes, Firestore reads/writes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is public OBP language-link diagnostic hardening only.
+
+### July 5 follow-up: Analytics source attribution URL diagnostics
+
+Status: Fixed.
+
+`withAnalyticsSource()` already kept public and owner link flows moving when URL parsing failed by manually appending the encoded `entry_source` value. That fallback was correct for customer flow continuity, but the parse-fallback path was silent across menu share, OBP CTA, QR, mobile share, communication-kit, and owner link surfaces.
+
+`src/lib/analytics/sourceAttribution.ts` now logs `analytics_source_attribution_url_parse_failed` through bounded analytics diagnostics when URL parsing falls back to manual source attribution. The diagnostic keeps only source URL and entry-source presence-length metadata, absolute/relative URL shape, query/hash booleans, a capped per-shape reporting guard, and normalized source error metadata. Valid source-attribution output, manual fallback output, link navigation, analytics event shapes, and existing write paths remain unchanged; failed URL parsing adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. `scripts/verification/verify-public-business-truth.js` now requires the failure code, bounded context, diagnostic cap, analytics docs parity, and absence of the old silent parse fallback.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: generated share URLs on valid inputs, malformed-input manual `entry_source` fallback behavior, analytics queueing, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is shared analytics source-attribution diagnostic hardening only.
+
+### July 5 follow-up: Tenant sitemap read diagnostics
+
+Status: Fixed.
+
+Tenant sitemap generation already failed closed when master-store lookup, project-summary parsing, or outlet-summary/read lookup failed. That preserved public output safety, but the degraded discovery state could be silent, making missing tenant sitemap entries harder to diagnose.
+
+`src/app/client/sitemap.ts` now logs `tenant_sitemap_master_store_lookup_failed`, `tenant_sitemap_projects_lookup_failed`, and `tenant_sitemap_outlets_lookup_failed` through bounded sitemap diagnostics for those degraded lookup paths. The diagnostic keeps only failure code, failure type, subdomain/custom-domain/store/master-store/tenant presence-length metadata, and normalized source error name. Valid sitemap generation, public truth indexability gates, tenant routing, slug normalization, and fallback return values remain unchanged; failed sitemap lookups add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. `scripts/verification/verify-public-business-truth.js` and `scripts/verification/verify-url-routing-boundary.js` now require the failure codes, bounded context, docs parity, path-segment boundary, and absence of the old silent lookup catches.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `node --check scripts/verification/verify-url-routing-boundary.js`, `npm run verify:public-business-truth`, `npm run verify:url-routing-boundary`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid tenant sitemap output, OBP/menu sitemap inclusion rules, public truth indexing, slug normalization, tenant routing, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is tenant sitemap diagnostic hardening only.
+
+### July 5 follow-up: Public menu/OBP canonical URL diagnostics
+
+Status: Fixed.
+
+Public metadata already protected tenants from stale or cross-host stored canonical URLs: malformed values or host mismatches fall back to the generated current public URL. The remaining gap was observability. A malformed stored canonical URL could be ignored silently, making OBP SEO/canonical drift harder to diagnose.
+
+`src/app/client/[[...slug]]/page.tsx` now logs `public_menu_resolution_canonical_url_parse_failed` through the existing bounded public menu resolution diagnostics when a stored canonical URL cannot be parsed. The diagnostic keeps only tenant/store/slug/canonical-url presence-length metadata plus normalized source error metadata. Valid stored canonical URLs, generated fallback canonical URLs, public routing, metadata output, and the host allowlist policy remain unchanged; failed canonical parsing creates no Firestore write, analytics write, Storage operation, Cloud Function, cache invalidation, rule, index, or deployment requirement. `scripts/verification/verify-public-business-truth.js` now requires the failure code, bounded canonical metadata, metadata call-site context, docs parity, and direct-console bans.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid public menu/OBP metadata, canonical output for valid stored values, generated canonical fallback output, public routing, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is public metadata diagnostic hardening only.
+
+### July 5 follow-up: Customer App install detection and URL intent diagnostics
+
+Status: Fixed.
+
+The Customer App PWA layer already failed closed when browser install-mode APIs or URL intent parsing failed. The remaining gap was observability: `detectInstalled()`, shortcut `entry_source` parsing, and direct-install `pwa` intent parsing returned false/null silently, making unsupported browser APIs or malformed install/shortcut URLs hard to distinguish from ordinary non-installed/non-intent visits.
+
+`src/lib/pwa/installDetection.ts`, `src/lib/pwa/shortcutSourceDetector.ts`, and `src/lib/pwa/visitCounter.ts` now log `customer_app_install_detection_failed`, `customer_app_shortcut_source_parse_failed`, and `customer_app_direct_install_intent_parse_failed` through bounded Customer App PWA diagnostics once per failure path. The diagnostic keeps only browser capability booleans or URL search presence-length metadata plus normalized source error metadata. Valid install prompt eligibility, valid shortcut tracking, valid direct-install intent behavior, existing analytics writes, and existing fail-closed return values remain unchanged; failed detection/parsing creates no fallback Firestore write, analytics write, Storage operation, Cloud Function, cache invalidation, rule, index, or deployment requirement. `scripts/verification/verify-customer-app-pwa.js` now requires the diagnostic codes, one-per-path guards, bounded context, direct-console bans, docs parity, and absence of the old silent fail-closed catches.
+
+Validation: `node --check scripts/verification/verify-customer-app-pwa.js`, `npm run verify:customer-app-pwa`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid Customer App install detection, prompt eligibility, shortcut event tracking, direct-install links, analytics event shapes, Firestore analytics writes, public analytics route validation, Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, public menu UI, and Vercel deploy execution remain unchanged. This is browser-local Customer App PWA diagnostic hardening only.
+
+### July 5 follow-up: Official Business Page server fallback diagnostics
+
+Status: Fixed.
+
+Public OBP rendering already kept the customer page usable when the menu-summary lookup, menu-resolution timeout wrapper, or tenant-store-count lookup failed. The remaining gap was observability: those fallback paths returned safe defaults silently, making menu CTA disappearance or master-brand fallback behavior harder to diagnose.
+
+`src/app/client/obp/OBPContent.tsx` now logs `public_obp_menu_info_lookup_failed`, `public_obp_menu_info_resolution_failed`, and `public_obp_store_count_lookup_failed` through bounded runtime diagnostics. The diagnostic keeps only store, tenant, tenant-type, active-special-menu, and operation presence-length metadata plus normalized source error metadata. Valid menu-summary reads, menu CTA rendering, brand/outlet routing, public cache TTL, and fallback return values remain unchanged; failed reads create no fallback Firestore write, analytics write, Storage operation, Cloud Function, cache invalidation, rule, index, or deployment requirement. `scripts/verification/verify-official-business-page-boundary.js` and `scripts/verification/verify-public-business-truth.js` now require the diagnostic codes, bounded context, direct-console bans, docs parity, and absence of the old silent fallback shapes.
+
+Validation: `node --check scripts/verification/verify-official-business-page-boundary.js`, `npm run verify:official-business-page-boundary`, `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid OBP rendering, menu CTA behavior on successful summary reads, brand/outlet routing, tenant lookup, public cache TTL, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is public OBP server fallback diagnostic hardening only.
+
+### July 5 follow-up: Compliance Pages public override-read diagnostics
+
+Status: Fixed.
+
+Public compliance pages already generated policy text from store data before reading optional owner overrides from `compliancePages/{sId}`. The fallback behavior was correct for customer safety, but the override-read failure path was silent: Firestore lookup failure rendered generated text without a stable diagnostic, making public legal-page drift or missing custom text harder to investigate.
+
+`src/app/client/compliance/CompliancePageContent.tsx` now logs `public_compliance_override_read_failed` through bounded runtime diagnostics when the override doc read fails. The diagnostic keeps only store/page/tenant-type presence-length metadata, subdomain/custom-domain presence booleans, and normalized source error metadata. Valid generated policy rendering, valid override composition, compliance API behavior, owner editor behavior, route shape, and public fallback copy remain unchanged; failed override reads create no fallback Firestore write, analytics write, Storage operation, Cloud Function, cache invalidation, rule, index, or deployment requirement. `scripts/verification/verify-compliance-pages-boundary.js` and `scripts/verification/verify-public-business-truth.js` now require the diagnostic, bounded context, direct-console bans, docs parity, and absence of the old silent Firestore fallback.
+
+Validation: `node --check scripts/verification/verify-compliance-pages-boundary.js`, `npm run verify:compliance-pages-boundary`, `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: generated policy text, owner override behavior on valid reads, compliance API behavior, desktop/mobile owner editor behavior, Firestore writes, Storage operations, Cloud Functions, Firebase deploy requirement, Vercel deploy execution, public route shape, and owner/legal approval requirements remain unchanged. This is public compliance page diagnostic hardening only.
+
+### July 5 follow-up: Customer App install de-dupe storage diagnostics
+
+Status: Fixed.
+
+The Customer App install tracker already capped `CUSTOMER_APP_INSTALLED` to one event per browser device/store when localStorage was available, and it already kept that guard browser-local without customer identity or fingerprinting. The remaining gap was observability and catch scope: blocked, full, unavailable, or malformed localStorage in the install-fired de-dupe path was either silent on availability failure or folded into a broad install-tracking catch.
+
+`src/lib/pwa/installTracker.ts` now logs `customer_app_install_dedupe_storage_unavailable`, `customer_app_install_dedupe_read_failed`, and `customer_app_install_dedupe_write_failed` through bounded Customer App PWA diagnostics once per operation. The diagnostic keeps only operation plus store/storage-key presence-length metadata and normalized source error metadata. Valid prompt-shown analytics, accepted install analytics shape, customer identity policy, and existing no-storage behavior remain unchanged; failed storage creates no fallback Firestore write, analytics document, Storage operation, Cloud Function, cache invalidation, rule, index, or deployment requirement. `scripts/verification/verify-customer-app-pwa.js` now requires the failure codes, one-per-operation guard, bounded metadata, docs parity, and absence of the old broad storage-write tracking catch.
+
+Validation: `node --check scripts/verification/verify-customer-app-pwa.js`, `npm run verify:customer-app-pwa`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid Customer App prompt eligibility, prompt-shown analytics, install detection, standalone launch detection, analytics event shapes, Firestore analytics writes, public analytics route validation, owner dashboard reads, customer identity policy, Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, public menu UI, and Vercel deploy execution remain unchanged. This is browser-local Customer App install de-dupe diagnostic hardening only.
+
+### July 5 follow-up: Customer App prompt-shown timestamp diagnostics
+
+Status: Fixed.
+
+The Customer App install tracker already stored the last prompt-shown timestamp in browser localStorage for iOS install inference only. The remaining gap was observability: blocked, full, unavailable, or malformed localStorage in that prompt-shown timestamp path was silently ignored, which made iOS install-inference input failures hard to distinguish from a prompt that was never shown.
+
+`src/lib/pwa/installTracker.ts` now logs `customer_app_prompt_shown_storage_unavailable` and `customer_app_prompt_shown_storage_write_failed` through bounded Customer App PWA diagnostics once per operation. The diagnostic keeps only operation plus store/storage-key presence-length metadata and normalized source error metadata. Valid prompt-shown analytics, prompt eligibility, install detection, standalone launch detection, and iOS install-inference success behavior remain unchanged; failed storage creates no fallback Firestore write, analytics write, Storage operation, Cloud Function, cache invalidation, rule, index, or deployment requirement. `scripts/verification/verify-customer-app-pwa.js` now requires the failure codes, one-per-operation guard, bounded metadata, docs parity, and absence of the old silent prompt-shown timestamp catch.
+
+Validation: `node --check scripts/verification/verify-customer-app-pwa.js`, `npm run verify:customer-app-pwa`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid Customer App prompt eligibility, prompt-shown analytics, install detection, standalone launch detection, iOS install inference success behavior, analytics event shapes, Firestore analytics writes, public analytics route validation, owner dashboard reads, Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, public menu UI, and Vercel deploy execution remain unchanged. This is browser-local Customer App prompt-shown timestamp diagnostic hardening only.
+
+### July 5 follow-up: Customer App prompt storage diagnostics
+
+Status: Fixed.
+
+The Customer App visit counter already kept prompt gating browser-local, used localStorage for the visit threshold and 30-day dismissal window, returned `0` when visit storage could not be trusted, and treated unreadable dismissal storage as not suppressed. The remaining gap was observability: blocked, full, unavailable, or malformed localStorage in those prompt-gate paths was silent, which made prompt eligibility/dismissal behavior harder to diagnose.
+
+`src/lib/pwa/visitCounter.ts` now logs `customer_app_prompt_storage_unavailable`, `customer_app_prompt_visit_increment_failed`, `customer_app_prompt_visit_read_failed`, `customer_app_prompt_dismissal_write_failed`, and `customer_app_prompt_dismissal_read_failed` through bounded Customer App PWA diagnostics once per operation. The diagnostic keeps only operation plus store/storage-key presence-length metadata and normalized source error metadata. Valid prompt eligibility rules, dismissal duration, install detection, existing analytics writes, and fallback behavior remain unchanged; failed storage creates no fallback Firestore write, Storage operation, Cloud Function, cache invalidation, rule, index, or deployment requirement. `scripts/verification/verify-customer-app-pwa.js` now requires the failure codes, one-per-operation guard, bounded metadata, docs parity, and absence of the old silent visit-counter catches.
+
+Validation: `node --check scripts/verification/verify-customer-app-pwa.js`, `npm run verify:customer-app-pwa`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid Customer App prompt eligibility, dismissal suppression, install detection, standalone launch detection, analytics event shapes, Firestore analytics writes, public analytics route validation, owner dashboard reads, Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, public menu UI, and Vercel deploy execution remain unchanged. This is browser-local Customer App prompt-gate diagnostic hardening only.
+
+### July 5 follow-up: Customer App open storage diagnostics
+
+Status: Fixed.
+
+The Customer App standalone detector already kept customer launches non-blocking, fired `CUSTOMER_APP_OPENED` only in standalone mode, used a `sessionStorage` guard to avoid repeated open writes inside the same tab session, and inferred iOS installs from prompt-storage evidence when native `appinstalled` was unavailable. The remaining gap was observability: blocked, full, unavailable, or malformed browser storage in the standalone-open guard and iOS prompt lookup was silently ignored.
+
+`src/lib/pwa/standaloneDetector.ts` now logs `customer_app_open_session_storage_unavailable`, `customer_app_open_session_guard_failed`, and `customer_app_ios_install_inference_storage_failed` through bounded Customer App PWA diagnostics once per operation. The diagnostic keeps only operation plus store/tenant/storage-key presence-length metadata and normalized source error metadata. Valid standalone launch detection, shortcut routing, existing analytics writes, and iOS install inference success behavior remain unchanged; failed storage creates no fallback Firestore write, Storage operation, Cloud Function, cache invalidation, rule, index, or deployment requirement. `scripts/verification/verify-customer-app-pwa.js` now requires the failure codes, one-per-operation guard, bounded metadata, and absence of the old silent standalone-detector catches.
+
+Validation: `node --check scripts/verification/verify-customer-app-pwa.js`, `npm run verify:customer-app-pwa`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid Customer App standalone launch detection, install detection, shortcut routing, analytics event shapes, Firestore analytics writes, public analytics route validation, owner dashboard reads, Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, public menu UI, and Vercel deploy execution remain unchanged. This is browser-local Customer App PWA diagnostic hardening only.
+
+### July 5 follow-up: OBP theme preference storage diagnostics
+
+Status: Fixed.
+
+The Official Business Page theme toggle already kept the customer page usable when localStorage was unavailable: it fell back to the system preference on read failure and still applied the selected light/dark display preference on write failure. The remaining gap was observability. Storage failures were silent, so blocked or full browser storage could prevent preference persistence without any bounded diagnostic.
+
+`src/app/client/obp/OBPThemeToggle.tsx` now logs `obp_theme_storage_read_failed` and `obp_theme_storage_write_failed` through `secureError()` once per operation. The diagnostic keeps only operation, storage-key presence/length, theme presence/length, and normalized error name. The toggle still applies the selected theme immediately and still creates no owner theme customization, Firestore write, analytics write, Storage operation, Cloud Function, cache invalidation, rule, index, or deployment requirement. `scripts/verification/verify-public-business-truth.js` now requires the failure codes, one-per-operation guard, bounded metadata, and absence of the old silent localStorage catches.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid OBP rendering, customer light/dark display switching, system-preference fallback, owner branding settings, analytics, Firestore reads/writes, Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, public menu UI, and Vercel deploy execution remain unchanged. This is browser-local OBP preference diagnostic hardening only.
+
+### July 5 follow-up: OBP language analytics storage diagnostics
+
+Status: Fixed.
+
+The Official Business Page analytics island already tracked OBP views with bounded failure logging, gated language analytics to multi-language OBPs, scoped adoption de-dupe to the store-local analytics day, and waited for switched language dwell before writing `obpLanguageAdoptions`. The remaining gap was the storage admission branch: a blocked, full, unavailable, or malformed `sessionStorage` read/write silently cleared `previousLanguage`, which skipped adoption tracking without any bounded diagnostic.
+
+`src/app/client/obp/OBPAnalytics.tsx` now logs `obp_analytics_language_storage` through the existing OBP analytics secure logger when the language storage read/write path fails. The diagnostic keeps only failure type, storage operation, tenant/store/language/previous-language/storage-key presence-length metadata, location/timezone booleans, and normalized error name. OBP rendering, language switching, view tracking, action tracking, and the existing dwell-based adoption write path remain unchanged; failed storage still skips unsafe adoption de-dupe and creates no fallback Firestore write. `scripts/verification/verify-public-business-truth.js` now requires the storage failure type, bounded metadata, operation context, and absence of the old silent previous-language clear.
+
+Validation: `node --check scripts/verification/verify-public-business-truth.js`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid OBP rendering, language switching, dwell timing, OBP view/action analytics, accepted analytics writes, public analytics route validation, owner dashboard reads, Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, public menu UI, and Vercel deploy execution remain unchanged. This is browser-local OBP analytics diagnostic hardening only.
+
+### July 5 follow-up: Search analytics de-dupe diagnostics
+
+Status: Fixed.
+
+The public menu search analytics path already debounced search tracking and used tab-scoped `sessionStorage` to avoid counting the same normalized search term repeatedly for the same store/project session. The remaining gap was diagnostic visibility: blocked, full, unavailable, or malformed search de-dupe storage was silently treated as "not tracked yet," so the existing accepted search counter could continue without any source-gated evidence that local de-dupe persistence had failed.
+
+`src/lib/analytics/searchDedup.ts` now logs `analytics_search_dedup_storage_unavailable`, `analytics_search_dedup_read_failed`, and `analytics_search_dedup_write_failed` through bounded analytics diagnostics. The helper still keeps public search rendering non-blocking, still de-dupes when storage is available, and still does not create a fallback Firestore write or separate search document. Diagnostic metadata is limited to operation, storage-key presence/length, stored/serialized payload presence/length, normalized-search-term presence/length, and normalized source error metadata. `scripts/verification/verify-menulist-api-tenant-safety.js` now requires those diagnostics, the one-per-operation availability guard, bounded metadata, and absence of the old silent search de-dupe catches.
+
+Validation: `node --check scripts/verification/verify-menulist-api-tenant-safety.js`, `npm run verify:menulist-api-tenant-safety`, `npx tsc --noEmit --incremental false --pretty false`, `npm run docs:check-links`, `git diff --check`, and `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: valid public search filtering, debounce timing, search-result counts, accepted search analytics writes, analytics queue coalescing, public analytics route validation, owner dashboard reads, Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, public menu UI, and Vercel deploy execution remain unchanged. This is browser-local public analytics diagnostic hardening only.
+
 ### July 5 follow-up: Server DAL session lookup diagnostics
 
 Status: Fixed.

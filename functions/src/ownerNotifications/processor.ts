@@ -37,6 +37,8 @@ const OWNER_NOTIFICATION_WHATSAPP_SEND_FAILED = 'whatsapp_send_failed';
 const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_PARSE_FAILED = 'whatsapp_response_parse_failed';
 const OWNER_NOTIFICATION_PROCESSING_FAILED = 'owner_notification_processing_failed';
 const OWNER_NOTIFICATION_ALERT_CREATE_FAILED = 'owner_notification_alert_create_failed';
+const OWNER_NOTIFICATION_LIFECYCLE_FLAG_CHECK_FAILED = 'owner_notification_lifecycle_flag_check_failed';
+const OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER = 'owner_notification_unknown_menulist_trigger';
 const MAX_OWNER_NOTIFICATION_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH = 200;
 const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 
@@ -94,7 +96,12 @@ async function isLifecycleMessagingEnabled(): Promise<boolean> {
     cachedLifecycleFlag = doc.data()?.ENABLE_LIFECYCLE_MESSAGING === true;
     cachedLifecycleFlagAt = Date.now();
     return cachedLifecycleFlag;
-  } catch {
+  } catch (error) {
+    logger.error('[OwnerNotifications] Lifecycle flag check failed, skipping owner notification', {
+      failureCode: OWNER_NOTIFICATION_LIFECYCLE_FLAG_CHECK_FAILED,
+      fallbackPolicy: 'skip_owner_notification_until_lifecycle_flag_known',
+      ...getOwnerNotificationErrorContext(error),
+    });
     return false;
   }
 }
@@ -111,6 +118,19 @@ function getOwnerNotificationEventLogContext(eventId: string): Record<string, bo
   return {
     eventIdPresent: eventId.length > 0,
     eventIdLength: eventId.length,
+  };
+}
+
+function getOwnerNotificationTriggerLogContext(triggerType: unknown): Record<string, boolean | number | string> {
+  const normalizedTriggerType = typeof triggerType === 'string'
+    ? triggerType.trim()
+    : triggerType === undefined || triggerType === null
+      ? ''
+      : String(triggerType).trim();
+  return {
+    triggerTypePresent: normalizedTriggerType.length > 0,
+    triggerTypeLength: normalizedTriggerType.length,
+    triggerTypeValueType: typeof triggerType,
   };
 }
 
@@ -532,7 +552,11 @@ export async function sendOwnerLifecycleNotification(payload: SendMessagePayload
 
   const registryEntry = getOwnerNotificationRegistryEntry('ML', payload.eventType);
   if (!registryEntry) {
-    logger.warn('[OwnerNotifications] Unknown MenuList trigger', { eventType: payload.eventType });
+    logger.warn('[OwnerNotifications] Unknown MenuList trigger skipped', {
+      failureCode: OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER,
+      fallbackPolicy: 'skip_owner_notification_without_registry_entry',
+      ...getOwnerNotificationTriggerLogContext(payload.eventType),
+    });
     return false;
   }
 
@@ -580,6 +604,12 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
   const event = snap.data() as OwnerNotificationEventDoc;
   const registryEntry = getOwnerNotificationRegistryEntry('ML', event.triggerType);
   if (!registryEntry) {
+    logger.warn('[OwnerNotifications] Unknown stored MenuList trigger skipped', {
+      failureCode: OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER,
+      fallbackPolicy: 'mark_owner_notification_skipped_without_registry_entry',
+      ...getOwnerNotificationEventLogContext(eventId),
+      ...getOwnerNotificationTriggerLogContext(event.triggerType),
+    });
     await eventRef.set({ status: 'skipped', error: 'unknown_trigger', updatedAt: Timestamp.now() }, { merge: true });
     return false;
   }

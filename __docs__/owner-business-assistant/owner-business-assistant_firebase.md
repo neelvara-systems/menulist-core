@@ -59,6 +59,8 @@ Active packet profiles:
 
 Context packets must not include an action catalog.
 
+Server packet cache diagnostics are cost-neutral. Upstash context-packet cache read/index-read/write/invalidation failures still fall back to Firestore-backed packets, skipped cache writes, empty indexes, or best-effort invalidation, but now log bounded `owner_business_assistant_packet_cache_index_read_failed`, `owner_business_assistant_packet_cache_read_failed`, `owner_business_assistant_packet_cache_write_failed`, and `owner_business_assistant_packet_cache_invalidate_failed` diagnostics. This adds no Firestore reads/writes/deletes, no Storage operations, no provider calls, no API routes, no rules, no indexes, no schema fields, no Cloud Function source changes, no owner settings, and no deploy requirement.
+
 ## Scheduler Discipline
 
 Business Health scheduled work belongs in existing consolidated MenuList scheduler discipline with bounded reads, leases, and explicit cost notes. No standalone cleanup scheduler should exist for Business Health action records because those records are no longer produced.

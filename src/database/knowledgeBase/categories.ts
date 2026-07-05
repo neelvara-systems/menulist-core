@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { collection, doc, getDoc, setDoc } from "@firebase/firestore";
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
@@ -12,6 +13,11 @@ import { updateList } from "@util/utils";
 
 const COLLECTION = DB_COLLECTIONS.KB_CATEGORIES;
 const LEGACY_CATEGORIES_DOC_ID = 'categories';
+
+type KnowledgeBaseCategorySessionLookup = {
+    failed: boolean;
+    session: Awaited<ReturnType<typeof getActiveSession>> | null;
+};
 
 export type KnowledgeBaseCategoryWriteResult = KnowledgeBaseCategoriesType['categories'][string] & {
     success: true;
@@ -39,13 +45,32 @@ const getCollectionRef = async () => {
     return collection(answerlatticeFirebaseClient, `${COLLECTION}`)
 }
 
+const resolveKnowledgeBaseCategorySession = async (operation: string): Promise<KnowledgeBaseCategorySessionLookup> => {
+    try {
+        return {
+            failed: false,
+            session: await getActiveSession(),
+        };
+    } catch (error) {
+        logAnswerlatticeFailure(
+            'answerlattice_kb_categories_session_lookup_failed',
+            error,
+            getBoundedAnswerlatticeStringContext('operation', operation),
+        );
+        return {
+            failed: true,
+            session: null,
+        };
+    }
+};
+
 const getDocRef = async () => {
-    const session = await getActiveSession().catch(() => null);
+    const { session } = await resolveKnowledgeBaseCategorySession('doc_ref');
     return doc(answerlatticeFirebaseClient, `${COLLECTION}`, getKnowledgeBaseCategoriesDocId(session?.tId, session?.sId))
 }
 
 const bumpKnowledgeBaseVersionForSession = async (reason: string, sourceId?: string) => {
-    const session = await getActiveSession().catch(() => null);
+    const { session } = await resolveKnowledgeBaseCategorySession('cache_version_bump');
     const tId = Number(session?.tId);
     const sId = Number(session?.sId);
     if (!Number.isFinite(tId) || tId <= 0 || !Number.isFinite(sId) || sId <= 0) {
@@ -106,7 +131,10 @@ export function assertKnowledgeBaseCategoriesMutationSucceeded(
 export const getCategories = async () => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession().catch(() => null);
+            const { failed: sessionLookupFailed, session } = await resolveKnowledgeBaseCategorySession('get_categories');
+            if (sessionLookupFailed) {
+                return null;
+            }
             const scopedDocId = getKnowledgeBaseCategoriesDocId(session?.tId, session?.sId);
             const docRef = doc(answerlatticeFirebaseClient, `${COLLECTION}`, scopedDocId);
             const docSnap = await getDoc(docRef);

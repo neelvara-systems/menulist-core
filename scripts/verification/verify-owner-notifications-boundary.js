@@ -161,11 +161,21 @@ function verifyCore(core, recipientResolver, whatsappChannel) {
   ].forEach((token) => assertNotIncludes(core + recipientResolver + whatsappChannel, token, 'Owner notification app notification stack'));
 }
 
-function verifyFunctionsProcessor(processor, scheduler) {
+function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpProvider, stalenessCheck) {
   [
     'FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATIONS',
     'FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION',
     'isLifecycleMessagingEnabled',
+    'OWNER_NOTIFICATION_LIFECYCLE_FLAG_CHECK_FAILED',
+    'OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER',
+    "logger.error('[OwnerNotifications] Lifecycle flag check failed, skipping owner notification'",
+    "fallbackPolicy: 'skip_owner_notification_until_lifecycle_flag_known'",
+    "logger.warn('[OwnerNotifications] Unknown MenuList trigger skipped'",
+    "fallbackPolicy: 'skip_owner_notification_without_registry_entry'",
+    "logger.warn('[OwnerNotifications] Unknown stored MenuList trigger skipped'",
+    "fallbackPolicy: 'mark_owner_notification_skipped_without_registry_entry'",
+    'getOwnerNotificationTriggerLogContext(payload.eventType)',
+    'getOwnerNotificationTriggerLogContext(event.triggerType)',
     'db.collection(DB_COLLECTIONS.STORES).doc(event.storeId).get()',
     'DB_COLLECTIONS.TENANTS',
     'encodeURIComponent(phoneNumberId)',
@@ -198,7 +208,77 @@ function verifyFunctionsProcessor(processor, scheduler) {
     'response.json()',
     'console.log',
     'console.warn',
+    "logger.warn('[OwnerNotifications] Unknown MenuList trigger', { eventType: payload.eventType });",
+    'eventType: payload.eventType',
+    'eventType: event.triggerType',
   ].forEach((token) => assertNotIncludes(processor, token, 'Functions owner notification processor'));
+
+  [
+    'MESSAGING_FLAG_CHECK_FAILED',
+    'MESSAGING_IDEMPOTENCY_CHECK_FAILED',
+    'MESSAGING_RATE_LIMIT_CHECK_FAILED',
+    'MESSAGING_RETRY_MARK_FAILED',
+    'function getMessagingBoundedStringLogContext(label: string, value: unknown)',
+    "...getMessagingBoundedStringLogContext('eventType', context.eventType)",
+    "...getMessagingBoundedStringLogContext('status', context.status)",
+    "logger.info('[Messaging] Feature disabled, skipping', getMessagingOperationLogContext({ eventType }))",
+    "logger.warn('[Messaging] No template for event', getMessagingOperationLogContext({ eventType }))",
+    "logger.error('[Messaging] Feature flag check failed, skipping send'",
+    "logger.error('[Messaging] Idempotency check failed, skipping send'",
+    "logger.error('[Messaging] Rate limit check failed, skipping send'",
+    "logger.error('[Messaging] Retry send failed while marking retry consumed'",
+    'return true;',
+  ].forEach((token) => assertIncludes(messagingEngine, token, 'Functions legacy lifecycle messaging fail-closed diagnostics'));
+
+  [
+    'return false; // Fail-open: allow send if check fails',
+    'return false; // Fail-open',
+    '} catch {\n    // Fail-open',
+    '} catch {\n    return false; // Fail-open',
+    '} catch {\n        await msgDoc.ref.update',
+    'eventType: typeof context.eventType === \'string\' ? context.eventType : String(context.eventType || \'\')',
+    'status: typeof context.status === \'string\' ? context.status : String(context.status || \'\')',
+    "logger.info('[Messaging] Feature disabled, skipping', { eventType })",
+    "logger.warn('[Messaging] No template for event', { eventType })",
+  ].forEach((token) => assertNotIncludes(messagingEngine, token, 'Functions legacy lifecycle messaging fail-open/silent paths'));
+
+  [
+    'const SMTP_MIN_PORT = 1;',
+    'const SMTP_MAX_PORT = 65535;',
+    'function parseSmtpPort(rawPort: string | undefined): number | null',
+    'if (!/^\\d+$/.test(normalizedPort)) return null;',
+    'Number.isSafeInteger(port) && port >= SMTP_MIN_PORT && port <= SMTP_MAX_PORT',
+    'const port = parseSmtpPort(process.env.SMTP_PORT);',
+    'if (!host || port === null || !user || !hasPassword)',
+    'hasPort: Boolean(String(process.env.SMTP_PORT ?? \'\').trim())',
+    'smtpPortValid: port !== null',
+    'secure: port === 465',
+  ].forEach((token) => assertIncludes(smtpProvider, token, 'Functions SMTP provider port fail-closed boundary'));
+
+  [
+    "parseInt(process.env.SMTP_PORT || '587', 10)",
+    'parseInt(process.env.SMTP_PORT',
+    "process.env.SMTP_PORT || '587'",
+    'const port = 587',
+    'SMTP_PORT ||',
+  ].forEach((token) => assertNotIncludes(smtpProvider, token, 'Functions SMTP provider must not keep implicit port fallback'));
+
+  [
+    'STALENESS_LIFECYCLE_DELIVERY_FAILED',
+    "analyticsLogger.warn('[StalenessCheck] Lifecycle message delivery failed after detection log'",
+    "failureCode: STALENESS_LIFECYCLE_DELIVERY_FAILED",
+    "eventType: 'MENU_STALE'",
+    'storeId: getAnalyticsIdContext(sId)',
+    'tenantId: getAnalyticsIdContext(storeData.tId)',
+    'referenceId: getAnalyticsIdContext(staleReferenceId)',
+    'messageLogWritten: true',
+    "fallbackPolicy: 'keep_detection_cooldown_and_continue'",
+    'error: getAnalyticsErrorContext(deliveryError)',
+  ].forEach((token) => assertIncludes(stalenessCheck, token, 'Functions staleness lifecycle delivery diagnostics'));
+
+  [
+    '} catch {\n                    // Detection cooldown remains intact even if delivery fails.',
+  ].forEach((token) => assertNotIncludes(stalenessCheck, token, 'Functions staleness lifecycle delivery silent catch'));
 }
 
 function verifyMonitor(monitor, responseHelper) {
@@ -245,7 +325,61 @@ function verifyMonitor(monitor, responseHelper) {
   ].forEach((token) => assertNotIncludes(monitor + responseHelper, token, 'Owner notification monitor client boundary'));
 }
 
-function verifyDocsAndPackage(packageJson, specDoc, implDoc, firebaseDoc, mobileDoc, helpDoc, auditDoc, changelogDoc) {
+function verifyTemplateOutputBoundaries(menuTemplate, appLifecycleTemplate, functionsLifecycleTemplate) {
+  [
+    'MAX_OWNER_NOTIFICATION_TEXT_LENGTH',
+    'MAX_OWNER_NOTIFICATION_URL_LENGTH',
+    'PUBLISH_FAILURE_OWNER_COPY',
+    'DEFAULT_PUBLISH_FAILURE_OWNER_COPY',
+    'MENU_TARGET_REJECTED',
+    'function urlValue(value: unknown): string',
+    'function publishFailureReasonText(value: unknown): string',
+    'const publishFailureReason = publishFailureReasonText(metadata.failureReason);',
+  ].forEach((token) => assertIncludes(menuTemplate, token, 'MenuList owner notification template output boundary'));
+
+  [
+    'MAX_TEMPLATE_TEXT_LENGTH',
+    'MAX_TEMPLATE_URL_LENGTH',
+    'PUBLISH_FAILURE_OWNER_COPY',
+    'DEFAULT_PUBLISH_FAILURE_OWNER_COPY',
+    'MENU_TARGET_REJECTED',
+    'function escapeHtml(value: unknown): string',
+    'function urlValue(value: unknown): string',
+    'function publishFailureReasonText(value: unknown): string',
+    'MENU_PUBLISH_FAILED',
+    'AI features such as image generation, descriptions, and translations',
+  ].forEach((token) => {
+    assertIncludes(appLifecycleTemplate, token, 'App lifecycle template output boundary');
+    assertIncludes(functionsLifecycleTemplate, token, 'Functions lifecycle template output boundary');
+  });
+
+  [
+    "textValue(metadata.failureReason, 'The public menu check failed.')",
+    "failureReason || 'The public menu check failed.'",
+    'AI-powered features',
+    '${m.publicUrl}',
+    '<a href="${publicUrl}"',
+    "const { storeName, failureReason } = meta;",
+    "${storeName || 'your business'}",
+  ].forEach((token) => {
+    assertNotIncludes(menuTemplate, token, 'MenuList owner notification template raw output boundary');
+    assertNotIncludes(appLifecycleTemplate, token, 'App lifecycle template raw output boundary');
+    assertNotIncludes(functionsLifecycleTemplate, token, 'Functions lifecycle template raw output boundary');
+  });
+}
+
+function verifyDocsAndPackage(
+  packageJson,
+  specDoc,
+  implDoc,
+  firebaseDoc,
+  mobileDoc,
+  helpDoc,
+  auditDoc,
+  changelogDoc,
+  lifecycleImplDoc,
+  lifecycleFirebaseDoc,
+) {
   [
     '"verify:owner-notifications-boundary": "node scripts/verification/verify-owner-notifications-boundary.js"',
   ].forEach((token) => assertIncludes(packageJson, token, 'package.json owner notification verifier'));
@@ -267,11 +401,19 @@ function verifyDocsAndPackage(packageJson, specDoc, implDoc, firebaseDoc, mobile
     'no realtime listener',
     'reject bodies above 8KB before event reads',
     'Dashboard load/action responses are parsed by the shared owner-notification client response helper',
+    'July 5 template-output follow-up',
+    'Arbitrary `metadata.failureReason` text is no longer printed',
+    'owner_notification_lifecycle_flag_check_failed',
+    'trigger presence/length/type metadata only',
     'Source gate: `npm run verify:owner-notifications-boundary`',
   ].forEach((token) => assertIncludes(implDoc, token, 'Owner notification implementation docs'));
 
   [
     'canonical top-level `stores/{storeId}` first',
+    'The July 5 template output boundary update adds no Firestore reads/writes/deletes',
+    'The July 5 Functions owner-notification flag/trigger diagnostics',
+    'existing attempted `ops_config/system` read',
+    'requires a scoped Firebase Functions deploy after validation',
     'Current Owner Notifications Functions retry evidence must start with `npm run verify:functions-deploy-preflight`',
     'External Certification Runbook Gate 1 against `menulist-qa`',
     'record the exact scoped target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` before retry',
@@ -312,18 +454,66 @@ function verifyDocsAndPackage(packageJson, specDoc, implDoc, firebaseDoc, mobile
     [helpDoc, 'When the feature is available:', 'Owner notification help stale availability wording'],
   ].forEach(([source, token, label]) => assertNotIncludes(source, token, label));
 
-	  [
-	    'Owner notification boundary source gate: `npm run verify:owner-notifications-boundary`',
-	    'source-only owner-notification registry/API/processor/monitor/docs gate',
-	    'Owner Notifications doc-boundary checkpoint',
-	    'Owner Notifications deploy retry doc-boundary checkpoint',
-	  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit owner notification checkpoint'));
+			  [
+			    'Owner notification boundary source gate: `npm run verify:owner-notifications-boundary`',
+			    'source-only owner-notification registry/API/processor/monitor/docs gate',
+			    'Legacy lifecycle event/status diagnostics checkpoint',
+			    'Owner-notification flag and trigger diagnostics checkpoint',
+			    'functions:verifyMenuPublish,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler',
+			    'Cloud Resource Manager HTTP 403 caller permission',
+			    'Owner notification template output boundary checkpoint',
+		    'Owner Notifications doc-boundary checkpoint',
+		    'Owner Notifications deploy retry doc-boundary checkpoint',
+		    'Lifecycle messaging fail-closed checkpoint',
+		    'SMTP port configuration fail-closed checkpoint',
+		    'Staleness lifecycle delivery diagnostics checkpoint',
+		  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit owner notification checkpoint'));
+
+			  [
+			    'Legacy Lifecycle Event/Status Diagnostics',
+			    'raw event/status strings',
+			    'Owner Notification Flag and Trigger Diagnostics',
+			    'owner_notification_lifecycle_flag_check_failed',
+			    'raw trigger text',
+			    'Owner Notifications Doc Boundary',
+		    'Owner Notifications Deploy Retry Doc Boundary',
+		    'Owner Notification Template Output Boundary',
+		    'Lifecycle Messaging Fail Closed',
+		    'SMTP Port Configuration Fail Closed',
+		    'Staleness Lifecycle Delivery Diagnostics',
+		    '`npm run verify:owner-notifications-boundary`',
+		  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog owner notification checkpoint'));
 
 	  [
-	    'Owner Notifications Doc Boundary',
-	    'Owner Notifications Deploy Retry Doc Boundary',
-	    '`npm run verify:owner-notifications-boundary`',
-	  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog owner notification checkpoint'));
+	    'Functions legacy lifecycle fail-closed follow-up',
+	    'idempotency or daily rate-limit read cannot be completed',
+	    'skips the legacy email send instead of sending optimistically',
+	    'Legacy lifecycle event/status diagnostics follow-up',
+	    'event type and delivery status values are logged as presence/length/type metadata only',
+		    'SMTP port fail-closed follow-up',
+		    '`SMTP_PORT` is missing, malformed, or outside `1..65535`',
+		    'Staleness lifecycle delivery diagnostics follow-up',
+		    'logs `STALENESS_LIFECYCLE_DELIVERY_FAILED`',
+		    'Template output boundary follow-up',
+		    'arbitrary `failureReason` strings cannot print into owner emails',
+		    'Owner-notification migration flag-read follow-up',
+		    'owner_notification_lifecycle_flag_check_failed',
+			  ].forEach((token) => assertIncludes(lifecycleImplDoc, token, 'Lifecycle messaging implementation fail-closed docs'));
+
+			  [
+			    'July 5 Functions fail-closed update',
+			    'failed idempotency and rate-limit checks add zero SMTP sends and zero `messageLogs` writes',
+			    'July 5 legacy lifecycle event/status diagnostic update',
+			    'does not add Firestore reads/writes',
+			    'July 5 owner-notification migration diagnostics update',
+			    'Stored unknown-trigger rows keep the existing single skipped-event merge',
+			    'July 5 SMTP port fail-closed update',
+		    'missing or invalid `SMTP_PORT` adds zero SMTP sends',
+		    'July 5 staleness delivery diagnostics update',
+		    'adds no Firestore reads or writes beyond the already-written staleness detection row',
+		    'July 5 template output update',
+		    'publish-health failure codes render fixed owner copy instead of arbitrary `failureReason` strings',
+		  ].forEach((token) => assertIncludes(lifecycleFirebaseDoc, token, 'Lifecycle messaging Firebase fail-closed docs'));
 }
 
 function verifyOwnerNotificationsBoundary() {
@@ -336,12 +526,20 @@ function verifyOwnerNotificationsBoundary() {
     recipientResolver: read('src/lib/owner-notifications/recipientResolver.ts'),
     whatsappChannel: read('src/lib/owner-notifications/channels/whatsapp.ts'),
     processor: read('functions/src/ownerNotifications/processor.ts'),
+    messagingEngine: read('functions/src/messaging/messagingEngine.ts'),
+    smtpProvider: read('functions/src/messaging/providers/resend.ts'),
+    stalenessCheck: read('functions/src/analytics/stalenessCheck.ts'),
     scheduler: read('functions/src/schedulers/menulistMaintenanceScheduler.ts'),
     monitor: read('src/components/templates/main-app/platform/ownerNotificationMonitor/index.tsx'),
     responseHelper: read('src/lib/ops/ownerNotificationClientResponse.ts'),
+    menuTemplate: read('src/lib/owner-notifications/templates/menulist.ts'),
+    appLifecycleTemplate: read('src/lib/messaging/templates.ts'),
+    functionsLifecycleTemplate: read('functions/src/messaging/templates.ts'),
     specDoc: read('__docs__/owner-notifications/owner-notifications_spec.md'),
     implDoc: read('__docs__/owner-notifications/owner-notifications_impl.md'),
     firebaseDoc: read('__docs__/owner-notifications/owner-notifications_firebase.md'),
+    lifecycleImplDoc: read('__docs__/lifecycle-messaging/lifecycle-messaging_impl.md'),
+    lifecycleFirebaseDoc: read('__docs__/lifecycle-messaging/lifecycle-messaging_firebase.md'),
     mobileDoc: read('__docs__/owner-notifications/owner-notifications_mobile-support.md'),
     helpDoc: read('__docs__/owner-notifications/owner-notifications_helpdoc.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
@@ -351,8 +549,9 @@ function verifyOwnerNotificationsBoundary() {
   verifyRegistryMirror(files.appRegistry, files.functionsRegistry);
   verifyOpsRoute(files.route);
   verifyCore(files.core, files.recipientResolver, files.whatsappChannel);
-  verifyFunctionsProcessor(files.processor, files.scheduler);
+  verifyFunctionsProcessor(files.processor, files.scheduler, files.messagingEngine, files.smtpProvider, files.stalenessCheck);
   verifyMonitor(files.monitor, files.responseHelper);
+  verifyTemplateOutputBoundaries(files.menuTemplate, files.appLifecycleTemplate, files.functionsLifecycleTemplate);
   verifyDocsAndPackage(
     files.packageJson,
     files.specDoc,
@@ -362,6 +561,8 @@ function verifyOwnerNotificationsBoundary() {
     files.helpDoc,
     files.auditDoc,
     files.changelogDoc,
+    files.lifecycleImplDoc,
+    files.lifecycleFirebaseDoc,
   );
 
   console.log('Owner notifications boundary verifier passed');

@@ -25,6 +25,7 @@ import { resolveHoursOutput } from "@lib/outputControl";
 import { shouldShowStarterPublicPlaceholders } from "@lib/onboarding/starterActivation";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
 import { normalizePublicOutletSlug } from "@lib/publicRouting/pathSegments";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { formatClockTime } from "@util/dateTime";
 import type { ReactNode } from "react";
 import {
@@ -98,6 +99,10 @@ const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 type OBPIconVariant = 'icons' | 'emoji';
+type OBPResolvedSurfaceFailureCode =
+    | 'public_obp_today_day_key_timezone_failed'
+    | 'public_obp_google_maps_embed_url_parse_failed'
+    | 'public_obp_freshness_timestamp_parse_failed';
 
 interface OBPIconItem {
     key: string;
@@ -108,13 +113,50 @@ interface OBPIconItem {
     placeholder?: boolean;
 }
 
+const reportedOBPResolvedSurfaceFailures = new Set<OBPResolvedSurfaceFailureCode>();
+
+const getOBPResolvedSurfaceValueType = (value: unknown): string => {
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+    if (value instanceof Date) return 'date';
+    if (typeof value === 'object' && value && typeof (value as { toDate?: unknown }).toDate === 'function') {
+        return 'timestamp_like';
+    }
+    if (typeof value === 'object' && value && typeof (value as { seconds?: unknown }).seconds === 'number') {
+        return 'seconds_like';
+    }
+    return typeof value;
+};
+
+function logOBPResolvedSurfaceFailure(
+    failureCode: OBPResolvedSurfaceFailureCode,
+    error: unknown,
+    context: {
+        timeZone?: unknown;
+        googleMapsUrl?: unknown;
+        modifiedOn?: unknown;
+    } = {},
+): void {
+    if (reportedOBPResolvedSurfaceFailures.has(failureCode)) return;
+    reportedOBPResolvedSurfaceFailures.add(failureCode);
+
+    logRuntimeFailure(failureCode, error, {
+        ...getBoundedRuntimeStringContext('timeZone', context.timeZone),
+        ...getBoundedRuntimeStringContext('googleMapsUrl', context.googleMapsUrl),
+        ...getBoundedRuntimeStringContext('modifiedOnType', getOBPResolvedSurfaceValueType(context.modifiedOn)),
+    });
+}
+
 function getTodayDayKey(timeZone: string | undefined): string {
     const tz = timeZone || 'Asia/Kolkata';
     try {
         const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' });
         const dayStr = formatter.format(new Date()).toLowerCase().slice(0, 3);
         return DAY_KEYS.includes(dayStr) ? dayStr : DAY_KEYS[new Date().getDay()];
-    } catch {
+    } catch (error) {
+        logOBPResolvedSurfaceFailure('public_obp_today_day_key_timezone_failed', error, {
+            timeZone: tz,
+        });
         return DAY_KEYS[new Date().getDay()];
     }
 }
@@ -139,7 +181,10 @@ function getSafeGoogleMapsEmbedUrl(url?: string): string | null {
         if (parsed.protocol === 'https:' && isGoogleHost && parsed.pathname.startsWith('/maps/embed')) {
             return parsed.toString();
         }
-    } catch {
+    } catch (error) {
+        logOBPResolvedSurfaceFailure('public_obp_google_maps_embed_url_parse_failed', error, {
+            googleMapsUrl: url,
+        });
         return null;
     }
     return null;
@@ -202,7 +247,17 @@ function getFreshnessText(modifiedOn: any, t: (key: string) => string): string |
         } else {
             return null;
         }
-    } catch {
+    } catch (error) {
+        logOBPResolvedSurfaceFailure('public_obp_freshness_timestamp_parse_failed', error, {
+            modifiedOn,
+        });
+        return null;
+    }
+
+    if (!Number.isFinite(date.getTime())) {
+        logOBPResolvedSurfaceFailure('public_obp_freshness_timestamp_parse_failed', new Error('invalid_modified_on'), {
+            modifiedOn,
+        });
         return null;
     }
 

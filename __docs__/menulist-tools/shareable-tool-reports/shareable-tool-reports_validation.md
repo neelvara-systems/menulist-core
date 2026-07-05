@@ -35,6 +35,7 @@ The V0 verifier checks:
 - shared encoder/decoder exists
 - hash-fragment payload is used
 - payload caps exist
+- decode diagnostics are bounded and content-free
 - safe internal href guard exists
 - no report API route exists
 - no Firestore/report storage path is introduced

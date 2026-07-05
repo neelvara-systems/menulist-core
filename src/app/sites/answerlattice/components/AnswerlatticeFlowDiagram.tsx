@@ -1,4 +1,6 @@
 import type { CSSProperties } from 'react';
+import type { IconType } from 'react-icons';
+import { LuFileText, LuImage, LuMessageSquare, LuStickyNote, LuTicket, LuVideo } from 'react-icons/lu';
 import AnswerlatticeLogoMark from './AnswerlatticeLogoMark';
 
 export type AnswerlatticeDiagramItem = {
@@ -46,18 +48,38 @@ type AnswerlatticeHeroAutomationDiagramProps = {
     className?: string;
 };
 
+type AnswerlatticeHeroAutomationSource = {
+    label: string;
+    Icon: IconType;
+    tone: string;
+    className: string;
+};
+
 const MOBILE_HUB_INPUT_PATH = 'M180 305 C180 332 180 354 180 382';
 const MOBILE_HUB_OUTPUT_PATH = 'M180 432 C180 468 180 528 180 573';
 const MOBILE_SEQUENCE_INPUT_PATH = 'M180 80 C180 245 180 320 180 380';
 const MOBILE_SEQUENCE_OUTPUT_PATH = 'M180 432 C180 500 180 610 180 700';
 
-const HERO_AUTOMATION_SOURCES = [
-    { label: 'Docs', glyph: 'D', tone: 'teal', className: 'al-hero-automation__source--docs' },
-    { label: 'Tickets', glyph: 'T', tone: 'coral', className: 'al-hero-automation__source--tickets' },
-    { label: 'Replies', glyph: 'R', tone: 'indigo', className: 'al-hero-automation__source--replies' },
-    { label: 'Notes', glyph: 'N', tone: 'green', className: 'al-hero-automation__source--notes' },
-    { label: 'Release', glyph: 'V', tone: 'amber', className: 'al-hero-automation__source--release' },
-    { label: 'Context', glyph: 'C', tone: 'blue', className: 'al-hero-automation__source--context' },
+const HERO_AUTOMATION_INPUT_PATHS = [
+    'M218 260 C306 254 382 254 458 282',
+    'M104 318 C222 306 334 300 456 290',
+    'M68 402 C186 372 318 334 458 306',
+    'M318 380 C370 350 416 324 466 310',
+    'M170 456 C282 406 374 356 468 318',
+    'M346 450 C386 402 426 354 476 322',
+];
+
+const HERO_AUTOMATION_OUTPUT_PATHS = [
+    'M548 300 C638 250 752 184 956 84',
+];
+
+const HERO_AUTOMATION_SOURCES: AnswerlatticeHeroAutomationSource[] = [
+    { label: 'Docs', Icon: LuFileText, tone: 'teal', className: 'al-hero-automation__source--docs' },
+    { label: 'Screenshots', Icon: LuImage, tone: 'blue', className: 'al-hero-automation__source--screenshots' },
+    { label: 'Recordings', Icon: LuVideo, tone: 'coral', className: 'al-hero-automation__source--recordings' },
+    { label: 'Tickets', Icon: LuTicket, tone: 'amber', className: 'al-hero-automation__source--tickets' },
+    { label: 'Replies', Icon: LuMessageSquare, tone: 'indigo', className: 'al-hero-automation__source--replies' },
+    { label: 'Notes', Icon: LuStickyNote, tone: 'green', className: 'al-hero-automation__source--notes' },
 ];
 
 const HERO_AUTOMATION_OUTPUTS = [
@@ -72,9 +94,74 @@ const HERO_AUTOMATION_OUTPUTS = [
         className: 'al-hero-automation__output--widget',
     },
     {
-        title: 'Hosted help card',
-        meta: 'Help page',
+        title: 'Hosted help',
+        meta: 'Help center',
         className: 'al-hero-automation__output--help',
+    },
+    {
+        title: 'Owner answer',
+        meta: 'Reviewed',
+        className: 'al-hero-automation__output--owner',
+    },
+    {
+        title: 'Related help',
+        meta: 'Context',
+        className: 'al-hero-automation__output--related',
+    },
+    {
+        title: 'Docs',
+        meta: 'Docs',
+        className: 'al-hero-automation__output--docs',
+    },
+    {
+        title: 'FAQ answer',
+        meta: 'FAQ',
+        className: 'al-hero-automation__output--faq',
+    },
+    {
+        title: 'Changelog',
+        meta: 'Release',
+        className: 'al-hero-automation__output--changelog',
+    },
+    {
+        title: 'Ticket fallback',
+        meta: 'Fallback',
+        className: 'al-hero-automation__output--ticket',
+    },
+    {
+        title: 'Feedback',
+        meta: 'Signals',
+        className: 'al-hero-automation__output--feedback',
+    },
+    {
+        title: 'Review queue',
+        meta: 'Owner review',
+        className: 'al-hero-automation__output--review',
+    },
+    {
+        title: 'Gaps',
+        meta: 'Coverage',
+        className: 'al-hero-automation__output--gaps',
+    },
+    {
+        title: 'Support Board',
+        meta: 'Review work',
+        className: 'al-hero-automation__output--board',
+    },
+    {
+        title: 'Workflow',
+        meta: 'Notification',
+        className: 'al-hero-automation__output--workflow',
+    },
+    {
+        title: 'Custom domain',
+        meta: 'Hosted',
+        className: 'al-hero-automation__output--domain',
+    },
+    {
+        title: 'AI context',
+        meta: 'Future',
+        className: 'al-hero-automation__output--agent',
     },
 ];
 
@@ -122,39 +209,47 @@ export function AnswerlatticeHeroAutomationDiagram({ className = '' }: Answerlat
         >
             <div className="al-hero-automation__haze" aria-hidden="true" />
             <svg className="al-hero-automation__paths" viewBox="0 0 1000 520" aria-hidden="true" focusable="false">
-                <path className="al-hero-automation__guide al-hero-automation__guide--input" d="M42 364 C150 320 226 322 314 292 C382 269 425 250 476 268" />
-                <path className="al-hero-automation__guide al-hero-automation__guide--input" d="M152 468 C240 420 310 380 366 340 C421 302 452 281 489 281" />
-                <path className="al-hero-automation__guide al-hero-automation__guide--input" d="M0 295 C118 276 228 289 336 282 C400 279 450 278 490 284" />
-                <path className="al-hero-automation__guide al-hero-automation__guide--output" d="M550 270 C612 237 653 199 725 160 C790 126 853 100 942 88" />
-                <path className="al-hero-automation__guide al-hero-automation__guide--output" d="M548 294 C630 294 687 284 759 260 C827 237 894 224 1000 228" />
-                <path className="al-hero-automation__guide al-hero-automation__guide--output" d="M536 318 C615 361 674 394 762 416 C839 435 912 440 1000 426" />
-                <path className="al-hero-automation__pulse al-hero-automation__pulse--input" pathLength={1} d="M42 364 C150 320 226 322 314 292 C382 269 425 250 476 268" />
-                <path className="al-hero-automation__pulse al-hero-automation__pulse--input al-hero-automation__pulse--delay-1" pathLength={1} d="M152 468 C240 420 310 380 366 340 C421 302 452 281 489 281" />
-                <path className="al-hero-automation__pulse al-hero-automation__pulse--output" pathLength={1} d="M550 270 C612 237 653 199 725 160 C790 126 853 100 942 88" />
-                <path className="al-hero-automation__pulse al-hero-automation__pulse--output al-hero-automation__pulse--delay-2" pathLength={1} d="M548 294 C630 294 687 284 759 260 C827 237 894 224 1000 228" />
+                {HERO_AUTOMATION_INPUT_PATHS.map((path) => (
+                    <path key={`input-guide-${path}`} className="al-hero-automation__guide al-hero-automation__guide--input" d={path} />
+                ))}
+                {HERO_AUTOMATION_OUTPUT_PATHS.map((path) => (
+                    <path key={`output-guide-${path}`} className="al-hero-automation__guide al-hero-automation__guide--output" d={path} />
+                ))}
+                <path className="al-hero-automation__pulse al-hero-automation__pulse--input" pathLength={1} d={HERO_AUTOMATION_INPUT_PATHS[0]} />
+                <path className="al-hero-automation__pulse al-hero-automation__pulse--input al-hero-automation__pulse--delay-1" pathLength={1} d={HERO_AUTOMATION_INPUT_PATHS[3]} />
+                <path className="al-hero-automation__pulse al-hero-automation__pulse--output" pathLength={1} d={HERO_AUTOMATION_OUTPUT_PATHS[0]} />
+                <path className="al-hero-automation__pulse al-hero-automation__pulse--output al-hero-automation__pulse--delay-2" pathLength={1} d={HERO_AUTOMATION_OUTPUT_PATHS[0]} />
+                <path className="al-hero-automation__pulse al-hero-automation__pulse--output al-hero-automation__pulse--delay-3" pathLength={1} d={HERO_AUTOMATION_OUTPUT_PATHS[0]} />
             </svg>
 
             <div className="al-hero-automation__target" aria-hidden="true">
                 <span className="al-hero-automation__target-shadow" />
                 <span className="al-hero-automation__target-base" />
                 <span className="al-hero-automation__target-disc">
-                    <span />
-                    <span />
-                    <span />
+                    <AnswerlatticeLogoMark
+                        height={58}
+                        idPrefix="al-hero-automation-logo"
+                        className="al-hero-automation__target-logo"
+                    />
                 </span>
-                <span className="al-hero-automation__target-orbit" />
             </div>
 
             <div className="al-hero-automation__source-layer" aria-hidden="true">
-                {HERO_AUTOMATION_SOURCES.map((source, index) => (
-                    <span
-                        key={source.label}
-                        className={`al-hero-automation__source al-hero-automation__source--${source.tone} ${source.className}`}
-                        style={cssVars({ '--al-hero-source-index': `${index}` })}
-                    >
-                        <span>{source.glyph}</span>
-                    </span>
-                ))}
+                {HERO_AUTOMATION_SOURCES.map((source, index) => {
+                    const Icon = source.Icon;
+                    return (
+                        <span
+                            key={source.label}
+                            className={`al-hero-automation__source al-hero-automation__source--${source.tone} ${source.className}`}
+                            style={cssVars({ '--al-hero-source-index': `${index}` })}
+                        >
+                            <span className="al-hero-automation__source-icon">
+                                <Icon aria-hidden="true" focusable="false" />
+                            </span>
+                            <span className="al-hero-automation__source-label">{source.label}</span>
+                        </span>
+                    );
+                })}
             </div>
 
             <div className="al-hero-automation__output-layer" aria-hidden="true">

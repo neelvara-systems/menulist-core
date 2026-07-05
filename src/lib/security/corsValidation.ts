@@ -11,7 +11,7 @@
 
 import { DASHBOARD_URL, PLATFORM_URL } from '@constant/urls';
 import { NextResponse } from 'next/server';
-import { secureLog } from './secureLogger';
+import { getBoundedSecurityStringContext, logSecurityDiagnostic } from './securityDiagnostics';
 
 const parseOrigin = (value: string | null): URL | null => {
     if (!value) return null;
@@ -65,6 +65,20 @@ const isConfiguredOriginAllowed = (origin: string, allowedOrigin: string): boole
     return sameProtocolAndPort && isHttpsSubdomain;
 };
 
+const getCorsOriginDiagnosticContext = (origin: string) => {
+    const originUrl = parseOrigin(origin);
+
+    return {
+        allowedOriginCount: ALLOWED_ORIGINS.length,
+        originHasCredentials: Boolean(originUrl?.username || originUrl?.password),
+        originHasExplicitProtocol: /^[a-z][a-z0-9+.-]*:\/\//i.test(origin),
+        originHttps: originUrl?.protocol === 'https:',
+        originHttp: originUrl?.protocol === 'http:',
+        originParseable: Boolean(originUrl),
+        ...getBoundedSecurityStringContext('origin', origin),
+    };
+};
+
 const isSameOriginRequest = (request: Request, origin: string | null): boolean => {
     const originUrl = parseOrigin(origin);
     if (!originUrl) return false;
@@ -109,10 +123,7 @@ export function validateCORSOrigin(origin: string | null): boolean {
     const isAllowed = ALLOWED_ORIGINS.some(allowedOrigin => isConfiguredOriginAllowed(origin, allowedOrigin));
 
     if (!isAllowed) {
-        secureLog('[CORS] Blocked request from unauthorized origin', {
-            origin,
-            allowedOrigins: ALLOWED_ORIGINS
-        });
+        logSecurityDiagnostic('cors_origin_blocked', getCorsOriginDiagnosticContext(origin));
     }
 
     return isAllowed;

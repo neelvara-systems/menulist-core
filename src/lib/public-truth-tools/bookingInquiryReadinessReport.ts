@@ -51,9 +51,9 @@ function isLikelyPhoneNumber(value: string): boolean {
   return digits.length >= 8 && digits.length <= 15;
 }
 
-function isValidActionDestination(value: string): boolean {
+function isValidActionDestination(value: string, diagnosticSource = 'booking_inquiry_action_destination'): boolean {
   if (!value) return false;
-  if (isValidHttpUrl(value)) return true;
+  if (isValidHttpUrl(value, diagnosticSource)) return true;
   if (/^tel:/i.test(value) || /^mailto:/i.test(value) || /^whatsapp:\/\//i.test(value)) return true;
   return isLikelyPhoneNumber(value);
 }
@@ -189,7 +189,7 @@ export function buildBookingInquiryReadinessReport(input: BookingInquiryReadines
   const validDestination = isValidActionDestination(actionLinkOrNumber);
   const unclearDestination = hasDestination && !validDestination;
   const hasCustomerLink = publicUrl.length > 0;
-  const validCustomerLink = isValidHttpUrl(publicUrl);
+  const validCustomerLink = isValidHttpUrl(publicUrl, 'booking_inquiry_public_url');
   const responseExpectation = input.responseTimeShown || hasResponseTimeHint(actionText);
   const hoursContext = input.hoursShown || hasHoursHint(actionText);
   const fallbackContact = input.fallbackContactShown || hasFallbackContactHint(actionText);

@@ -2,11 +2,12 @@
 
 import Script from 'next/script';
 
-const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID || 'sc0tsmzg6b';
+const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID?.trim() || '';
+const isConfiguredClarityId = /^[a-z0-9]+$/i.test(CLARITY_ID);
 
 export default function ClarityAnalytics() {
   if (process.env.NODE_ENV === 'development') return null;
-  if (!CLARITY_ID) return null;
+  if (!isConfiguredClarityId) return null;
 
   return (
     <Script id="clarity-analytics" strategy="afterInteractive">

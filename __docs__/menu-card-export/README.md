@@ -135,6 +135,7 @@ Firebase cost decision:
 - Export history is local to the browser/device.
 - Server persistence/export-storage API routes are intentionally not added in the default implementation to protect Firebase cost.
 - The AI layout suggestion is a separate owner-click route, available only to Pro/Premium subscriptions and blocked before provider call for other plans.
+- AI layout suggestion provider-response parsing is fail-closed and bounded. Empty, malformed non-object, or malformed object-fragment provider JSON logs capped `menu_card_design_advisor_provider_response_parse_failed` diagnostics with fixed `return_layout_suggestion_failed` policy and response-shape metadata only, then returns the existing owner-safe suggestion failure without consuming credits. Raw provider response text, menu/source content, warnings, project/store/tenant/user IDs, source hashes, response preview text, and exception text are not logged.
 
 ---
 

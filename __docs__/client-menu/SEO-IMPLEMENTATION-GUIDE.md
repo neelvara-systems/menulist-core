@@ -11,6 +11,7 @@ This document tracks current public-menu and Official Business Page SEO/runtime 
 - Implemented: tenant metadata, canonical URLs, schema.org JSON-LD, platform and tenant sitemaps, robots policies, public truth indexability gates, and owner SEO settings.
 - Conditional only: review/rating schema, event schema, API v2/OpenAPI, generic discovery feeds, and Core Web Vitals certification.
 - Current release approval remains controlled by the production-readiness audit and the External Certification Runbook, not this guide.
+- Tenant sitemap read diagnostics are observability-only: master-store, project-summary, and outlet-summary/read failures log bounded `tenant_sitemap_master_store_lookup_failed`, `tenant_sitemap_projects_lookup_failed`, and `tenant_sitemap_outlets_lookup_failed` diagnostics while preserving the existing safe null/empty sitemap fallback.
 
 ---
 

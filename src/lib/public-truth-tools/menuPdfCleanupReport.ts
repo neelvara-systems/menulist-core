@@ -124,7 +124,7 @@ export function buildMenuPdfCleanupReport(input: MenuPdfCleanupInput): MenuPdfCl
   const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
   const sourcePresent = hasPdfReference(input, pdfReference);
   const hasCustomerLink = currentCustomerLink.length > 0;
-  const validCustomerLink = isValidHttpUrl(currentCustomerLink);
+  const validCustomerLink = isValidHttpUrl(currentCustomerLink, 'menu_pdf_cleanup_current_customer_link');
   const replacementDependencyClear = input.oldVersionsRemoved && !input.qrOrPrintStillUsesPdf;
 
   const checks: MenuPdfCleanupItem[] = [

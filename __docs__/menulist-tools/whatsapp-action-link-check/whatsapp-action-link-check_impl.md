@@ -1,7 +1,7 @@
 # WhatsApp Action Link Check - Implementation Plan
 
 **Status:** Implemented - V0 public browser-local checker
-**Last Updated:** July 4, 2026
+**Last Updated:** July 5, 2026
 **Audience:** Developers and future maintainers
 
 ---
@@ -111,6 +111,8 @@ Every `WhatsAppActionLinkItem` includes `evidenceText: string`.
 
 The code must never claim the WhatsApp account works or that a message was delivered.
 
+Malformed WhatsApp link parsing remains a local invalid-link fallback. `src/lib/public-truth-tools/whatsappActionLinkReport.ts` logs capped `whatsapp_action_link_url_parse_failed` diagnostics with candidate length, protocol presence, WhatsApp-scheme/host booleans, and fixed `treat_as_invalid_whatsapp_link` fallback policy only. It must not log raw WhatsApp links, phone numbers, suggested messages, customer links, report rows, generated preview links, or parser exception text.
+
 ---
 
 ## 5. Public Route Rules
@@ -197,6 +199,7 @@ Do not create a standalone WhatsApp dashboard for V1.
 - no report API route exists
 - no WhatsApp send/open runtime exists
 - no external URL fetch exists
+- malformed WhatsApp URL parsing uses capped diagnostics with no raw link or message content
 - locales exist in `en-US` and `hi-IN`
 - discovery policy, sitemap, `llms.txt`, and `llms-full.txt` include the public route
 

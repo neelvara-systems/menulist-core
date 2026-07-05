@@ -5,7 +5,7 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
 import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
-import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
+import { getAnswerlatticeScopeLogContext, getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
 import { revalidateAnswerlatticePublicClientCache } from "@lib/cache/answerlatticePublicClientCache";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -34,6 +34,10 @@ type ArticleFaqMaintenanceScope = {
     sId?: number;
 };
 
+type KnowledgeBaseArticleSessionLookup = {
+    session: Awaited<ReturnType<typeof getActiveSession>> | null;
+};
+
 const getCollectionRef = async () => {
     return collection(answerlatticeFirebaseClient, `${COLLECTION}`)
 }
@@ -42,6 +46,23 @@ const getDocRef = async (docId: string) => {
     return doc(answerlatticeFirebaseClient, `${COLLECTION}`, docId)
 }
 
+const resolveKnowledgeBaseArticleSession = async (operation: string): Promise<KnowledgeBaseArticleSessionLookup> => {
+    try {
+        return {
+            session: await getActiveSession(),
+        };
+    } catch (error) {
+        logAnswerlatticeFailure(
+            'answerlattice_kb_articles_session_lookup_failed',
+            error,
+            getBoundedAnswerlatticeStringContext('operation', operation),
+        );
+        return {
+            session: null,
+        };
+    }
+};
+
 const resolveArticleScope = async (data?: Partial<KnowledgeBaseArticleType> | null) => {
     const dataTId = Number(data?.tId);
     const dataSId = Number(data?.sId);
@@ -49,7 +70,7 @@ const resolveArticleScope = async (data?: Partial<KnowledgeBaseArticleType> | nu
         return { tId: dataTId, sId: dataSId };
     }
 
-    const session = await getActiveSession().catch(() => null);
+    const { session } = await resolveKnowledgeBaseArticleSession('resolve_article_scope');
     const sessionTId = Number(session?.tId);
     const sessionSId = Number(session?.sId);
     if (Number.isFinite(sessionTId) && sessionTId > 0 && Number.isFinite(sessionSId) && sessionSId > 0) {
@@ -60,7 +81,7 @@ const resolveArticleScope = async (data?: Partial<KnowledgeBaseArticleType> | nu
 };
 
 const resolveReadableArticleScope = async (): Promise<ReadableArticleScope> => {
-    const session = await getActiveSession().catch(() => null);
+    const { session } = await resolveKnowledgeBaseArticleSession('resolve_readable_article_scope');
     const tId = Number(session?.tId);
     const sId = Number(session?.sId);
     return {
@@ -549,17 +570,16 @@ export const updateArticleFeedback = async (articleId: string, type: 'like' | 'd
 /**
  * Async entity extraction trigger. Called after addArticle/updateArticle.
  * Uses dynamic imports to avoid circular dependencies.
- * Failure is silently logged — never interrupts article operations.
+ * Failure is logged with bounded diagnostics and never interrupts article operations.
  */
 function _triggerEntityExtraction(article: KnowledgeBaseArticleType): void {
     // Dynamic imports to avoid circular deps + keep bundle lean when flag OFF
     Promise.all([
         import('@config/features'),
-        import('@lib/auth/getActiveSession'),
-    ]).then(async ([{ FEATURE_FLAGS }, { default: getActiveSession }]) => {
+    ]).then(async ([{ FEATURE_FLAGS }]) => {
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ONTOLOGY) return;
 
-        const session = await getActiveSession().catch(() => null);
+        const { session } = await resolveKnowledgeBaseArticleSession('entity_extraction_trigger');
         if (!session?.tId || !session?.sId) return;
 
         const response = await fetch('/api/answerlattice/articles/extract-entities', {

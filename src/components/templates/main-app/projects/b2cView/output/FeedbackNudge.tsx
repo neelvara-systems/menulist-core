@@ -17,7 +17,11 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { normalizeOBPReviewUrl } from '@lib/obp/publicLinks';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { MenuMoodConfig } from '../designSystem';
+
+type FeedbackNudgeStorageOperation = 'read' | 'write';
 
 interface FeedbackNudgeProps {
     /** Project ID for feedback link */
@@ -33,6 +37,30 @@ interface FeedbackNudgeProps {
 const SESSION_KEY_PREFIX = 'ml_feedback_nudge_';
 const SHOW_DELAY_MS = 18000; // 18 seconds
 const SCROLL_THRESHOLD = 0.55; // 55% scroll depth
+const reportedFeedbackNudgeStorageFailures = new Set<FeedbackNudgeStorageOperation>();
+
+function logFeedbackNudgeStorageFailure(
+    operation: FeedbackNudgeStorageOperation,
+    error: unknown,
+    context: {
+        sessionKey: string;
+        projectId: string;
+    },
+): void {
+    if (reportedFeedbackNudgeStorageFailures.has(operation)) return;
+    reportedFeedbackNudgeStorageFailures.add(operation);
+
+    const failureCode = operation === 'read'
+        ? 'public_menu_feedback_nudge_storage_read_failed'
+        : 'public_menu_feedback_nudge_storage_write_failed';
+
+    logRuntimeFailure(failureCode, error, {
+        operation,
+        ...getBoundedRuntimeStringContext('sessionKey', context.sessionKey),
+        ...getBoundedRuntimeStringContext('projectId', context.projectId),
+        hasWindow: typeof window !== 'undefined',
+    });
+}
 
 export default function FeedbackNudge({
     projectId,
@@ -46,23 +74,25 @@ export default function FeedbackNudge({
     const hasTriggeredRef = useRef(false);
 
     const sessionKey = `${SESSION_KEY_PREFIX}${projectId}`;
+    const safeReviewUrl = normalizeOBPReviewUrl(reviewUrl);
 
     // Check if already shown this session
     const wasShownThisSession = useCallback(() => {
         try {
             return sessionStorage.getItem(sessionKey) === '1';
-        } catch {
+        } catch (error) {
+            logFeedbackNudgeStorageFailure('read', error, { sessionKey, projectId });
             return false;
         }
-    }, [sessionKey]);
+    }, [projectId, sessionKey]);
 
     const markAsShown = useCallback(() => {
         try {
             sessionStorage.setItem(sessionKey, '1');
-        } catch {
-            // sessionStorage not available
+        } catch (error) {
+            logFeedbackNudgeStorageFailure('write', error, { sessionKey, projectId });
         }
-    }, [sessionKey]);
+    }, [projectId, sessionKey]);
 
     const showNudge = useCallback(() => {
         if (hasTriggeredRef.current || wasShownThisSession()) return;
@@ -148,9 +178,9 @@ export default function FeedbackNudge({
             <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
                 {/* Positive → Google review (if URL set) or feedback form */}
                 <a
-                    href={reviewUrl || `/feedback/${projectId}?source=menu_footer`}
-                    target={reviewUrl ? '_blank' : '_self'}
-                    rel={reviewUrl ? 'noopener noreferrer' : undefined}
+                    href={safeReviewUrl || `/feedback/${projectId}?source=menu_footer`}
+                    target={safeReviewUrl ? '_blank' : '_self'}
+                    rel={safeReviewUrl ? 'noopener noreferrer' : undefined}
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',

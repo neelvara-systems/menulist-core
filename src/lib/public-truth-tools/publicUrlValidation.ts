@@ -1,5 +1,50 @@
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+
+const MAX_PUBLIC_TRUTH_URL_PARSE_DIAGNOSTICS = 25;
+
+const reportedPublicTruthUrlParseFailures = new Set<string>();
+
 function hasExplicitProtocol(value: string): boolean {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
+}
+
+function getPublicTruthUrlValueKind(value: unknown): string {
+  if (value === undefined) return 'undefined';
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+function logPublicTruthUrlParseFailure(
+  error: unknown,
+  value: unknown,
+  candidate: string,
+  diagnosticSource: string,
+): void {
+  if (diagnosticSource === 'unknown') return;
+
+  const valueKind = getPublicTruthUrlValueKind(value);
+  const valueLength = typeof value === 'string' ? value.trim().length : 0;
+  const failureKey = [
+    diagnosticSource,
+    valueKind,
+    valueLength,
+    candidate.length,
+    hasExplicitProtocol(candidate) ? 'explicit-protocol' : 'implicit-protocol',
+  ].join(':');
+
+  if (reportedPublicTruthUrlParseFailures.has(failureKey)) return;
+  if (reportedPublicTruthUrlParseFailures.size >= MAX_PUBLIC_TRUTH_URL_PARSE_DIAGNOSTICS) return;
+  reportedPublicTruthUrlParseFailures.add(failureKey);
+
+  logRuntimeFailure('public_truth_tool_url_parse_failed', error, {
+    diagnosticSource,
+    valueKind,
+    valueStringLength: valueLength,
+    candidateLength: candidate.length,
+    candidateHasExplicitProtocol: hasExplicitProtocol(candidate),
+    fallbackPolicy: 'treat_as_missing_public_url',
+  });
 }
 
 export function getUrlWithPublicHttpsProtocol(value: string): string {
@@ -38,20 +83,22 @@ export function isPublicHttpsHostname(hostname: string): boolean {
   return normalized.includes('.');
 }
 
-export function parsePublicHttpsUrl(value: string): URL | null {
+export function parsePublicHttpsUrl(value: string, diagnosticSource = 'unknown'): URL | null {
   if (!value) return null;
+  const candidate = getUrlWithPublicHttpsProtocol(value);
 
   try {
-    const url = new URL(getUrlWithPublicHttpsProtocol(value));
+    const url = new URL(candidate);
     if (url.protocol !== 'https:') return null;
     if (url.username || url.password) return null;
     if (!isPublicHttpsHostname(url.hostname)) return null;
     return url;
-  } catch {
+  } catch (error) {
+    logPublicTruthUrlParseFailure(error, value, candidate, diagnosticSource);
     return null;
   }
 }
 
-export function isPublicHttpsUrl(value: string): boolean {
-  return Boolean(parsePublicHttpsUrl(value));
+export function isPublicHttpsUrl(value: string, diagnosticSource = 'unknown'): boolean {
+  return Boolean(parsePublicHttpsUrl(value, diagnosticSource));
 }

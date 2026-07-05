@@ -37,6 +37,8 @@ functions/src/
 └── decisionBlocksScoring.ts          # Unified timezone-aware scheduler
 ```
 
+Scheduler-hour timezone diagnostics (July 5, 2026): `src/lib/utils/schedulerHour.ts` and `functions/src/utils/schedulerHour.ts` keep the UTC settlement-hour fallback when a configured timezone is malformed, but that degraded path now logs bounded diagnostics. App code emits `scheduler_hour_timezone_validation_failed`; Functions emits `SCHEDULER_HOUR_TIMEZONE_VALIDATION_FAILED`. Both paths cap repeated failure shapes and log only timezone presence-length metadata, target local hour, Intl availability, fixed `use_utc_settlement_hour` fallback policy, and normalized source error metadata.
+
 ## Owner Dashboard Parity
 
 - Desktop and mobile owner analytics use the same tab labels and the same menu-detail section builder: `Menu Signals`, `Visitor Sources`, `Campaign Tracking`, `Top Items`, `Categories`, `Customer Actions`, `Search Demand`, `Unavailable Interest`, `Languages`, `Filters`, and `Smart Picks`.
@@ -131,6 +133,8 @@ useEffect(() => {
 - Fires once per unique search term per session
 - Never writes on each keystroke
 - Zero-result searches are preserved because they are decision-grade
+- Failed search de-dupe `sessionStorage` availability/read/write paths log bounded `analytics_search_dedup_*` diagnostics with presence-length metadata only
+- If storage is unavailable, full, blocked, or malformed, search remains non-blocking and no fallback Firestore write or separate search document is created
 
 ### Unavailable Item Demand
 
@@ -169,6 +173,7 @@ const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'rese
 - The same tracking path is reused in the footer and unavailable-item PDP recovery actions; zero-result search now stays retrieval-only and does not duplicate footer CTAs
 - Writes immediately instead of waiting for the passive-event queue, because these are owner-facing conversion signals.
 - Public menu and OBP final-action links use `trackBeforeNavigate.ts` to wait up to 800ms for tracking on same-tab navigation while preserving modifier-click and `_blank` browser behavior. Failed tracking calls log `public_link_navigation_tracking_failed` with fixed reason labels and bounded href/target presence-length metadata only; navigation still proceeds.
+- Shared source-attribution diagnostics: `withAnalyticsSource()` still returns the same valid attributed URL when parsing succeeds and still uses the manual encoded `entry_source` fallback when parsing fails. Failed URL parsing logs `analytics_source_attribution_url_parse_failed` with source URL and entry-source presence-length metadata, URL shape booleans, and a capped per-shape reporting guard only. It creates no analytics Firestore write, event stream, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
 ### Session Milestones and Category Interest
 
@@ -183,8 +188,10 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 
 - Milestone state lives in `sessionStorage`, keyed by tenant/store/project/local date/session id.
 - Milestones are attached to existing Firestore counter writes; there is no raw event table and no extra event document.
-- If storage is unavailable, full, blocked, or malformed, normal menu/item/search/action counters still write, but milestone/source/filter de-duplication or attribution persistence is skipped.
-- Failed milestone/source/filter `sessionStorage` read/write/remove paths log bounded `analytics_session_milestones_*`, `analytics_session_source_*`, and `analytics_active_filter_*` diagnostics with storage-key and payload presence-length metadata plus small counts/booleans only.
+- If storage is unavailable, full, blocked, or malformed, normal menu/item/search/action counters still write, but milestone/source/filter/search de-duplication or attribution persistence is skipped.
+- Session ID storage diagnostics: failed anonymous session-id `sessionStorage` get/refresh/clear paths log bounded `analytics_session_get_failed`, `analytics_session_refresh_failed`, and `analytics_session_clear_failed` diagnostics with storage-key and session-value presence-length metadata only. If session lookup fails, the existing fresh anonymous session-id fallback remains browser-local and creates no fallback Firestore write.
+- Failed milestone/source/filter/search `sessionStorage` read/write/remove paths log bounded `analytics_session_milestones_*`, `analytics_session_source_*`, `analytics_active_filter_*`, and `analytics_search_dedup_*` diagnostics with storage-key and payload presence-length metadata plus small counts/booleans only.
+- OBP language-adoption de-dupe is scoped by tenant/store/store-local date in `OBPAnalytics`; failed storage read/write paths log bounded `obp_analytics_language_storage` diagnostics and create no fallback Firestore write.
 - Category interest only comes from existing item view/click events. MenuList does not track category scroll/open events.
 - Public PDP tracking resolves the stable category id/name from the project file categories before sending analytics metadata.
 - Entry source is stored in sessionStorage and attached to existing `MENU_VIEW` / `MENU_ACTION_CLICK` writes as `viewsByEntrySource`, `menuSessionsBySource`, `actionSessionsBySource`, and `menuActionClicksBySource`. This supports action-rate-by-source without a new source event stream.
@@ -289,6 +296,9 @@ export async function trackAnalyticsEvent(
 - `src/lib/analytics/analyticsDiagnostics.ts` is the shared diagnostic layer for client analytics helpers, the analytics write queue, `POST /api/public/analytics/track`, owner analytics API routes, Google Analytics report routes, ROI metrics, and the Google Analytics server helper.
 - `src/lib/analytics/unified.ts`, `device.ts`, `geo.ts`, and `session.ts` log only normalized failure codes plus bounded identifier presence/length metadata.
 - `src/lib/analytics/geo.ts` keeps browser geolocation permission denial quiet as an expected privacy outcome, but logs non-permission geolocation failures such as timeout or position unavailable through `analytics_geolocation_position_failed` before returning the same timezone fallback. The diagnostic records only fallback policy/support metadata and normalized source error name/code/status metadata.
+- Location lookup diagnostics: if the broader opt-in location helper unexpectedly fails while resolving the browser position or timezone fallback, it logs `analytics_location_lookup_failed` with geolocation/Intl availability, timezone presence/length metadata, the fixed `unknown` fallback policy, and normalized source error metadata only before returning `unknown`.
+- Shared analytics timezone diagnostics: `src/lib/analytics/timeZoneDiagnostics.ts` logs `analytics_timezone_validation_failed` when malformed configured timezones force `dateKey.ts` or `businessDay.ts` to use the existing UTC fallback. The diagnostic records only timezone/source presence-length metadata, fallback policy, window availability, and normalized source error metadata. Raw timezone values, tenant IDs, store IDs, project IDs, analytics document IDs, customer routes, dashboard date ranges, and exception text are not logged.
+- Entry-source inference diagnostics: `src/lib/analytics/unified.ts` logs `analytics_entry_source_inference_failed` when browser query/referrer parsing fails and the source-quality helper has to use the existing `direct` fallback. The diagnostic records only query/referrer presence-length metadata, browser API booleans, and normalized source error metadata. Raw query strings, referrer URLs, UTM values, tenant IDs, store IDs, project IDs, customer routes, source labels, and exception text are not logged.
 - `src/database/analytics/index.ts` uses the same bounded diagnostics for queue flush, browser-local queue persistence, persisted queue recovery, missing identity, enqueue, and summary update failures. Queue persistence failures log only phase, queue counts, serialized-payload presence/length, and normalized source error metadata; raw queued analytics payloads are not logged.
 - Public analytics route failures log `public_analytics_track_failed` with tenant/store/project presence and length metadata, update-field count, date-request presence, and source error name/code/status metadata only. They must not pass raw route exceptions or raw tenant/store/project IDs to `secureError()`.
 - Public analytics target validation must reject inactive, deleted, platform-blocked, or tenant-blocked stores before preference filtering or Admin SDK writes. The target validator reads the tenant document on 300-second cache misses only; this keeps blocked tenants from refreshing anonymous analytics while preserving the existing coalesced daily-doc write model.
@@ -446,6 +456,7 @@ STEP 9: Mark settlement completed
 - Hourly maps such as `hourlyViews`, `hourlySearches`, `hourlyMenuActionClicks`, and `hourlyClicksByItem` also use the **store-local hour**.
 - Dashboard reads (`Today so far`, `Yesterday`, WTD, MTD, historical weeks) now resolve dates in the same store-local business-day calendar instead of UTC.
 - Decision Blocks and Menu Intelligence read their 7-day analytics window from the same store-local day keys, so recommendation scoring and owner reporting use the same day boundaries.
+- If a configured timezone is malformed, the same UTC fallback remains in place so analytics never blocks public/customer or owner dashboard flows, and `analytics_timezone_validation_failed` records the degraded path with bounded metadata only.
 
 ### Additive Fields Only
 

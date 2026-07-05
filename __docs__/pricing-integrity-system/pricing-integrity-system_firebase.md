@@ -24,6 +24,8 @@
 | MOL price-change events from pricing engine | Reserved for the dormant `runPricingIntegrity()` path |
 | Cloud Function PDF worker | Not active in the current Pricing Integrity path |
 
+July 5, 2026 PDF failure reason persistence update: `markPDFFailed()` remains dormant with no current editor-save caller, but if a future caller uses the scaffold it stores only a bounded local failure code in `pricingIntegrity.pdf.lastFailureReason`. Arbitrary caller text collapses to `pricing_pdf_generation_failed`, and diagnostics keep raw input as presence/length metadata only. This adds no reads, writes, deletes, Storage operations, Cloud Functions, API routes, indexes, rules, queue behavior, public cache invalidation, owner/customer UI, or deploy requirement beyond the dormant write that already existed if the scaffold is explicitly called.
+
 ## Current Cost Claim
 
 Current incremental Pricing Integrity cost is limited to existing project-save writes, public cache revalidation, and Digital Screens content-version touches where screens are configured. There is no active background PDF queue cost.

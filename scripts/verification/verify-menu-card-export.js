@@ -125,6 +125,9 @@ const menuCardExportCollateralDocs = [
 ];
 const menuCardExportValidation = fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_validation.md'), 'utf8');
 const menuCardExportTestCases = fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_test-cases.md'), 'utf8');
+const menuCardExportFirebase = fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_firebase.md'), 'utf8');
+const productionReadinessAudit = fs.readFileSync(path.join(root, '__docs__/audits/menulist-production-readiness-audit.md'), 'utf8');
+const changelog = fs.readFileSync(path.join(root, '__docs__/changelog.md'), 'utf8');
 const physicalSurfacesReadme = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/README.md'), 'utf8');
 const physicalSurfacesCodeReview = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_code-review.md'), 'utf8');
 const physicalSurfacesValidation = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_validation.md'), 'utf8');
@@ -189,6 +192,58 @@ menuCardExportCoreDocs.forEach(({ label, content }) => {
   if (/^\*\*Status:\*\*.*[Pp]roduction-ready/m.test(content)) {
     failures.push(`${label} must not keep a production-ready status line`);
   }
+});
+[
+  {
+    label: 'Menu Card Export README',
+    content: menuCardExportCoreDocs.find((doc) => doc.label === 'Menu Card Export README')?.content || '',
+  },
+  {
+    label: 'Menu Card Export implementation',
+    content: menuCardExportCoreDocs.find((doc) => doc.label === 'Menu Card Export implementation')?.content || '',
+  },
+  {
+    label: 'Menu Card Export Firebase',
+    content: menuCardExportFirebase,
+  },
+  {
+    label: 'MenuList production-readiness audit',
+    content: productionReadinessAudit,
+  },
+  {
+    label: 'MenuList changelog',
+    content: changelog,
+  },
+].forEach(({ label, content }) => {
+  [
+    'menu_card_design_advisor_provider_response_parse_failed',
+    'return_layout_suggestion_failed',
+  ].forEach((token) => {
+    if (!content.includes(token)) failures.push(`${label} missing AI advisor provider-response parse diagnostic token: ${token}`);
+  });
+});
+[
+  'extra provider calls',
+  'AI accounting writes',
+  'credit consumption',
+  'Firebase deploy requirement',
+  'Vercel deploy action',
+].forEach((token) => {
+  if (!menuCardExportFirebase.includes(token)) failures.push(`Menu Card Export Firebase doc missing AI advisor provider-response parse cost token: ${token}`);
+});
+[
+  'Menu Card Export AI advisor provider response parse diagnostics checkpoint',
+  'no raw response preview',
+  'old silent provider JSON parse catch',
+].forEach((token) => {
+  if (!productionReadinessAudit.includes(token)) failures.push(`Production-readiness audit missing Menu Card Export AI advisor provider-response checkpoint token: ${token}`);
+});
+[
+  'Menu Card Export AI Advisor Provider Response Parse Diagnostics',
+  'no raw response preview logging',
+  'old silent parser catch exclusion',
+].forEach((token) => {
+  if (!changelog.includes(token)) failures.push(`Changelog missing Menu Card Export AI advisor provider-response checkpoint token: ${token}`);
 });
 const menuCardExportCollateralTokens = [
   'source evidence only',
@@ -1447,6 +1502,27 @@ const advisorRoute = fs.readFileSync(path.join(root, 'src/app/api/menu-card-expo
   'FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_PRINT_SHOP',
 ].forEach((token) => {
   if (!advisorRoute.includes(token)) failures.push(`AI advisor route missing token: ${token}`);
+});
+[
+  'menu_card_design_advisor_provider_response_parse_failed',
+  'MAX_MENU_CARD_DESIGN_ADVISOR_PARSE_DIAGNOSTICS',
+  'reportedMenuCardDesignAdvisorParseFailures',
+  'logMenuCardDesignAdvisorParseFailure',
+  "fallbackPolicy: 'return_layout_suggestion_failed'",
+  'candidateLength: context.candidateLength',
+  'trimmedTextLength: context.trimmedTextLength',
+  'hasObjectFragment: context.hasObjectFragment',
+  "stage: 'object_fragment'",
+  "stage: 'object_fragment_missing'",
+  "stage: 'empty_response'",
+].forEach((token) => {
+  if (!advisorRoute.includes(token)) failures.push(`AI advisor provider-response parse diagnostics missing token: ${token}`);
+});
+[
+  "} catch {\n        const firstBrace = cleaned.indexOf('{');",
+  'responseTextSummary: getPreviewText(responseText, 400)',
+].forEach((token) => {
+  if (advisorRoute.includes(token)) failures.push(`AI advisor route must not keep unsafe/silent provider-response parser token: ${token}`);
 });
 
 if (failures.length > 0) {

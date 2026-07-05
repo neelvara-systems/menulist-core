@@ -1,4 +1,5 @@
 import { getAnalyticsSettlementLocalMinutes } from '@lib/analytics/businessDay';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 
 /**
  * Scheduler Hour Utility
@@ -19,6 +20,33 @@ import { getAnalyticsSettlementLocalMinutes } from '@lib/analytics/businessDay';
  * @see __docs__/patterns/nightly-scheduler-architecture.md
  */
 
+const MAX_SCHEDULER_HOUR_TIMEZONE_DIAGNOSTICS = 25;
+const reportedSchedulerHourTimeZoneFailures = new Set<string>();
+
+function logSchedulerHourTimeZoneFallback(error: unknown, timeZone: string, targetLocalHour: number): void {
+    const failureKey = `${timeZone.length}:${targetLocalHour}`;
+    if (reportedSchedulerHourTimeZoneFailures.has(failureKey)) return;
+    if (reportedSchedulerHourTimeZoneFailures.size >= MAX_SCHEDULER_HOUR_TIMEZONE_DIAGNOSTICS) return;
+    reportedSchedulerHourTimeZoneFailures.add(failureKey);
+
+    logAnalyticsFailure('scheduler_hour_timezone_validation_failed', error, {
+        ...getBoundedAnalyticsStringContext('timeZone', timeZone),
+        fallbackPolicy: 'use_utc_settlement_hour',
+        hasIntl: typeof Intl !== 'undefined',
+        targetLocalHour,
+    });
+}
+
+function isSchedulerTimeZoneValid(timeZone: string, targetLocalHour: number): boolean {
+    try {
+        new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
+        return true;
+    } catch (error) {
+        logSchedulerHourTimeZoneFallback(error, timeZone, targetLocalHour);
+        return false;
+    }
+}
+
 /**
  * Compute the UTC hour that corresponds to the store-local analytics
  * settlement window (businessDayEndTime + buffer).
@@ -38,6 +66,7 @@ export function computeSchedulerHour(timeZone?: string, businessDayEndTime?: str
     const fallbackHour = targetLocalHour;
 
     if (!timeZone) return fallbackHour;
+    if (!isSchedulerTimeZoneValid(timeZone, targetLocalHour)) return fallbackHour;
 
     try {
         // Create a reference date and format it in the target timezone
@@ -67,7 +96,8 @@ export function computeSchedulerHour(timeZone?: string, businessDayEndTime?: str
         }
 
         return fallbackHour;
-    } catch {
+    } catch (error) {
+        logSchedulerHourTimeZoneFallback(error, timeZone, targetLocalHour);
         return fallbackHour;
     }
 }

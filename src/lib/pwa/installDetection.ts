@@ -9,6 +9,8 @@
  * - Fire CUSTOMER_APP_OPENED analytics event only on real app launches
  */
 
+import { logPwaTrackingFailure } from './pwaDiagnostics';
+
 /**
  * BeforeInstallPromptEvent — not yet in TS lib DOM types
  */
@@ -16,6 +18,19 @@ export interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
   readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
   prompt(): Promise<void>;
+}
+
+let reportedInstallDetectionFailure = false;
+
+function logInstallDetectionFailure(error: unknown): void {
+  if (reportedInstallDetectionFailure) return;
+  reportedInstallDetectionFailure = true;
+
+  logPwaTrackingFailure('customer_app_install_detection_failed', error, {
+    hasWindow: typeof window !== 'undefined',
+    hasMatchMedia: typeof window !== 'undefined' && typeof window.matchMedia === 'function',
+    hasNavigator: typeof window !== 'undefined' && Boolean(window.navigator),
+  });
 }
 
 /**
@@ -33,7 +48,8 @@ export function detectInstalled(): boolean {
     const isIOSStandalone = (window.navigator as any).standalone === true;
 
     return Boolean(isStandalone || isIOSStandalone);
-  } catch {
+  } catch (error) {
+    logInstallDetectionFailure(error);
     return false;
   }
 }

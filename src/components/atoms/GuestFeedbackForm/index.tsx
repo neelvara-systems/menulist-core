@@ -401,7 +401,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
             resetCaptcha();
 
             if (response.ok && isSuccessfulGuestFeedbackSubmitResponse(data)) {
-                const nextReviewUrl = normalizeGuestFeedbackReviewUrl(data.reviewUrl);
+                const nextReviewUrl = normalizeGuestFeedbackReviewUrl(data.reviewUrl, 'submit_response_review_url');
                 setSubmitState('success');
                 setReviewUrl(nextReviewUrl);
                 onSuccess?.(nextReviewUrl);

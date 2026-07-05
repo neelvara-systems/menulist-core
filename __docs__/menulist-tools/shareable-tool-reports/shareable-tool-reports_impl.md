@@ -57,6 +57,8 @@ The shared helper enforces:
 
 If a shared report link is incomplete, too large, or not a valid schema, the viewer shows an invalid-link state.
 
+Decode failures use bounded diagnostics. `shareable_tool_report_payload_decode_failed` records only the failure stage (`payload_oversized`, `base64_decode`, `json_oversized`, `json_parse`, or `payload_invalid`), hash input length, encoded payload length, decoded payload length when available, hash/key shape booleans, max-length booleans, fixed `show_invalid_report_state` fallback policy, and normalized source error metadata. It must not log the hash payload, decoded JSON, business name, business context, evidence text, setup jobs, contact details, or exception text.
+
 ---
 
 ## Integration Rule

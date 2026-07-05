@@ -92,9 +92,13 @@ assertIncludes(implDoc, 'evidenceText: string', 'WhatsApp Action Link Check impl
 assertIncludes(implDoc, 'Do not add WhatsApp Business API, click-to-send, deep-link opening, phone verification, or account lookup in V0', 'WhatsApp Action Link Check provider boundary');
 assertIncludes(firebaseDoc, 'WhatsApp API calls | 0', 'WhatsApp Action Link Check WhatsApp API cost boundary');
 assertIncludes(firebaseDoc, 'Storage operations | 0', 'WhatsApp Action Link Check storage boundary');
+assertIncludes(firebaseDoc, 'malformed WhatsApp link parse diagnostic is cost-neutral', 'WhatsApp Action Link Check parse diagnostic cost boundary');
 assertIncludes(mobileDoc, 'Message sending | Not implemented', 'WhatsApp Action Link Check mobile send boundary');
 assertIncludes(testCasesDoc, 'Message is not sent', 'WhatsApp Action Link Check send test boundary');
+assertIncludes(testCasesDoc, 'whatsapp_action_link_url_parse_failed', 'WhatsApp Action Link Check parse diagnostic test case');
 assertIncludes(validationDoc, 'No WhatsApp API integration', 'WhatsApp Action Link Check validation boundary');
+assertIncludes(readmeDoc, 'whatsapp_action_link_url_parse_failed', 'WhatsApp Action Link Check parse diagnostic README boundary');
+assertIncludes(implDoc, 'treat_as_invalid_whatsapp_link', 'WhatsApp Action Link Check parse diagnostic implementation boundary');
 assertIncludes(familyReadmeDoc, '[WhatsApp Action Link Check](../whatsapp-action-link-check/README.md)', 'Public Truth Tools family docs');
 assertIncludes(familyImplDoc, 'whatsappActionLinkReport.ts', 'Public Truth Tools implementation docs');
 assertIncludes(familyFirebaseDoc, 'WhatsApp Action Link Check', 'Public Truth Tools Firebase docs');
@@ -142,6 +146,12 @@ assertIncludes(report, 'getWhatsAppActionLinkEvidenceText', 'WhatsApp Action Lin
 assertIncludes(report, 'The number was not verified with WhatsApp', 'WhatsApp Action Link Check number verification evidence boundary');
 assertIncludes(report, 'no message was sent', 'WhatsApp Action Link Check message send evidence boundary');
 assertIncludes(report, 'Public HTTPS customer link format was checked locally. The link was not opened or fetched.', 'WhatsApp Action Link Check public HTTPS URL evidence boundary');
+assertIncludes(report, "logRuntimeFailure('whatsapp_action_link_url_parse_failed'", 'WhatsApp Action Link Check parse diagnostic');
+assertIncludes(report, 'MAX_WHATSAPP_ACTION_LINK_PARSE_DIAGNOSTICS', 'WhatsApp Action Link Check parse diagnostic cap');
+assertIncludes(report, 'reportedWhatsAppActionLinkParseFailures.add(failureKey)', 'WhatsApp Action Link Check parse diagnostic shape guard');
+assertIncludes(report, "fallbackPolicy: 'treat_as_invalid_whatsapp_link'", 'WhatsApp Action Link Check parse diagnostic fallback policy');
+assertIncludes(report, 'candidateLooksLikeWhatsAppScheme', 'WhatsApp Action Link Check parse diagnostic bounded shape metadata');
+assertIncludes(report, 'candidateLooksLikeWhatsAppHost', 'WhatsApp Action Link Check parse diagnostic bounded shape metadata');
 
 for (const content of [route, report, types]) {
   assertNotIncludes(content, 'fetch(', 'WhatsApp Action Link Check default runtime');

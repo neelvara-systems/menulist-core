@@ -4,7 +4,7 @@ import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, CHARGE_PER_IMAGEN_IMAGE, TOKENS_PE
 import { PERMISSIONS } from "@constant/permissions";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
-import { sanitizeImageGenerationConfigForLogging, summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
+import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { genAIClient } from "@lib/google/genAi";
 import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { logger } from "@lib/monitoring/logger";
@@ -25,6 +25,39 @@ const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
 const ACTION = AI_ACTIONS_TYPES.IMAGE_GENERATION;
 const LOG_FILE = "image-generation.log"
 const IMAGE_GENERATION_AI_MAX_BODY_BYTES = 16 * 1024 * 1024;
+
+const getImageGenerationConfigLogSummary = (config: Record<string, any> | undefined | null) => ({
+    aspectRatio: typeof config?.aspectRatio === 'string' ? config.aspectRatio : undefined,
+    colorCount: Array.isArray(config?.colors) ? config.colors.length : 0,
+    compositionCount: Array.isArray(config?.compositions) ? config.compositions.length : 0,
+    environmentCount: Array.isArray(config?.environments) ? config.environments.length : 0,
+    hasBackgroundColor: Boolean(config?.backgroundColor),
+    hasForegroundColor: Boolean(config?.foregroundColor),
+    hasNegativePrompt: Boolean(config?.negativePrompt),
+    hasPrompt: typeof config?.prompt === 'string' && config.prompt.length > 0,
+    hasReferenceImage: Boolean(config?.referanceImage?.url),
+    isMultiMode: Boolean(config?.isMultiMode),
+    lightingCount: Array.isArray(config?.lighting) ? config.lighting.length : 0,
+    moodCount: Array.isArray(config?.moods) ? config.moods.length : 0,
+    negativePromptLength: typeof config?.negativePrompt === 'string' ? config.negativePrompt.length : 0,
+    numberOfImages: Number(config?.numberOfImages || 1),
+    promptLength: typeof config?.prompt === 'string' ? config.prompt.length : 0,
+    selectedImageTypeCount: Array.isArray(config?.selectedImageTypes) ? config.selectedImageTypes.length : 0,
+    styleCount: Array.isArray(config?.styles) ? config.styles.length : 0,
+    stylesCategoryPresent: Boolean(config?.stylesCategory),
+    transparentBg: Boolean(config?.transparentBg),
+});
+
+const getImageItemDetailsLogSummary = (itemDetails: Record<string, any> | undefined | null) => ({
+    attributeCount: Array.isArray(itemDetails?.attributes) ? itemDetails.attributes.length : 0,
+    categoryLength: typeof itemDetails?.category === 'string' ? itemDetails.category.length : 0,
+    descriptionLength: typeof itemDetails?.description === 'string' ? itemDetails.description.length : 0,
+    hasCategory: Boolean(itemDetails?.category),
+    hasDescription: Boolean(itemDetails?.description),
+    hasId: Boolean(itemDetails?.id),
+    hasName: Boolean(itemDetails?.name),
+    nameLength: typeof itemDetails?.name === 'string' ? itemDetails.name.length : 0,
+});
 
 
 export const POST = withAuth(async (request, session) => {
@@ -73,12 +106,14 @@ export const POST = withAuth(async (request, session) => {
 
             await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, {
                 error: errorMsg,
-                hasGenerationConfig: !!rawData?.generationConfig,
-                hasPrompt: !!rawData?.generationConfig?.prompt,
-                hasReferenceImage: !!rawData?.generationConfig?.referanceImage?.url,
-                projectId: rawData?.projectId,
-                fileId: rawData?.fileId,
-                businessType: rawData?.businessType,
+                attemptedData: getAIRouteLogContext({
+                    hasGenerationConfig: !!rawData?.generationConfig,
+                    hasPrompt: !!rawData?.generationConfig?.prompt,
+                    hasReferenceImage: !!rawData?.generationConfig?.referanceImage?.url,
+                    projectId: rawData?.projectId,
+                    fileId: rawData?.fileId,
+                    businessType: rawData?.businessType,
+                }),
             });
             return NextResponse.json({
                 error: 'Invalid input',
@@ -145,8 +180,6 @@ export const POST = withAuth(async (request, session) => {
 
         const startTime = new Date().getTime();
 
-        logger.debug('Prompts to execute', { count: promptsToExecute.length })
-
         const promptRun = await runImageGenerationPrompts({
             aiModel: AI_MODEL,
             generationConfig,
@@ -171,9 +204,14 @@ export const POST = withAuth(async (request, session) => {
                 fileId,
                 logType: 'NO_IMAGE_GENERATED',
                 data: {
-                    generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
-                    itemDetails,
-                    response: generatedImagesResponse?.map(summarizeImageProviderResponse),
+                    requestSummary: {
+                        generationConfig: getImageGenerationConfigLogSummary(generationConfig as Record<string, any>),
+                        itemDetails: getImageItemDetailsLogSummary(itemDetails as Record<string, any>),
+                    },
+                    responseSummary: {
+                        providerResponseCount: generatedImagesResponse?.length || 0,
+                        responses: generatedImagesResponse?.map(summarizeImageProviderResponse) || [],
+                    },
                 },
             });
             return NextResponse.json({ error: 'Image generation produced no image' }, { status: 502 });
@@ -219,8 +257,8 @@ export const POST = withAuth(async (request, session) => {
             // Update the transaction object with calculated values and other details
             transactionObject = {
                 ...transactionObject,
-                itemDetails,
-                generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
+                itemSummary: getImageItemDetailsLogSummary(itemDetails as Record<string, any>),
+                generationConfigSummary: getImageGenerationConfigLogSummary(generationConfig as Record<string, any>),
                 projectId,
                 fileId,
                 action: ACTION,
@@ -252,7 +290,6 @@ export const POST = withAuth(async (request, session) => {
                     logLabel: 'Image generation',
                     session,
                 });
-                logger.debug('Image generation transaction recorded', getAIRouteLogContext({ transactionId: accounting.transactionId }));
                 transactionObject.unitsConsumed = accounting.unitsConsumed;
                 transactionObject.transactionId = accounting.transactionId;
                 remainingBalance = accounting.remainingBalance;
@@ -274,17 +311,39 @@ export const POST = withAuth(async (request, session) => {
                 throw transactionError;
             }
         }
+        const getTransactionLogSummary = () => ({
+            action: transactionObject.action || ACTION,
+            candidatesTokenCount: transactionObject.candidatesTokenCount,
+            failedPromptCount: transactionObject.failedPromptCount || 0,
+            fileId: transactionObject.fileId || fileId,
+            imageCount: transactionObject.imageCount || genratedImages.length,
+            model: transactionObject.model || AI_MODEL,
+            processingTime: transactionObject.processingTime || processingTime,
+            projectId: transactionObject.projectId || projectId,
+            promptCount: transactionObject.promptCount || promptRun.promptCount,
+            promptTokenCount: transactionObject.promptTokenCount,
+            responseSummary: {
+                generatedImageCount: genratedImages.length,
+                mimeTypes: genratedImages.map((image: { mimeType: string }) => image.mimeType),
+                providerResponseCount: generatedImagesResponse.length,
+            },
+            totalCharge: transactionObject.totalCharge,
+            totalCredits: transactionObject.totalCredits,
+            totalTokenCount: transactionObject.totalTokenCount,
+            transactionId: transactionObject.transactionId,
+            unitsConsumed: transactionObject.unitsConsumed,
+        });
 
         // Log successful response
         await writeLogEntry({
             logFileName: LOG_FILE, userId: userId, projectId, fileId, logType: 'SUCCESS_RESPONSE',
             data: {
-                request: {
-                    generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
-                    itemDetails,
+                requestSummary: {
+                    generationConfig: getImageGenerationConfigLogSummary(generationConfig as Record<string, any>),
+                    itemDetails: getImageItemDetailsLogSummary(itemDetails as Record<string, any>),
                 },
-                response: generatedImagesResponse.map(summarizeImageProviderResponse),
-                transaction: transactionObject
+                responseSummary: getTransactionLogSummary().responseSummary,
+                transaction: getTransactionLogSummary()
             }
         });
 

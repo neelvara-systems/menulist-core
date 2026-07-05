@@ -164,6 +164,8 @@ src/config/features.ts           # ENABLE_CUSTOMER_COMMUNICATION_KIT is currentl
 
 1. `getTodayHours()` derives the current-day copy from store working hours and timezone.
 2. Closed-day and missing-hours states omit unavailable time copy.
+3. Today-hours diagnostics log bounded `communication_kit_today_hours_timezone_fallback_failed` metadata when invalid timezone resolution falls back to the browser-local day.
+4. Malformed current-day time ranges log bounded `communication_kit_today_hours_range_invalid` metadata and omit hours copy instead of generating unsafe customer-facing text.
 
 ### Desktop UI
 

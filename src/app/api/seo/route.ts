@@ -7,11 +7,12 @@ import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { getModelName } from "@constant/AI/models";
-import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
+import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { SeoGenerationRequestSchema } from "@lib/validation/apiSchemas";
@@ -23,6 +24,155 @@ import seoPrompt, { seoPromptSystemInstruction } from "./prompt";
 const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const LOG_FILE = "seo-generation.log";
 const SEO_AI_MAX_BODY_BYTES = 256 * 1024;
+const MAX_SEO_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS = 25;
+
+function getSeoClientResponseSummary(response: {
+    keywords?: string[];
+    metaDescription?: string;
+    metaTitle?: string;
+    tagline?: string;
+}) {
+    return {
+        keywordCount: Array.isArray(response.keywords) ? response.keywords.length : 0,
+        metaDescriptionLength: response.metaDescription?.length || 0,
+        metaTitleLength: response.metaTitle?.length || 0,
+        objectKeyCount: Object.keys(response).length,
+        responseShape: 'object',
+        responseSummaryKind: 'seo_generation',
+        taglineLength: response.tagline?.length || 0,
+    };
+}
+
+type SeoProviderResponseParseStage =
+    | 'empty_response'
+    | 'object_fragment'
+    | 'object_fragment_missing';
+
+type SeoProviderResponseParseContext = {
+    action: string;
+    categoryCount: number;
+    itemCount: number;
+    requestId: string;
+    responseUsage?: unknown;
+    sourceLang: string;
+    storeId: unknown;
+    tenantId: unknown;
+    userId: unknown;
+};
+
+type SeoProviderResponseParseFailureContext = SeoProviderResponseParseContext & {
+    candidateLength: number;
+    hasFence: boolean;
+    hasObjectFragment: boolean;
+    responseTextLength: number;
+    stage: SeoProviderResponseParseStage;
+    trimmedTextLength: number;
+};
+
+const reportedSeoProviderResponseParseFailures = new Set<string>();
+
+function logSeoProviderResponseParseFailure(
+    error: unknown,
+    context: SeoProviderResponseParseFailureContext,
+): void {
+    const failureKey = [
+        context.stage,
+        context.responseTextLength,
+        context.trimmedTextLength,
+        context.candidateLength,
+        context.hasFence ? 'fenced' : 'plain',
+        context.hasObjectFragment ? 'object-fragment' : 'no-object-fragment',
+    ].join(':');
+
+    if (reportedSeoProviderResponseParseFailures.has(failureKey)) return;
+    if (reportedSeoProviderResponseParseFailures.size >= MAX_SEO_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS) return;
+    reportedSeoProviderResponseParseFailures.add(failureKey);
+
+    logRuntimeFailure('seo_provider_response_parse_failed', error, {
+        ...getAIRouteLogContext({
+            action: context.action,
+            categoryCount: context.categoryCount,
+            itemCount: context.itemCount,
+            model: AI_MODEL,
+            requestId: context.requestId,
+            responseUsage: context.responseUsage,
+            sourceLang: context.sourceLang,
+            storeId: context.storeId,
+            tenantId: context.tenantId,
+            userId: context.userId,
+        }),
+        candidateLength: context.candidateLength,
+        fallbackPolicy: 'return_seo_generation_failed',
+        hasFence: context.hasFence,
+        hasObjectFragment: context.hasObjectFragment,
+        parseStage: context.stage,
+        responseTextLength: context.responseTextLength,
+        trimmedTextLength: context.trimmedTextLength,
+    });
+}
+
+function parseSeoProviderResponse(
+    responseText: string | undefined,
+    context: SeoProviderResponseParseContext,
+): Record<string, any> {
+    const rawText = String(responseText || '');
+    const trimmedText = rawText.trim();
+    const hasFence = trimmedText.startsWith('```') || trimmedText.endsWith('```');
+    const cleaned = trimmedText
+        .replace(/^```(?:json)?\s*\n?/i, '')
+        .replace(/\n?```\s*$/i, '')
+        .trim();
+
+    if (!cleaned) {
+        const error = new Error('SEO generation returned empty response');
+        logSeoProviderResponseParseFailure(error, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment: false,
+            responseTextLength: rawText.length,
+            stage: 'empty_response',
+            trimmedTextLength: trimmedText.length,
+        });
+        throw error;
+    }
+
+    try {
+        return JSON.parse(cleaned);
+    } catch (fullParseError) {
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        const hasObjectFragment = firstBrace >= 0 && lastBrace > firstBrace;
+        if (hasObjectFragment) {
+            const objectCandidate = cleaned.slice(firstBrace, lastBrace + 1);
+            try {
+                return JSON.parse(objectCandidate);
+            } catch (fragmentParseError) {
+                logSeoProviderResponseParseFailure(fragmentParseError, {
+                    ...context,
+                    candidateLength: objectCandidate.length,
+                    hasFence,
+                    hasObjectFragment,
+                    responseTextLength: rawText.length,
+                    stage: 'object_fragment',
+                    trimmedTextLength: trimmedText.length,
+                });
+                throw fragmentParseError;
+            }
+        }
+
+        logSeoProviderResponseParseFailure(fullParseError, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment,
+            responseTextLength: rawText.length,
+            stage: 'object_fragment_missing',
+            trimmedTextLength: trimmedText.length,
+        });
+        throw fullParseError;
+    }
+}
 
 export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
@@ -152,16 +302,25 @@ export const POST = withAuth(async (request, session) => {
             throw generationError;
         }
 
-        let rawText = response.text || '';
-        rawText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
         let generatedData: any;
         try {
-            generatedData = JSON.parse(rawText);
+            generatedData = parseSeoProviderResponse(response.text, {
+                action,
+                categoryCount: payload.menu?.categories?.length || 0,
+                itemCount: payload.menu?.items?.length || 0,
+                requestId,
+                responseUsage: response.usageMetadata || null,
+                sourceLang: sourceLangCode,
+                storeId: session.sId,
+                tenantId: session.tId,
+                userId,
+            });
         } catch (parseError) {
             logAIRouteFailure('seo_generation_invalid_json', parseError, {
+                categoryCount: payload.menu?.categories?.length || 0,
+                itemCount: payload.menu?.items?.length || 0,
                 model: AI_MODEL,
-                responseTextLength: rawText.length,
-                responseTextSummary: getPreviewText(rawText, 300),
+                responseTextLength: response.text?.length || 0,
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 sourceLang: sourceLangCode,
@@ -173,9 +332,10 @@ export const POST = withAuth(async (request, session) => {
                 userId,
                 logType: 'INVALID_JSON_RESPONSE',
                 data: {
+                    categoryCount: payload.menu?.categories?.length || 0,
+                    itemCount: payload.menu?.items?.length || 0,
                     model: AI_MODEL,
-                    responseTextLength: rawText.length,
-                    responseTextSummary: getPreviewText(rawText, 300),
+                    responseTextLength: response.text?.length || 0,
                     requestId,
                     responseUsage: response.usageMetadata || null,
                     sourceLang: sourceLangCode,
@@ -227,7 +387,7 @@ export const POST = withAuth(async (request, session) => {
         const transactionObject: any = {
             action,
             chargePerCredit: CHARGE_PER_CREDIT,
-            clientResponse: cleaned,
+            clientResponse: getSeoClientResponseSummary(cleaned),
             generationConfig,
             geminiResponse: response,
             itemsList: [],
@@ -244,6 +404,24 @@ export const POST = withAuth(async (request, session) => {
             marginPaise: getOurChargePaise(action) - getRealCostPaise(action),
             unitsConsumed: getUnitCost(action),
         };
+        const getTransactionLogSummary = () => ({
+            action: transactionObject.action,
+            candidatesTokenCount: transactionObject.candidatesTokenCount,
+            model: transactionObject.model,
+            processingTime: transactionObject.processingTime,
+            promptTokenCount: transactionObject.promptTokenCount,
+            responseSummary: {
+                keywordCount: cleaned.keywords.length,
+                metaDescriptionLength: cleaned.metaDescription.length,
+                metaTitleLength: cleaned.metaTitle.length,
+                taglineLength: cleaned.tagline.length,
+            },
+            totalCharge: transactionObject.totalCharge,
+            totalCredits: transactionObject.totalCredits,
+            totalTokenCount: transactionObject.totalTokenCount,
+            transactionId: transactionObject.transactionId,
+            unitsConsumed: transactionObject.unitsConsumed,
+        });
 
         let remainingBalance = null;
         try {
@@ -266,7 +444,7 @@ export const POST = withAuth(async (request, session) => {
                 tenantId: session.tId,
                 userId,
             });
-            await writeLogEntry({ logFileName: LOG_FILE, userId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
+            await writeLogEntry({ logFileName: LOG_FILE, userId, logType: 'TRANSACTION_DB_ERROR', data: getTransactionLogSummary(), error: getAIErrorDiagnostics(transactionError) });
             throw transactionError;
         }
 

@@ -275,23 +275,27 @@ const ALLOWED_ORIGINS = ["https://menulist.ai", "https://app.menulist.ai"];
 
 **What's Logged**:
 
-- Rejected origin attempts
-- IP address
-- User agent
-- Requested endpoint
+- Rejected-origin attempts through `cors_origin_blocked`
+- Origin presence/length only
+- Allowed-origin count
+- Parse/protocol/credential booleans
 
 **Example Log**:
 
 ```typescript
 {
-    event: 'CORS Validation Failed',
-    origin: 'https://evil-site.com',
-    ip: '192.168.1.1',
-    userAgent: 'Mozilla/5.0...',
-    endpoint: '/api/projects',
-    method: 'POST'
+    diagnosticCode: 'cors_origin_blocked',
+    originPresent: true,
+    originLength: 21,
+    originParseable: true,
+    originHttps: true,
+    originHttp: false,
+    originHasCredentials: false,
+    allowedOriginCount: 3
 }
 ```
+
+Blocked-origin diagnostics use bounded origin metadata. Do not log raw Origin header values, raw IP addresses, raw user agents, or the full allowed-origin list from `src/lib/security/corsValidation.ts`.
 
 **Destination**: Sentry (production)
 

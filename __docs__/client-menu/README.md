@@ -12,6 +12,12 @@ This documentation index is customer-facing menu-output evidence; it is not curr
 
 ---
 
+## Public Menu External Link Normalization
+
+Public menu external link normalization uses the shared OBP public-link policy for customer-facing menu footer actions, social links, unavailable-item recovery actions, and feedback review links. Owner-managed reservation, order, Maps, social, WhatsApp social, and review URLs render only after HTTPS/host validation; invalid values are hidden or fall back to internal feedback instead of becoming public `href` values.
+
+---
+
 ## Quick Navigation
 
 ### Core Documentation
@@ -140,7 +146,10 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 The public menu is not a website-builder surface. Store/project owners can select the existing `config.design.menu` mood and layout presets, but customer output keeps the following primitives locked:
 
 - Search remains the primary retrieval control and uses the shared `MenuSearchBar`.
+- Legacy QR download diagnostics: the tracked legacy project QR component keeps the same owner-facing failed-download copy, but failed browser-local QR card generation/download now logs bounded `project_share_legacy_qr_download_failed` diagnostics with URL/name/logo/color shape metadata only and creates no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+- Gradient parser diagnostics: owner-selected gradient strings keep the existing parser fallback when malformed values are encountered. Parser exceptions log capped `public_menu_gradient_parse_failed` diagnostics with value-shape metadata only and create no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 - Tapping the search row must focus the actual input on the first tap, even while the row is expanding and side controls are hiding.
+- Search focus diagnostics: public menu search still first attempts `focus({ preventScroll: true })` and falls back to normal focus if a browser rejects that option. Failed prevent-scroll or fallback focus attempts log bounded `public_menu_search_focus_prevent_scroll_failed` / `public_menu_search_focus_fallback_failed` diagnostics only, with no raw search term, Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 - Mobile/tablet menus use one sticky command row: search on the left and `Sections` on the right when there are three or more sections.
 - The sticky command row must not use compositor transform hacks or clipped sticky ancestors; scroll-spy category updates are frame-throttled so normal vertical scrolling does not make the row vibrate.
 - Mobile public menus switch the command row to a measured fixed layer only after it reaches the top. Visual spacing and safe-area breathing room live inside the row padding, and public mobile uses stable `svh` viewport height so iOS browser/PWA chrome changes do not make the row bounce.
@@ -155,6 +164,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Desktop and mobile owner controls use the same public wording for this area: `Featured section`, `Featured choice`, `Quick choice`, and `Value choice`.
 - Mobile Menu Design includes a persistent preview-only action so owners can inspect draft design changes through the same public menu renderer before saving.
 - Category headings are structural markers, not decorative title screens.
+- Decision Blocks timezone diagnostics: public Decision Blocks keep using store time for runtime availability filtering when the timezone is valid. Invalid store-timezone formatting falls back to browser time and logs bounded `public_menu_decision_blocks_timezone_failed` diagnostics only.
 - Item cards preserve line limits, price alignment, text-first hierarchy, and render image frames only when an item has an image.
 - Compact two-column mobile Grid output should let a single final card span the full row so odd item counts do not leave an empty second column.
 - Public image rendering normalizes legacy and current stored image shapes before cards, featured choices, PDP galleries, and metadata read item images.
@@ -164,6 +174,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Item detail uses a centered modal on desktop and a bottom sheet on mobile, with contain-fit images, gallery controls, fullscreen pinch-to-zoom image inspection, owner-enabled category identity, and a quiet item-share action that preserves the current language URL.
 - Back-to-top is isolated from item cards underneath it; it scrolls only on completed tap/click and does not trigger PDP for the covered item.
 - Footer business actions use compact icon/text chips while keeping platform attribution quiet.
+- Footer freshness diagnostics: public menu footer freshness uses guarded timestamp parsing. Valid `lastPublishedAt` values keep showing relative update text and ISO metadata; malformed values omit unverified freshness text and log bounded `public_menu_footer_freshness_relative_failed` / `public_menu_footer_freshness_iso_failed` diagnostics only.
 - The common Call / WhatsApp / Directions set stays in one compact row; desktop renders centered chips, mobile can use equal-width touch targets, and extra actions can wrap instead of crowding.
 - Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution` and uses the same compact `Powered by MenuList. All rights reserved` treatment as other public pages.
 - Customer-facing menu and category controls are non-selectable to avoid accidental text selection while tapping; footer identity and policy content remain selectable.
@@ -171,9 +182,12 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Fullscreen PDP image inspection owns its own touch zoom, so customers can pinch product/service photos without zooming the entire menu surface.
 - Business logos render as the uploaded image itself on menu and OBP surfaces; no extra wrapper border or crop is applied around the logo image.
 - Public menu language persistence is scoped to the store/project session and the project-specific local preference key; old global language preferences are ignored so installed PWAs cannot leak a previous menu language into another project.
+- Language preference storage diagnostics: public menu language preference reads/writes remain browser-local. Failed project-scoped localStorage restoration or persistence logs bounded `public_menu_language_storage_read_failed` / `public_menu_language_storage_write_failed` diagnostics only and creates no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 - Compact multi-language payloads must not strip public descriptions needed by the language picker; descriptions, names, categories, route `?lang=`, and item share URLs must stay aligned when the customer changes language on the menu after arriving from OBP.
+- Breadcrumb language preservation diagnostics: public menu breadcrumbs preserve the current `?lang=` value when URL parsing succeeds, and still fall back to the original breadcrumb href when preservation fails. Failed preservation logs bounded `public_menu_breadcrumb_language_preserve_failed` diagnostics only and creates no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 - Item PDPs opened from the menu must update the client document head (`title`, canonical URL, Open Graph URL/title/description, and Twitter URL/title/description) because mobile browser share sheets can read head metadata after client-side history changes.
 - PDP item sharing uses the native device share sheet when available and falls back to copying the exact item URL. This is especially important inside installed PWAs where the browser share button is not visible.
+- Feedback nudge storage diagnostics: public menu feedback nudge de-dupe remains browser-local and tab-scoped. Failed sessionStorage guard reads/writes log bounded `public_menu_feedback_nudge_storage_read_failed` / `public_menu_feedback_nudge_storage_write_failed` diagnostics only and create no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 - Public search waits for at least two normalized characters before filtering, allows numeric prefix search for alphanumeric tokens such as `11am` without matching unrelated price tokens such as `115`, rejects ambiguous compressed token matches, aliases expand customer queries rather than stored item meanings, and treats multi-term searches as exact phrase first, then any-term recovery.
 - Starting a search from a deep scroll position must bring the result area back under the sticky command row so customers never have to manually scroll to find the filtered output.
 - Active temporary status notices on the public menu belong in the bottom trust zone as centered pills, not above the business identity header. Expired status data must not reserve empty space.

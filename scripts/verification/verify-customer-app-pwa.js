@@ -76,6 +76,10 @@ function verifyManifestLink() {
 
 function verifyManifestRoute() {
   const route = read('src/app/manifest.webmanifest/route.ts');
+  const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
+  const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
   const executableRoute = stripJsComments(route);
   assertIncludes(route, 'getStoreManifestStartUrl', 'manifest route');
   assertIncludes(route, 'startUrl,', 'manifest route');
@@ -86,9 +90,22 @@ function verifyManifestRoute() {
   assertIncludes(route, 'hostnameLength: hostname.length', 'manifest route bounded host context');
   assertIncludes(route, 'storeIdLength: normalizedStoreId.length', 'manifest route bounded store context');
   assertIncludes(route, 'errorName: error instanceof Error ? error.name : typeof error', 'manifest route bounded error context');
+  assertIncludes(route, "logRuntimeFailure('customer_app_manifest_start_url_lookup_failed'", 'manifest start-url lookup diagnostics');
+  assertIncludes(route, 'MAX_MANIFEST_START_URL_DIAGNOSTICS', 'manifest start-url diagnostic cap');
+  assertIncludes(route, 'reportedManifestStartUrlFailures.add(failureKey)', 'manifest start-url one-per-shape guard');
+  assertIncludes(route, "getBoundedRuntimeStringContext('storeId', storeId)", 'manifest start-url bounded store context');
+  assertIncludes(route, 'projectSummaryDocIdLength', 'manifest start-url bounded summary doc context');
+  assertIncludes(route, "fallbackPolicy: 'use_root_manifest_start_url'", 'manifest start-url fallback policy');
+  assertIncludes(route, 'returnsRootStartUrl: true', 'manifest start-url fallback result');
+  assertIncludes(route, 'catch (error) {', 'manifest start-url catch source error');
+  assertNotIncludes(route, '} catch {\n        // A transient summary read failure should not make the manifest invalid.', 'manifest start-url silent catch');
   assertNotIncludes(route, 'MANIFEST_START_URL_DEGRADED', 'manifest route');
   assertNotIncludes(route, 'resolveStartUrlWithFallback', 'manifest route');
   assertNotIncludes(executableRoute, 'console.error', 'manifest route executable code');
+  assertIncludes(customerAppImpl, 'customer_app_manifest_start_url_lookup_failed', 'Customer App implementation manifest start-url diagnostics');
+  assertIncludes(customerAppFirebase, 'Manifest start-url lookup diagnostics', 'Customer App Firebase manifest start-url diagnostics');
+  assertIncludes(productionAudit, 'Customer App manifest start-url diagnostics checkpoint', 'production audit manifest start-url checkpoint');
+  assertIncludes(changelog, 'Customer App Manifest Start-URL Diagnostics', 'changelog manifest start-url checkpoint');
 }
 
 function verifyCustomerServiceWorkerPolicy() {
@@ -102,9 +119,23 @@ function verifyCustomerServiceWorkerPolicy() {
   assertNotIncludes(executableSw, '/_client', 'customer service worker executable code');
   assertNotIncludes(executableSw, 'firestore.googleapis.com', 'customer service worker executable code');
   assertNotIncludes(executableSw, 'cache.put', 'customer service worker executable code');
+  assertIncludes(register, 'service_worker_domain_resolution_failed', 'service worker domain resolution diagnostics');
+  assertIncludes(register, 'reportedServiceWorkerDomainResolutionFailure', 'service worker domain resolution one-per-path guard');
+  assertIncludes(register, "getBoundedRuntimeStringContext('host', window.location.host)", 'service worker domain resolution bounded host metadata');
+  assertIncludes(register, "failurePolicy: 'register_nothing'", 'service worker domain resolution fail-closed policy');
   assertIncludes(register, 'service_worker_unregister_failed', 'service worker registration cleanup diagnostics');
   assertIncludes(register, 'activeWorker: getRegisteredSwLabel(activeUrl)', 'service worker active-worker bounded label');
   assertIncludes(register, 'targetWorker: getTargetSwLabel(targetUrl)', 'service worker target-worker bounded label');
+  assertIncludes(register, 'service_worker_script_url_label_parse_failed', 'service worker script-label parse diagnostics');
+  assertIncludes(register, 'MAX_SERVICE_WORKER_SCRIPT_LABEL_DIAGNOSTICS', 'service worker script-label diagnostic cap');
+  assertIncludes(register, "getBoundedRuntimeStringContext('scriptUrl', scriptUrl)", 'service worker script-label bounded URL metadata');
+  assertIncludes(register, "fallbackPolicy: 'label_unknown'", 'service worker script-label fallback policy');
+  assertIncludes(register, 'service_worker_public_cleanup_reload_storage_failed', 'service worker cleanup reload storage diagnostics');
+  assertIncludes(register, "getBoundedRuntimeStringContext('reloadKey', PUBLIC_SW_CLEARED_RELOAD_KEY)", 'service worker reload guard bounded storage metadata');
+  assertIncludes(register, "fallbackPolicy: 'reload_without_session_guard'", 'service worker reload guard fallback policy');
+  assertNotIncludes(register, '} catch {\n        return null;\n    }', 'service worker domain resolution must not silently return null');
+  assertNotIncludes(register, "} catch {\n        return 'unknown';\n    }", 'service worker script-label parse must not silently return unknown');
+  assertNotIncludes(register, '} catch {\n                            window.location.reload();\n                        }', 'service worker cleanup reload storage failures must not silently reload');
   assertNotIncludes(register, 'reg.unregister().catch(() => { })', 'service worker unregister silent catch');
   assertIncludes(rootLayout, 'logDevServiceWorkerCleanupFailure', 'root development service-worker cleanup diagnostics');
   assertIncludes(rootLayout, 'get_registrations_failed', 'root development service-worker registration lookup diagnostics');
@@ -730,17 +761,26 @@ function verifyAnalyticsCoverage() {
 
 function verifyPwaTrackingDiagnostics() {
   const diagnostics = read('src/lib/pwa/pwaDiagnostics.ts');
+  const installDetection = read('src/lib/pwa/installDetection.ts');
   const shortcutDetector = read('src/lib/pwa/shortcutSourceDetector.ts');
   const standaloneDetector = read('src/lib/pwa/standaloneDetector.ts');
   const installTracker = read('src/lib/pwa/installTracker.ts');
+  const visitCounter = read('src/lib/pwa/visitCounter.ts');
   const installPrompt = read('src/components/customerApp/InstallPrompt.tsx');
   const mobileSettings = read('src/components/mobile/screens/MobileCustomerAppScreen.tsx');
   const desktopSettings = read('src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx');
+  const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
+  const customerAppSpec = read('__docs__/customer-app/customer-app_spec.md');
+  const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assertNoDirectConsole(diagnostics, 'Customer App PWA diagnostics helper');
+  assertNoDirectConsole(installDetection, 'Customer App install detection');
   assertNoDirectConsole(shortcutDetector, 'Customer App shortcut detector');
   assertNoDirectConsole(standaloneDetector, 'Customer App standalone detector');
   assertNoDirectConsole(installTracker, 'Customer App install tracker');
+  assertNoDirectConsole(visitCounter, 'Customer App visit counter');
   assertNoDirectConsole(installPrompt, 'Customer App install prompt');
   assertNoDirectConsole(mobileSettings, 'Mobile Customer App settings screen');
   assertNoDirectConsole(desktopSettings, 'Desktop Customer App settings tab');
@@ -751,9 +791,44 @@ function verifyPwaTrackingDiagnostics() {
   assertIncludes(diagnostics, "secureError('[Customer App PWA] Operation failed'", 'Customer App PWA secure diagnostics');
   assertIncludes(diagnostics, 'sourceErrorName', 'Customer App PWA source error name');
   assertIncludes(diagnostics, 'sourceErrorCode', 'Customer App PWA source error code');
+  assertIncludes(installDetection, 'customer_app_install_detection_failed', 'Customer App install detection diagnostics');
+  assertIncludes(installDetection, 'reportedInstallDetectionFailure', 'Customer App install detection one-per-path guard');
+  assertIncludes(installDetection, 'hasMatchMedia', 'Customer App install detection bounded browser-capability context');
   assertIncludes(shortcutDetector, 'customer_app_shortcut_tracking_failed', 'Customer App shortcut tracking diagnostics');
+  assertIncludes(shortcutDetector, 'customer_app_shortcut_source_parse_failed', 'Customer App shortcut source parse diagnostics');
+  assertIncludes(shortcutDetector, 'reportedShortcutSourceParseFailure', 'Customer App shortcut source parse one-per-path guard');
+  assertIncludes(shortcutDetector, "getBoundedPwaStringContext('search', search)", 'Customer App shortcut source bounded search context');
   assertIncludes(standaloneDetector, 'customer_app_open_tracking_failed', 'Customer App open tracking diagnostics');
+  assertIncludes(standaloneDetector, 'reportedCustomerAppOpenStorageFailures', 'Customer App open storage one-per-operation guard');
+  assertIncludes(standaloneDetector, 'getCustomerAppOpenStorageContext', 'Customer App open storage bounded context helper');
+  assertIncludes(standaloneDetector, 'customer_app_open_session_storage_unavailable', 'Customer App open sessionStorage availability diagnostics');
+  assertIncludes(standaloneDetector, 'customer_app_open_session_guard_failed', 'Customer App open session guard diagnostics');
+  assertIncludes(standaloneDetector, 'customer_app_ios_install_inference_storage_failed', 'Customer App iOS install inference storage diagnostics');
+  assertIncludes(standaloneDetector, "getBoundedPwaStringContext('storageKey', storageKey)", 'Customer App open storage-key bounded context');
+  assertIncludes(standaloneDetector, 'STANDALONE_SESSION_STORAGE_TEST_KEY', 'Customer App open storage test key constant');
   assertIncludes(installTracker, 'customer_app_install_tracking_failed', 'Customer App install tracking diagnostics');
+  assertIncludes(installTracker, 'reportedInstallStorageFailures', 'Customer App prompt-shown storage one-per-operation guard');
+  assertIncludes(installTracker, 'customer_app_install_dedupe_storage_unavailable', 'Customer App install de-dupe storage availability diagnostics');
+  assertIncludes(installTracker, 'customer_app_install_dedupe_read_failed', 'Customer App install de-dupe read diagnostics');
+  assertIncludes(installTracker, 'customer_app_install_dedupe_write_failed', 'Customer App install de-dupe write diagnostics');
+  assertIncludes(installTracker, "'install_dedupe_availability'", 'Customer App install de-dupe availability operation');
+  assertIncludes(installTracker, "'install_dedupe_read'", 'Customer App install de-dupe read operation');
+  assertIncludes(installTracker, "'install_dedupe_write'", 'Customer App install de-dupe write operation');
+  assertIncludes(installTracker, 'customer_app_prompt_shown_storage_unavailable', 'Customer App prompt-shown storage availability diagnostics');
+  assertIncludes(installTracker, 'customer_app_prompt_shown_storage_write_failed', 'Customer App prompt-shown storage write diagnostics');
+  assertIncludes(installTracker, "getBoundedPwaStringContext('storageKey', storageKey)", 'Customer App prompt-shown storage-key bounded context');
+  assertIncludes(installTracker, 'INSTALL_TRACKER_STORAGE_TEST_KEY', 'Customer App install tracker storage test key constant');
+  assertIncludes(visitCounter, 'reportedPromptStorageFailures', 'Customer App prompt storage one-per-operation guard');
+  assertIncludes(visitCounter, 'customer_app_prompt_storage_unavailable', 'Customer App prompt storage availability diagnostics');
+  assertIncludes(visitCounter, 'customer_app_prompt_visit_increment_failed', 'Customer App prompt visit increment diagnostics');
+  assertIncludes(visitCounter, 'customer_app_prompt_visit_read_failed', 'Customer App prompt visit read diagnostics');
+  assertIncludes(visitCounter, 'customer_app_prompt_dismissal_write_failed', 'Customer App prompt dismissal write diagnostics');
+  assertIncludes(visitCounter, 'customer_app_prompt_dismissal_read_failed', 'Customer App prompt dismissal read diagnostics');
+  assertIncludes(visitCounter, 'customer_app_direct_install_intent_parse_failed', 'Customer App direct install intent parse diagnostics');
+  assertIncludes(visitCounter, 'reportedDirectInstallIntentParseFailure', 'Customer App direct install intent parse one-per-path guard');
+  assertIncludes(visitCounter, "getBoundedPwaStringContext('storageKey', storageKey)", 'Customer App prompt storage-key bounded context');
+  assertIncludes(visitCounter, "getBoundedPwaStringContext('search', search)", 'Customer App direct install bounded search context');
+  assertIncludes(visitCounter, 'VISIT_COUNTER_STORAGE_TEST_KEY', 'Customer App prompt storage test key constant');
   assertIncludes(installPrompt, 'customer_app_native_install_prompt_failed', 'Customer App native install prompt diagnostics');
   assertIncludes(mobileSettings, 'customer_app_mobile_settings_save_failed', 'Mobile Customer App settings diagnostics');
   assertIncludes(mobileSettings, 'customer_app_mobile_install_link_copy_failed', 'Mobile Customer App install-link copy diagnostics');
@@ -775,9 +850,20 @@ function verifyPwaTrackingDiagnostics() {
   assertIncludes(desktopSettings, "getBoundedPwaStringContext('installLink', installLink)", 'Desktop Customer App bounded install-link context');
   assertIncludes(installTracker, 'storageAvailable: false', 'Customer App install no-storage failure diagnostics');
   assertIncludes(installTracker, 'storageAvailable: true', 'Customer App install storage failure diagnostics');
+  assertNotIncludes(installDetection, '} catch {\n    return false;\n  }', 'Customer App install detection must not silently fail');
+  assertNotIncludes(shortcutDetector, '} catch {\n    return null;\n  }', 'Customer App shortcut source parse must not silently fail');
   assertNotIncludes(shortcutDetector, '[pwa] detectAndTrackShortcutLaunch failed', 'Customer App shortcut raw warning');
   assertNotIncludes(standaloneDetector, '[pwa] detectAndTrackAppOpen failed', 'Customer App standalone raw warning');
+  assertNotIncludes(standaloneDetector, '} catch {\n    return false;\n  }', 'Customer App standalone storage availability must not silently fail');
+  assertNotIncludes(standaloneDetector, '/* fall through and still fire */', 'Customer App standalone session guard must not silently fail');
+  assertNotIncludes(standaloneDetector, 'non-fatal — analytics should never break the customer experience', 'Customer App iOS inference storage must not silently fail');
   assertNotIncludes(installTracker, '[pwa] fireInstalledEventOnce failed', 'Customer App install raw warning');
+  assertNotIncludes(installTracker, 'window.localStorage.setItem(\n      `${PROMPT_SHOWN_AT_KEY_PREFIX}${storeId}`,\n      String(Date.now()),\n    );\n  } catch {\n    /* noop */\n  }', 'Customer App prompt-shown timestamp storage must not silently noop');
+  assertNotIncludes(installTracker, 'window.localStorage.setItem(key, String(Date.now()));\n  } catch (err) {\n    // Non-fatal', 'Customer App install de-dupe storage write must not be hidden by broad tracking catch');
+  assertNotIncludes(visitCounter, '} catch {\n    return 0;\n  }', 'Customer App prompt visit storage must not silently return zero');
+  assertNotIncludes(visitCounter, '} catch {\n    /* noop */\n  }', 'Customer App prompt dismissal storage must not silently noop');
+  assertNotIncludes(visitCounter, 'return Date.now() - dismissedAt < DISMISS_SUPPRESSION_MS;\n  } catch {\n    return false;\n  }', 'Customer App prompt dismissal storage must not silently return false');
+  assertNotIncludes(visitCounter, "const v = params.get('pwa');\n    return v === 'install' || v === '1' || v === 'true';\n  } catch {\n    return false;\n  }", 'Customer App direct install intent parse must not silently fail');
   assertNotIncludes(installPrompt, '[pwa] native install prompt failed:', 'Customer App native install prompt raw warning');
   assertNotIncludes(mobileSettings, '[MobileCustomerAppScreen] save failed:', 'Mobile Customer App settings raw diagnostic');
   assertNotIncludes(mobileSettings, "} catch {\n            Toast.show({ content: 'Could not copy", 'Mobile Customer App silent install-link copy catch');
@@ -787,6 +873,30 @@ function verifyPwaTrackingDiagnostics() {
   assertNotIncludes(desktopSettings, "} catch {\n            message.error('Could not copy", 'Desktop Customer App silent install-link copy catch');
   assertNotIncludes(desktopSettings, "await navigator.clipboard.writeText(installLink);\n            message.success", 'Desktop Customer App install-link copy must not use unguarded Clipboard API success');
   assertNotIncludes(desktopSettings, "document.execCommand('copy');\n            message.success", 'Desktop Customer App textarea fallback must not assume copy success');
+  assertIncludes(customerAppImpl, 'Failed standalone-open storage availability, session guard, or iOS install-inference storage paths log bounded `customer_app_open_*` diagnostics once per operation', 'Customer App implementation doc standalone-open storage diagnostics');
+  assertIncludes(customerAppImpl, 'Failed prompt visit-count or dismissal localStorage paths log bounded `customer_app_prompt_*` diagnostics once per operation', 'Customer App implementation doc prompt storage diagnostics');
+  assertIncludes(customerAppImpl, 'Failed install-mode detection and shortcut/direct-intent URL parsing log bounded Customer App diagnostics once per failure path', 'Customer App implementation doc install and URL intent diagnostics');
+  assertIncludes(customerAppImpl, 'Service-worker domain-resolution failures log bounded `service_worker_domain_resolution_failed` diagnostics', 'Customer App implementation doc service-worker domain diagnostics');
+  assertIncludes(customerAppImpl, 'Malformed registered service-worker script URLs log bounded `service_worker_script_url_label_parse_failed` diagnostics', 'Customer App implementation doc service-worker script-label diagnostics');
+  assertIncludes(customerAppImpl, 'Failed public service-worker cleanup reload session guards log bounded `service_worker_public_cleanup_reload_storage_failed` diagnostics', 'Customer App implementation doc service-worker reload storage diagnostics');
+  assertIncludes(customerAppImpl, 'Failed prompt-shown timestamp storage for iOS inference logs bounded `customer_app_prompt_shown_*` diagnostics once per operation', 'Customer App implementation doc prompt-shown timestamp diagnostics');
+  assertIncludes(customerAppImpl, 'Failed install-fired de-dupe storage availability/read/write paths log bounded `customer_app_install_dedupe_*` diagnostics once per operation', 'Customer App implementation doc install de-dupe storage diagnostics');
+  assertIncludes(customerAppSpec, '`CUSTOMER_APP_OPENED` uses a browser-local `sessionStorage` guard', 'Customer App spec standalone-open session guard');
+  assertIncludes(customerAppSpec, 'Install-mode detection and shortcut/direct-intent parse failures log bounded diagnostics only', 'Customer App spec install and URL intent diagnostics');
+  assertIncludes(customerAppSpec, 'Visit-count and dismissal-storage failures log bounded `customer_app_prompt_*` diagnostics only', 'Customer App spec prompt storage diagnostics');
+  assertIncludes(customerAppSpec, 'no fallback write path is created', 'Customer App spec standalone-open no fallback write boundary');
+  assertIncludes(customerAppFirebase, 'Standalone-open storage diagnostics', 'Customer App Firebase standalone-open storage diagnostics');
+  assertIncludes(customerAppFirebase, 'Prompt gate storage diagnostics', 'Customer App Firebase prompt storage diagnostics');
+  assertIncludes(customerAppFirebase, 'Install detection and URL intent diagnostics', 'Customer App Firebase install and URL intent diagnostics');
+  assertIncludes(customerAppFirebase, 'Service-worker domain-resolution diagnostics', 'Customer App Firebase service-worker domain diagnostics');
+  assertIncludes(customerAppFirebase, 'Service-worker degraded fallback diagnostics', 'Customer App Firebase service-worker degraded fallback diagnostics');
+  assertIncludes(customerAppFirebase, 'Prompt-shown timestamp diagnostics', 'Customer App Firebase prompt-shown timestamp diagnostics');
+  assertIncludes(customerAppFirebase, 'Install de-dupe storage diagnostics', 'Customer App Firebase install de-dupe storage diagnostics');
+  assertIncludes(customerAppFirebase, 'These diagnostics add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement', 'Customer App Firebase cost-neutral standalone-open diagnostics');
+  assertIncludes(productionAudit, 'Customer App service-worker domain diagnostics checkpoint', 'Production audit Customer App service-worker domain diagnostics checkpoint');
+  assertIncludes(productionAudit, 'Customer App service-worker degraded fallback diagnostics checkpoint', 'Production audit Customer App service-worker degraded fallback diagnostics checkpoint');
+  assertIncludes(changelog, 'Customer App Service Worker Domain Diagnostics', 'Changelog Customer App service-worker domain diagnostics checkpoint');
+  assertIncludes(changelog, 'Customer App Service Worker Degraded Fallback Diagnostics', 'Changelog Customer App service-worker degraded fallback diagnostics checkpoint');
 }
 
 function verifyFreshnessHook() {

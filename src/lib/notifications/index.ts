@@ -38,6 +38,7 @@ import { createHash } from 'crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import { Timestamp } from 'firebase-admin/firestore';
 import * as nodemailer from 'nodemailer';
+import { getSmtpConfigFromEnv, isSmtpConfigured } from './smtpConfig';
 import {
     getBoundedNotificationStringContext,
     getNotificationPayloadLogContext,
@@ -84,7 +85,7 @@ type NotificationLogTarget = {
 let cachedTransporter: nodemailer.Transporter | null = null;
 
 export function isNotificationSmtpConfigured(): boolean {
-    return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+    return isSmtpConfigured();
 }
 
 export function getNotificationReadiness(productId: ProductId | string = PRODUCT_IDS.ANSWERLATTICE) {
@@ -132,13 +133,13 @@ function getSafeLogId(eventType: string, referenceId: string): string {
 
 function getTransporter(): nodemailer.Transporter | null {
     if (cachedTransporter) return cachedTransporter;
-    const host = process.env.SMTP_HOST;
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
-    if (!host || !user || !pass) return null;
+    const smtpConfig = getSmtpConfigFromEnv();
+    if (!smtpConfig) return null;
     cachedTransporter = nodemailer.createTransport({
-        host, port, secure: port === 465, auth: { user, pass },
+        host: smtpConfig.host,
+        port: smtpConfig.port,
+        secure: smtpConfig.secure,
+        auth: { user: smtpConfig.user, pass: smtpConfig.pass },
     });
     return cachedTransporter;
 }
@@ -195,7 +196,7 @@ async function isDuplicate(
             eventType,
             ...getBoundedNotificationStringContext('referenceId', referenceId),
         });
-        return false; // On error, allow the send (fail-open)
+        return true;
     }
 }
 
@@ -218,7 +219,7 @@ async function isRateLimited(target: NotificationLogTarget, recipientEmail: stri
         logNotificationFailure('notification_rate_limit_check_failed', error, {
             ...getBoundedNotificationStringContext('recipientEmail', recipientEmail),
         });
-        return false; // Fail-open
+        return true;
     }
 }
 

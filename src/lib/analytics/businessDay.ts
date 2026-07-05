@@ -1,4 +1,5 @@
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
+import { isValidAnalyticsTimeZone } from './timeZoneDiagnostics';
 
 export const DEFAULT_FOOD_BUSINESS_DAY_END_TIME = '03:00';
 export const DEFAULT_CALENDAR_BUSINESS_DAY_END_TIME = '00:00';
@@ -17,16 +18,6 @@ const LEGACY_FOOD_BUSINESS_KEYWORDS = [
   'restaurant',
   'sushi',
 ];
-
-function isValidTimeZone(timeZone?: string): timeZone is string {
-  if (!timeZone) return false;
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export function parseBusinessDayEndMinutes(value?: string): number | null {
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(value || '').trim());
@@ -69,7 +60,7 @@ function formatLocalParts(date: Date, timeZone?: string): {
   minute: string;
 } {
   const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: isValidTimeZone(timeZone) ? timeZone : 'UTC',
+    timeZone: isValidAnalyticsTimeZone(timeZone, 'analytics_business_day') ? timeZone : 'UTC',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

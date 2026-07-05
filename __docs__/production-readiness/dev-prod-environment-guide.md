@@ -141,7 +141,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | **Firebase (MenuList)** | Production data must not mix with local/preview data | Keep local/preview on `menulist-qa`; set Vercel Production vars to `menulist` |
 | **Firebase (Answerlattice)** | Answerlattice data must stay separate from MenuList and from production | Use `answerlattice-qa` locally/in Preview; use `answerlattice` in Production |
 | **Razorpay**            | Test mode vs live payments — using live keys in dev = real charges | Use Razorpay test mode keys in dev     |
-| **Sentry**              | Keep dev errors out of prod dashboard                              | Already configured: 2 DSNs in code     |
+| **Sentry**              | Keep dev errors out of prod dashboard                              | Configured through env; no DSNs in code |
 | **Upstash**             | Prevent dev rate limit data from affecting prod                    | Can share OR create separate DB        |
 
 ### Services That CAN Share Dev/Prod
@@ -505,6 +505,7 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
   3. Create project "javascript-nextjs" (for prod errors)
   4. Copy DSN from each project settings
 - **Env vars:** `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DEV_DSN`, `NEXT_PUBLIC_SENTRY_DEV_DSN`
+- **Root app runtime rule:** browser Sentry reads `NEXT_PUBLIC_SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DEV_DSN`; server and edge Sentry read `SENTRY_DSN` or local `SENTRY_DEV_DSN`, with the same app public DSN as a fallback. If no matching DSN is configured, root app Sentry stays disabled.
 - **Functions runtime rule:** deployed Functions read `SENTRY_DSN` only; local emulators may use `SENTRY_DEV_DSN`. If no DSN is configured, Functions Sentry stays disabled and Firebase logs remain active.
 - **Cost:** Free tier — 5,000 errors/month
 - **Feature flag:** `ENABLE_SENTRY: true`

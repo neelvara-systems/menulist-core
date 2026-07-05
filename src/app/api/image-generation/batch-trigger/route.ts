@@ -4,7 +4,6 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PERMISSIONS } from '@constant/permissions';
 import { markImageBatchProcessingJobFailedAdmin, updateImageBatchProcessingJobAdmin } from '@database/imageBatchProcessing/server';
 import { checkAICapacity } from '@lib/ai/capacityCheck';
-import { sanitizeImageGenerationConfigForLogging } from '@lib/ai/imageOperationLogging';
 import { enqueueImageGenerationTask, getImageGenerationTaskConfigStatus } from '@lib/google/cloudTask';
 import { getAIRouteSecurityContext } from '@lib/google/genAi/diagnostics';
 import { logger } from '@lib/monitoring/logger';
@@ -64,6 +63,30 @@ function summarizeFailedTask(result: PromiseSettledResult<unknown>) {
     return { failureCode: IMAGE_BATCH_TASK_ENQUEUE_REJECTED };
 }
 
+function getBatchGenerationConfigSummary(config: Record<string, any> | undefined | null) {
+    return {
+        aspectRatio: typeof config?.aspectRatio === 'string' ? config.aspectRatio : undefined,
+        colorCount: Array.isArray(config?.colors) ? config.colors.length : 0,
+        compositionCount: Array.isArray(config?.compositions) ? config.compositions.length : 0,
+        environmentCount: Array.isArray(config?.environments) ? config.environments.length : 0,
+        hasBackgroundColor: Boolean(config?.backgroundColor),
+        hasForegroundColor: Boolean(config?.foregroundColor),
+        hasNegativePrompt: Boolean(config?.negativePrompt),
+        hasPrompt: typeof config?.prompt === 'string' && config.prompt.length > 0,
+        hasReferenceImage: Boolean(config?.referanceImage?.url),
+        isMultiMode: Boolean(config?.isMultiMode),
+        lightingCount: Array.isArray(config?.lighting) ? config.lighting.length : 0,
+        moodCount: Array.isArray(config?.moods) ? config.moods.length : 0,
+        negativePromptLength: typeof config?.negativePrompt === 'string' ? config.negativePrompt.length : 0,
+        numberOfImages: Number(config?.numberOfImages || 1),
+        promptLength: typeof config?.prompt === 'string' ? config.prompt.length : 0,
+        selectedImageTypeCount: Array.isArray(config?.selectedImageTypes) ? config.selectedImageTypes.length : 0,
+        styleCount: Array.isArray(config?.styles) ? config.styles.length : 0,
+        stylesCategoryPresent: Boolean(config?.stylesCategory),
+        transparentBg: Boolean(config?.transparentBg),
+    };
+}
+
 function getBatchImageRouteLogContext({
     itemCount,
     itemId,
@@ -97,9 +120,7 @@ function getBatchPromptEstimate({
             projectId,
         }, AI_MODEL);
 
-        if (!prompts.length) {
-            summary.itemsWithoutPrompts.push(itemDetails.id || itemDetails.name || 'unknown');
-        }
+        if (!prompts.length) summary.itemsWithoutPromptsCount += 1;
 
         summary.estimatedQuantity += Math.max(
             prompts.length,
@@ -110,7 +131,7 @@ function getBatchPromptEstimate({
         return summary;
     }, {
         estimatedQuantity: 0,
-        itemsWithoutPrompts: [] as string[],
+        itemsWithoutPromptsCount: 0,
     });
 }
 
@@ -154,13 +175,13 @@ export const POST = withAuth(async (request, session) => {
                 attemptedData: requestLogContext,
             }, 'high'); // HIGH severity - batch expensive operations
 
-            await writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId, '', {
+            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, {
                 error: errorMsg,
-                hasGenerationConfig: !!rawData?.generationConfig,
-                hasReferenceImage: !!rawData?.generationConfig?.referanceImage?.url,
-                itemsListCount: rawData?.itemsList?.length || 0,
-                projectId: rawData?.projectId,
-                jobId: rawData?.jobId,
+                attemptedData: {
+                    ...requestLogContext,
+                    hasGenerationConfig: !!rawData?.generationConfig,
+                    hasReferenceImage: !!rawData?.generationConfig?.referanceImage?.url,
+                },
             });
             return NextResponse.json({
                 error: 'Invalid input',
@@ -208,17 +229,17 @@ export const POST = withAuth(async (request, session) => {
             itemsList,
             projectId,
         });
-        if (promptEstimate.itemsWithoutPrompts.length > 0) {
-            const reason = `Batch image generation could not build prompts for ${promptEstimate.itemsWithoutPrompts.length} item(s).`;
+        if (promptEstimate.itemsWithoutPromptsCount > 0) {
+            const reason = `Batch image generation could not build prompts for ${promptEstimate.itemsWithoutPromptsCount} item(s).`;
             await markImageBatchProcessingJobFailedAdmin(jobId, projectId, reason).catch((error) => {
                 logRuntimeFailure('image_batch_prompt_block_status_update_failed', error, {
                     ...requestLogContext,
-                    itemsWithoutPromptsCount: promptEstimate.itemsWithoutPrompts.length,
+                    itemsWithoutPromptsCount: promptEstimate.itemsWithoutPromptsCount,
                 });
             });
             return NextResponse.json({
                 error: reason,
-                items: promptEstimate.itemsWithoutPrompts.slice(0, 10),
+                itemsWithoutPromptsCount: promptEstimate.itemsWithoutPromptsCount,
             }, { status: 400 });
         }
 
@@ -268,9 +289,9 @@ export const POST = withAuth(async (request, session) => {
             logType: 'BATCH_GENERATION_TASK_STARTED',
             error: null,
             data: {
-                generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
-                itemIds: itemsList.map((item) => item.id),
+                generationConfigSummary: getBatchGenerationConfigSummary(generationConfig as Record<string, any>),
                 itemCount: itemsList.length,
+                itemsWithIdCount: itemsList.filter((item) => Boolean(item.id)).length,
                 jobId,
                 promptQuantity: promptEstimate.estimatedQuantity,
             },

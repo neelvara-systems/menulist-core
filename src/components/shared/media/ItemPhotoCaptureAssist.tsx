@@ -98,12 +98,18 @@ const ItemPhotoCaptureAssist: React.FC<ItemPhotoCaptureAssistProps> = ({
             }
 
             setCameraState('ready');
-        } catch {
+        } catch (error) {
+            logRuntimeFailure('item_photo_camera_start_failed', error, {
+                ...getBoundedRuntimeStringContext('captureMode', mode),
+                ...getBoundedRuntimeStringContext('itemName', itemName),
+                hasMediaDevices: typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia),
+                hasVideoRef: Boolean(videoRef.current),
+            });
             stopCamera();
             setCameraState('blocked');
             setErrorMessage('Camera is blocked. Use upload below.');
         }
-    }, [cameraState, clearPreview, disabled, stopCamera]);
+    }, [cameraState, clearPreview, disabled, itemName, mode, stopCamera]);
 
     const handleRetake = useCallback(() => {
         setFeedback(null);

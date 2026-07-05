@@ -29,6 +29,13 @@ import { getStoreStatus } from '@lib/hours';
 import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
 import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { resolveMenuListAttributionPolicy } from '@lib/platform/menuListBranding';
+import {
+    normalizeOBPExternalHttpsUrl,
+    normalizeOBPGoogleMapsUrl,
+    normalizeOBPSocialUrl,
+    type OBPSocialPlatform,
+} from '@lib/obp/publicLinks';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { StoreDataType } from '@type/platform/store';
 import {
     LuCalendarCheck,
@@ -70,7 +77,9 @@ interface MenuFooterProps {
 }
 
 // Social media icon mapping
-const SOCIAL_ICONS: Record<string, React.ElementType> = {
+type MenuFooterSocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'twitter' | 'youtube' | 'whatsapp';
+
+const SOCIAL_ICONS: Record<MenuFooterSocialPlatform, React.ElementType> = {
     facebook: LuFacebook,
     instagram: LuInstagram,
     twitter: LuTwitter,
@@ -79,15 +88,81 @@ const SOCIAL_ICONS: Record<string, React.ElementType> = {
     whatsapp: LuMessageCircle,
 };
 
+function normalizeMenuFooterSocialUrl(platform: string, value: unknown): string | null {
+    const normalizedPlatform = platform.toLowerCase();
+    if (!(normalizedPlatform in SOCIAL_ICONS)) return null;
+    if (normalizedPlatform === 'whatsapp') {
+        return normalizeOBPExternalHttpsUrl(value, {
+            allowedHostBases: ['wa.me', 'whatsapp.com', 'api.whatsapp.com'],
+        });
+    }
+    return normalizeOBPSocialUrl(normalizedPlatform as OBPSocialPlatform, value);
+}
+
+type MenuFooterFreshnessFailureType = 'relative' | 'iso';
+
+const reportedMenuFooterFreshnessFailures = new Set<MenuFooterFreshnessFailureType>();
+
+function getMenuFooterTimestampType(timestamp: unknown): string {
+    if (timestamp === null) return 'null';
+    if (timestamp === undefined) return 'undefined';
+    if (timestamp instanceof Date) return 'date';
+    if (typeof timestamp === 'object' && typeof (timestamp as { toDate?: unknown }).toDate === 'function') {
+        return 'firestore_timestamp';
+    }
+    return typeof timestamp;
+}
+
+function logMenuFooterFreshnessFailure(
+    failureType: MenuFooterFreshnessFailureType,
+    error: unknown,
+    timestamp: unknown,
+): void {
+    if (reportedMenuFooterFreshnessFailures.has(failureType)) return;
+    reportedMenuFooterFreshnessFailures.add(failureType);
+
+    const failureCode = failureType === 'relative'
+        ? 'public_menu_footer_freshness_relative_failed'
+        : 'public_menu_footer_freshness_iso_failed';
+    const timestampType = getMenuFooterTimestampType(timestamp);
+
+    logRuntimeFailure(failureCode, error, {
+        failureType,
+        ...getBoundedRuntimeStringContext('timestampType', timestampType),
+        hasToDate: typeof (timestamp as { toDate?: unknown } | null | undefined)?.toDate === 'function',
+        isDate: timestamp instanceof Date,
+        hasWindow: typeof window !== 'undefined',
+    });
+}
+
+function resolveMenuFooterDate(
+    timestamp: unknown,
+    failureType: MenuFooterFreshnessFailureType,
+): Date | null {
+    try {
+        const value = typeof (timestamp as { toDate?: unknown } | null | undefined)?.toDate === 'function'
+            ? (timestamp as { toDate: () => unknown }).toDate()
+            : timestamp;
+        const date = value instanceof Date ? value : new Date(value as string | number | Date);
+        if (!Number.isFinite(date.getTime())) {
+            throw new Error('invalid_last_published_at');
+        }
+        return date;
+    } catch (error) {
+        logMenuFooterFreshnessFailure(failureType, error, timestamp);
+        return null;
+    }
+}
+
 /**
  * Format a Firestore Timestamp or Date to a human-readable relative string.
  * Examples: "today", "yesterday", "3 days ago", "Jan 15"
  */
 function formatRelativeDate(timestamp: any): string {
-    try {
-        const date = timestamp?.toDate?.() || (timestamp instanceof Date ? timestamp : new Date(timestamp));
-        if (isNaN(date.getTime())) return '';
+    const date = resolveMenuFooterDate(timestamp, 'relative');
+    if (!date) return '';
 
+    try {
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -98,8 +173,19 @@ function formatRelativeDate(timestamp: any): string {
         if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
 
         return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
-    } catch {
+    } catch (error) {
+        logMenuFooterFreshnessFailure('relative', error, timestamp);
         return '';
+    }
+}
+
+function getMenuFooterUpdatedAtIso(timestamp: any): string | undefined {
+    try {
+        const date = resolveMenuFooterDate(timestamp, 'iso');
+        return date?.toISOString();
+    } catch (error) {
+        logMenuFooterFreshnessFailure('iso', error, timestamp);
+        return undefined;
     }
 }
 
@@ -155,10 +241,12 @@ export default function MenuFooter({
     });
     const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber}` : undefined;
     const showWhatsApp = (publicPresence?.showWhatsApp !== false) && !!whatsappHref;
-    const directionsHref = publicPresence?.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : undefined);
+    const directionsHref = normalizeOBPGoogleMapsUrl(publicPresence?.googleMapsUrl) || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : undefined);
+    const reservationHref = normalizeOBPExternalHttpsUrl(publicPresence?.reservationUrl) || undefined;
+    const orderHref = normalizeOBPExternalHttpsUrl(publicPresence?.orderUrl) || undefined;
     const showDirections = (publicPresence?.showDirections !== false) && !!directionsHref;
-    const showReservation = (publicPresence?.showReservation !== false) && !!publicPresence?.reservationUrl;
-    const showOrder = (publicPresence?.showOrder !== false) && !!publicPresence?.orderUrl;
+    const showReservation = (publicPresence?.showReservation !== false) && !!reservationHref;
+    const showOrder = (publicPresence?.showOrder !== false) && !!orderHref;
     const shouldTrackMenuActions = trackingEnabled && !!analyticsIds?.tenantId && !!analyticsIds?.storeId && !!analyticsIds?.projectId;
     const displayPhone = storeDetails?.phoneNumber
         ? storeDetails?.dialCode && !storeDetails.phoneNumber.startsWith('+')
@@ -175,10 +263,19 @@ export default function MenuFooter({
     const homeHref = appendPublicLanguageParam('/', activeLanguage);
     const useSingleRowActions = visibleActionCount > 1 && visibleActionCount <= 3 && !showReservation && !showOrder;
     const useFullWidthActionGrid = isMobile && useSingleRowActions;
+    const relativeUpdatedAt = lastPublishedAt ? formatRelativeDate(lastPublishedAt) : '';
+    const lastUpdatedIso = lastPublishedAt ? getMenuFooterUpdatedAtIso(lastPublishedAt) : undefined;
+    const showFreshnessText = Boolean(relativeUpdatedAt);
 
     // Get social media links that have values
     const socialLinks = storeDetails?.socialMedia
-        ? Object.entries(storeDetails.socialMedia).filter(([_, url]) => url && url.trim())
+        ? Object.entries(storeDetails.socialMedia)
+            .map(([platform, url]) => {
+                const normalizedPlatform = platform.toLowerCase();
+                const safeUrl = normalizeMenuFooterSocialUrl(normalizedPlatform, url);
+                return safeUrl ? [normalizedPlatform, safeUrl] as const : null;
+            })
+            .filter((link): link is readonly [MenuFooterSocialPlatform, string] => Boolean(link))
         : [];
     const policyLinks = FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES
         ? [
@@ -363,15 +460,15 @@ export default function MenuFooter({
                             <span>Directions</span>
                         </a>
                     )}
-                    {showReservation && publicPresence?.reservationUrl && (
+                    {showReservation && reservationHref && (
                         <a
-                            href={publicPresence.reservationUrl}
+                            href={reservationHref}
                             data-footer-contact-action="true"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(event) => trackBeforeNavigate({
                                 event,
-                                href: publicPresence.reservationUrl,
+                                href: reservationHref,
                                 target: '_blank',
                                 track: () => handleMenuAction('reserve'),
                             })}
@@ -381,15 +478,15 @@ export default function MenuFooter({
                             <span>Reserve</span>
                         </a>
                     )}
-                    {showOrder && publicPresence?.orderUrl && (
+                    {showOrder && orderHref && (
                         <a
-                            href={publicPresence.orderUrl}
+                            href={orderHref}
                             data-footer-contact-action="true"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(event) => trackBeforeNavigate({
                                 event,
-                                href: publicPresence.orderUrl,
+                                href: orderHref,
                                 target: '_blank',
                                 track: () => handleMenuAction('order'),
                             })}
@@ -443,8 +540,7 @@ export default function MenuFooter({
                     marginTop: '12px',
                 }}>
                     {socialLinks.map(([platform, url]) => {
-                        const Icon = SOCIAL_ICONS[platform.toLowerCase()];
-                        if (!Icon) return null;
+                        const Icon = SOCIAL_ICONS[platform];
 
                         return (
                             <a
@@ -573,7 +669,7 @@ export default function MenuFooter({
             )}
 
             {/* Canonical Truth: Version + Timestamp (machine-readable, trust signal) */}
-            {showUpdateMeta && (menuVersion || lastPublishedAt) && (
+            {showUpdateMeta && (menuVersion || showFreshnessText) && (
                 <p
                     style={{
                         color: moodConfig.bodyColor,
@@ -584,10 +680,10 @@ export default function MenuFooter({
                         fontFamily: moodConfig.bodyFont,
                     }}
                     data-menu-version={menuVersion}
-                    data-last-updated={lastPublishedAt?.toDate?.()?.toISOString?.() || lastPublishedAt}
+                    data-last-updated={lastUpdatedIso}
                 >
-                    {lastPublishedAt && `Updated ${formatRelativeDate(lastPublishedAt)}`}
-                    {menuVersion && lastPublishedAt && ' · '}
+                    {showFreshnessText && `Updated ${relativeUpdatedAt}`}
+                    {menuVersion && showFreshnessText && ' · '}
                     {menuVersion && `v${menuVersion}`}
                 </p>
             )}

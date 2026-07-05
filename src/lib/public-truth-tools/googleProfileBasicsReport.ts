@@ -95,7 +95,7 @@ export function buildGoogleProfileBasicsReport(input: GoogleProfileBasicsInput):
   const cityOrArea = trimToSingleLine(input.cityOrArea);
   const websiteOrCustomerLink = trimToSingleLine(input.websiteOrCustomerLink);
   const hasWebsiteOrCustomerLink = websiteOrCustomerLink.length > 0;
-  const validWebsiteOrCustomerLink = isValidHttpUrl(websiteOrCustomerLink);
+  const validWebsiteOrCustomerLink = isValidHttpUrl(websiteOrCustomerLink, 'google_profile_basics_website_or_customer_link');
   const hasIdentityHint = businessName.length >= 2 || cityOrArea.length >= 2;
 
   const checks: GoogleProfileBasicsItem[] = [

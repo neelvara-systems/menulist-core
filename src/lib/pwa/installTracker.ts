@@ -23,15 +23,55 @@ const INSTALL_FIRED_KEY_PREFIX = 'menulist_customerApp_installFired_';
 // Timestamp of the last prompt shown — used by the iOS inference heuristic in
 // standaloneDetector.ts. Keyed per-store so different tenants don't collide.
 export const PROMPT_SHOWN_AT_KEY_PREFIX = 'menulist_customerApp_promptShownAt_';
+const INSTALL_TRACKER_STORAGE_TEST_KEY = '__menulist_customer_app_install_test__';
 
-function isStorageAvailable(): boolean {
+type InstallStorageOperation =
+  | 'install_dedupe_availability'
+  | 'install_dedupe_read'
+  | 'install_dedupe_write'
+  | 'prompt_shown_write';
+const reportedInstallStorageFailures = new Set<string>();
+
+function logCustomerAppInstallStorageFailure(
+  failureCode: string,
+  operation: InstallStorageOperation,
+  error: unknown,
+  storeId: string | number,
+  storageKey: string,
+): void {
+  const reportKey = `${failureCode}:${operation}`;
+  if (reportedInstallStorageFailures.has(reportKey)) return;
+  reportedInstallStorageFailures.add(reportKey);
+
+  logPwaTrackingFailure(failureCode, error, {
+    operation,
+    ...getBoundedPwaStringContext('storeId', storeId),
+    ...getBoundedPwaStringContext('storageKey', storageKey),
+  });
+}
+
+function isStorageAvailable(context?: {
+  operation: InstallStorageOperation;
+  storeId: string | number;
+  storageKey: string;
+}): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const k = '__menulist_test__';
-    window.localStorage.setItem(k, '1');
-    window.localStorage.removeItem(k);
+    window.localStorage.setItem(INSTALL_TRACKER_STORAGE_TEST_KEY, '1');
+    window.localStorage.removeItem(INSTALL_TRACKER_STORAGE_TEST_KEY);
     return true;
-  } catch {
+  } catch (error) {
+    if (context) {
+      logCustomerAppInstallStorageFailure(
+        context.operation === 'prompt_shown_write'
+          ? 'customer_app_prompt_shown_storage_unavailable'
+          : 'customer_app_install_dedupe_storage_unavailable',
+        context.operation,
+        error,
+        context.storeId,
+        context.storageKey,
+      );
+    }
     return false;
   }
 }
@@ -70,9 +110,10 @@ export async function fireInstalledEventOnce(
   // Entry/source context only. Customer App identity is store-level, so this
   // does not create or imply separate installed apps per public route.
   const installSurface = detectInstallSurface();
+  const key = `${INSTALL_FIRED_KEY_PREFIX}${storeId}`;
 
   // Storage unavailable → still fire (privacy / SSR fallback), no dedup possible.
-  if (!isStorageAvailable()) {
+  if (!isStorageAvailable({ operation: 'install_dedupe_availability', storeId, storageKey: key })) {
     try {
       await trackEvent(TrackingEvent.CUSTOMER_APP_INSTALLED, {
         storeId: String(storeId),
@@ -101,13 +142,25 @@ export async function fireInstalledEventOnce(
     return;
   }
 
-  const key = `${INSTALL_FIRED_KEY_PREFIX}${storeId}`;
+  let installAlreadyRecorded = false;
   try {
-    if (window.localStorage.getItem(key)) {
-      // Already fired on this device for this store — suppress per dedup rule.
-      return;
-    }
+    installAlreadyRecorded = Boolean(window.localStorage.getItem(key));
+  } catch (error) {
+    logCustomerAppInstallStorageFailure(
+      'customer_app_install_dedupe_read_failed',
+      'install_dedupe_read',
+      error,
+      storeId,
+      key,
+    );
+  }
 
+  if (installAlreadyRecorded) {
+    // Already fired on this device for this store — suppress per dedup rule.
+    return;
+  }
+
+  try {
     await trackEvent(TrackingEvent.CUSTOMER_APP_INSTALLED, {
       storeId: String(storeId),
       tenantId,
@@ -119,8 +172,6 @@ export async function fireInstalledEventOnce(
       pwaInstallSource: source,
       pwaInstallSurface: installSurface,
     });
-
-    window.localStorage.setItem(key, String(Date.now()));
   } catch (err) {
     // Non-fatal — analytics should never break the customer experience.
     logCustomerAppInstallTrackingFailure(err, {
@@ -134,6 +185,19 @@ export async function fireInstalledEventOnce(
       installSurface,
       storageAvailable: true,
     });
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(key, String(Date.now()));
+  } catch (error) {
+    logCustomerAppInstallStorageFailure(
+      'customer_app_install_dedupe_write_failed',
+      'install_dedupe_write',
+      error,
+      storeId,
+      key,
+    );
   }
 }
 
@@ -170,14 +234,22 @@ function logCustomerAppInstallTrackingFailure(
  * a subsequent standalone launch was likely triggered by that prompt.
  */
 export function recordPromptShown(storeId: string | number): void {
-  if (!isStorageAvailable()) return;
+  const storageKey = `${PROMPT_SHOWN_AT_KEY_PREFIX}${storeId}`;
+  const operation: InstallStorageOperation = 'prompt_shown_write';
+  if (!isStorageAvailable({ operation, storeId, storageKey })) return;
   try {
     window.localStorage.setItem(
-      `${PROMPT_SHOWN_AT_KEY_PREFIX}${storeId}`,
+      storageKey,
       String(Date.now()),
     );
-  } catch {
-    /* noop */
+  } catch (error) {
+    logCustomerAppInstallStorageFailure(
+      'customer_app_prompt_shown_storage_write_failed',
+      operation,
+      error,
+      storeId,
+      storageKey,
+    );
   }
 }
 

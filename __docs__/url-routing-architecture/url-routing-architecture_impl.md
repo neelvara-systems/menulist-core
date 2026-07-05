@@ -42,6 +42,8 @@ Customer opens: storypizza.menulist.ai/food-menu
 
 `src/lib/multiTenant/getTenantFromHeaders.ts` reads middleware-set tenant headers and host fallbacks for public menu, OBP, compliance, and PWA handoff pages. If no host header is available, it logs only bounded header-presence booleans through `secureError()` and never emits raw request header values. `src/lib/multiTenant/domainLookup.ts` follows the same rule for Firestore lookup failures: it logs lookup type and value length only, not raw subdomain/custom-domain values or provider exception text.
 
+`src/app/client/sitemap.ts` keeps tenant sitemap lookup failures fail-closed and bounded. Master-store lookup failure logs `tenant_sitemap_master_store_lookup_failed` and returns an empty sitemap; outlet lookup failure logs `tenant_sitemap_outlets_lookup_failed` and omits outlet entries; project lookup failure logs `tenant_sitemap_projects_lookup_failed` and omits project entries. The diagnostic guard caps unique failure shapes and logs only presence/length metadata plus fallback-policy labels, never raw tenant hosts, custom domains, IDs, slugs, generated sitemap URLs, or exception text.
+
 The current internal tenant route namespace is `/client`, backed by `src/app/client/[[...slug]]/page.tsx`. Retired route wording is kept only in archived review history, not active implementation guidance.
 
 safe outlet path segments are enforced at public-output time through `src/lib/publicRouting/pathSegments.ts`. Brand OBP location cards, outlet OBP breadcrumbs/menu prefixes, client menu outlet lookup/canonical redirects, and `src/app/client/sitemap.ts` sitemap outlet entries must call `normalizePublicOutletSlug()` before emitting or resolving an outlet path segment. Invalid, reserved, oversized, slash/dot/query/encoded, or malformed legacy `outletSlug` values are ignored instead of being emitted as public links, redirects, canonical URLs, or sitemap URLs. Source gate: `npm run verify:url-routing-boundary`.
@@ -49,6 +51,8 @@ safe outlet path segments are enforced at public-output time through `src/lib/pu
 Outlet slugs reserve `menu` even though project slugs intentionally do not. A project may own `/menu` under R5 Layer 1, but an outlet cannot own `/menu` because outlet resolution happens at the same first path segment and would intercept the universal menu alias.
 
 safe project path segments are enforced at public-output time through `src/lib/publicRouting/pathSegments.ts`. Client menu project lookup, previous-slug redirects, canonical menu URLs, metadata lookup, `src/app/client/sitemap.ts` project entries, and OBP menu CTA project links must call `normalizePublicProjectSlug()` before comparing or emitting a project path segment. Invalid, reserved, oversized, slash/dot/query/encoded, or malformed legacy `project.slug` and `previousSlugs[]` values are treated as unavailable instead of being emitted as public links, redirects, canonical URLs, metadata URLs, or sitemap URLs. Project slug `menu` remains allowed by design for R5 Layer 1; reserved project slugs such as `screen` remain hidden/skipped. Source gate: `npm run verify:url-routing-boundary`.
+
+The public language parameter parse fallback lives in `src/lib/localization/publicRenderLanguage.ts`. `appendPublicLanguageParam()` still appends normalized `?lang=xx` values for valid relative and absolute public URLs, preserving query strings and fragments. If URL parsing fails, it logs bounded `public_language_param_url_parse_failed` diagnostics with URL/language presence-length metadata, relative/query/hash shape, and fixed `return_original_url` fallback policy, then returns the original URL unchanged instead of appending `lang` by raw string concatenation. Source gate: `npm run verify:url-routing-boundary`.
 
 Owner-side domain setup browser calls use `AUTH_BROWSER_REQUEST_POLICY` from `src/lib/auth/browserRequestPolicy.ts` for desktop Domain Settings, embedded Custom Domain, and Mobile Domain Settings `/api/domain` and `/api/subdomain/check` calls. The shared policy pins no-store cache, same-origin credentials, and manual redirect handling before the existing bounded response parsers and acknowledgement checks run.
 
@@ -133,6 +137,7 @@ if (isReservedProjectSlug(projectSlug)) {
 - Auto-generated from name on creation
 - Reserved slugs get `-menu` suffix (e.g., "reviews" → "reviews-menu")
 - Stored in `projectsSummary` alongside project name
+- If the recently deleted slug reservation lookup fails, creation and duplication treat the slug as reserved and append a unique suffix instead of risking reuse of an unavailable public URL.
 
 ### 2. Slug Change on Rename (updateProjectMetadata)
 
@@ -143,6 +148,8 @@ When project name changes:
 1. Generate new slug from new name
 2. Push old slug to `previousSlugs[]`
 3. Both stored in summary
+
+Deleted-project slug reservation fail-closed follow-up (July 5, 2026): `src/database/projects/index.ts` treats unknown reservation state as reserved after logging bounded `deleted_project_slug_reservation_check_failed` diagnostics. Create and duplicate flows suffix the proposed slug when the reservation lookup fails. Rename and no-slug backfill flows refuse the new slug through the same path used for a confirmed 90-day reservation, preserving QR/public URL permanence over optimistic slug reuse.
 
 ### 3. Client Resolver (getProjectBySlugOrDefault)
 

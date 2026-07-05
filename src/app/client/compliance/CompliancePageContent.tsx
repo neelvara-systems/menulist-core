@@ -18,6 +18,7 @@ import {
 } from "@lib/firestore/clientStoreLookup";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { LuChevronLeft } from "react-icons/lu";
 import { notFound } from "next/navigation";
 
@@ -30,6 +31,25 @@ async function getTenantFromHeaders() {
 interface CompliancePageContentProps {
     type: 'privacy' | 'terms' | 'refund';
     backHref?: string;
+}
+
+function logComplianceOverrideReadFailure(
+    error: unknown,
+    context: {
+        storeId?: unknown;
+        tenantType?: unknown;
+        type: CompliancePageContentProps['type'];
+        hasCustomDomain: boolean;
+        hasSubdomain: boolean;
+    },
+): void {
+    logRuntimeFailure('public_compliance_override_read_failed', error, {
+        ...getBoundedRuntimeStringContext('storeId', context.storeId),
+        ...getBoundedRuntimeStringContext('tenantType', context.tenantType),
+        ...getBoundedRuntimeStringContext('pageType', context.type),
+        hasCustomDomain: context.hasCustomDomain,
+        hasSubdomain: context.hasSubdomain,
+    });
 }
 
 export default async function CompliancePageContent({ type, backHref = '/' }: CompliancePageContentProps) {
@@ -95,7 +115,14 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
                 content = composeComplianceContent(systemContent, data[overrideField]);
             }
         }
-    } catch {
+    } catch (error) {
+        logComplianceOverrideReadFailure(error, {
+            storeId: sId,
+            tenantType,
+            type,
+            hasCustomDomain: Boolean(customDomain),
+            hasSubdomain: Boolean(subdomain),
+        });
         // Firestore error — system content already set as default
     }
 

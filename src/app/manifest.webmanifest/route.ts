@@ -24,10 +24,42 @@ import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl } from '@lib/ob
 import { getCustomerAppIconVersion } from '@lib/pwa/customerAppAssets';
 import { getStoreManifestStartUrl } from '@lib/pwa/manifestIdentity';
 import { buildManifest } from '@lib/pwa/manifestGenerator';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { buildTelHref } from '@lib/phone/phoneNumber';
 import { secureError } from '@lib/security/secureLogger';
 import { unstable_cache } from 'next/cache';
 import { headers } from 'next/headers';
+
+const MAX_MANIFEST_START_URL_DIAGNOSTICS = 25;
+const reportedManifestStartUrlFailures = new Set<string>();
+
+function getManifestStartUrlSourceErrorName(error: unknown): string {
+    if (error instanceof Error) return error.name || 'Error';
+    return typeof error;
+}
+
+function logManifestStartUrlLookupFailure(error: unknown, storeId: string | number): void {
+    const normalizedStoreId = String(storeId ?? '').trim();
+    const failureKey = [
+        normalizedStoreId.length,
+        getManifestStartUrlSourceErrorName(error),
+    ].join(':');
+
+    if (!reportedManifestStartUrlFailures.has(failureKey)) {
+        if (reportedManifestStartUrlFailures.size >= MAX_MANIFEST_START_URL_DIAGNOSTICS) return;
+        reportedManifestStartUrlFailures.add(failureKey);
+    }
+
+    logRuntimeFailure('customer_app_manifest_start_url_lookup_failed', error, {
+        ...getBoundedRuntimeStringContext('storeId', storeId),
+        projectSummaryDocIdPresent: normalizedStoreId.length > 0,
+        projectSummaryDocIdLength: normalizedStoreId.length > 0
+            ? 'projects_'.length + normalizedStoreId.length
+            : 0,
+        fallbackPolicy: 'use_root_manifest_start_url',
+        returnsRootStartUrl: true,
+    });
+}
 
 /**
  * Customer App store-level launch target.
@@ -50,7 +82,8 @@ async function getStoreLevelStartUrl(storeId: string | number): Promise<string> 
             (p: any) => p.active !== false && !p.isSpecialMenu,
         );
         return getStoreManifestStartUrl(hasCustomerMenu);
-    } catch {
+    } catch (error) {
+        logManifestStartUrlLookupFailure(error, storeId);
         // A transient summary read failure should not make the manifest invalid.
         // Root OBP is always a safe tenant-scoped launch target.
         return '/';

@@ -64,6 +64,7 @@ const OPTIONAL_VARS: readonly string[] = [
     'UPSTASH_REDIS_REST_URL',       // Rate limiting (ENABLE_RATE_LIMITING)
     'UPSTASH_REDIS_REST_TOKEN',     // Rate limiting
     'SMTP_HOST',                     // Lifecycle messaging (ENABLE_LIFECYCLE_MESSAGING)
+    'SMTP_PORT',                     // Lifecycle messaging
     'SMTP_USER',                     // Lifecycle messaging
     'SMTP_PASS',                     // Lifecycle messaging
     'INTERNAL_NOTIFICATION_EMAIL',   // Internal/platform email recipient

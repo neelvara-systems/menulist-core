@@ -24,6 +24,7 @@ import {
   getNotificationPayloadLogContext,
   logNotificationFailure,
 } from '@lib/notifications/notificationDiagnostics';
+import { getSmtpConfigFromEnv } from '@lib/notifications/smtpConfig';
 import { Timestamp } from 'firebase-admin/firestore';
 import * as nodemailer from 'nodemailer';
 
@@ -101,7 +102,7 @@ async function isDuplicate(storeId: string, eventType: string, referenceId: stri
       ...getBoundedNotificationStringContext('storeId', storeId),
       ...getBoundedNotificationStringContext('referenceId', referenceId),
     });
-    return false;
+    return true;
   }
 }
 
@@ -123,7 +124,7 @@ async function isRateLimited(storeId: string): Promise<boolean> {
       ...getBoundedNotificationStringContext('storeId', storeId),
       maxPerDay: MAX_PER_DAY,
     });
-    return false;
+    return true;
   }
 }
 
@@ -135,12 +136,14 @@ let cachedTransporter: nodemailer.Transporter | null = null;
 
 function getTransporter(): nodemailer.Transporter | null {
   if (cachedTransporter) return cachedTransporter;
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!host || !user || !pass) return null;
-  cachedTransporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+  const smtpConfig = getSmtpConfigFromEnv();
+  if (!smtpConfig) return null;
+  cachedTransporter = nodemailer.createTransport({
+    host: smtpConfig.host,
+    port: smtpConfig.port,
+    secure: smtpConfig.secure,
+    auth: { user: smtpConfig.user, pass: smtpConfig.pass },
+  });
   return cachedTransporter;
 }
 

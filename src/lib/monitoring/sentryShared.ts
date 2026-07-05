@@ -8,16 +8,24 @@ const runtimeEnvironment =
     || 'development';
 
 const isDevelopment = runtimeEnvironment === 'development';
-const FALLBACK_DEV_DSN = 'https://6d8940082c1030ff67af7e2345684dc9@o4510276442062848.ingest.us.sentry.io/4510276910710784';
-const FALLBACK_PROD_DSN = 'https://74bb29116e9ac34f9e0b97a8121b95c7@o4510276442062848.ingest.us.sentry.io/4510276442259456';
 
-const clientDsn = isDevelopment
-    ? process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN || FALLBACK_DEV_DSN
-    : process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || FALLBACK_PROD_DSN;
+function getConfiguredClientSentryDsn(): string {
+    const publicProdDsn = String(process.env.NEXT_PUBLIC_SENTRY_DSN || '').trim();
+    const publicDevDsn = String(process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || '').trim();
 
-const serverDsn = isDevelopment
-    ? process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || clientDsn
-    : process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN || clientDsn;
+    return isDevelopment ? publicDevDsn || publicProdDsn : publicProdDsn || publicDevDsn;
+}
+
+function getConfiguredServerSentryDsn(): string {
+    const serverProdDsn = String(process.env.SENTRY_DSN || '').trim();
+    const serverDevDsn = String(process.env.SENTRY_DEV_DSN || '').trim();
+    const publicDsn = getConfiguredClientSentryDsn();
+
+    return isDevelopment ? serverDevDsn || serverProdDsn || publicDsn : serverProdDsn || publicDsn;
+}
+
+const clientDsn = getConfiguredClientSentryDsn();
+const serverDsn = getConfiguredServerSentryDsn();
 
 const ignoredErrorPatterns = [
     /ResizeObserver loop limit exceeded/i,

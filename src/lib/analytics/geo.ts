@@ -1,7 +1,7 @@
 /**
  * Client-side geolocation utilities for analytics
  */
-import { logAnalyticsFailure } from './analyticsDiagnostics';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';
 
 const GEOLOCATION_TIMEOUT_MS = 5000;
 const GEOLOCATION_MAXIMUM_AGE_MS = 600000;
@@ -23,6 +23,18 @@ const getGeolocationAttemptContext = () => ({
   maximumAgeMs: GEOLOCATION_MAXIMUM_AGE_MS,
   timeoutMs: GEOLOCATION_TIMEOUT_MS,
   fallback: 'timezone',
+});
+
+const hasIntlDateTimeFormat = (): boolean => (
+  typeof Intl !== 'undefined'
+  && typeof Intl.DateTimeFormat === 'function'
+);
+
+const getLocationLookupFailureContext = (timeZone?: string) => ({
+  hasGeolocationApi: hasBrowserGeolocation(),
+  hasIntlDateTimeFormat: hasIntlDateTimeFormat(),
+  ...getBoundedAnalyticsStringContext('timeZone', timeZone),
+  fallback: 'unknown',
 });
 
 const getBrowserPosition = async (): Promise<GeolocationPosition | null> => {
@@ -50,6 +62,8 @@ const getBrowserPosition = async (): Promise<GeolocationPosition | null> => {
  * Falls back to a general region based on timezone if geolocation is not available
  */
 export const getLocationInfo = async (): Promise<string> => {
+  let timeZone: string | undefined;
+
   try {
     const position = await getBrowserPosition();
 
@@ -65,17 +79,17 @@ export const getLocationInfo = async (): Promise<string> => {
     }
 
     // Fallback: Use timezone to approximate region
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (timezone && timezone !== 'UTC') {
+    timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (timeZone && timeZone !== 'UTC') {
       // Extract region from timezone (e.g., "America/New_York" -> "America")
-      const region = timezone.split('/')[0];
+      const region = timeZone.split('/')[0];
       return `tz_${region}`;
     }
 
     // Last resort fallback
     return 'unknown';
   } catch (error) {
-    logAnalyticsFailure('analytics_location_lookup_failed', error);
+    logAnalyticsFailure('analytics_location_lookup_failed', error, getLocationLookupFailureContext(timeZone));
     return 'unknown';
   }
 };

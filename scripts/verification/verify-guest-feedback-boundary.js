@@ -112,8 +112,8 @@ function verifyPublicSubmitRoute() {
   assertIncludes(route, 'const effectiveName = defaults.collectName ? sanitizedName : undefined;', 'Guest Feedback submit route drops hidden name');
   assertIncludes(route, 'const effectivePhone = defaults.collectPhone ? sanitizedPhone : undefined;', 'Guest Feedback submit route drops hidden phone');
   assertIncludes(route, 'const effectiveEmail = defaults.collectEmail ? sanitizedEmail : undefined;', 'Guest Feedback submit route drops hidden email');
-  assertIncludes(route, 'normalizeGuestFeedbackReviewUrl(storeData?.reviewUrl)', 'Guest Feedback submit route store review URL guard');
-  assertIncludes(route, 'normalizeGuestFeedbackReviewUrl(storeData?.publicPresence?.googleReviewUrl)', 'Guest Feedback submit route public-presence review URL guard');
+  assertIncludes(route, "normalizeGuestFeedbackReviewUrl(storeData?.reviewUrl, 'store_review_url')", 'Guest Feedback submit route store review URL guard');
+  assertIncludes(route, "normalizeGuestFeedbackReviewUrl(storeData?.publicPresence?.googleReviewUrl, 'public_presence_google_review_url')", 'Guest Feedback submit route public-presence review URL guard');
   assertIncludes(route, 'submitGuestFeedbackAdmin({', 'Guest Feedback submit route Admin SDK write path');
   assertIncludes(route, "void logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED'", 'Guest Feedback submit route non-blocking MOL event');
   assertIncludes(route, 'logGuestFeedbackFailure', 'Guest Feedback submit route bounded diagnostics');
@@ -171,7 +171,7 @@ function verifyPublicPageAndForm() {
   assertIncludes(form, 'captchaToken: captchaToken || undefined', 'Guest Feedback form captcha submission');
   assertIncludes(form, 'readJsonResponseWithLimit', 'Guest Feedback form bounded response parser');
   assertIncludes(form, 'isSuccessfulGuestFeedbackSubmitResponse(data)', 'Guest Feedback form response acknowledgement guard');
-  assertIncludes(form, 'normalizeGuestFeedbackReviewUrl(data.reviewUrl)', 'Guest Feedback form review URL guard');
+  assertIncludes(form, "normalizeGuestFeedbackReviewUrl(data.reviewUrl, 'submit_response_review_url')", 'Guest Feedback form review URL guard');
   assertIncludes(form, 'GUEST_FEEDBACK_SUBMIT_FAILED_MESSAGE', 'Guest Feedback form fixed failure copy');
   assertIncludes(form, 'logPublicFeedbackFormFailure', 'Guest Feedback form bounded diagnostics');
   assertNotIncludes(form, 'response.json()', 'Guest Feedback form unbounded response parser');
@@ -179,6 +179,10 @@ function verifyPublicPageAndForm() {
   assertNotIncludes(form, 'data.reviewUrl.trim()', 'Guest Feedback form raw review URL presence check');
 
   assertIncludes(responseGuard, 'normalizeGuestFeedbackReviewUrl', 'Guest Feedback response guard safe review URL helper');
+  assertIncludes(responseGuard, 'guest_feedback_review_url_parse_failed', 'Guest Feedback response guard parse diagnostic');
+  assertIncludes(responseGuard, "fallbackPolicy: 'omit_review_url'", 'Guest Feedback response guard parse fallback policy');
+  assertIncludes(responseGuard, 'MAX_GUEST_FEEDBACK_REVIEW_URL_PARSE_DIAGNOSTICS = 20', 'Guest Feedback response guard diagnostic cap');
+  assertIncludes(responseGuard, 'reportedGuestFeedbackReviewUrlParseShapes.add(shapeKey)', 'Guest Feedback response guard shape cap');
   assertIncludes(responseGuard, "parsed.protocol !== 'https:'", 'Guest Feedback response guard HTTPS requirement');
   assertIncludes(responseGuard, "host === 'google.com' || host.endsWith('.google.com')", 'Guest Feedback response guard Google host requirement');
   assertIncludes(responseGuard, 'isOptionalSafeReviewUrl(value.reviewUrl)', 'Guest Feedback response guard review URL shape');
@@ -290,6 +294,7 @@ function verifyDocsParity() {
   const helpdoc = read('__docs__/projects/internal-feedback-system/internal-feedback-system_helpdoc.md');
   const website = read('__docs__/projects/internal-feedback-system/internal-feedback-system_website.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   [
     [readme, 'Guest Feedback README'],
@@ -303,13 +308,19 @@ function verifyDocsParity() {
   });
 
   assertIncludes(readme, 'Safe review URL boundary', 'Guest Feedback README safe URL boundary');
+  assertIncludes(readme, 'review URL parse diagnostics', 'Guest Feedback README review URL parse diagnostics');
   assertIncludes(impl, 'Safe review URL boundary', 'Guest Feedback implementation safe URL boundary');
+  assertIncludes(impl, 'guest_feedback_review_url_parse_failed', 'Guest Feedback implementation review URL parse diagnostic');
   assertIncludes(firebase, 'Guest feedback writes do not invalidate public menu/OBP cache', 'Guest Feedback Firebase cache boundary');
+  assertIncludes(firebase, 'guest_feedback_review_url_parse_failed', 'Guest Feedback Firebase review URL parse diagnostic boundary');
   assertIncludes(mobile, 'Mobile shell route-map source gate', 'Guest Feedback mobile route-map gate');
   assertIncludes(helpdoc, 'Private feedback', 'Guest Feedback helpdoc private feedback wording');
   assertIncludes(website, 'Review URL safety', 'Guest Feedback website review URL safety');
   assertIncludes(audit, 'Guest Feedback boundary source-gate checkpoint', 'Production readiness audit Guest Feedback checkpoint');
+  assertIncludes(audit, 'Guest Feedback review URL parse diagnostics checkpoint', 'Production readiness audit Guest Feedback review URL parse diagnostics checkpoint');
   assertIncludes(audit, '`npm run verify:guest-feedback-boundary`', 'Production readiness audit Guest Feedback verifier command');
+  assertIncludes(changelog, 'Guest Feedback Review URL Parse Diagnostics', 'Changelog Guest Feedback review URL parse diagnostics');
+  assertIncludes(changelog, 'guest_feedback_review_url_parse_failed', 'Changelog Guest Feedback review URL parse diagnostic code');
 }
 
 const checks = [

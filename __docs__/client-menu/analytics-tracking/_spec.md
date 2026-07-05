@@ -64,11 +64,13 @@ Session milestones are added to existing daily-doc writes. They do not create a 
 | `intentSessions` | First session with search, 2 distinct item views, unavailable-item tap, Decision Block tap, or final action | Measures buying intent without claiming conversion |
 | `actionSessions` | First final menu action per session | Measures sessions that moved to call/WhatsApp/directions/reserve/order |
 
-Milestone state is stored in `sessionStorage` by tenant/store/project/local date/session id. If browser storage is unavailable, full, blocked, or malformed, normal counters still write, but milestone/source/filter de-duplication or attribution persistence is skipped to avoid unsafe persistence assumptions. Those failure paths log bounded diagnostics only; they do not create fallback writes.
+Milestone state is stored in `sessionStorage` by tenant/store/project/local date/session id. The anonymous session id itself also uses browser `sessionStorage`; failed get/refresh/clear paths log bounded diagnostics and session lookup falls back to a fresh anonymous id only for the current runtime call. Search de-duplication also uses `sessionStorage` by store/project so the same normalized search term is not counted repeatedly in one tab session when browser storage is available. If browser storage is unavailable, full, blocked, or malformed, normal counters still write, but milestone/source/filter/search de-duplication or attribution persistence is skipped to avoid unsafe persistence assumptions. Those failure paths log bounded diagnostics only; they do not create fallback writes.
 
 ### Source Quality and Owner Action Plan
 
 Entry source is attached to existing menu view and final action writes. It does not create a separate event stream.
+
+Source attribution is link-level behavior. `withAnalyticsSource()` adds `entry_source` to public menu, OBP, QR, share, mobile, communication-kit, and owner-link URLs; malformed URLs keep the existing manual encoded fallback so customer navigation is not blocked. Failed source URL parsing logs bounded `analytics_source_attribution_url_parse_failed` diagnostics only and does not create a customer analytics write.
 
 | Counter | Trigger | Purpose |
 | ------- | ------- | ------- |
@@ -85,7 +87,7 @@ Entry source is attached to existing menu view and final action writes. It does 
 
 The nightly scheduler precomputes `sourceQuality` and `ownerConfidence` into the dashboard read model for all owners. The Pro analytics assistant layer adds `ownerActionPlan` plus daily / weekly / monthly wording summaries.
 
-OBP language usage is shown only for multi-language OBPs. Language switch links remain URL-based for SEO/AEO, preserve `entry_source` plus intentional `utm_source`, `utm_medium`, and `utm_campaign` parameters, and only count adoption after the switched language page remains active for the dwell window.
+OBP language usage is shown only for multi-language OBPs. Language switch links remain URL-based for SEO/AEO, preserve `entry_source` plus intentional `utm_source`, `utm_medium`, and `utm_campaign` parameters, and only count adoption after the switched language page remains active for the dwell window. If OBP language-adoption storage is unavailable, full, blocked, or malformed, adoption de-dupe is skipped, `obp_analytics_language_storage` logs bounded diagnostics only, and no fallback write is created.
 
 Pro menu intelligence joins existing analytics counters with compact owner-authored menu catalog fields during nightly settlement. It produces deterministic owner action candidates for unavailable demand, best-seller validation, category order, hidden demand, variant clarity, metadata demand, timed categories, and price signals.
 

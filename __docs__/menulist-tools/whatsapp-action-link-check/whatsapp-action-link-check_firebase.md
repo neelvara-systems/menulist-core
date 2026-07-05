@@ -1,7 +1,7 @@
 # WhatsApp Action Link Check - Firebase Cost And Storage
 
 **Status:** Implemented - V0 public browser-local checker
-**Last Updated:** July 4, 2026
+**Last Updated:** July 5, 2026
 **Audience:** Engineering, finance, security
 
 ---
@@ -22,6 +22,8 @@ The report is generated in the browser from owner-entered fields.
 | AI/provider calls | 0 |
 
 No new collection, document, index, bucket, Cloud Function, or API route is introduced for the report.
+
+The July 5 malformed WhatsApp link parse diagnostic is cost-neutral. It adds capped browser/runtime diagnostics only, keeps malformed links treated as invalid local evidence, and adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, external fetches, WhatsApp API calls, report storage, or new API route. Diagnostic context is limited to input/candidate shape metadata and fixed fallback policy.
 
 ---
 

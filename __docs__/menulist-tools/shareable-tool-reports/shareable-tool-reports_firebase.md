@@ -22,6 +22,8 @@ The V0 shareable report link adds no Firebase report-storage cost. The optional 
 
 The report payload is encoded into the URL hash fragment and decoded in the browser. All current public MenuList Tools use this same no-storage report-link path.
 
+Decode diagnostics are cost-neutral. Invalid, oversized, malformed, or wrong-shape report hashes log bounded `shareable_tool_report_payload_decode_failed` diagnostics with failure stage and payload shape metadata only. They add no Firestore reads/writes/deletes, Storage operations, Cloud Functions, external URL fetches, DNS lookups, provider calls, saved reports, report API routes, or report-history records.
+
 ---
 
 ## Contact Boundary

@@ -29,6 +29,9 @@ type WeeklyNarrativePayload = {
 
 const WEEKLY_NARRATIVE_LOCAL_ENDPOINT = '/api/analytics/weekly-narrative/generate-local';
 const WEEKLY_NARRATIVE_CATEGORY_MAX_LENGTH = 80;
+const WEEKLY_NARRATIVE_OUTPUT_TEXT_MAX_LENGTH = 500;
+const WEEKLY_NARRATIVE_OUTPUT_LIST_ITEM_MAX_LENGTH = 220;
+const WEEKLY_NARRATIVE_OUTPUT_LIST_MAX_ITEMS = 5;
 const WEEKLY_NARRATIVE_TOP_QUESTIONS_SCAN_LIMIT = 25;
 const WEEKLY_NARRATIVE_METRIC_MAX_VALUE = 1_000_000;
 
@@ -79,14 +82,42 @@ const getWeeklyNarrativeRouteLogContext = (
   recommendationsCount: metadata.recommendationsCount,
 });
 
-const normalizeStringArray = (value: unknown, fallback: string[]): string[] => {
-  if (!Array.isArray(value)) return fallback;
-  const normalized = value
-    .filter((entry): entry is string => typeof entry === 'string')
-    .map((entry) => entry.trim())
+const cleanWeeklyNarrativeOutputText = (value: unknown, maxLength: number): string => {
+  if (typeof value !== 'string') return '';
+
+  return value
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/[{}<>`$\\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength)
+    .trim();
+};
+
+const normalizeWeeklyNarrativeOutputText = (
+  value: unknown,
+  fallback: string,
+  maxLength = WEEKLY_NARRATIVE_OUTPUT_TEXT_MAX_LENGTH,
+): string => {
+  const normalized = cleanWeeklyNarrativeOutputText(value, maxLength);
+  if (normalized) return normalized;
+
+  return cleanWeeklyNarrativeOutputText(fallback, maxLength) || 'No action needed.';
+};
+
+const normalizeWeeklyNarrativeOutputList = (value: unknown, fallback: string[]): string[] => {
+  const source = Array.isArray(value) ? value : fallback;
+  const normalized = source
+    .map((entry) => cleanWeeklyNarrativeOutputText(entry, WEEKLY_NARRATIVE_OUTPUT_LIST_ITEM_MAX_LENGTH))
     .filter(Boolean)
-    .slice(0, 5);
-  return normalized.length ? normalized : fallback;
+    .slice(0, WEEKLY_NARRATIVE_OUTPUT_LIST_MAX_ITEMS);
+
+  if (normalized.length) return normalized;
+
+  return fallback
+    .map((entry) => cleanWeeklyNarrativeOutputText(entry, WEEKLY_NARRATIVE_OUTPUT_LIST_ITEM_MAX_LENGTH))
+    .filter(Boolean)
+    .slice(0, WEEKLY_NARRATIVE_OUTPUT_LIST_MAX_ITEMS);
 };
 
 const stripJsonFence = (value: string) => {
@@ -106,14 +137,12 @@ const parseWeeklyNarrativeResponse = (
 ): WeeklyNarrativePayload => {
   try {
     const parsed = JSON.parse(stripJsonFence(text));
-    const narrative = typeof parsed?.narrative === 'string' && parsed.narrative.trim()
-      ? parsed.narrative.trim()
-      : fallback.narrative;
+    const narrative = normalizeWeeklyNarrativeOutputText(parsed?.narrative, fallback.narrative);
 
     return {
       narrative,
-      highlights: normalizeStringArray(parsed?.highlights, fallback.highlights),
-      recommendations: normalizeStringArray(parsed?.recommendations, fallback.recommendations),
+      highlights: normalizeWeeklyNarrativeOutputList(parsed?.highlights, fallback.highlights),
+      recommendations: normalizeWeeklyNarrativeOutputList(parsed?.recommendations, fallback.recommendations),
     };
   } catch (error) {
     logRuntimeFailure('weekly_narrative_response_parse_failed', error, {

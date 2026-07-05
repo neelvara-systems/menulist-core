@@ -457,8 +457,29 @@ function verifyPublicCreateMenuRoutePrivacy() {
 }
 
 function verifyHoursDoNotInventOpenState() {
+  const hoursConfidence = read('src/lib/outputControl/hoursConfidence.ts');
+  const hoursImplDoc = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_impl.md');
+  const hoursFirebaseDoc = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
   const { getStoreStatus } = require('../../src/lib/hours/hoursEngine');
   const { resolveHoursOutput } = require('../../src/lib/outputControl/hoursConfidence');
+
+  assertIncludes(hoursConfidence, 'hours_confidence_timestamp_parse_failed', 'Hours confidence timestamp parse diagnostic');
+  assertIncludes(hoursConfidence, 'logHoursTimestampParseFailure', 'Hours confidence bounded timestamp parse logger');
+  assertIncludes(hoursConfidence, 'MAX_HOURS_TIMESTAMP_PARSE_DIAGNOSTICS', 'Hours confidence diagnostic cap');
+  assertIncludes(hoursConfidence, 'reportedHoursTimestampParseFailures', 'Hours confidence per-shape diagnostic guard');
+  assertIncludes(hoursConfidence, 'getBoundedRuntimeStringContext("timestampValueKind", valueKind)', 'Hours confidence bounded timestamp kind context');
+  assertIncludes(hoursConfidence, 'safeHasTimestampProperty(value, "toDate", "function")', 'Hours confidence safe toDate shape guard');
+  assertIncludes(hoursConfidence, 'Number.isFinite(value.getTime())', 'Hours confidence invalid Date guard');
+  assertIncludes(hoursConfidence, 'Number.isFinite(seconds)', 'Hours confidence invalid serialized seconds guard');
+  assertIncludes(hoursConfidence, 'Number.isFinite(value) ? toValidDate(new Date(value)) : null', 'Hours confidence invalid numeric timestamp guard');
+  assertIncludes(hoursConfidence, 'catch (error)', 'Hours confidence timestamp parse catch must retain source error');
+  assertNotIncludes(hoursConfidence, '    } catch {\n        // Silent fail\n    }', 'Hours confidence timestamp parse fallback must not fail silently');
+  assertIncludes(hoursImplDoc, 'Output Control timestamp diagnostics', 'Hours implementation doc timestamp diagnostics');
+  assertIncludes(hoursFirebaseDoc, 'Output Control timestamp diagnostics', 'Hours Firebase doc timestamp diagnostics');
+  assertIncludes(audit, 'Hours confidence timestamp diagnostics checkpoint', 'Production audit hours confidence timestamp diagnostics checkpoint');
+  assertIncludes(changelog, 'Hours Confidence Timestamp Diagnostics', 'Changelog hours confidence timestamp diagnostics checkpoint');
 
   const missingHours = getStoreStatus(undefined, 'UTC');
   assert(missingHours.isOpen === false, 'Missing hours must not render as open');
@@ -470,13 +491,47 @@ function verifyHoursDoNotInventOpenState() {
   });
   assert(noHoursOutput.confidenceState === 'BROKEN', 'Output control must treat missing hours as broken');
   assert(noHoursOutput.statusText === 'Check with store', 'Output control must suppress missing-hours authority');
+
+  const invalidNumericFreshness = resolveHoursOutput({
+    workingHours: { mon: '09:00-17:00' },
+    hoursLastUpdatedAt: Number.NaN,
+    timeZone: 'UTC',
+  });
+  assert(invalidNumericFreshness.confidenceState === 'BROKEN', 'Output control must treat invalid numeric freshness as broken');
+  assert(invalidNumericFreshness.statusText === 'Check with store', 'Output control must not trust invalid numeric freshness');
+
+  const invalidSerializedFreshness = resolveHoursOutput({
+    workingHours: { mon: '09:00-17:00' },
+    hoursLastUpdatedAt: { seconds: Number.NaN },
+    timeZone: 'UTC',
+  });
+  assert(invalidSerializedFreshness.confidenceState === 'BROKEN', 'Output control must treat invalid serialized freshness as broken');
+  assert(invalidSerializedFreshness.statusText === 'Check with store', 'Output control must not trust invalid serialized freshness');
 }
 
 function verifyTimedCategoriesUseStoreTruth() {
   const menuPage = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
+  const decisionBlocks = read('src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx');
+  const readme = read('__docs__/client-menu/README.md');
+  const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
   assertIncludes(menuPage, 'activeItemCategoryIds.has(cat.id)', 'Public menu category visibility');
   assertIncludes(menuPage, 'isCategoryVisibleByTime(cat, storeDetails?.timeZone)', 'Public menu category timezone');
   assertIncludes(menuPage, 'item.active !== false && typeof item.category', 'Public menu item visibility');
+  assertIncludes(decisionBlocks, 'public_menu_decision_blocks_timezone_failed', 'Decision Blocks timezone diagnostics');
+  assertIncludes(decisionBlocks, 'logDecisionBlocksTimezoneFailure', 'Decision Blocks bounded timezone logger');
+  assertIncludes(decisionBlocks, 'reportedDecisionBlocksTimezoneFailure', 'Decision Blocks one-per-session timezone guard');
+  assertIncludes(decisionBlocks, "getBoundedRuntimeStringContext('timeZone', timeZone)", 'Decision Blocks bounded timezone context');
+  assertIncludes(decisionBlocks, "new Error('invalid_decision_block_time_parts')", 'Decision Blocks invalid time-part diagnostic');
+  assertNotIncludes(decisionBlocks, '} catch {\n            // Fall back to browser time if the store timezone is invalid.\n        }', 'Decision Blocks timezone fallback must not be silent');
+  assertNotIncludes(decisionBlocks, 'console.error', 'Decision Blocks direct error logging');
+  assertNotIncludes(decisionBlocks, 'console.warn', 'Decision Blocks direct warn logging');
+  assertIncludes(readme, 'Decision Blocks timezone diagnostics', 'Client menu README Decision Blocks timezone diagnostics');
+  assertIncludes(firebaseDoc, 'Decision Blocks timezone diagnostics', 'Client menu Firebase Decision Blocks timezone diagnostics');
+  assertIncludes(audit, 'Public menu Decision Blocks timezone diagnostics checkpoint', 'Production audit Decision Blocks timezone diagnostics checkpoint');
+  assertIncludes(changelog, 'Public Menu Decision Blocks Timezone Diagnostics', 'Changelog Decision Blocks timezone diagnostics checkpoint');
 
   const { isWithinTimeSlot } = require('../../src/hooks/useTimedCategories');
   const noonUtc = new Date('2026-01-01T12:30:00.000Z');
@@ -779,6 +834,9 @@ function verifyPublicTruthWritesInvalidateScreenData() {
 
 function verifyPublicMenuResolutionLoggingIsBounded() {
   const page = read('src/app/client/[[...slug]]/page.tsx');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+  const obpFirebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
 
   assertIncludes(page, "import { secureError } from \"@lib/security/secureLogger\";", 'Public menu resolution secure logging');
   assertIncludes(page, 'logPublicMenuResolutionFailure', 'Public menu resolution bounded failure logger');
@@ -790,18 +848,31 @@ function verifyPublicMenuResolutionLoggingIsBounded() {
   assertIncludes(page, 'tenantIdLength: tenantId.length', 'Public menu resolution bounded tenant context');
   assertIncludes(page, 'storeIdLength: storeId.length', 'Public menu resolution bounded store context');
   assertIncludes(page, 'slugLength: slug.length', 'Public menu resolution bounded slug context');
+  assertIncludes(page, 'canonicalUrlLength: canonicalUrl.length', 'Public menu resolution bounded canonical URL context');
   assertIncludes(page, 'errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error', 'Public menu resolution bounded error context');
   assertIncludes(page, "new Error(`public_menu_resolution_${failureType}`)", 'Public menu resolution normalized error code');
+  assertIncludes(page, 'canonical_url_parse_failed', 'Public menu stored canonical URL parse diagnostics');
+  assertIncludes(page, "failureType: 'canonical_url_parse_failed'", 'Public menu stored canonical URL parse failure type');
+  assertIncludes(page, 'resolveSafeStoreCanonicalUrl(metadataStore.canonicalUrl, currentUrl, canonicalBase, {', 'Public menu stored canonical URL parse context');
   assertIncludes(page, "logPublicMenuResolutionFailure('metadata_outlet_lookup_failed'", 'Public menu metadata outlet lookup diagnostics');
   assertIncludes(page, "logPublicMenuResolutionFailure('metadata_project_lookup_failed'", 'Public menu metadata project lookup diagnostics');
   assertIncludes(page, "logPublicMenuResolutionFailure('outlet_lookup_failed'", 'Public menu outlet lookup diagnostics');
+  assertNotIncludes(page, 'resolveSafeStoreCanonicalUrl(metadataStore.canonicalUrl, currentUrl, canonicalBase)\n', 'Public menu stored canonical URL parse must not omit diagnostic context');
   assertNotIncludes(page, '.catch(() => null);', 'Public menu route silent null lookup catch');
   assertNotIncludes(page, 'console.error', 'Public menu page direct error logging');
   assertNotIncludes(page, 'console.warn', 'Public menu page direct warn logging');
+  assertIncludes(audit, 'Public menu/OBP canonical URL diagnostics checkpoint', 'Production audit public canonical URL diagnostics checkpoint');
+  assertIncludes(changelog, 'Public Menu Canonical URL Diagnostics', 'Changelog public canonical URL diagnostics checkpoint');
+  assertIncludes(obpFirebaseDoc, 'Public canonical URL diagnostics', 'OBP Firebase public canonical URL diagnostics');
 }
 
 function verifyOBPAnalyticsLoggingIsBounded() {
   const component = read('src/app/client/obp/OBPAnalytics.tsx');
+  const languageSwitcher = read('src/app/client/obp/OBPLanguageSwitcher.tsx');
+  const implDoc = read('__docs__/official-business-page/official-business-page_impl.md');
+  const firebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assertIncludes(component, "import { secureError } from '@lib/security/secureLogger';", 'OBP analytics secure logging');
   assertIncludes(component, 'logOBPAnalyticsFailure', 'OBP analytics bounded failure logger');
@@ -809,11 +880,373 @@ function verifyOBPAnalyticsLoggingIsBounded() {
   assertIncludes(component, 'tenantIdLength: tenantId.length', 'OBP analytics bounded tenant context');
   assertIncludes(component, 'storeIdLength: storeId.length', 'OBP analytics bounded store context');
   assertIncludes(component, 'activeLanguageLength: activeLanguage.length', 'OBP analytics bounded language context');
+  assertIncludes(component, 'previousLanguageLength: previousLanguage.length', 'OBP analytics bounded previous-language context');
+  assertIncludes(component, 'storageOperation: metadata.storageOperation', 'OBP analytics bounded language storage operation context');
+  assertIncludes(component, 'storageKeyLength: storageKey.length', 'OBP analytics bounded language storage key context');
   assertIncludes(component, 'errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error', 'OBP analytics bounded error context');
   assertIncludes(component, "new Error(`obp_analytics_${failureType}`)", 'OBP analytics normalized error code');
   assertIncludes(component, "}).catch((error) => {", 'OBP language adoption rejection handling');
+  assertIncludes(component, "logOBPAnalyticsFailure('language_storage'", 'OBP language storage diagnostics');
+  assertIncludes(component, "type OBPAnalyticsFailureType = 'view_tracking' | 'setup' | 'language_adoption' | 'language_storage';", 'OBP language storage failure type');
+  assertIncludes(languageSwitcher, 'obp_language_switcher_attribution_preserve_failed', 'OBP language switch attribution diagnostics');
+  assertIncludes(languageSwitcher, 'logLanguageSwitcherAttributionFailure', 'OBP language switch bounded attribution logger');
+  assertIncludes(languageSwitcher, "getBoundedAnalyticsStringContext('baseUrl', context.baseUrl)", 'OBP language switch bounded base URL context');
+  assertIncludes(languageSwitcher, "getBoundedAnalyticsStringContext('languageCode', context.languageCode)", 'OBP language switch bounded language context');
+  assertIncludes(languageSwitcher, "getBoundedAnalyticsStringContext('languageUrl', context.languageUrl)", 'OBP language switch bounded language URL context');
+  assertIncludes(languageSwitcher, 'attributionParamCount: ATTRIBUTION_PARAMS.length', 'OBP language switch attribution-param count context');
+  assertIncludes(languageSwitcher, 'reportedLanguageSwitcherAttributionFailure', 'OBP language switch one-per-session diagnostic guard');
+  assertNotIncludes(component, '} catch {\n            previousLanguage = null;\n        }', 'OBP language storage must not silently clear previous language on storage failure');
+  assertNotIncludes(languageSwitcher, '} catch {\n            return languageUrl;\n        }', 'OBP language switch attribution must not fail silently');
   assertNotIncludes(component, 'console.error', 'OBP analytics direct error logging');
   assertNotIncludes(component, 'console.warn', 'OBP analytics direct warn logging');
+  assertIncludes(implDoc, 'OBP language switch attribution diagnostics', 'OBP implementation language switch diagnostics');
+  assertIncludes(firebaseDoc, 'Language switch attribution diagnostics', 'OBP Firebase language switch diagnostics');
+  assertIncludes(audit, 'OBP language switch attribution diagnostics checkpoint', 'Production audit OBP language switch diagnostics checkpoint');
+  assertIncludes(changelog, 'OBP Language Switch Attribution Diagnostics', 'Changelog OBP language switch diagnostics checkpoint');
+}
+
+function verifyOBPThemeStorageLoggingIsBounded() {
+  const component = read('src/app/client/obp/OBPThemeToggle.tsx');
+  const implDoc = read('__docs__/official-business-page/official-business-page_impl.md');
+  const firebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
+  const mobileDoc = read('__docs__/official-business-page/official-business-page_mobile-support.md');
+
+  assertIncludes(component, "import { secureError } from '@lib/security/secureLogger';", 'OBP theme secure logging');
+  assertIncludes(component, 'reportedOBPThemeStorageFailures', 'OBP theme storage one-per-operation guard');
+  assertIncludes(component, 'logOBPThemeStorageFailure', 'OBP theme bounded storage logger');
+  assertIncludes(component, 'new Error(`obp_theme_storage_${operation}_failed`)', 'OBP theme normalized storage failure code');
+  assertIncludes(component, 'storageKeyLength: storageKey.length', 'OBP theme bounded storage-key context');
+  assertIncludes(component, 'themeLength: themeValue.length', 'OBP theme bounded theme context');
+  assertIncludes(component, 'errorName: error instanceof Error ? error.name : typeof error', 'OBP theme bounded error context');
+  assertIncludes(component, "logOBPThemeStorageFailure('read', error)", 'OBP theme read-failure diagnostics');
+  assertIncludes(component, "logOBPThemeStorageFailure('write', error, nextTheme)", 'OBP theme write-failure diagnostics');
+  assertNotIncludes(component, '} catch {\n        return null;\n    }', 'OBP theme read must not silently return null');
+  assertNotIncludes(component, 'Theme switching is a visual preference; keep the page usable if storage is blocked.', 'OBP theme write must not rely on silent localStorage comment');
+  assertNotIncludes(component, 'console.error', 'OBP theme direct error logging');
+  assertNotIncludes(component, 'console.warn', 'OBP theme direct warn logging');
+  assertIncludes(implDoc, 'OBP customer theme preference', 'OBP implementation doc theme preference boundary');
+  assertIncludes(implDoc, 'not owner theme customization', 'OBP implementation doc owner-theme boundary');
+  assertIncludes(implDoc, 'obp_theme_storage_*_failed', 'OBP implementation doc storage diagnostic boundary');
+  assertIncludes(firebaseDoc, 'Theme preference diagnostics', 'OBP Firebase doc theme diagnostics boundary');
+  assertIncludes(firebaseDoc, 'add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement', 'OBP Firebase doc cost-neutral theme diagnostics');
+  assertIncludes(mobileDoc, 'Public customer theme mode (dark/light): `OBPThemeToggle` applies a browser-local display preference', 'OBP mobile doc public theme mode boundary');
+}
+
+function verifyOBPServerFallbackLoggingIsBounded() {
+  const component = read('src/app/client/obp/OBPContent.tsx');
+  const implDoc = read('__docs__/official-business-page/official-business-page_impl.md');
+  const firebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
+
+  for (const token of [
+    'logObpServerResolutionFailure',
+    'public_obp_menu_info_lookup_failed',
+    'public_obp_menu_info_resolution_failed',
+    'public_obp_store_count_lookup_failed',
+    "getBoundedRuntimeStringContext('storeId', context.storeId)",
+    "getBoundedRuntimeStringContext('tenantId', context.tenantId)",
+    "getBoundedRuntimeStringContext('tenantType', context.tenantType)",
+    "getBoundedRuntimeStringContext('activeSpecialMenuId', context.activeSpecialMenuId)",
+    "getBoundedRuntimeStringContext('operation', context.operation)",
+    "operation: 'menu_info_lookup'",
+    "operation: 'store_count_lookup'",
+    "operation: 'menu_info_resolution'",
+  ]) {
+    assertIncludes(component, token, 'OBP server fallback bounded diagnostics');
+  }
+
+  for (const token of [
+    '} catch {\n            return empty;\n        }',
+    '} catch {\n            return 1;\n        }',
+    '.catch(() => ({ hasMenu: false, defaultSlug: undefined, projects: [] } as ObpMenuInfo))',
+    'console.error',
+    'console.warn',
+  ]) {
+    assertNotIncludes(component, token, 'OBP server fallback silent/direct diagnostics');
+  }
+
+  assertIncludes(implDoc, 'OBP server fallback diagnostics log `public_obp_menu_info_lookup_failed`, `public_obp_menu_info_resolution_failed`, and `public_obp_store_count_lookup_failed`', 'OBP implementation doc server fallback diagnostics');
+  assertIncludes(firebaseDoc, 'OBP server fallback diagnostics', 'OBP Firebase doc server fallback diagnostics');
+  assertIncludes(firebaseDoc, 'add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement', 'OBP Firebase doc cost-neutral server fallback diagnostics');
+}
+
+function verifyOBPResolvedSurfaceFallbackLoggingIsBounded() {
+  const component = read('src/app/client/obp/OBPResolvedSurface.tsx');
+  const implDoc = read('__docs__/official-business-page/official-business-page_impl.md');
+  const firebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    'logOBPResolvedSurfaceFailure',
+    'reportedOBPResolvedSurfaceFailures',
+    'public_obp_today_day_key_timezone_failed',
+    'public_obp_google_maps_embed_url_parse_failed',
+    'public_obp_freshness_timestamp_parse_failed',
+    "getBoundedRuntimeStringContext('timeZone', context.timeZone)",
+    "getBoundedRuntimeStringContext('googleMapsUrl', context.googleMapsUrl)",
+    "getBoundedRuntimeStringContext('modifiedOnType', getOBPResolvedSurfaceValueType(context.modifiedOn))",
+    "new Error('invalid_modified_on')",
+    'Number.isFinite(date.getTime())',
+  ].forEach((token) => assertIncludes(component, token, 'OBP resolved surface fallback diagnostics'));
+
+  [
+    '} catch {\n        return DAY_KEYS[new Date().getDay()];\n    }',
+    '} catch {\n        return null;\n    }',
+    'console.error',
+    'console.warn',
+  ].forEach((token) => assertNotIncludes(component, token, 'OBP resolved surface silent/direct diagnostics'));
+
+  assertIncludes(implDoc, 'OBP resolved surface fallback diagnostics', 'OBP implementation resolved surface diagnostics');
+  assertIncludes(firebaseDoc, 'Resolved surface fallback diagnostics', 'OBP Firebase resolved surface diagnostics');
+  assertIncludes(audit, 'OBP resolved surface fallback diagnostics checkpoint', 'Production audit OBP resolved surface diagnostics checkpoint');
+  assertIncludes(changelog, 'OBP Resolved Surface Fallback Diagnostics', 'Changelog OBP resolved surface diagnostics checkpoint');
+}
+
+function verifyPublicMenuSearchFocusLoggingIsBounded() {
+  const component = read('src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx');
+  const readme = read('__docs__/client-menu/README.md');
+  const implDoc = read('__docs__/client-menu/_impl.md');
+  const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    'public_menu_search_focus_prevent_scroll_failed',
+    'public_menu_search_focus_fallback_failed',
+    'reportedMenuSearchFocusFailures',
+    'logMenuSearchFocusFailure',
+    'preventScrollAttempted',
+    'activeElementIsSearchInput',
+    'hasWindow: typeof window !== \'undefined\'',
+    'hasDocument: typeof document !== \'undefined\'',
+  ].forEach((token) => assertIncludes(component, token, 'Public menu search focus diagnostics'));
+
+  [
+    '} catch {\n            input.focus();\n        }',
+    'console.error',
+    'console.warn',
+  ].forEach((token) => assertNotIncludes(component, token, 'Public menu search focus silent/direct diagnostics'));
+
+  assertIncludes(readme, 'Search focus diagnostics', 'Client menu README search focus diagnostics');
+  assertIncludes(implDoc, 'Search focus fallback diagnostics', 'Client menu implementation search focus diagnostics');
+  assertIncludes(firebaseDoc, 'Search focus diagnostics', 'Client menu Firebase search focus diagnostics');
+  assertIncludes(audit, 'Public menu search focus diagnostics checkpoint', 'Production audit public menu search focus diagnostics checkpoint');
+  assertIncludes(changelog, 'Public Menu Search Focus Diagnostics', 'Changelog public menu search focus diagnostics checkpoint');
+}
+
+function verifyPublicMenuGradientParserLoggingIsBounded() {
+  const gradientUtils = read('src/components/templates/main-app/projects/b2cView/menuPage/gradientUtils.ts');
+  const readme = read('__docs__/client-menu/README.md');
+  const implDoc = read('__docs__/client-menu/_impl.md');
+  const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    'public_menu_gradient_parse_failed',
+    'MAX_GRADIENT_PARSE_DIAGNOSTICS',
+    'reportedGradientParseFailures.add(failureKey)',
+    'getApproximateGradientStopCount',
+    'gradientStringLength: value.length',
+    'hasLinearGradientToken: value.includes',
+    "fallbackPolicy: 'use_existing_gradient_fallback'",
+  ].forEach((token) => assertIncludes(gradientUtils, token, 'Public menu gradient parser diagnostics'));
+
+  [
+    '} catch {\n    return null;\n  }',
+    'console.error',
+    'console.warn',
+    'Error parsing gradient:',
+  ].forEach((token) => assertNotIncludes(gradientUtils, token, 'Public menu gradient parser silent/direct diagnostics'));
+
+  assertIncludes(readme, 'Gradient parser diagnostics', 'Client menu README gradient parser diagnostics');
+  assertIncludes(implDoc, 'Gradient parser diagnostics', 'Client menu implementation gradient parser diagnostics');
+  assertIncludes(firebaseDoc, 'Gradient parser diagnostics', 'Client menu Firebase gradient parser diagnostics');
+  assertIncludes(audit, 'Public menu gradient parser diagnostics checkpoint', 'Production audit public menu gradient parser diagnostics checkpoint');
+  assertIncludes(changelog, 'Public Menu Gradient Parser Diagnostics', 'Changelog public menu gradient parser diagnostics checkpoint');
+}
+
+function verifyPublicMenuBreadcrumbLanguageLoggingIsBounded() {
+  const component = read('src/app/client/[[...slug]]/MenuBreadcrumb.tsx');
+  const readme = read('__docs__/client-menu/README.md');
+  const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    'public_menu_breadcrumb_language_preserve_failed',
+    'logBreadcrumbLanguagePreserveFailure',
+    'reportedBreadcrumbLanguagePreserveFailure',
+    "getBoundedRuntimeStringContext('href', context.href)",
+    "getBoundedRuntimeStringContext('currentUrl', context.currentUrl)",
+    'hasWindow: typeof window !== \'undefined\'',
+  ].forEach((token) => assertIncludes(component, token, 'Public menu breadcrumb language diagnostics'));
+
+  [
+    '} catch {\n            return href;\n        }',
+    'console.error',
+    'console.warn',
+  ].forEach((token) => assertNotIncludes(component, token, 'Public menu breadcrumb language silent/direct diagnostics'));
+
+  assertIncludes(readme, 'Breadcrumb language preservation diagnostics', 'Client menu README breadcrumb language diagnostics');
+  assertIncludes(firebaseDoc, 'Breadcrumb language preservation diagnostics', 'Client menu Firebase breadcrumb language diagnostics');
+  assertIncludes(audit, 'Public menu breadcrumb language preservation diagnostics checkpoint', 'Production audit public menu breadcrumb language diagnostics checkpoint');
+  assertIncludes(changelog, 'Public Menu Breadcrumb Language Preservation Diagnostics', 'Changelog public menu breadcrumb language diagnostics checkpoint');
+}
+
+function verifyPublicMenuLanguageStorageLoggingIsBounded() {
+  const component = read('src/components/templates/main-app/projects/b2cView/output/MenuLanguageSwitcher.tsx');
+  const readme = read('__docs__/client-menu/README.md');
+  const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    'public_menu_language_storage_read_failed',
+    'public_menu_language_storage_write_failed',
+    'logMenuLanguageStorageFailure',
+    'reportedMenuLanguageStorageFailures',
+    "getBoundedRuntimeStringContext('languageStorageKey', context.languageStorageKey)",
+    "getBoundedRuntimeStringContext('activeLanguage', context.activeLanguage)",
+    'projectLanguageCount',
+    'hasWindow: typeof window !== \'undefined\'',
+  ].forEach((token) => assertIncludes(component, token, 'Public menu language storage diagnostics'));
+
+  [
+    '} catch {\n                // Local storage may be unavailable in private browsing.\n            }',
+    '} catch {\n            // Local storage may be unavailable in private browsing.\n        }',
+    'console.error',
+    'console.warn',
+  ].forEach((token) => assertNotIncludes(component, token, 'Public menu language storage silent/direct diagnostics'));
+
+  assertIncludes(readme, 'Language preference storage diagnostics', 'Client menu README language storage diagnostics');
+  assertIncludes(firebaseDoc, 'Language preference storage diagnostics', 'Client menu Firebase language storage diagnostics');
+  assertIncludes(audit, 'Public menu language preference storage diagnostics checkpoint', 'Production audit public menu language storage diagnostics checkpoint');
+  assertIncludes(changelog, 'Public Menu Language Preference Storage Diagnostics', 'Changelog public menu language storage diagnostics checkpoint');
+}
+
+function verifyPublicMenuFeedbackNudgeStorageLoggingIsBounded() {
+  const component = read('src/components/templates/main-app/projects/b2cView/output/FeedbackNudge.tsx');
+  const readme = read('__docs__/client-menu/README.md');
+  const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
+  const feedbackReadme = read('__docs__/projects/internal-feedback-system/README.md');
+  const feedbackFirebaseDoc = read('__docs__/projects/internal-feedback-system/internal-feedback-system_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    'public_menu_feedback_nudge_storage_read_failed',
+    'public_menu_feedback_nudge_storage_write_failed',
+    'logFeedbackNudgeStorageFailure',
+    'reportedFeedbackNudgeStorageFailures',
+    "getBoundedRuntimeStringContext('sessionKey', context.sessionKey)",
+    "getBoundedRuntimeStringContext('projectId', context.projectId)",
+    'hasWindow: typeof window !== \'undefined\'',
+  ].forEach((token) => assertIncludes(component, token, 'Public menu feedback nudge storage diagnostics'));
+
+  [
+    '} catch {\n            return false;\n        }',
+    '} catch {\n            // sessionStorage not available\n        }',
+    'console.error',
+    'console.warn',
+  ].forEach((token) => assertNotIncludes(component, token, 'Public menu feedback nudge storage silent/direct diagnostics'));
+
+  assertIncludes(readme, 'Feedback nudge storage diagnostics', 'Client menu README feedback nudge diagnostics');
+  assertIncludes(firebaseDoc, 'Feedback nudge storage diagnostics', 'Client menu Firebase feedback nudge diagnostics');
+  assertIncludes(feedbackReadme, 'Feedback nudge storage diagnostics', 'Guest Feedback README feedback nudge diagnostics');
+  assertIncludes(feedbackFirebaseDoc, 'Feedback nudge storage diagnostics', 'Guest Feedback Firebase feedback nudge diagnostics');
+  assertIncludes(audit, 'Public menu feedback nudge storage diagnostics checkpoint', 'Production audit public menu feedback nudge diagnostics checkpoint');
+  assertIncludes(changelog, 'Public Menu Feedback Nudge Storage Diagnostics', 'Changelog public menu feedback nudge diagnostics checkpoint');
+}
+
+function verifyPublicMenuExternalLinksAreNormalized() {
+  const menuFooter = read('src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx');
+  const menuPage = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
+  const feedbackNudge = read('src/components/templates/main-app/projects/b2cView/output/FeedbackNudge.tsx');
+  const readme = read('__docs__/client-menu/README.md');
+  const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    'normalizeOBPGoogleMapsUrl(publicPresence?.googleMapsUrl)',
+    'const reservationHref = normalizeOBPExternalHttpsUrl(publicPresence?.reservationUrl) || undefined;',
+    'const orderHref = normalizeOBPExternalHttpsUrl(publicPresence?.orderUrl) || undefined;',
+    'normalizeMenuFooterSocialUrl',
+    'normalizeOBPSocialUrl(normalizedPlatform as OBPSocialPlatform, value)',
+    "allowedHostBases: ['wa.me', 'whatsapp.com', 'api.whatsapp.com']",
+    'href={reservationHref}',
+    'href={orderHref}',
+  ].forEach((token) => assertIncludes(menuFooter, token, 'Public menu footer external link normalization'));
+
+  [
+    'normalizeOBPGoogleMapsUrl(publicPresence?.googleMapsUrl)',
+    'const reservationHref = normalizeOBPExternalHttpsUrl(publicPresence?.reservationUrl) || undefined;',
+    'const orderHref = normalizeOBPExternalHttpsUrl(publicPresence?.orderUrl) || undefined;',
+    'href: reservationHref',
+    'href: orderHref',
+  ].forEach((token) => assertIncludes(menuPage, token, 'Public menu recovery action external link normalization'));
+
+  [
+    'normalizeOBPReviewUrl(reviewUrl)',
+    'const safeReviewUrl = normalizeOBPReviewUrl(reviewUrl);',
+    'href={safeReviewUrl || `/feedback/${projectId}?source=menu_footer`}',
+    "target={safeReviewUrl ? '_blank' : '_self'}",
+  ].forEach((token) => assertIncludes(feedbackNudge, token, 'Public menu feedback review link normalization'));
+
+  [
+    'href={publicPresence.reservationUrl}',
+    'href={publicPresence.orderUrl}',
+    'href: publicPresence.reservationUrl',
+    'href: publicPresence.orderUrl',
+    'const directionsHref = publicPresence?.googleMapsUrl ||',
+    'Object.entries(storeDetails.socialMedia).filter(([_, url]) => url && url.trim())',
+  ].forEach((token) => {
+    assertNotIncludes(menuFooter, token, 'Public menu footer must not render raw owner-managed external URLs');
+    assertNotIncludes(menuPage, token, 'Public menu recovery actions must not render raw owner-managed external URLs');
+  });
+  assertNotIncludes(feedbackNudge, 'href={reviewUrl || `/feedback/${projectId}?source=menu_footer`}', 'Public menu feedback nudge must not render raw review URLs');
+
+  assertIncludes(readme, 'Public menu external link normalization', 'Client menu README external link normalization');
+  assertIncludes(firebaseDoc, 'Public menu external link normalization', 'Client menu Firebase external link normalization');
+  assertIncludes(audit, 'Public menu external link normalization checkpoint', 'Production audit public menu external link normalization checkpoint');
+  assertIncludes(changelog, 'Public Menu External Link Normalization', 'Changelog public menu external link normalization checkpoint');
+}
+
+function verifyPublicMenuFooterFreshnessLoggingIsBounded() {
+  const component = read('src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx');
+  const readme = read('__docs__/client-menu/README.md');
+  const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    'public_menu_footer_freshness_relative_failed',
+    'public_menu_footer_freshness_iso_failed',
+    'logMenuFooterFreshnessFailure',
+    'reportedMenuFooterFreshnessFailures',
+    'resolveMenuFooterDate(',
+    'getMenuFooterUpdatedAtIso',
+    "getBoundedRuntimeStringContext('timestampType', timestampType)",
+    "throw new Error('invalid_last_published_at')",
+    'const relativeUpdatedAt = lastPublishedAt ? formatRelativeDate(lastPublishedAt) : \'\';',
+    'const lastUpdatedIso = lastPublishedAt ? getMenuFooterUpdatedAtIso(lastPublishedAt) : undefined;',
+    'const showFreshnessText = Boolean(relativeUpdatedAt);',
+    'data-last-updated={lastUpdatedIso}',
+  ].forEach((token) => assertIncludes(component, token, 'Public menu footer freshness diagnostics'));
+
+  [
+    'data-last-updated={lastPublishedAt?.toDate?.()?.toISOString?.() || lastPublishedAt}',
+    'if (isNaN(date.getTime())) return \'\';',
+    '} catch {\n        return \'\';\n    }',
+    'console.error',
+    'console.warn',
+  ].forEach((token) => assertNotIncludes(component, token, 'Public menu footer freshness silent/direct diagnostics'));
+
+  assertIncludes(readme, 'Footer freshness diagnostics', 'Client menu README footer freshness diagnostics');
+  assertIncludes(firebaseDoc, 'Footer freshness diagnostics', 'Client menu Firebase footer freshness diagnostics');
+  assertIncludes(audit, 'Public menu footer freshness diagnostics checkpoint', 'Production audit public menu footer freshness diagnostics checkpoint');
+  assertIncludes(changelog, 'Public Menu Footer Freshness Diagnostics', 'Changelog public menu footer freshness diagnostics checkpoint');
 }
 
 function verifyOBPCustomerQuickAnswersAreVisibleAndBounded() {
@@ -902,11 +1335,30 @@ function verifyPublicMenuAnalyticsLoggingIsBounded() {
   const component = read('src/components/templates/website/clientWebsite/AnalyticsContext.tsx');
   const menuPage = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
   const diagnostics = read('src/lib/analytics/analyticsDiagnostics.ts');
+  const sourceAttribution = read('src/lib/analytics/sourceAttribution.ts');
   const trackBeforeNavigate = read('src/lib/analytics/trackBeforeNavigate.ts');
   const obpMenuCta = read('src/app/client/obp/OBPMenuCTA.tsx');
   const pdpModal = read('src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx');
+  const analyticsImplDoc = read('__docs__/client-menu/analytics-tracking/_impl.md');
+  const analyticsFirebaseDoc = read('__docs__/client-menu/analytics-tracking/analytics-tracking_firebase.md');
+  const obpImplDoc = read('__docs__/official-business-page/official-business-page_impl.md');
+  const obpFirebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
+  const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assertIncludes(diagnostics, 'logAnalyticsFailure', 'Public menu analytics diagnostics helper');
+  assertIncludes(sourceAttribution, 'analytics_source_attribution_url_parse_failed', 'Analytics source attribution URL parse diagnostics');
+  assertIncludes(sourceAttribution, 'logSourceAttributionFailure', 'Analytics source attribution bounded failure helper');
+  assertIncludes(sourceAttribution, 'MAX_SOURCE_ATTRIBUTION_DIAGNOSTICS', 'Analytics source attribution diagnostic cap');
+  assertIncludes(sourceAttribution, "getBoundedAnalyticsStringContext('sourceUrl', url)", 'Analytics source attribution bounded URL context');
+  assertIncludes(sourceAttribution, "getBoundedAnalyticsStringContext('entrySource', entrySource)", 'Analytics source attribution bounded source context');
+  assertIncludes(sourceAttribution, 'isAbsoluteUrl: isAbsoluteAnalyticsUrl(url)', 'Analytics source attribution absolute-url metadata');
+  assertIncludes(sourceAttribution, "hasQuery: url.includes('?')", 'Analytics source attribution query metadata');
+  assertIncludes(sourceAttribution, "hasHash: url.includes('#')", 'Analytics source attribution hash metadata');
+  assertIncludes(analyticsImplDoc, 'Shared source-attribution diagnostics', 'Analytics implementation source attribution diagnostics');
+  assertIncludes(analyticsFirebaseDoc, 'Source attribution diagnostics rule', 'Analytics Firebase source attribution diagnostics');
+  assertIncludes(audit, 'Analytics source attribution URL diagnostics checkpoint', 'Production audit analytics source attribution checkpoint');
+  assertIncludes(changelog, 'Analytics Source Attribution URL Diagnostics', 'Changelog analytics source attribution checkpoint');
   assertIncludes(component, 'getPublicMenuAnalyticsContext', 'Public menu analytics bounded context helper');
   assertIncludes(component, 'getPublicMenuItemAnalyticsContext', 'Public menu item analytics bounded context helper');
   assertIncludes(component, 'public_menu_view_tracking_failed', 'Public menu view diagnostics');
@@ -933,6 +1385,18 @@ function verifyPublicMenuAnalyticsLoggingIsBounded() {
   assertIncludes(trackBeforeNavigate, "'alternate_open'", 'Public link alternate-open tracking reason');
   assertIncludes(trackBeforeNavigate, "'target_blank'", 'Public link target-blank tracking reason');
   assertIncludes(trackBeforeNavigate, "'same_tab'", 'Public link same-tab tracking reason');
+  assertIncludes(obpMenuCta, 'obp_menu_cta_entry_source_fallback_failed', 'OBP Menu CTA entry-source fallback diagnostics');
+  assertIncludes(obpMenuCta, 'logOBPMenuCTAEntrySourceFallbackFailure', 'OBP Menu CTA bounded fallback helper');
+  assertIncludes(obpMenuCta, 'MAX_OBP_MENU_CTA_ENTRY_SOURCE_DIAGNOSTICS', 'OBP Menu CTA diagnostic cap');
+  assertIncludes(obpMenuCta, 'reportedOBPMenuCTAEntrySourceFallbackFailures', 'OBP Menu CTA diagnostic dedupe guard');
+  assertIncludes(obpMenuCta, "getBoundedAnalyticsStringContext('menuUrl', url)", 'OBP Menu CTA bounded URL context');
+  assertIncludes(obpMenuCta, 'isAbsoluteUrl: isAbsoluteOBPMenuCTAUrl(url)', 'OBP Menu CTA URL shape metadata');
+  assertIncludes(obpMenuCta, "hasQuery: url.includes('?')", 'OBP Menu CTA query metadata');
+  assertIncludes(obpMenuCta, "hasHash: url.includes('#')", 'OBP Menu CTA hash metadata');
+  assertIncludes(obpImplDoc, 'OBP Menu CTA entry-source diagnostics', 'OBP implementation Menu CTA entry-source diagnostics');
+  assertIncludes(obpFirebaseDoc, 'Menu CTA entry-source diagnostics', 'OBP Firebase Menu CTA entry-source diagnostics');
+  assertIncludes(audit, 'OBP Menu CTA entry-source diagnostics checkpoint', 'Production audit OBP Menu CTA entry-source diagnostics checkpoint');
+  assertIncludes(changelog, 'OBP Menu CTA Entry Source Diagnostics', 'Changelog OBP Menu CTA entry-source diagnostics checkpoint');
   assertIncludes(obpMenuCta, 'Promise.all([menuClick, projectSwitch])', 'OBP secondary project card tracking propagates failures to trackBeforeNavigate');
   assertIncludes(pdpModal, 'public_menu_pdp_item_share_copy_failed', 'Public menu PDP share-copy diagnostics');
   assertIncludes(pdpModal, 'public_menu_pdp_item_share_clipboard_unavailable', 'Public menu PDP unavailable clipboard code');
@@ -945,12 +1409,14 @@ function verifyPublicMenuAnalyticsLoggingIsBounded() {
   assertIncludes(pdpModal, "getBoundedRuntimeStringContext('shareTitle', shareTitle)", 'Public menu PDP bounded share title context');
   assertIncludes(pdpModal, 'hasCopyFallback: hasPdpItemShareCopyFallback()', 'Public menu PDP fallback support metadata');
   assertNotIncludes(component, 'console.error(', 'Public menu analytics direct error logging');
+  assertNotIncludes(sourceAttribution, '} catch {\n        const separator = url.includes(\'?\') ? \'&\' : \'?\';', 'Analytics source attribution URL parse must not fail silently');
   assertNotIncludes(component, 'console.warn(', 'Public menu analytics direct warn logging');
   assertNotIncludes(component, 'console.log(', 'Public menu analytics direct log logging');
   assertNotIncludes(component, 'console.debug(', 'Public menu analytics direct debug logging');
   assertNotIncludes(menuPage, 'Silent fail - state persistence is non-critical', 'Public menu state restore silent catch');
   assertNotIncludes(menuPage, 'Silent fail - quota exceeded or private browsing', 'Public menu state save silent catch');
   assertNotIncludes(trackBeforeNavigate, '.catch(() => { });', 'Public link navigation silent tracking catch');
+  assertNotIncludes(obpMenuCta, "} catch {\n        const separator = url.includes('?') ? '&' : '?';\n        return `${url}${separator}entry_source=obp`;\n    }", 'OBP Menu CTA entry-source fallback must not fail silently');
   assertNotIncludes(obpMenuCta, 'Promise.allSettled([menuClick, projectSwitch])', 'OBP secondary project card tracking must not swallow analytics failures');
   assertNotIncludes(component, 'Error tracking menu page view:', 'Public menu analytics raw view logging');
   assertNotIncludes(component, 'Error tracking project switch for Layer 2 alias:', 'Public menu analytics raw alias logging');
@@ -1459,6 +1925,10 @@ function verifyMenuEditorDiagnosticsAreBounded() {
   assertIncludes(uploadedImagesList, 'menu_editor_item_image_delete_failed', 'Menu editor item image deletion diagnostics');
   assertIncludes(uploadedImagesList, 'menu_editor_item_image_delete_project_update_rejected', 'Menu editor item image deletion project acknowledgement code');
   assertIncludes(descriptionGeneration, 'menu_editor_description_generation_project_update_rejected', 'Menu editor description generation project acknowledgement code');
+  assertIncludes(descriptionGeneration, 'menu_editor_description_generation_returned_error_message', 'Menu editor description generation returned-error diagnostic');
+  assertIncludes(descriptionGeneration, "getBoundedMenuEditorStringContext('resultMessage'", 'Menu editor description generation returned-error message is bounded');
+  assertIncludes(descriptionGeneration, "getBoundedMenuEditorStringContext('fileId'", 'Menu editor description generation returned-error file id is bounded');
+  assertIncludes(descriptionGeneration, "getBoundedMenuEditorStringContext('messageType'", 'Menu editor description generation returned-error message type is bounded');
   assertIncludes(batchImageResultView, 'image_batch_result_upload_project_update_rejected', 'Batch image result upload project acknowledgement code');
   assertIncludes(projectDal, 'logMCEValidationResult(result)', 'MCE save hook bounded validation result logging');
   assertIncludes(projectDal, 'logMCEValidationFailure(e', 'MCE save hook bounded validation failure logging');
@@ -1491,6 +1961,10 @@ function verifyMenuEditorDiagnosticsAreBounded() {
   assertNotIncludes(descriptionGeneration, 'console.warn(', 'Description generation direct warn logging');
   assertNotIncludes(descriptionGeneration, 'console.log(', 'Description generation direct log logging');
   assertNotIncludes(descriptionGeneration, 'console.debug(', 'Description generation direct debug logging');
+  assertNotIncludes(descriptionGeneration, '@lib/monitoring/logger', 'Description generation raw logger import');
+  assertNotIncludes(descriptionGeneration, "logger.warn('Description generation returned error message'", 'Description generation raw returned-error logging');
+  assertNotIncludes(descriptionGeneration, 'message: resultMessage', 'Description generation raw returned-error message logging');
+  assertNotIncludes(descriptionGeneration, 'fileId: file.uid', 'Description generation raw file id logging');
   assertNotIncludes(editItemModal, 'Error generating content:', 'Edit item modal raw content-generation diagnostic');
   assertNotIncludes(editCategoryModal, 'Failed to persist preset:', 'Edit category modal raw preset diagnostic');
   assertNotIncludes(uploadedImagesList, 'Deleting image:', 'Uploaded images list raw delete diagnostic');
@@ -1762,6 +2236,20 @@ function verifyDiscoveryInfrastructureDocsMatchRuntime() {
   assertIncludes(menuPage, 'buildPublicCatalogStructuredData', 'Client menu category-aware catalog schema source');
   assertIncludes(menuPage, '<JsonLdScript id="client-menu-schema-jsonld" data={schemaOrgJsonLd} />', 'Client menu JSON-LD emission source');
   assertIncludes(tenantSitemap, 'evaluatePublicTruthIndexability', 'Tenant sitemap public truth indexability gate');
+  assertIncludes(tenantSitemap, "secureError('[Client Sitemap] Tenant sitemap generation degraded'", 'Tenant sitemap bounded failure logging');
+  assertIncludes(tenantSitemap, 'TENANT_SITEMAP_FAILURE_CODES', 'Tenant sitemap stable failure-code map');
+  assertIncludes(tenantSitemap, 'tenant_sitemap_master_store_lookup_failed', 'Tenant sitemap master-store lookup diagnostics');
+  assertIncludes(tenantSitemap, 'tenant_sitemap_projects_lookup_failed', 'Tenant sitemap projects lookup diagnostics');
+  assertIncludes(tenantSitemap, 'tenant_sitemap_outlets_lookup_failed', 'Tenant sitemap outlets lookup diagnostics');
+  assertIncludes(tenantSitemap, 'getBoundedSitemapStringContext', 'Tenant sitemap bounded string context');
+  assertIncludes(tenantSitemap, 'failureCode,', 'Tenant sitemap normalized failure-code context');
+  assertIncludes(tenantSitemap, "getBoundedSitemapStringContext('subdomain', context.subdomain)", 'Tenant sitemap bounded subdomain metadata');
+  assertIncludes(tenantSitemap, "getBoundedSitemapStringContext('customDomain', context.customDomain)", 'Tenant sitemap bounded custom-domain metadata');
+  assertIncludes(tenantSitemap, "getBoundedSitemapStringContext('storeId', context.storeId)", 'Tenant sitemap bounded store metadata');
+  assertIncludes(tenantSitemap, "getBoundedSitemapStringContext('masterStoreId', context.masterStoreId)", 'Tenant sitemap bounded master-store metadata');
+  assertIncludes(tenantSitemap, "getBoundedSitemapStringContext('tenantId', context.tenantId)", 'Tenant sitemap bounded tenant metadata');
+  assertNotIncludes(tenantSitemap, '} catch {\n            return null;\n        }', 'Tenant sitemap master-store lookup must not fail silently');
+  assertNotIncludes(tenantSitemap, '} catch {\n            return [];\n        }', 'Tenant sitemap summary lookups must not fail silently');
   assertIncludes(tenantRobots, 'DISCOVERY_CRAWLERS', 'Tenant robots crawler allowlist source');
   assertIncludes(platformSitemap, 'PLATFORM_DISCOVERY_PAGES', 'Platform sitemap active discovery page registry');
 
@@ -1769,11 +2257,17 @@ function verifyDiscoveryInfrastructureDocsMatchRuntime() {
   assertIncludes(docs.seoGuide, 'Conditional Additions (Not Current Launch Scope)', 'Client menu SEO guide conditional launch boundary');
   assertIncludes(docs.seoGuide, 'GeoCoordinates` when `store.geo` has latitude/longitude', 'Client menu SEO guide geo runtime parity');
   assertIncludes(docs.seoGuide, 'production-readiness audit and the External Certification Runbook', 'Client menu SEO guide certification boundary');
+  assertIncludes(docs.seoGuide, 'Tenant sitemap read diagnostics', 'Client menu SEO guide tenant sitemap diagnostics');
   assertNotIncludes(docs.seoGuide, '/app/(website)/menu/[projectId]/page.tsx', 'Client menu SEO guide stale route path');
   assertNotIncludes(docs.seoGuide, 'Implementation Progress: ✅ 98% Complete', 'Client menu SEO guide stale percent status');
 
   assertIncludes(docs.discoveryReadme, 'Conditional Activation Gates', 'Discovery README conditional activation boundary');
   assertIncludes(docs.discoveryReadme, 'no scheduler/query API active', 'Discovery README disabled index boundary');
+  assertIncludes(docs.discoveryReadme, 'Tenant sitemap read diagnostics', 'Discovery README tenant sitemap diagnostics');
+  assertIncludes(docs.discoveryReadme, 'tenant_sitemap_master_store_lookup_failed', 'Discovery README master-store sitemap diagnostic');
+  assertIncludes(docs.discoveryReadme, 'tenant_sitemap_projects_lookup_failed', 'Discovery README project sitemap diagnostic');
+  assertIncludes(docs.discoveryReadme, 'tenant_sitemap_outlets_lookup_failed', 'Discovery README outlet sitemap diagnostic');
+  assertIncludes(docs.discoveryReadme, 'add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement', 'Discovery README tenant sitemap no-side-effect boundary');
   assertIncludes(docs.businessEntityIndex, 'Builder and types exist; the scheduler writer and query API are not active.', 'Business entity index doc disabled writer/query boundary');
   assertIncludes(docs.dataConsumers, 'No real-time API for AI agents to query beyond the gated Public API v1 pull endpoints', 'Data consumers doc API v1 boundary');
   assertIncludes(docs.dataConsumers, 'Conditional Work (Only With Scoped Approval)', 'Data consumers doc conditional-work boundary');
@@ -1914,6 +2408,8 @@ function verifyProjectPersistenceDiagnosticsAreBounded() {
   const diagnostics = read('src/database/projects/diagnostics.ts');
   const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/CHANGELOG.md');
+  const urlRoutingImpl = read('__docs__/url-routing-architecture/url-routing-architecture_impl.md');
+  const urlRoutingFirebase = read('__docs__/url-routing-architecture/url-routing-architecture_firebase.md');
 
   assertIncludes(diagnostics, 'secureError', 'Project persistence diagnostics secure failure logging');
   assertIncludes(diagnostics, 'secureLog', 'Project persistence diagnostics secure info logging');
@@ -1930,6 +2426,9 @@ function verifyProjectPersistenceDiagnosticsAreBounded() {
   assertIncludes(projectDal, 'project_master_cache_invalidation_failed', 'Project master cache invalidation diagnostics');
   assertIncludes(projectDal, 'project_snapshot_create_failed', 'Project snapshot failure diagnostics');
   assertIncludes(projectDal, 'deleted_project_slug_reservation_check_failed', 'Deleted-project slug reservation diagnostics');
+  assertIncludes(projectDal, 'Treat unknown reservation state as reserved', 'Deleted-project slug reservation lookup must fail closed');
+  assertIncludes(projectDal, 'slugReservationWindowDays: SLUG_RESERVATION_WINDOW_MS / (24 * 60 * 60 * 1000),\n        });\n        return true;', 'Deleted-project slug reservation lookup errors must be treated as reserved');
+  assertNotIncludes(projectDal, 'Fail-open on infrastructure errors', 'Deleted-project slug reservation lookup must not fail open');
   assertIncludes(projectDal, 'project_outlet_propagation_create_failed', 'Project outlet propagation create diagnostics');
   assertIncludes(projectDal, 'master_update_awareness_signal_update_failed', 'Master update awareness diagnostics');
   assertIncludes(projectDal, 'menu_observation_edit_log_failed', 'Menu observation edit diagnostics');
@@ -1945,6 +2444,10 @@ function verifyProjectPersistenceDiagnosticsAreBounded() {
   assertIncludes(productionReadinessAudit, 'scans every active `src` project delete/activate/duplicate/restore call', 'Production readiness audit generic project lifecycle acknowledgement scan');
   assertIncludes(changelog, 'Project lifecycle mutations are source-gated globally', 'Changelog project lifecycle acknowledgement source gate');
   assertIncludes(changelog, '`npm run verify:public-business-truth` now scans every active `src` project delete/activate/duplicate/restore call', 'Changelog generic project lifecycle acknowledgement scan');
+  assertIncludes(productionReadinessAudit, 'Deleted-project slug reservation fail-closed checkpoint', 'Production readiness audit deleted-project slug reservation checkpoint');
+  assertIncludes(changelog, 'Deleted Project Slug Reservation Fail Closed', 'Changelog deleted-project slug reservation checkpoint');
+  assertIncludes(urlRoutingImpl, 'Deleted-project slug reservation fail-closed follow-up', 'URL routing implementation deleted-project slug reservation checkpoint');
+  assertIncludes(urlRoutingFirebase, 'July 5, 2026 deleted-project slug reservation fail-closed update', 'URL routing Firebase deleted-project slug reservation checkpoint');
   assertNotIncludes(projectDal, 'backfillProjectsSummary', 'Project DAL temporary projects-summary backfill surface');
   assertNotIncludes(projectDal, '__backfillProjectsSummary', 'Project DAL browser-console projects-summary backfill exposure');
   assertNotIncludes(projectDal, 'projects_summary_backfill_', 'Project DAL projects-summary backfill diagnostics');
@@ -2234,6 +2737,12 @@ function verifyProjectViewDiagnosticsAreBounded() {
   assertNotIncludes(gradientUtils, 'console.warn(', 'Gradient utils direct warn logging');
   assertNotIncludes(gradientUtils, 'console.log(', 'Gradient utils direct log logging');
   assertNotIncludes(gradientUtils, 'console.debug(', 'Gradient utils direct debug logging');
+  assertIncludes(gradientUtils, "logRuntimeFailure('public_menu_gradient_parse_failed'", 'Gradient utils parse diagnostics');
+  assertIncludes(gradientUtils, 'MAX_GRADIENT_PARSE_DIAGNOSTICS', 'Gradient utils parse diagnostic cap');
+  assertIncludes(gradientUtils, 'reportedGradientParseFailures.add(failureKey)', 'Gradient utils capped parse shape guard');
+  assertIncludes(gradientUtils, "fallbackPolicy: 'use_existing_gradient_fallback'", 'Gradient utils parse fallback policy');
+  assertIncludes(gradientUtils, 'gradientStringLength: value.length', 'Gradient utils bounded string length metadata');
+  assertIncludes(gradientUtils, 'approximateStopCount: getApproximateGradientStopCount(value)', 'Gradient utils bounded stop-count metadata');
   assertNotIncludes(backgroundSettings, 'console.error(', 'Background settings direct error logging');
   assertNotIncludes(backgroundSettings, 'console.warn(', 'Background settings direct warn logging');
   assertNotIncludes(backgroundSettings, 'console.log(', 'Background settings direct log logging');
@@ -3662,8 +4171,14 @@ function verifyProjectShareModalDiagnosticsAreBounded() {
   const exportDiagnostics = read('src/lib/export/exportDiagnostics.ts');
   const shareModal = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
   const menuKitSection = read('src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx');
+  const legacyQrView = read('src/components/templates/main-app/projects/b2cView/shareModal/qrCodeView.tsx');
   const legacyLinkShare = read('src/components/templates/main-app/projects/b2cView/shareModal/linkView.tsx');
   const legacySocialShare = read('src/components/templates/main-app/projects/b2cView/shareModal/socialShareView.tsx');
+  const clientMenuReadme = read('__docs__/client-menu/README.md');
+  const clientMenuImpl = read('__docs__/client-menu/_impl.md');
+  const clientMenuFirebase = read('__docs__/client-menu/client-menu_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assertIncludes(exportDiagnostics, 'copyExportTextToClipboard', 'Export clipboard copy acknowledgement helper');
   assertIncludes(exportDiagnostics, 'EXPORT_CLIPBOARD_COPY_UNAVAILABLE', 'Export unavailable clipboard code');
@@ -3711,6 +4226,21 @@ function verifyProjectShareModalDiagnosticsAreBounded() {
   assertIncludes(menuKitSection, 'whatsappUrlLength: whatsappUrl.length', 'Project share Menu Kit bounded WhatsApp URL length');
   assertIncludes(menuKitSection, "window.open(whatsappUrl, '_blank', 'noopener,noreferrer')", 'Project share Menu Kit safe WhatsApp open');
   assertIncludes(menuKitSection, 'staffScriptLength: labels.staffScript.length', 'Project share Menu Kit bounded staff-script length');
+  assertIncludes(legacyQrView, 'project_share_legacy_qr_download_failed', 'Legacy project QR download diagnostics');
+  assertIncludes(legacyQrView, 'getLegacyQrDownloadLogContext', 'Legacy project QR bounded context helper');
+  assertIncludes(legacyQrView, "getBoundedExportStringContext('shareUrl', shareUrl)", 'Legacy project QR bounded share URL');
+  assertIncludes(legacyQrView, "getBoundedExportStringContext('qrShareUrl', qrShareUrl)", 'Legacy project QR bounded QR URL');
+  assertIncludes(legacyQrView, "getBoundedExportStringContext('storeName', storeName)", 'Legacy project QR bounded store name');
+  assertIncludes(legacyQrView, "getBoundedExportStringContext('logoUrl', logoUrl)", 'Legacy project QR bounded logo URL');
+  assertIncludes(legacyQrView, "fallbackPolicy: 'show_qr_download_failed_message'", 'Legacy project QR fallback policy');
+  assertIncludes(legacyQrView, 'qrColorLength: qrColor.length', 'Legacy project QR bounded color metadata');
+  assertIncludes(legacyQrView, 'qrBgColorLength: qrBgColor.length', 'Legacy project QR bounded background metadata');
+  assertIncludes(legacyQrView, 'qrSize,', 'Legacy project QR bounded size metadata');
+  assertIncludes(clientMenuReadme, 'Legacy QR download diagnostics', 'Client Menu README legacy QR diagnostics');
+  assertIncludes(clientMenuImpl, 'Legacy QR download diagnostics', 'Client Menu implementation legacy QR diagnostics');
+  assertIncludes(clientMenuFirebase, 'Legacy QR download diagnostics', 'Client Menu Firebase legacy QR diagnostics');
+  assertIncludes(productionAudit, 'Legacy project QR download diagnostics checkpoint', 'production audit legacy QR checkpoint');
+  assertIncludes(changelog, 'Legacy Project QR Download Diagnostics', 'changelog legacy QR checkpoint');
   assertIncludes(legacyLinkShare, 'project_share_legacy_link_copy_failed', 'Legacy project link share copy diagnostics');
   assertIncludes(legacyLinkShare, 'copyExportTextToClipboard(copyUrl)', 'Legacy project link share copy acknowledgement');
   assertIncludes(legacyLinkShare, 'hasClipboardWrite: hasExportClipboardWrite()', 'Legacy project link share clipboard support metadata');
@@ -3737,6 +4267,7 @@ function verifyProjectShareModalDiagnosticsAreBounded() {
   assertNotIncludes(menuKitSection, "window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')", 'Project share Menu Kit unsafe WhatsApp open');
   assertNotIncludes(menuKitSection, 'navigator.clipboard.writeText', 'Project share Menu Kit direct Clipboard API copy');
   assertNotIncludes(menuKitSection, "document.execCommand('copy');\n            message.success", 'Project share Menu Kit textarea copy must not assume success');
+  assertNotIncludes(legacyQrView, 'catch {', 'Legacy project QR silent catch');
   assertNotIncludes(legacyLinkShare, "catch (err) {\n            message.error('Failed to copy link');\n        }", 'Legacy project link share unbounded copy failure');
   assertNotIncludes(legacyLinkShare, 'navigator.clipboard.writeText', 'Legacy project link share direct Clipboard API copy');
   assertNotIncludes(legacySocialShare, "catch (err) {\n            message.error('Failed to copy link');\n        }", 'Legacy project social share unbounded copy failure');
@@ -3750,6 +4281,10 @@ function verifyProjectShareModalDiagnosticsAreBounded() {
   assertNotIncludes(menuKitSection, 'console.warn(', 'Project share Menu Kit direct warn logging');
   assertNotIncludes(menuKitSection, 'console.log(', 'Project share Menu Kit direct log logging');
   assertNotIncludes(menuKitSection, 'console.debug(', 'Project share Menu Kit direct debug logging');
+  assertNotIncludes(legacyQrView, 'console.error(', 'Legacy project QR direct error logging');
+  assertNotIncludes(legacyQrView, 'console.warn(', 'Legacy project QR direct warn logging');
+  assertNotIncludes(legacyQrView, 'console.log(', 'Legacy project QR direct log logging');
+  assertNotIncludes(legacyQrView, 'console.debug(', 'Legacy project QR direct debug logging');
 }
 
 function verifyMobileTodayDiagnosticsAreBounded() {
@@ -4027,6 +4562,7 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   const mobileAdvancedSettings = read('src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx');
   const compliancePages = read('src/components/templates/main-app/businessSettings/tabs/CompliancePagesSection.tsx');
   const complianceRoute = read('src/app/api/compliance/route.ts');
+  const complianceRenderer = read('src/app/client/compliance/CompliancePageContent.tsx');
   const customDomainTab = read('src/components/templates/main-app/businessSettings/tabs/CustomDomainTab.tsx');
   const posSyncTab = read('src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx');
   const posSyncTestResponse = read('src/lib/posSync/testResponse.ts');
@@ -4040,6 +4576,12 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(diagnostics, 'sourceErrorName: getBusinessSettingsErrorName(error)', 'Business settings diagnostics source error name');
   assertIncludes(diagnostics, 'sourceErrorCode: getBusinessSettingsErrorCode(error)', 'Business settings diagnostics source error code');
   assertIncludes(diagnostics, 'sourceStatusCode: getBusinessSettingsErrorStatus(error)', 'Business settings diagnostics source error status');
+  assertIncludes(complianceRenderer, 'public_compliance_override_read_failed', 'Public compliance override read diagnostics');
+  assertIncludes(complianceRenderer, "getBoundedRuntimeStringContext('storeId', context.storeId)", 'Public compliance bounded store context');
+  assertIncludes(complianceRenderer, "getBoundedRuntimeStringContext('pageType', context.type)", 'Public compliance bounded page type context');
+  assertNotIncludes(complianceRenderer, '} catch {\n        // Firestore error', 'Public compliance override read must not silently fall back');
+  assertNotIncludes(complianceRenderer, 'console.error', 'Public compliance direct error logging');
+  assertNotIncludes(complianceRenderer, 'console.warn', 'Public compliance direct warn logging');
   assertIncludes(authBrowserRequestPolicy, "cache: 'no-store' as RequestCache", 'Shared auth browser request policy cache bypass');
   assertIncludes(authBrowserRequestPolicy, "credentials: 'same-origin' as RequestCredentials", 'Shared auth browser request policy credential scope');
   assertIncludes(authBrowserRequestPolicy, "redirect: 'manual' as RequestRedirect", 'Shared auth browser request policy redirect boundary');
@@ -4617,6 +5159,16 @@ verifyMenuRevalidationRouteLoggingIsBounded();
 verifyPublicTruthWritesInvalidateScreenData();
 verifyPublicMenuResolutionLoggingIsBounded();
 verifyOBPAnalyticsLoggingIsBounded();
+verifyOBPThemeStorageLoggingIsBounded();
+verifyOBPServerFallbackLoggingIsBounded();
+verifyOBPResolvedSurfaceFallbackLoggingIsBounded();
+verifyPublicMenuSearchFocusLoggingIsBounded();
+verifyPublicMenuGradientParserLoggingIsBounded();
+verifyPublicMenuBreadcrumbLanguageLoggingIsBounded();
+verifyPublicMenuLanguageStorageLoggingIsBounded();
+verifyPublicMenuFeedbackNudgeStorageLoggingIsBounded();
+verifyPublicMenuExternalLinksAreNormalized();
+verifyPublicMenuFooterFreshnessLoggingIsBounded();
 verifyOBPCustomerQuickAnswersAreVisibleAndBounded();
 verifyPublicFaqSchemaFreshnessCopyIsBounded();
 verifyPublicMenuAnalyticsLoggingIsBounded();

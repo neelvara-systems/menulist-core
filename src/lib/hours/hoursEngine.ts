@@ -1,4 +1,8 @@
 import { formatClockTime } from '@util/dateTime';
+import {
+    logHoursStatusInvalidTimeRange,
+    logHoursStatusTimeZoneFallback,
+} from './hoursDiagnostics';
 
 /**
  * Hours Engine - Compute store open/closed status from workingHours
@@ -39,7 +43,8 @@ function getDayKeyForDate(date: Date, timeZone?: string): DayKey {
             .format(date)
             .toLowerCase();
         return dayStr as DayKey;
-    } catch {
+    } catch (error) {
+        logHoursStatusTimeZoneFallback(error, timeZone, "hours_engine_day_key", "local_day_key");
         // Fallback to local timezone if invalid
         const day = date.getDay();
         return DAY_KEYS[day];
@@ -66,7 +71,8 @@ function getTimeForDate(date: Date, timeZone?: string): string {
             timeZone: timeZone || "UTC",
         };
         return new Intl.DateTimeFormat("en-GB", options).format(date);
-    } catch {
+    } catch (error) {
+        logHoursStatusTimeZoneFallback(error, timeZone, "hours_engine_time", "local_time");
         // Fallback to local time
         return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
     }
@@ -137,6 +143,13 @@ export function getStoreStatus(
     const currentTime = getCurrentTime(timeZone);
     const currentMinutes = parseTimeToMinutes(currentTime);
 
+    if (!Number.isFinite(currentMinutes)) {
+        return {
+            isOpen: false,
+            statusText: "Hours not available",
+        };
+    }
+
     const todayHours = workingHours[currentDay];
 
     // No hours for today - store is closed
@@ -154,6 +167,14 @@ export function getStoreStatus(
     const [openTime, closeTime] = todayHours.split("-").map((t) => t.trim());
     const openMinutes = parseTimeToMinutes(openTime);
     const closeMinutes = parseTimeToMinutes(closeTime);
+
+    if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes)) {
+        logHoursStatusInvalidTimeRange(currentDay, todayHours, "hours_engine_current_status");
+        return {
+            isOpen: false,
+            statusText: "Hours not available",
+        };
+    }
 
     const isCurrentlyOpen = isWithinWindow(
         currentMinutes,
@@ -265,7 +286,14 @@ function findNextOpenTime(
     for (let i = 0; i < 7; i++) {
         const hours = workingHours[checkDay];
         if (hours && hours.includes("-")) {
-            const [openTime] = hours.split("-").map((t) => t.trim());
+            const [openTime, closeTime] = hours.split("-").map((t) => t.trim());
+            const openMinutes = parseTimeToMinutes(openTime);
+            const closeMinutes = parseTimeToMinutes(closeTime);
+            if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes)) {
+                logHoursStatusInvalidTimeRange(checkDay, hours, "hours_engine_next_open");
+                checkDay = getNextDayKey(checkDay);
+                continue;
+            }
             const opensAt = formatClockTime(openTime, timeFormat);
             const dayName = getDayDisplayName(checkDay);
 

@@ -112,7 +112,7 @@ export function buildPublicTruthCheckReport(input: PublicTruthCheckInput): Publi
   const publicUrl = trimToSingleLine(input.publicUrl);
   const menuOrServiceText = normalizeTextarea(input.menuOrServiceText);
   const searchableSource = `${menuOrServiceText}\n${publicUrl}`;
-  const hasValidPublicUrl = isValidHttpUrl(publicUrl);
+  const hasValidPublicUrl = isValidHttpUrl(publicUrl, 'public_truth_check_public_url');
   const hasAnyUrl = publicUrl.length > 0;
   const hasSource = hasUsefulText(menuOrServiceText) || hasValidPublicUrl;
   const sourceKind = input.sourceKind || DEFAULT_SOURCE_KIND;

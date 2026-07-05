@@ -1067,9 +1067,6 @@ export async function POST(request: NextRequest) {
             }
 
             default:
-                logger.debug('Unhandled webhook event type', {
-                    eventType: event.event,
-                });
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_UNHANDLED_EVENT', data: auditSummary });
                 break;
         }

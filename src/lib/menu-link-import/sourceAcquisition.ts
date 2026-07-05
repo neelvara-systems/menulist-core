@@ -32,6 +32,7 @@ const MENU_LINK_CANDIDATE_LIMIT = 6;
 const MAX_COMBINED_HTML_SOURCES = 4;
 const RENDER_FALLBACK_TIMEOUT_MS = 18_000;
 const MAX_RENDERED_HTML_BYTES = 8 * 1024 * 1024;
+const MENU_LINK_IMPORT_RENDER_FALLBACK_FAILED = 'menu_link_import_render_fallback_failed';
 const MENU_LINK_IMPORT_RENDER_TMP_CLEANUP_FAILED = 'menu_link_import_render_tmp_cleanup_failed';
 
 const UNSAFE_HOSTNAMES = new Set([
@@ -1299,7 +1300,15 @@ async function tryRenderHtmlSource(
             ...getSourceTextMetadata(sourceText),
             size: artifactBuffer.byteLength,
         };
-    } catch {
+    } catch (error) {
+        logMenuProcessingFailure(MENU_LINK_IMPORT_RENDER_FALLBACK_FAILED, error, {
+            fallbackPolicy: 'skip_rendered_html',
+            renderFallbackTimeoutMs: timeoutMs,
+            renderFallbackUserDataDirCreated: Boolean(userDataDir),
+            ...getBoundedMenuProcessingStringContext('renderHostname', renderTarget.hostname),
+            ...getBoundedMenuProcessingStringContext('businessCategory', context?.businessCategory),
+            ...getBoundedMenuProcessingStringContext('businessType', context?.businessType),
+        });
         return null;
     } finally {
         if (userDataDir) {

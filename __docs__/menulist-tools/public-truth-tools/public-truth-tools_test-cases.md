@@ -46,6 +46,8 @@
 | PTT-022 | V2 paid add-on runtime is changed without entitlement, capped history, source policy, audit, and cost controls | Verification fails |
 | PTT-023 | Public V0 report treats `http://localhost`, private IPs, raw IPs, `.local`, credentialed URLs, or explicit `http://` as ready public customer links | Verification fails |
 | PTT-024 | Public V0 report uses generic URL-format evidence instead of naming the public HTTPS URL boundary | Verification fails |
+| PTT-025 | Public V0 URL parser drops capped `public_truth_tool_url_parse_failed` diagnostics, source labels, or the raw-URL exclusion boundary for malformed owner-entered links | Verification fails |
+| PTT-026 | V1 owner readiness menu URL generation drops capped `public_truth_owner_menu_url_generation_failed` diagnostics, bounded shape metadata, or the raw-domain/project exclusion boundary | Verification fails |
 
 ---
 

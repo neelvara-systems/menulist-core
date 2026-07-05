@@ -38,7 +38,7 @@ The current Public Truth Tools implementation includes sixteen V0 public tools, 
 
 Current implementation labels include Menu PDF Cleanup Check V0/V1, Google Profile Basics Checklist V0/V1, One Customer Link Preview V0/V1, and Social Bio Link Consistency Check V0/V1.
 
-Owner-entered links in public V0 reports use a shared public HTTPS URL boundary. Local, private, insecure, raw-IP, and credentialed URLs are not counted as ready public customer links. The check remains browser-local and does not open or fetch the destination. URL-derived evidence text must disclose the public HTTPS boundary instead of generic URL-format wording.
+Owner-entered links in public V0 reports use a shared public HTTPS URL boundary. Local, private, insecure, raw-IP, and credentialed URLs are not counted as ready public customer links. The check remains browser-local and does not open or fetch the destination. Malformed URL parser failures log bounded `public_truth_tool_url_parse_failed` diagnostics with source labels and value/candidate shape metadata only, never raw entered URLs. URL-derived evidence text must disclose the public HTTPS boundary instead of generic URL-format wording.
 
 ---
 

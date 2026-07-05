@@ -70,8 +70,6 @@ export async function getOrCreateRazorpayPlan(planInfo: PlanInfo): Promise<strin
         productId,
         userType,
     });
-    logger.debug('Searching for Razorpay plan', planLogContext);
-
     try {
         // 2. Search for an existing plan with this lookupKey.
         // Razorpay API returns plans paginated, fetching a reasonable number to check.

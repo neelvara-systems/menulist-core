@@ -23,6 +23,8 @@ Historical blueprint sections below are not launch approval. Current source trut
 - `MobileWorkingHoursEditScreen` and the Today quick-hours sheet use optimistic local state but require `assertStoreUpdateSucceeded()` before treating the save as confirmed.
 - `updateTimeSlotPresets()` revalidates public menu/OBP cache for store-level preset writes.
 - Desktop/mobile time-slot edit/delete flows require store write acknowledgement and project cascade acknowledgement before local success state changes.
+- Hours status fallback diagnostics log bounded `hours_status_timezone_fallback_failed` metadata when the shared hours engine or OBP-specific status path has to use local/browser time after invalid timezone resolution. Malformed current-day time ranges degrade to `Hours not available`; invalid future ranges are skipped when computing next-opening copy.
+- Output Control timestamp diagnostics log bounded `hours_confidence_timestamp_parse_failed` metadata when freshness timestamp parsing unexpectedly falls back, and invalid numeric/serialized freshness values degrade to `Check with store`.
 - Holiday calendars, exception managers, extra collections, Cloud Functions, provider calls, and Storage writes are not part of the current implementation.
 
 ---

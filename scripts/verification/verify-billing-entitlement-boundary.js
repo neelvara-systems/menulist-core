@@ -73,6 +73,7 @@ function verifyBillingEntitlementBoundary() {
   const aiBillingExplainerDoc = read('__docs__/ai-enhancement-packs/ai-billing-explainer.md');
   const pricingStrategyDoc = read('__docs__/strategy/pricing-strategy.md');
   const auditDoc = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assert(
     packageJson.scripts?.['verify:billing-entitlement-boundary'] === 'node scripts/verification/verify-billing-entitlement-boundary.js',
@@ -303,18 +304,32 @@ function verifyBillingEntitlementBoundary() {
   [
     'Billing entitlement boundary source gate: `npm run verify:billing-entitlement-boundary`',
     'server-side payment verification, active-subscription top-up gating, checkout response acknowledgement, and entitlement/cache sync source contracts',
+    'no longer emit normal-path plan-search debug breadcrumbs',
+    'RAZORPAY_WEBHOOK_UNHANDLED_EVENT',
   ].forEach((token) => assertIncludes(razorpayImplDoc, token, 'Razorpay implementation docs'));
 
   [
     'Billing entitlement boundary source gate: `npm run verify:billing-entitlement-boundary`',
     'The source gate is Firebase-cost neutral and performs no provider calls, Firestore writes, Storage writes, deploys, or browser smoke.',
+    'normal-path debug cleanup is Firebase-cost neutral',
+    'Searching for Razorpay plan',
+    'Unhandled webhook event type',
   ].forEach((token) => assertIncludes(razorpayFirebaseDoc, token, 'Razorpay Firebase docs'));
 
   [
     'Billing entitlement boundary source gate',
     'verify:billing-entitlement-boundary',
     'real Razorpay sandbox subscription/top-up/reseller/webhook smoke remains pending',
+    'Razorpay normal-path debug breadcrumb checkpoint',
+    'RAZORPAY_WEBHOOK_UNHANDLED_EVENT',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit billing entitlement evidence'));
+
+  [
+    'Razorpay Normal-Path Debug Diagnostics',
+    'Searching for Razorpay plan',
+    'Unhandled webhook event type',
+    'RAZORPAY_WEBHOOK_UNHANDLED_EVENT',
+  ].forEach((token) => assertIncludes(changelog, token, 'Changelog Razorpay debug diagnostics evidence'));
 
   [
     'Billing and pricing doc launch-boundary checkpoint',

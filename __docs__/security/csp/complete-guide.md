@@ -122,7 +122,7 @@ const cspDirectivesStrict = [
 
 **Purpose**: Monitor what would break with strict policy
 
-The report endpoint rate-limits by IP, reads reports through a 32KB bounded text body, uses presence/length metadata plus stable directive/URI categories for production security events, and logs unexpected processing failures through bounded security diagnostics (`csp_report_processing_failed`) instead of raw route exceptions or full request URLs.
+The report endpoint rate-limits by IP, reads reports through a 32KB bounded text body, uses presence/length metadata plus stable directive/URI categories for production security events, logs malformed JSON envelopes as capped `csp_report_json_parse_failed` diagnostics before returning the same non-blocking 204 response, and logs unexpected processing failures through bounded security diagnostics (`csp_report_processing_failed`) instead of raw route exceptions or full request URLs.
 
 ### Why Two Policies?
 

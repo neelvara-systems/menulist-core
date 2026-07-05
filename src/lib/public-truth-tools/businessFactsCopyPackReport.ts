@@ -258,9 +258,9 @@ export function buildBusinessFactsCopyPackReport(input: BusinessFactsCopyPackInp
   const phoneOrWhatsapp = trimToSingleLine(input.phoneOrWhatsapp);
   const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
   const actionLink = trimToSingleLine(input.actionLink);
-  const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink);
+  const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink, 'business_facts_copy_pack_current_customer_link');
   const hasCurrentCustomerLink = currentCustomerLink.length > 0;
-  const validActionLink = isValidHttpUrl(actionLink);
+  const validActionLink = isValidHttpUrl(actionLink, 'business_facts_copy_pack_action_link');
   const hasActionLink = actionLink.length > 0;
   const hasDescription = hasUsefulText(shortDescription, 24);
   const hasOffer = hasUsefulText(offerSummary, 12);

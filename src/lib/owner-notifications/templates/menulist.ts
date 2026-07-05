@@ -1,6 +1,17 @@
 import type { OwnerNotificationTemplate } from '../types';
 
 const VERSION = '2026-06-02';
+const MAX_OWNER_NOTIFICATION_TEXT_LENGTH = 240;
+const MAX_OWNER_NOTIFICATION_URL_LENGTH = 2048;
+const PUBLISH_FAILURE_OWNER_COPY: Record<string, string> = {
+    MENU_HTTP_FAIL: 'The public menu link did not respond successfully.',
+    MENU_EMPTY: 'The public menu opened but did not show enough menu content.',
+    MENU_TARGET_REJECTED: 'The public menu link could not be checked safely.',
+    VERIFICATION_ERROR: 'The public menu check could not be completed.',
+    FAILED: 'The public menu check could not be completed.',
+    WARNING: 'The public menu check needs review.',
+};
+const DEFAULT_PUBLISH_FAILURE_OWNER_COPY = 'The public menu check could not be completed.';
 
 const S = {
     body: 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 560px; margin: 0 auto; padding: 24px;',
@@ -24,8 +35,32 @@ function escapeHtml(value: unknown): string {
 }
 
 function textValue(value: unknown, fallback: string): string {
-    const text = typeof value === 'string' ? value.trim() : String(value ?? '').trim();
-    return text || fallback;
+    return normalizeText(value, fallback, MAX_OWNER_NOTIFICATION_TEXT_LENGTH);
+}
+
+function normalizeText(value: unknown, fallback: string, maxLength: number): string {
+    const raw = typeof value === 'string' ? value : String(value ?? '');
+    const text = raw
+        .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return (text || fallback).slice(0, maxLength);
+}
+
+function urlValue(value: unknown): string {
+    const text = normalizeText(value, '', MAX_OWNER_NOTIFICATION_URL_LENGTH);
+    if (!text) return '';
+    try {
+        const url = new URL(text);
+        return url.protocol === 'http:' || url.protocol === 'https:' ? text : '';
+    } catch {
+        return '';
+    }
+}
+
+function publishFailureReasonText(value: unknown): string {
+    const code = textValue(value, '').toUpperCase();
+    return PUBLISH_FAILURE_OWNER_COPY[code] || DEFAULT_PUBLISH_FAILURE_OWNER_COPY;
 }
 
 function wrap(content: string): string {
@@ -52,8 +87,9 @@ export function renderMenuListOwnerNotification(
     const planName = escapeHtml(textValue(metadata.planName, 'Subscription'));
     const nextBillingDate = escapeHtml(textValue(metadata.nextBillingDate, 'See dashboard'));
     const renewalDate = escapeHtml(textValue(metadata.renewalDate, 'See dashboard'));
-    const publicUrl = textValue(metadata.publicUrl, '');
-    const dashboardUrl = textValue(metadata.dashboardUrl, 'https://menulist.ai');
+    const publicUrl = urlValue(metadata.publicUrl);
+    const dashboardUrl = urlValue(metadata.dashboardUrl) || 'https://menulist.ai';
+    const publishFailureReason = publishFailureReasonText(metadata.failureReason);
 
     switch (templateKey) {
         case 'menulist.menu_published':
@@ -67,8 +103,8 @@ export function renderMenuListOwnerNotification(
             return template(
                 templateKey,
                 `Menu publish needs attention — ${storeNameText}`,
-                `<h2 style="${S.h2}">Menu publish needs attention</h2><p style="${S.p}">The latest publish check for <strong>${storeName}</strong> did not complete successfully.</p><div style="${S.crit}"><strong>What happened:</strong><br>${escapeHtml(textValue(metadata.failureReason, 'The public menu check failed.'))}</div><p style="${S.p}">Open the dashboard and retry publish after reviewing the menu state.</p>`,
-                `Menu publish needs attention for ${storeNameText}. ${textValue(metadata.failureReason, 'The public menu check failed.')}`,
+                `<h2 style="${S.h2}">Menu publish needs attention</h2><p style="${S.p}">The latest publish check for <strong>${storeName}</strong> did not complete successfully.</p><div style="${S.crit}"><strong>What happened:</strong><br>${escapeHtml(publishFailureReason)}</div><p style="${S.p}">Open the dashboard and retry publish after reviewing the menu state.</p>`,
+                `Menu publish needs attention for ${storeNameText}. ${publishFailureReason}`,
             );
         case 'menulist.payment_success':
             return template(

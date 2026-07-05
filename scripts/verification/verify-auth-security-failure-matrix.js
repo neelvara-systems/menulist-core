@@ -1665,6 +1665,27 @@ assertIncludes(sentryShared, 'getSanitizedMonitoringMessage', 'Sentry breadcrumb
 assertIncludes(sentryShared, 'sanitizeMonitoringEvent', 'Sentry beforeSend must sanitize outbound event metadata.');
 assertIncludes(sentryShared, "summarizeMonitoringString('error_message_present'", 'Sentry exception values must summarize raw exception messages.');
 assertIncludes(sentryShared, 'seen: WeakSet<object>', 'Sentry context sanitizer must guard circular context values.');
+[
+    'function getConfiguredClientSentryDsn()',
+    "const publicProdDsn = String(process.env.NEXT_PUBLIC_SENTRY_DSN || '').trim();",
+    "const publicDevDsn = String(process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || '').trim();",
+    'return isDevelopment ? publicDevDsn || publicProdDsn : publicProdDsn || publicDevDsn;',
+    'function getConfiguredServerSentryDsn()',
+    "const serverProdDsn = String(process.env.SENTRY_DSN || '').trim();",
+    "const serverDevDsn = String(process.env.SENTRY_DEV_DSN || '').trim();",
+    'const publicDsn = getConfiguredClientSentryDsn();',
+    'return isDevelopment ? serverDevDsn || serverProdDsn || publicDsn : serverProdDsn || publicDsn;',
+    'const clientDsn = getConfiguredClientSentryDsn();',
+    'const serverDsn = getConfiguredServerSentryDsn();',
+].forEach((token) => {
+    assertIncludes(sentryShared, token, 'Root app Sentry must read configured DSNs explicitly and fail closed when missing.');
+});
+assert(
+    !/https:\/\/[^'"`]+@[^'"`]+sentry\.io\/\d+/.test(sentryShared),
+    'Root app Sentry must not embed hard-coded Sentry DSN fallbacks.',
+);
+assert(!sentryShared.includes('FALLBACK_DEV_DSN'), 'Root app Sentry must not keep a hard-coded dev DSN fallback.');
+assert(!sentryShared.includes('FALLBACK_PROD_DSN'), 'Root app Sentry must not keep a hard-coded prod DSN fallback.');
 assertIncludes(instrumentationClient, 'sanitizeMonitoringEvent(event)', 'Client Sentry beforeSend must sanitize outbound event metadata.');
 assertIncludes(sentryServerConfig, 'sanitizeMonitoringEvent(event)', 'Server Sentry beforeSend must sanitize outbound event metadata.');
 assertIncludes(sentryEdgeConfig, 'sanitizeMonitoringEvent(event)', 'Edge Sentry beforeSend must sanitize outbound event metadata.');
@@ -1703,6 +1724,9 @@ assertIncludes(testSentryPage, "const TEST_USER_CONTEXT = getBoundedRuntimeStrin
 assertIncludes(testSentryPage, "const TEST_PRODUCT_CONTEXT = getBoundedRuntimeStringContext('testProductId'", 'Sentry test page must bound test product metadata.');
 assert(!testSentryPage.includes('test-user-123'), 'Sentry test page must not emit raw fake user IDs.');
 assert(!testSentryPage.includes("productId: 'abc123'"), 'Sentry test page must not emit raw fake product IDs.');
+assertIncludes(testSentryPage, 'Dev Sentry project when enabled and configured', 'Sentry test page must say dev Sentry requires config.');
+assertIncludes(testSentryPage, 'when the production DSN is configured', 'Sentry test page must say production Sentry requires config.');
+assertIncludes(testSentryPage, 'If `ENABLE_SENTRY` and a dev DSN are configured', 'Sentry test page checklist must require the flag and DSN.');
 assertIncludes(testSentryRoute, "import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';", 'Sentry test route must use the shared platform route guard.');
 assertIncludes(testSentryRoute, 'await requirePlatformAdminRouteAccess();', 'Sentry test route must check platform admin access before rendering diagnostics.');
 assert(!testSentryRoute.includes('Access: Requires authentication (platform routes)'), 'Sentry test route docs must not imply generic authentication is sufficient.');
@@ -1796,6 +1820,14 @@ assert(
 );
 assert(!functionsSentry.includes('const DEV_DSN'), 'Functions Sentry must not keep a hard-coded dev DSN fallback.');
 assert(!functionsSentry.includes('const PROD_DSN'), 'Functions Sentry must not keep a hard-coded prod DSN fallback.');
+[
+    ['production audit', read('__docs__/audits/menulist-production-readiness-audit.md'), 'Root app Sentry DSN fail-closed checkpoint'],
+    ['changelog', read('__docs__/CHANGELOG.md'), 'Root App Sentry DSN Fail Closed'],
+    ['secure logging guide', read('__docs__/security/secure-logging-guide.md'), 'Root app Sentry initialization is fail-closed'],
+    ['dev/prod environment guide', read('__docs__/production-readiness/dev-prod-environment-guide.md'), 'Root app runtime rule'],
+].forEach(([label, content, token]) => {
+    assertIncludes(content, token, `${label} must document the root app Sentry DSN fail-closed boundary.`);
+});
 [
     'email: user.email',
     'username: formattedUsername',
@@ -2180,10 +2212,21 @@ assert(!rootLayout.includes('CSP BLOCKED URL - ADD TO ALLOWLIST'), 'Root develop
 assert(!rootLayout.includes('blockedURL: blockedURI'), 'Root development CSP helper must not log raw blocked URLs.');
 assert(!rootLayout.includes('sourceFile: e.sourceFile'), 'Root development CSP helper must not log raw source files.');
 assert(!rootLayout.includes('.catch(() => {});'), 'Root development service-worker cleanup failures must not be silently swallowed.');
+assertIncludes(serviceWorkerRegister, 'service_worker_domain_resolution_failed', 'Service worker domain resolution must code bounded diagnostics.');
+assertIncludes(serviceWorkerRegister, "getBoundedRuntimeStringContext('host', window.location.host)", 'Service worker domain resolution must bound host metadata.');
 assertIncludes(serviceWorkerRegister, 'service_worker_registration_failed', 'Service worker registration must code failed registration diagnostics.');
 assertIncludes(serviceWorkerRegister, 'service_worker_unregister_failed', 'Service worker unregister must code failed cleanup diagnostics.');
 assertIncludes(serviceWorkerRegister, 'activeWorker: getRegisteredSwLabel(activeUrl)', 'Service worker unregister diagnostics must use bounded active-worker labels.');
 assertIncludes(serviceWorkerRegister, 'targetWorker: getTargetSwLabel(targetUrl)', 'Service worker unregister diagnostics must use bounded target-worker labels.');
+assertIncludes(serviceWorkerRegister, 'service_worker_script_url_label_parse_failed', 'Service worker script-label parsing must code bounded diagnostics.');
+assertIncludes(serviceWorkerRegister, 'MAX_SERVICE_WORKER_SCRIPT_LABEL_DIAGNOSTICS', 'Service worker script-label diagnostics must be capped.');
+assertIncludes(serviceWorkerRegister, "getBoundedRuntimeStringContext('scriptUrl', scriptUrl)", 'Service worker script-label diagnostics must bound script URL metadata.');
+assertIncludes(serviceWorkerRegister, "fallbackPolicy: 'label_unknown'", 'Service worker script-label diagnostics must document the unknown-label fallback.');
+assertIncludes(serviceWorkerRegister, 'service_worker_public_cleanup_reload_storage_failed', 'Service worker cleanup reload guard storage failures must code bounded diagnostics.');
+assertIncludes(serviceWorkerRegister, "getBoundedRuntimeStringContext('reloadKey', PUBLIC_SW_CLEARED_RELOAD_KEY)", 'Service worker reload guard diagnostics must bound storage-key metadata.');
+assertIncludes(serviceWorkerRegister, "fallbackPolicy: 'reload_without_session_guard'", 'Service worker reload guard diagnostics must document the degraded reload policy.');
+assert(!serviceWorkerRegister.includes("} catch {\n        return 'unknown';\n    }"), 'Service worker script-label parse failures must not silently return unknown.');
+assert(!serviceWorkerRegister.includes('} catch {\n                            window.location.reload();\n                        }'), 'Service worker cleanup reload guard failures must not silently reload.');
 assert(!serviceWorkerRegister.includes('reg.unregister().catch(() => { })'), 'Service worker unregister failures must not be silently swallowed.');
 assertIncludes(globalError, 'global_error_boundary_rendered', 'Global error boundary must code crash diagnostics.');
 assertIncludes(errorPageTheme, 'error_page_theme_persisted_state_read_failed', 'Error page persisted theme fallback failures must be coded.');
@@ -2448,8 +2491,10 @@ assert(!prepareMediaImage.includes("throw new Error(validation.error || 'Use a v
 assertIncludes(itemPhotoCaptureAssistLib, 'item_photo_readiness_stats_failed', 'Item photo readiness helper must code stats-analysis failures.');
 assertIncludes(itemPhotoCaptureAssistLib, 'getItemPhotoReadinessLogContext', 'Item photo readiness helper must bound prepared-image context.');
 assert(!itemPhotoCaptureAssistLib.includes('getPreparedImageStats(prepared).catch(() => null)'), 'Item photo readiness helper must not silently swallow stats failures.');
+assertIncludes(itemPhotoCaptureAssist, 'item_photo_camera_start_failed', 'Item photo capture assist must code camera startup failures.');
 assertIncludes(itemPhotoCaptureAssist, 'item_photo_capture_failed', 'Item photo capture assist must code capture failures.');
 assertIncludes(itemPhotoCaptureAssist, 'ITEM_PHOTO_CAPTURE_FAILED_MESSAGE', 'Item photo capture assist must use fixed capture failure copy.');
+assert(!itemPhotoCaptureAssist.includes('} catch {\n            stopCamera();'), 'Item photo capture assist must not silently swallow camera startup failures.');
 assert(!itemPhotoCaptureAssist.includes('setErrorMessage(error instanceof Error ? error.message'), 'Item photo capture assist must not surface raw capture exception messages.');
 assertIncludes(mediaImageAdjustModal, 'media_image_adjust_failed', 'Media image adjust modal must code apply failures.');
 assertIncludes(mediaImageAdjustModal, 'MEDIA_IMAGE_ADJUST_FAILED_MESSAGE', 'Media image adjust modal must use fixed adjustment failure copy.');
@@ -3657,6 +3702,14 @@ assert(
     "'http://127.0.0.1:3000'",
     '...(!isProductionRuntime ? LOCAL_DEVELOPMENT_ORIGINS : [])',
     '!isProductionRuntime || !isLocalDevelopmentOrigin(origin)',
+    "import { getBoundedSecurityStringContext, logSecurityDiagnostic } from './securityDiagnostics';",
+    'const getCorsOriginDiagnosticContext = (origin: string) => {',
+    'allowedOriginCount: ALLOWED_ORIGINS.length',
+    'originHasCredentials: Boolean(originUrl?.username || originUrl?.password)',
+    'originHasExplicitProtocol:',
+    'originParseable: Boolean(originUrl)',
+    "getBoundedSecurityStringContext('origin', origin)",
+    "logSecurityDiagnostic('cors_origin_blocked', getCorsOriginDiagnosticContext(origin))",
 ].forEach((token) => {
     assertIncludes(corsValidation, token, `CORS validation must keep production-localhost allowlist boundary token ${token}.`);
 });
@@ -3664,11 +3717,17 @@ assert(
     !corsValidation.includes("const ALLOWED_ORIGINS = [\n    process.env.NEXT_PUBLIC_APP_URL,\n    'http://localhost:3000',"),
     'CORS validation must not include localhost directly in the production-capable allowlist.',
 );
+assert(!corsValidation.includes("secureLog('[CORS] Blocked request from unauthorized origin'"), 'CORS validation must not raw-log blocked origins.');
+assert(!corsValidation.includes('origin,\n            allowedOrigins: ALLOWED_ORIGINS'), 'CORS validation must not log raw origin or allowed origins.');
 [
     ['production audit', read('__docs__/audits/menulist-production-readiness-audit.md'), 'CORS production localhost allowlist checkpoint'],
+    ['production audit', read('__docs__/audits/menulist-production-readiness-audit.md'), 'CORS blocked-origin diagnostics checkpoint'],
     ['changelog', read('__docs__/CHANGELOG.md'), 'CORS Production Localhost Allowlist Boundary'],
+    ['changelog', read('__docs__/CHANGELOG.md'), 'CORS Blocked-Origin Diagnostics'],
     ['CORS implementation guide', read('__docs__/security/cors/cors-implementation.md'), 'Localhost origins are filtered out in production'],
+    ['CORS implementation guide', read('__docs__/security/cors/cors-implementation.md'), 'Blocked-origin diagnostics use bounded origin metadata'],
     ['CORS completion guide', read('__docs__/security/cors/cors-implementation-complete.md'), 'Localhost origins are development-only'],
+    ['CORS completion guide', read('__docs__/security/cors/cors-implementation-complete.md'), 'Blocked-origin diagnostics are bounded'],
 ].forEach(([label, content, token]) => {
     assertIncludes(content, token, `${label} must document the CORS production-localhost allowlist boundary.`);
 });

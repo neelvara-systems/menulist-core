@@ -3,7 +3,7 @@
 > **Tool:** WhatsApp Action Link Check
 > **Family:** MenuList Public Truth Tools
 > **Status:** Implemented - V0 public browser-local checker and V1 owner readiness module
-> **Last Updated:** July 4, 2026
+> **Last Updated:** July 5, 2026
 > **Version:** 0.1
 
 ---
@@ -37,6 +37,8 @@ The tool is intentionally narrow:
 - next action routes into MenuList's one current customer link path
 
 It does not send a WhatsApp message, verify a WhatsApp account, fetch the linked page, mutate WhatsApp Business, or promise delivery/conversion.
+
+Malformed WhatsApp link parser failures are observable without changing the V0 boundary. The report still treats malformed links as invalid local evidence, and `whatsapp_action_link_url_parse_failed` diagnostics log only value/candidate length, protocol/WhatsApp-shape booleans, and fixed `treat_as_invalid_whatsapp_link` fallback policy. Raw WhatsApp links, phone numbers, suggested messages, customer links, report rows, and exception text are not logged.
 
 ---
 

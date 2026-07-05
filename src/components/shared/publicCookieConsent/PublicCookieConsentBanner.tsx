@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { LuX } from 'react-icons/lu';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import styles from './PublicCookieConsentBanner.module.css';
 
 export type PublicCookieConsentChoice = 'accepted' | 'declined';
@@ -27,11 +28,30 @@ interface PublicCookieConsentBannerProps {
     onConsentChange?: (choice: PublicCookieConsentChoice) => void;
 }
 
+const reportedConsentStorageFailures = new Set<string>();
+
+function logConsentStorageFailure(
+    operation: 'read' | 'write',
+    error: unknown,
+    storageKey: string,
+): void {
+    const shapeKey = `${operation}:${storageKey.length}`;
+    if (reportedConsentStorageFailures.has(shapeKey)) return;
+    reportedConsentStorageFailures.add(shapeKey);
+
+    logRuntimeFailure('public_cookie_consent_storage_failed', error, {
+        fallbackPolicy: operation === 'read' ? 'show_consent_panel' : 'keep_page_runtime_choice',
+        operation,
+        ...getBoundedRuntimeStringContext('storageKey', storageKey),
+    });
+}
+
 function readStoredChoice(storageKey: string): PublicCookieConsentChoice | null {
     try {
         const stored = window.localStorage.getItem(storageKey);
         return stored === 'accepted' || stored === 'declined' ? stored : null;
-    } catch {
+    } catch (error) {
+        logConsentStorageFailure('read', error, storageKey);
         return null;
     }
 }
@@ -78,7 +98,8 @@ export default function PublicCookieConsentBanner({
     function saveChoice(nextChoice: PublicCookieConsentChoice) {
         try {
             window.localStorage.setItem(storageKey, nextChoice);
-        } catch {
+        } catch (error) {
+            logConsentStorageFailure('write', error, storageKey);
             // If localStorage is unavailable, keep the runtime choice for this page.
         }
 

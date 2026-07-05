@@ -22,11 +22,18 @@ import {
 import { secureError } from '@lib/security/secureLogger';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuMapPin, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 import AnimateOnScroll from '@/components/website/shared/AnimateOnScroll';
 
 const CREATE_MENU_SUCCESS_ERROR_FIELD_LIMIT = 80;
+const CREATE_MENU_SUCCESS_URL_MAX_LENGTH = 2048;
+const CREATE_MENU_SUCCESS_INVALID_URL_REPORT_LIMIT = 100;
+
+type CreateMenuSuccessUrlKind = 'menuUrl' | 'officialPageUrl';
+type CreateMenuSuccessUrlInvalidReason = 'too_long' | 'contains_whitespace' | 'parse_failed' | 'non_https' | 'credentialed';
+
+const reportedCreateMenuSuccessInvalidUrls = new Set<string>();
 
 function getBoundedCreateMenuSuccessStringContext(label: string, value: unknown) {
     if (typeof value !== 'string') {
@@ -67,6 +74,74 @@ function logCreateMenuSuccessFailure(
         ...context,
         ...getCreateMenuSuccessErrorContext(error),
     });
+}
+
+function logCreateMenuSuccessUrlNormalizationFailure(
+    kind: CreateMenuSuccessUrlKind,
+    value: string,
+    reason: CreateMenuSuccessUrlInvalidReason,
+    error?: unknown,
+) {
+    if (!value) return;
+
+    const trimmed = value.trim();
+    const reportKey = [
+        kind,
+        reason,
+        value.length,
+        trimmed.length,
+        /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? 'protocol' : 'no-protocol',
+    ].join(':');
+
+    if (reportedCreateMenuSuccessInvalidUrls.has(reportKey)) return;
+    if (reportedCreateMenuSuccessInvalidUrls.size >= CREATE_MENU_SUCCESS_INVALID_URL_REPORT_LIMIT) return;
+
+    reportedCreateMenuSuccessInvalidUrls.add(reportKey);
+
+    logCreateMenuSuccessFailure('public_create_menu_success_url_invalid', error, {
+        urlKind: kind,
+        invalidUrlReason: reason,
+        trimmedValueLength: trimmed.length,
+        hasExplicitProtocol: /^[a-z][a-z0-9+.-]*:/i.test(trimmed),
+        hasWhitespace: /\s/.test(trimmed),
+        ...getBoundedCreateMenuSuccessStringContext(kind, value),
+    });
+}
+
+function normalizeCreateMenuSuccessUrl(kind: CreateMenuSuccessUrlKind, value: string) {
+    const trimmed = value.trim();
+
+    if (!trimmed) return '';
+
+    if (value.length > CREATE_MENU_SUCCESS_URL_MAX_LENGTH || trimmed.length > CREATE_MENU_SUCCESS_URL_MAX_LENGTH) {
+        logCreateMenuSuccessUrlNormalizationFailure(kind, value, 'too_long');
+        return '';
+    }
+
+    if (/\s/.test(trimmed)) {
+        logCreateMenuSuccessUrlNormalizationFailure(kind, value, 'contains_whitespace');
+        return '';
+    }
+
+    let parsed: URL;
+    try {
+        parsed = new URL(trimmed);
+    } catch (error) {
+        logCreateMenuSuccessUrlNormalizationFailure(kind, value, 'parse_failed', error);
+        return '';
+    }
+
+    if (parsed.protocol !== 'https:') {
+        logCreateMenuSuccessUrlNormalizationFailure(kind, value, 'non_https');
+        return '';
+    }
+
+    if (parsed.username || parsed.password) {
+        logCreateMenuSuccessUrlNormalizationFailure(kind, value, 'credentialed');
+        return '';
+    }
+
+    return parsed.toString();
 }
 
 function getCreateMenuSuccessStarterSignalContext(
@@ -128,8 +203,13 @@ async function copyCreateMenuSuccessLinkToClipboard(menuUrl: string) {
 export default function CreateMenuSuccessClient() {
     const t = useTranslations('Website');
     const searchParams = useSearchParams();
-    const menuUrl = searchParams.get('menuUrl') || '';
-    const officialPageUrl = searchParams.get('officialPageUrl') || '';
+    const rawMenuUrl = searchParams.get('menuUrl') || '';
+    const rawOfficialPageUrl = searchParams.get('officialPageUrl') || '';
+    const menuUrl = useMemo(() => normalizeCreateMenuSuccessUrl('menuUrl', rawMenuUrl), [rawMenuUrl]);
+    const officialPageUrl = useMemo(
+        () => normalizeCreateMenuSuccessUrl('officialPageUrl', rawOfficialPageUrl),
+        [rawOfficialPageUrl],
+    );
     const businessName = searchParams.get('name') || t('CreateMenuSuccess.defaultBusinessName');
     const hasMenuUrl = Boolean(menuUrl);
     const hasOfficialPageUrl = Boolean(officialPageUrl);

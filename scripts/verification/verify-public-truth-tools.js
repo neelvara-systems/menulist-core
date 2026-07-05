@@ -22,6 +22,10 @@ function assertIncludes(content, needle, label) {
   assert(content.includes(needle), `${label} must include ${needle}`);
 }
 
+function assertNotIncludes(content, needle, label) {
+  assert(!content.includes(needle), `${label} must not include ${needle}`);
+}
+
 function assertSameSet(actual, expected, label) {
   const actualSet = new Set(actual);
   const expectedSet = new Set(expected);
@@ -274,6 +278,9 @@ const ACTIVE_TOOL_DOC_DIRS = [
 ];
 
 const CURRENT_DOC_DATE = 'July 4, 2026';
+const DOC_DATE_OVERRIDES = {
+  '__docs__/menulist-tools/whatsapp-action-link-check': 'July 5, 2026',
+};
 
 function getActualToolRoutes() {
   const toolsRoot = path.join(ROOT, 'src', 'app', '(website)', 'tools');
@@ -344,6 +351,12 @@ function assertPublicToolInventoryBoundary() {
   const enUS = JSON.parse(read('public/locales/menulist.ai/en-US.json'));
   const hiIN = JSON.parse(read('public/locales/menulist.ai/hi-IN.json'));
   const publicUrlValidation = read('src/lib/public-truth-tools/publicUrlValidation.ts');
+  const mapsPlaceCheck = read('functions/src/logic/mapsPlaceCheck.ts');
+  const mapsPlaceCheckSpec = read('__docs__/menulist-tools/maps-place-check/maps-place-check_spec.md');
+  const mapsPlaceCheckImpl = read('__docs__/menulist-tools/maps-place-check/maps-place-check_impl.md');
+  const mapsPlaceCheckFirebase = read('__docs__/menulist-tools/maps-place-check/maps-place-check_firebase.md');
+  const mapsPlaceCheckTests = read('__docs__/menulist-tools/maps-place-check/maps-place-check_test-cases.md');
+  const mapsPlaceCheckValidation = read('__docs__/menulist-tools/maps-place-check/maps-place-check_validation.md');
 
   assertIncludes(features, 'ENABLE_PUBLIC_TRUTH_TOOLS: true', 'Public Truth Tools family feature flag');
   assertIncludes(features, 'ENABLE_PUBLIC_ASSET_TOOLS: true', 'Public asset tools family feature flag');
@@ -365,9 +378,41 @@ function assertPublicToolInventoryBoundary() {
   assertIncludes(publicUrlValidation, "normalized.endsWith('.local')", 'Public Truth Tools shared URL parser must reject local hostnames');
   assertIncludes(publicUrlValidation, 'isPrivateIpv4', 'Public Truth Tools shared URL parser must reject private IPv4');
   assertIncludes(publicUrlValidation, 'url.username || url.password', 'Public Truth Tools shared URL parser must reject credentialed URLs');
+  assertIncludes(publicUrlValidation, "logRuntimeFailure('public_truth_tool_url_parse_failed'", 'Public Truth Tools shared URL parser parse diagnostics');
+  assertIncludes(publicUrlValidation, 'MAX_PUBLIC_TRUTH_URL_PARSE_DIAGNOSTICS', 'Public Truth Tools shared URL parser diagnostic cap');
+  assertIncludes(publicUrlValidation, 'reportedPublicTruthUrlParseFailures.add(failureKey)', 'Public Truth Tools shared URL parser capped shape guard');
+  assertIncludes(publicUrlValidation, "fallbackPolicy: 'treat_as_missing_public_url'", 'Public Truth Tools shared URL parser fallback policy');
+  assertIncludes(publicUrlValidation, 'valueStringLength', 'Public Truth Tools shared URL parser bounded value metadata');
+  assertIncludes(publicUrlValidation, 'candidateLength', 'Public Truth Tools shared URL parser bounded candidate metadata');
+  assertIncludes(familyReadme, 'bounded parse diagnostics', 'Public Truth Tools README URL parse diagnostics');
+  assertIncludes(familyImpl, 'public_truth_tool_url_parse_failed', 'Public Truth Tools implementation URL parse diagnostics');
+  assertIncludes(familyFirebase, 'public_truth_tool_url_parse_failed', 'Public Truth Tools Firebase URL parse diagnostics');
+  assertIncludes(familyTests, 'PTT-025', 'Public Truth Tools URL parse diagnostic test boundary');
+  assertIncludes(mapsPlaceCheck, 'responseTextLength: responseText.length', 'Maps Place Check response diagnostics');
+  assertIncludes(mapsPlaceCheck, 'parsedResponse: Boolean(parsed)', 'Maps Place Check parse diagnostics');
+  assertNotIncludes(mapsPlaceCheck, 'rawText', 'Maps Place Check callable output boundary');
+  assertNotIncludes(mapsPlaceCheck, 'MAX_RAW_TEXT_LENGTH', 'Maps Place Check callable output boundary');
+  assertNotIncludes(mapsPlaceCheckImpl, 'rawText?: string', 'Maps Place Check implementation output contract');
+  assertIncludes(mapsPlaceCheckImpl, 'The response is returned to the caller without raw provider response text.', 'Maps Place Check implementation raw provider output boundary');
+  assertIncludes(mapsPlaceCheckImpl, 'return raw provider response text', 'Maps Place Check implementation disallowed output boundary');
+  assertIncludes(mapsPlaceCheckSpec, 'No raw provider response text in callable output.', 'Maps Place Check spec raw provider output boundary');
+  assertIncludes(mapsPlaceCheckSpec, 'Results never include raw provider response text.', 'Maps Place Check acceptance raw provider output boundary');
+  assertIncludes(mapsPlaceCheckFirebase, 'No raw provider response text is returned to the callable client.', 'Maps Place Check Firebase raw provider output boundary');
+  assertIncludes(mapsPlaceCheckTests, 'No raw provider response text is returned', 'Maps Place Check tests raw provider output boundary');
+  assertIncludes(mapsPlaceCheckValidation, 'No raw provider response in callable output', 'Maps Place Check validation raw provider output boundary');
   assertIncludes(toolsReadme, '16 | Social Bio Link Consistency Check', 'MenuList Tools ranked tool count');
   assertIncludes(toolsReadme, '[public-truth-monitor-addon](./public-truth-monitor-addon/README.md)', 'MenuList Tools V2 paid add-on docs link');
   const ownerReadiness = read('src/lib/public-truth-tools/ownerPublicTruthReadiness.ts');
+  assertIncludes(ownerReadiness, "logRuntimeFailure('public_truth_owner_menu_url_generation_failed'", 'Public Truth Tools owner menu URL generation diagnostics');
+  assertIncludes(ownerReadiness, 'MAX_OWNER_MENU_URL_DIAGNOSTICS', 'Public Truth Tools owner menu URL diagnostic cap');
+  assertIncludes(ownerReadiness, 'reportedOwnerMenuUrlGenerationFailures.add(failureKey)', 'Public Truth Tools owner menu URL capped shape guard');
+  assertIncludes(ownerReadiness, "fallbackPolicy: 'omit_menu_url'", 'Public Truth Tools owner menu URL fallback policy');
+  assertIncludes(ownerReadiness, 'projectSlugLength', 'Public Truth Tools owner menu URL bounded project slug metadata');
+  assertIncludes(ownerReadiness, 'projectNameKind', 'Public Truth Tools owner menu URL bounded project name metadata');
+  assertIncludes(familyReadme, 'owner menu URL generation diagnostics', 'Public Truth Tools README owner menu URL diagnostics');
+  assertIncludes(familyImpl, 'public_truth_owner_menu_url_generation_failed', 'Public Truth Tools implementation owner menu URL diagnostics');
+  assertIncludes(familyFirebase, 'public_truth_owner_menu_url_generation_failed', 'Public Truth Tools Firebase owner menu URL diagnostics');
+  assertIncludes(familyTests, 'PTT-026', 'Public Truth Tools owner menu URL diagnostic test boundary');
   [
     'business_facts_copy_pack',
     'customer_faq_reply_pack',
@@ -391,6 +436,7 @@ function assertPublicToolInventoryBoundary() {
   assertIncludes(websiteCss, '.ws-footer-link-grid a', 'footer link mobile touch style');
 
   for (const docDir of ACTIVE_TOOL_DOC_DIRS) {
+    const expectedDocDate = DOC_DATE_OVERRIDES[docDir] || CURRENT_DOC_DATE;
     const absoluteDocDir = path.join(ROOT, docDir);
     const docFiles = fs.readdirSync(absoluteDocDir)
       .filter((fileName) => fileName.endsWith('.md'))
@@ -399,7 +445,7 @@ function assertPublicToolInventoryBoundary() {
     for (const docFile of docFiles) {
       assertIncludes(
         read(`${docDir}/${docFile}`),
-        `Last Updated:** ${CURRENT_DOC_DATE}`,
+        `Last Updated:** ${expectedDocDate}`,
         `${docDir}/${docFile} current documentation date`,
       );
     }
@@ -460,6 +506,11 @@ function assertPublicToolInventoryBoundary() {
     assertIncludes(shareableVerifier, tool.componentPath, `${tool.slug} shareable report source component`);
     assertIncludes(shareableVerifier, `'${tool.slug}'`, `${tool.slug} shareable report tool id`);
     assertIncludes(report, 'publicUrlValidation', `${tool.slug} report must use the shared public URL boundary helper`);
+    const sharedPublicUrlCalls = report.match(/(?:isValidHttpUrl|parsePublicHttpsUrl)\([^)]*\)/g) || [];
+    assert(
+      sharedPublicUrlCalls.every((call) => /,\s*(?:'[^']+'|diagnosticSource)\)/.test(call)),
+      `${tool.slug} shared public URL calls must pass a bounded diagnostic source label`,
+    );
     assertIncludes(report, 'Public HTTPS', `${tool.slug} report must disclose the public HTTPS URL evidence boundary`);
     assert(!report.includes("url.protocol === 'http:' || url.protocol === 'https:'"), `${tool.slug} report must not accept insecure HTTP URL protocols`);
     assert(!report.includes("url.hostname === 'localhost'"), `${tool.slug} report must not treat localhost as a valid public URL`);

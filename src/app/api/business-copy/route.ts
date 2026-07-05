@@ -7,11 +7,12 @@ import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
-import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
+import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { BusinessCopyGenerationRequestSchema } from "@lib/validation/apiSchemas";
@@ -23,6 +24,7 @@ import businessCopyPrompt, { businessCopyPromptSystemInstruction } from "./promp
 const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const LOG_FILE = "business-copy-generation.log";
 const BUSINESS_COPY_AI_MAX_BODY_BYTES = 256 * 1024;
+const MAX_BUSINESS_COPY_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS = 25;
 const GENERATION_CONFIG = {
     responseMimeType: "application/json" as const,
     temperature: 0.55,
@@ -36,6 +38,101 @@ const GENERATION_CONFIG = {
         { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
     ],
 };
+
+function getBusinessCopyClientResponseSummary(response: {
+    descriptor?: string;
+    keywords?: string[];
+    knownFor?: string;
+    metaDescription?: string;
+    metaTitle?: string;
+    pwaShortName?: string;
+    tagline?: string;
+}) {
+    return {
+        descriptorLength: response.descriptor?.length || 0,
+        keywordCount: Array.isArray(response.keywords) ? response.keywords.length : 0,
+        knownForLength: response.knownFor?.length || 0,
+        metaDescriptionLength: response.metaDescription?.length || 0,
+        metaTitleLength: response.metaTitle?.length || 0,
+        objectKeyCount: Object.keys(response).length,
+        pwaShortNameLength: response.pwaShortName?.length || 0,
+        responseShape: 'object',
+        responseSummaryKind: 'business_copy_generation',
+        taglineLength: response.tagline?.length || 0,
+    };
+}
+
+type BusinessCopyProviderResponseParseAttempt = 'initial' | 'retry';
+type BusinessCopyProviderResponseParseStage =
+    | 'empty_response'
+    | 'object_fragment'
+    | 'object_fragment_missing';
+
+type BusinessCopyProviderResponseParseContext = {
+    action: string;
+    attempt: BusinessCopyProviderResponseParseAttempt;
+    categoryCount: number;
+    itemCount: number;
+    requestId: string;
+    responseUsage?: unknown;
+    sourceLang: string;
+    storeId: unknown;
+    tenantId: unknown;
+    userId: unknown;
+};
+
+type BusinessCopyProviderResponseParseFailureContext = BusinessCopyProviderResponseParseContext & {
+    candidateLength: number;
+    hasFence: boolean;
+    hasObjectFragment: boolean;
+    responseTextLength: number;
+    stage: BusinessCopyProviderResponseParseStage;
+    trimmedTextLength: number;
+};
+
+const reportedBusinessCopyProviderResponseParseFailures = new Set<string>();
+
+function logBusinessCopyProviderResponseParseFailure(
+    error: unknown,
+    context: BusinessCopyProviderResponseParseFailureContext,
+): void {
+    const failureKey = [
+        context.attempt,
+        context.stage,
+        context.responseTextLength,
+        context.trimmedTextLength,
+        context.candidateLength,
+        context.hasFence ? 'fenced' : 'plain',
+        context.hasObjectFragment ? 'object-fragment' : 'no-object-fragment',
+    ].join(':');
+
+    if (reportedBusinessCopyProviderResponseParseFailures.has(failureKey)) return;
+    if (reportedBusinessCopyProviderResponseParseFailures.size >= MAX_BUSINESS_COPY_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS) return;
+    reportedBusinessCopyProviderResponseParseFailures.add(failureKey);
+
+    logRuntimeFailure('business_copy_provider_response_parse_failed', error, {
+        ...getAIRouteLogContext({
+            action: context.action,
+            attempt: context.attempt,
+            categoryCount: context.categoryCount,
+            itemCount: context.itemCount,
+            model: AI_MODEL,
+            requestId: context.requestId,
+            responseUsage: context.responseUsage,
+            sourceLang: context.sourceLang,
+            storeId: context.storeId,
+            tenantId: context.tenantId,
+            userId: context.userId,
+        }),
+        candidateLength: context.candidateLength,
+        fallbackPolicy: 'retry_once_then_return_business_copy_failed',
+        hasFence: context.hasFence,
+        hasObjectFragment: context.hasObjectFragment,
+        parseStage: context.stage,
+        responseTextLength: context.responseTextLength,
+        trimmedTextLength: context.trimmedTextLength,
+    });
+}
 
 export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
@@ -153,20 +250,19 @@ export const POST = withAuth(async (request, session) => {
         let generatedData: any;
         let parsedRawText = getResponseText(response);
         try {
-            generatedData = parseJsonLikeResponse(parsedRawText);
-        } catch (parseError) {
-            logger.warn('Business copy generation returned invalid JSON, retrying once', getAIRouteLogContext({
-                model: AI_MODEL,
-                responseTextLength: parsedRawText.length,
-                responseTextSummary: getPreviewText(parsedRawText, 400),
+            generatedData = parseBusinessCopyProviderResponse(parsedRawText, {
+                action,
+                attempt: 'initial',
+                categoryCount: payload.menu?.categories?.length || 0,
+                itemCount: payload.menu?.items?.length || 0,
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 sourceLang: payload.sourceLang?.code || 'unspecified',
                 storeId: session.sId,
                 tenantId: session.tId,
                 userId,
-            }));
-
+            });
+        } catch (parseError) {
             const retryResponse = await genAIClient.models.generateContent({
                 model: AI_MODEL,
                 contents: `${businessCopyPrompt(payload)}\n\nReturn valid JSON only. Do not add markdown, commentary, or code fences.`,
@@ -175,13 +271,23 @@ export const POST = withAuth(async (request, session) => {
             parsedRawText = getResponseText(retryResponse);
 
             try {
-                generatedData = parseJsonLikeResponse(parsedRawText);
+                generatedData = parseBusinessCopyProviderResponse(parsedRawText, {
+                    action,
+                    attempt: 'retry',
+                    categoryCount: payload.menu?.categories?.length || 0,
+                    itemCount: payload.menu?.items?.length || 0,
+                    requestId,
+                    responseUsage: retryResponse.usageMetadata || null,
+                    sourceLang: payload.sourceLang?.code || 'unspecified',
+                    storeId: session.sId,
+                    tenantId: session.tId,
+                    userId,
+                });
                 response = retryResponse;
             } catch (retryParseError) {
                 logAIRouteFailure('business_copy_generation_invalid_json_after_retry', retryParseError, {
                     model: AI_MODEL,
                     responseTextLength: parsedRawText.length,
-                    responseTextSummary: getPreviewText(parsedRawText, 400),
                     requestId,
                     responseUsage: retryResponse.usageMetadata || null,
                     sourceLang: payload.sourceLang?.code || 'unspecified',
@@ -195,7 +301,6 @@ export const POST = withAuth(async (request, session) => {
                     data: {
                         model: AI_MODEL,
                         responseTextLength: parsedRawText.length,
-                        responseTextSummary: getPreviewText(parsedRawText, 400),
                         requestId,
                         responseUsage: retryResponse.usageMetadata || null,
                         sourceLang: payload.sourceLang?.code || 'unspecified',
@@ -251,7 +356,7 @@ export const POST = withAuth(async (request, session) => {
         const transactionObject: any = {
             action,
             chargePerCredit: CHARGE_PER_CREDIT,
-            clientResponse: cleaned,
+            clientResponse: getBusinessCopyClientResponseSummary(cleaned),
             generationConfig: { temperature: 0.55, topP: 0.9, topK: 40, responseMimeType: 'application/json' },
             geminiResponse: response,
             itemsList: [],
@@ -268,6 +373,27 @@ export const POST = withAuth(async (request, session) => {
             marginPaise: getOurChargePaise(action) - getRealCostPaise(action),
             unitsConsumed: getUnitCost(action),
         };
+        const getTransactionLogSummary = () => ({
+            action: transactionObject.action,
+            candidatesTokenCount: transactionObject.candidatesTokenCount,
+            model: transactionObject.model,
+            processingTime: transactionObject.processingTime,
+            promptTokenCount: transactionObject.promptTokenCount,
+            responseSummary: {
+                descriptorLength: cleaned.descriptor.length,
+                keywordCount: cleaned.keywords.length,
+                knownForLength: cleaned.knownFor.length,
+                metaDescriptionLength: cleaned.metaDescription.length,
+                metaTitleLength: cleaned.metaTitle.length,
+                pwaShortNameLength: cleaned.pwaShortName.length,
+                taglineLength: cleaned.tagline.length,
+            },
+            totalCharge: transactionObject.totalCharge,
+            totalCredits: transactionObject.totalCredits,
+            totalTokenCount: transactionObject.totalTokenCount,
+            transactionId: transactionObject.transactionId,
+            unitsConsumed: transactionObject.unitsConsumed,
+        });
 
         let remainingBalance = null;
         try {
@@ -290,7 +416,7 @@ export const POST = withAuth(async (request, session) => {
                 tenantId: session.tId,
                 userId,
             });
-            await writeLogEntry({ logFileName: LOG_FILE, userId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
+            await writeLogEntry({ logFileName: LOG_FILE, userId, logType: 'TRANSACTION_DB_ERROR', data: getTransactionLogSummary(), error: getAIErrorDiagnostics(transactionError) });
             throw transactionError;
         }
 
@@ -346,24 +472,66 @@ function getResponseText(response: any) {
     ).trim();
 }
 
-function parseJsonLikeResponse(rawText: string) {
-    const cleaned = rawText
+function parseBusinessCopyProviderResponse(
+    rawText: string,
+    context: BusinessCopyProviderResponseParseContext,
+) {
+    const trimmedText = rawText.trim();
+    const hasFence = trimmedText.startsWith('```') || trimmedText.endsWith('```');
+    const cleaned = trimmedText
         .replace(/^```(?:json)?\s*\n?/i, '')
         .replace(/\n?```\s*$/i, '')
         .trim();
 
     if (!cleaned) {
-        throw new Error('Empty AI response');
+        const error = new Error(context.attempt === 'retry'
+            ? 'Business copy retry returned empty response'
+            : 'Business copy returned empty response');
+        logBusinessCopyProviderResponseParseFailure(error, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment: false,
+            responseTextLength: rawText.length,
+            stage: 'empty_response',
+            trimmedTextLength: trimmedText.length,
+        });
+        throw error;
     }
 
     try {
         return JSON.parse(cleaned);
-    } catch {
+    } catch (fullParseError) {
         const firstBrace = cleaned.indexOf('{');
         const lastBrace = cleaned.lastIndexOf('}');
-        if (firstBrace >= 0 && lastBrace > firstBrace) {
-            return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+        const hasObjectFragment = firstBrace >= 0 && lastBrace > firstBrace;
+        if (hasObjectFragment) {
+            const objectCandidate = cleaned.slice(firstBrace, lastBrace + 1);
+            try {
+                return JSON.parse(objectCandidate);
+            } catch (fragmentParseError) {
+                logBusinessCopyProviderResponseParseFailure(fragmentParseError, {
+                    ...context,
+                    candidateLength: objectCandidate.length,
+                    hasFence,
+                    hasObjectFragment,
+                    responseTextLength: rawText.length,
+                    stage: 'object_fragment',
+                    trimmedTextLength: trimmedText.length,
+                });
+                throw fragmentParseError;
+            }
         }
-        throw new Error('Invalid JSON response');
+
+        logBusinessCopyProviderResponseParseFailure(fullParseError, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment,
+            responseTextLength: rawText.length,
+            stage: 'object_fragment_missing',
+            trimmedTextLength: trimmedText.length,
+        });
+        throw fullParseError;
     }
 }

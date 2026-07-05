@@ -152,6 +152,7 @@ const serializeClientValue = (value: any): any => {
 };
 
 type PublicMenuResolutionFailureType =
+    | 'canonical_url_parse_failed'
     | 'linked_master_missing'
     | 'linked_master_unresolved'
     | 'linked_resolution_failed'
@@ -171,6 +172,7 @@ const buildPublicMenuResolutionLogContext = (
         tenantId?: string | number | null;
         storeId?: string | number | null;
         slug?: string | number | null;
+        canonicalUrl?: string | number | null;
         error?: unknown;
     } = {},
 ) => {
@@ -181,6 +183,7 @@ const buildPublicMenuResolutionLogContext = (
     const tenantId = String(metadata.tenantId ?? '').trim();
     const storeId = String(metadata.storeId ?? '').trim();
     const slug = String(metadata.slug ?? '').trim();
+    const canonicalUrl = String(metadata.canonicalUrl ?? '').trim();
 
     return {
         failureType,
@@ -198,6 +201,8 @@ const buildPublicMenuResolutionLogContext = (
         storeIdLength: storeId.length,
         slugPresent: Boolean(slug),
         slugLength: slug.length,
+        canonicalUrlPresent: Boolean(canonicalUrl),
+        canonicalUrlLength: canonicalUrl.length,
         errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error,
     };
 };
@@ -587,11 +592,28 @@ function buildProjectCanonicalUrl({
     return `${baseUrl}${outletPrefix}/${projectSlug}`;
 }
 
-function getUrlHostname(value?: string | null): string {
+function getUrlHostname(
+    value?: string | null,
+    diagnosticContext?: {
+        tenantId?: string | number | null;
+        storeId?: string | number | null;
+        slug?: string | number | null;
+        failureType: Extract<PublicMenuResolutionFailureType, 'canonical_url_parse_failed'>;
+    },
+): string {
     if (!value || typeof value !== 'string') return '';
     try {
         return new URL(value).hostname.toLowerCase();
-    } catch {
+    } catch (error) {
+        if (diagnosticContext) {
+            logPublicMenuResolutionFailure(diagnosticContext.failureType, {
+                tenantId: diagnosticContext.tenantId,
+                storeId: diagnosticContext.storeId,
+                slug: diagnosticContext.slug,
+                canonicalUrl: value,
+                error,
+            });
+        }
         return '';
     }
 }
@@ -600,12 +622,22 @@ function resolveSafeStoreCanonicalUrl(
     storedCanonicalUrl: unknown,
     fallbackUrl: string,
     canonicalBase: string,
+    diagnosticContext?: {
+        tenantId?: string | number | null;
+        storeId?: string | number | null;
+        slug?: string | number | null;
+    },
 ): string {
     if (typeof storedCanonicalUrl !== 'string') return fallbackUrl;
     const trimmed = storedCanonicalUrl.trim();
     if (!trimmed) return fallbackUrl;
 
-    const storedHost = getUrlHostname(trimmed);
+    const storedHost = getUrlHostname(trimmed, diagnosticContext
+        ? {
+            ...diagnosticContext,
+            failureType: 'canonical_url_parse_failed',
+        }
+        : undefined);
     if (!storedHost) return fallbackUrl;
 
     const allowedHosts = new Set([
@@ -937,7 +969,11 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         ? `${canonicalBase}/${metadataOutletSlug}`
         : canonicalBase;
     const canonicalWithoutLanguage = isOBPMetadata
-        ? resolveSafeStoreCanonicalUrl(metadataStore.canonicalUrl, currentUrl, canonicalBase)
+        ? resolveSafeStoreCanonicalUrl(metadataStore.canonicalUrl, currentUrl, canonicalBase, {
+            tenantId: metadataStore.tenantId,
+            storeId: metadataStore.storeId,
+            slug: metadataOutletSlug,
+        })
         : missingProjectPath
             ? missingProjectFallbackCanonical
             : menuAliasCanonical || projectCanonicalUrl || canonicalBase;

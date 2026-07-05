@@ -79,27 +79,27 @@ export const CAMPAIGNCUE_SMALL_BUSINESS_USE_CASE: CampaignCueWebsiteUseCase = {
     ],
     steps: [
         {
-            label: "01",
+            label: "Gather",
             title: "Use the facts already available",
             detail: "Business details, menu or service items, offers, photos, booking links, and owner notes become the source base.",
         },
         {
-            label: "02",
+            label: "Choose",
             title: "Pick one useful cue",
             detail: "The page opens around a practical action such as a lunch push, slot fill, weekend offer, local update, or asset reuse.",
         },
         {
-            label: "03",
+            label: "Prepare",
             title: "Prepare the pack",
             detail: "One cue becomes WhatsApp text, Google fields, social creative, print notes, staff copy, and video or UGC briefs.",
         },
         {
-            label: "04",
+            label: "Review",
             title: "Check before use",
             detail: "CampaignCue shows source, missing facts, blocked claims, spend gates, and manual delivery notes before the owner exports.",
         },
         {
-            label: "05",
+            label: "Export",
             title: "Export and remember",
             detail: "The owner downloads files, copies text, posts manually, and marks what happened so the next cue starts better.",
         },

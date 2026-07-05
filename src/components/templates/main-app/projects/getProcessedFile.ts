@@ -1,7 +1,6 @@
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { checkExistingActiveJob, createMenuProcessingJob, MenuFileToProcess, TargetLanguage } from "@lib/firebase/menuProcessing";
 import { getBoundedMenuProcessingStringContext, getMenuProcessingProjectLogContext, logMenuProcessingFailure } from "@lib/firebase/menuProcessingDiagnostics";
-import { logger } from "@lib/monitoring/logger";
 import { ProcessedFileAPIParams } from './types';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -45,16 +44,10 @@ async function createProcessingJob({
   action = AI_ACTIONS_TYPES.IMAGE_PROCESSING
 }: ProcessedFileAPIParams): Promise<CreateJobResult> {
 
-  logger.debug('[createProcessingJob] Creating job', {
-    filesCount: files.length,
-    projectId,
-  });
-
   try {
     // Check for existing active job to prevent duplicates
     const existingJobId = await checkExistingActiveJob(projectId);
     if (existingJobId) {
-      logger.debug('[createProcessingJob] Found existing active job', { existingJobId, projectId });
       return { jobId: existingJobId };
     }
 
@@ -77,8 +70,6 @@ async function createProcessingJob({
       businessType,
       identityOverrideConfirmed,
     });
-
-    logger.debug('[createProcessingJob] Job created', { jobId, projectId, filesCount: files.length });
 
     return { jobId };
 

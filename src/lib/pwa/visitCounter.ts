@@ -13,12 +13,23 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getBoundedPwaStringContext, logPwaTrackingFailure } from './pwaDiagnostics';
 
 const VISIT_COUNT_KEY_PREFIX = 'menulist_customerApp_visits_';
 const DISMISSED_AT_KEY_PREFIX = 'menulist_customerApp_dismissedAt_';
+const VISIT_COUNTER_STORAGE_TEST_KEY = '__menulist_customer_app_prompt_test__';
 const DEFAULT_PROMPT_THRESHOLD = 3;
 const DISMISS_SUPPRESSION_DAYS = 30;
 const DISMISS_SUPPRESSION_MS = DISMISS_SUPPRESSION_DAYS * 24 * 60 * 60 * 1000;
+
+type PromptStorageOperation =
+  | 'visit_increment'
+  | 'visit_read'
+  | 'dismissal_write'
+  | 'dismissal_read';
+
+const reportedPromptStorageFailures = new Set<string>();
+let reportedDirectInstallIntentParseFailure = false;
 
 function getPromptThreshold(): number {
   const v = FEATURE_FLAGS.CUSTOMER_APP_PROMPT_VISIT_THRESHOLD;
@@ -26,16 +37,49 @@ function getPromptThreshold(): number {
   return DEFAULT_PROMPT_THRESHOLD;
 }
 
-function isStorageAvailable(): boolean {
+function logPromptStorageFailure(
+  failureCode: string,
+  operation: PromptStorageOperation,
+  error: unknown,
+  storeId: string | number,
+  storageKey: string,
+): void {
+  const reportKey = `${failureCode}:${operation}`;
+  if (reportedPromptStorageFailures.has(reportKey)) return;
+  reportedPromptStorageFailures.add(reportKey);
+
+  logPwaTrackingFailure(failureCode, error, {
+    operation,
+    ...getBoundedPwaStringContext('storeId', storeId),
+    ...getBoundedPwaStringContext('storageKey', storageKey),
+  });
+}
+
+function isStorageAvailable(operation: PromptStorageOperation, storeId: string | number): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const key = '__menulist_test__';
-    window.localStorage.setItem(key, '1');
-    window.localStorage.removeItem(key);
+    window.localStorage.setItem(VISIT_COUNTER_STORAGE_TEST_KEY, '1');
+    window.localStorage.removeItem(VISIT_COUNTER_STORAGE_TEST_KEY);
     return true;
-  } catch {
+  } catch (error) {
+    logPromptStorageFailure(
+      'customer_app_prompt_storage_unavailable',
+      operation,
+      error,
+      storeId,
+      VISIT_COUNTER_STORAGE_TEST_KEY,
+    );
     return false;
   }
+}
+
+function logDirectInstallIntentParseFailure(error: unknown, search: string): void {
+  if (reportedDirectInstallIntentParseFailure) return;
+  reportedDirectInstallIntentParseFailure = true;
+
+  logPwaTrackingFailure('customer_app_direct_install_intent_parse_failed', error, {
+    ...getBoundedPwaStringContext('search', search),
+  });
 }
 
 /**
@@ -43,7 +87,7 @@ function isStorageAvailable(): boolean {
  * Safe no-op on server render or when localStorage is unavailable.
  */
 export function incrementVisitCount(storeId: string | number): number {
-  if (!isStorageAvailable()) return 0;
+  if (!isStorageAvailable('visit_increment', storeId)) return 0;
   const key = `${VISIT_COUNT_KEY_PREFIX}${storeId}`;
   try {
     const raw = window.localStorage.getItem(key);
@@ -51,7 +95,14 @@ export function incrementVisitCount(storeId: string | number): number {
     const next = Number.isFinite(current) ? current + 1 : 1;
     window.localStorage.setItem(key, String(next));
     return next;
-  } catch {
+  } catch (error) {
+    logPromptStorageFailure(
+      'customer_app_prompt_visit_increment_failed',
+      'visit_increment',
+      error,
+      storeId,
+      key,
+    );
     return 0;
   }
 }
@@ -60,12 +111,20 @@ export function incrementVisitCount(storeId: string | number): number {
  * Read the current visit count without incrementing.
  */
 export function getVisitCount(storeId: string | number): number {
-  if (!isStorageAvailable()) return 0;
+  if (!isStorageAvailable('visit_read', storeId)) return 0;
+  const key = `${VISIT_COUNT_KEY_PREFIX}${storeId}`;
   try {
-    const raw = window.localStorage.getItem(`${VISIT_COUNT_KEY_PREFIX}${storeId}`);
+    const raw = window.localStorage.getItem(key);
     const n = raw ? parseInt(raw, 10) : 0;
     return Number.isFinite(n) ? n : 0;
-  } catch {
+  } catch (error) {
+    logPromptStorageFailure(
+      'customer_app_prompt_visit_read_failed',
+      'visit_read',
+      error,
+      storeId,
+      key,
+    );
     return 0;
   }
 }
@@ -74,11 +133,18 @@ export function getVisitCount(storeId: string | number): number {
  * Record a dismissal timestamp for the 30-day suppression window.
  */
 export function markPromptDismissed(storeId: string | number): void {
-  if (!isStorageAvailable()) return;
+  if (!isStorageAvailable('dismissal_write', storeId)) return;
+  const key = `${DISMISSED_AT_KEY_PREFIX}${storeId}`;
   try {
-    window.localStorage.setItem(`${DISMISSED_AT_KEY_PREFIX}${storeId}`, String(Date.now()));
-  } catch {
-    /* noop */
+    window.localStorage.setItem(key, String(Date.now()));
+  } catch (error) {
+    logPromptStorageFailure(
+      'customer_app_prompt_dismissal_write_failed',
+      'dismissal_write',
+      error,
+      storeId,
+      key,
+    );
   }
 }
 
@@ -86,14 +152,22 @@ export function markPromptDismissed(storeId: string | number): void {
  * True if the prompt was dismissed within the last 30 days.
  */
 export function isPromptSuppressedByDismissal(storeId: string | number): boolean {
-  if (!isStorageAvailable()) return false;
+  if (!isStorageAvailable('dismissal_read', storeId)) return false;
+  const key = `${DISMISSED_AT_KEY_PREFIX}${storeId}`;
   try {
-    const raw = window.localStorage.getItem(`${DISMISSED_AT_KEY_PREFIX}${storeId}`);
+    const raw = window.localStorage.getItem(key);
     if (!raw) return false;
     const dismissedAt = parseInt(raw, 10);
     if (!Number.isFinite(dismissedAt)) return false;
     return Date.now() - dismissedAt < DISMISS_SUPPRESSION_MS;
-  } catch {
+  } catch (error) {
+    logPromptStorageFailure(
+      'customer_app_prompt_dismissal_read_failed',
+      'dismissal_read',
+      error,
+      storeId,
+      key,
+    );
     return false;
   }
 }
@@ -115,7 +189,8 @@ export function hasDirectInstallIntent(search?: string): boolean {
     const params = new URLSearchParams(src.startsWith('?') ? src : `?${src}`);
     const v = params.get('pwa');
     return v === 'install' || v === '1' || v === 'true';
-  } catch {
+  } catch (error) {
+    logDirectInstallIntentParseFailure(error, src);
     return false;
   }
 }

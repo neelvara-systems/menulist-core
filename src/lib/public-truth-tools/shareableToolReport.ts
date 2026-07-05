@@ -1,3 +1,5 @@
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+
 export const SHAREABLE_TOOL_REPORT_SCHEMA_VERSION = 1;
 export const SHAREABLE_TOOL_REPORT_ROUTE = '/tools/reports';
 export const SHAREABLE_TOOL_REPORT_HASH_KEY = 'r';
@@ -6,6 +8,16 @@ export const SHAREABLE_TOOL_REPORT_MAX_ENCODED_LENGTH = 36000;
 export const SHAREABLE_TOOL_REPORT_MAX_CHECKS = 16;
 export const SHAREABLE_TOOL_REPORT_MAX_BOUNDARIES = 8;
 export const SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS = 6;
+const MAX_SHAREABLE_TOOL_REPORT_DECODE_DIAGNOSTICS = 25;
+
+const reportedShareableToolReportDecodeFailures = new Set<string>();
+
+type ShareableToolReportDecodeFailureStage =
+  | 'base64_decode'
+  | 'json_parse'
+  | 'json_oversized'
+  | 'payload_invalid'
+  | 'payload_oversized';
 
 export type ShareableToolReportStatus =
   | 'ready'
@@ -369,6 +381,54 @@ function extractEncodedPayload(hashOrPayload: string): string {
   return withoutHash;
 }
 
+function logShareableToolReportDecodeFailure({
+  decodedLength,
+  encoded,
+  error,
+  hashOrPayload,
+  stage,
+}: {
+  decodedLength?: number;
+  encoded: string;
+  error: unknown;
+  hashOrPayload: string;
+  stage: ShareableToolReportDecodeFailureStage;
+}): void {
+  const trimmed = hashOrPayload.trim();
+  const withoutHash = trimmed.startsWith('#') ? trimmed.slice(1) : trimmed;
+  const hasHashPrefix = trimmed.startsWith('#');
+  const hasReportHashKey = withoutHash.startsWith(`${SHAREABLE_TOOL_REPORT_HASH_KEY}=`);
+  const boundedDecodedLength = typeof decodedLength === 'number' && Number.isFinite(decodedLength)
+    ? decodedLength
+    : 0;
+  const failureKey = [
+    stage,
+    trimmed.length,
+    encoded.length,
+    boundedDecodedLength,
+    hasHashPrefix ? 'hash' : 'payload',
+    hasReportHashKey ? 'keyed' : 'direct',
+    encoded.length > SHAREABLE_TOOL_REPORT_MAX_ENCODED_LENGTH ? 'encoded-too-large' : 'encoded-ok',
+    boundedDecodedLength > SHAREABLE_TOOL_REPORT_MAX_JSON_LENGTH ? 'json-too-large' : 'json-ok',
+  ].join(':');
+
+  if (reportedShareableToolReportDecodeFailures.has(failureKey)) return;
+  if (reportedShareableToolReportDecodeFailures.size >= MAX_SHAREABLE_TOOL_REPORT_DECODE_DIAGNOSTICS) return;
+  reportedShareableToolReportDecodeFailures.add(failureKey);
+
+  logRuntimeFailure('shareable_tool_report_payload_decode_failed', error, {
+    failureStage: stage,
+    hashInputLength: trimmed.length,
+    encodedPayloadLength: encoded.length,
+    decodedPayloadLength: boundedDecodedLength,
+    hasHashPrefix,
+    hasReportHashKey,
+    encodedPayloadExceedsMaxLength: encoded.length > SHAREABLE_TOOL_REPORT_MAX_ENCODED_LENGTH,
+    decodedPayloadExceedsMaxLength: boundedDecodedLength > SHAREABLE_TOOL_REPORT_MAX_JSON_LENGTH,
+    fallbackPolicy: 'show_invalid_report_state',
+  });
+}
+
 export function isShareableToolReportPayload(value: unknown): value is ShareableToolReportPayload {
   return normalizeShareableToolReportPayload(value) !== null;
 }
@@ -390,20 +450,70 @@ export function encodeShareableToolReportPayload(payload: ShareableToolReportPay
 export function decodeShareableToolReportPayload(hashOrPayload: string): ShareableToolReportPayload | null {
   const encoded = extractEncodedPayload(hashOrPayload);
 
-  if (!encoded || encoded.length > SHAREABLE_TOOL_REPORT_MAX_ENCODED_LENGTH) {
+  if (!encoded) {
     return null;
   }
 
+  if (encoded.length > SHAREABLE_TOOL_REPORT_MAX_ENCODED_LENGTH) {
+    logShareableToolReportDecodeFailure({
+      encoded,
+      error: new Error('shareable_tool_report_payload_oversized'),
+      hashOrPayload,
+      stage: 'payload_oversized',
+    });
+    return null;
+  }
+
+  let decoded: string;
   try {
-    const decoded = fromBase64Url(encoded);
-    if (decoded.length > SHAREABLE_TOOL_REPORT_MAX_JSON_LENGTH) {
-      return null;
-    }
-
-    return normalizeShareableToolReportPayload(JSON.parse(decoded));
-  } catch {
+    decoded = fromBase64Url(encoded);
+  } catch (error) {
+    logShareableToolReportDecodeFailure({
+      encoded,
+      error,
+      hashOrPayload,
+      stage: 'base64_decode',
+    });
     return null;
   }
+
+  if (decoded.length > SHAREABLE_TOOL_REPORT_MAX_JSON_LENGTH) {
+    logShareableToolReportDecodeFailure({
+      decodedLength: decoded.length,
+      encoded,
+      error: new Error('shareable_tool_report_json_oversized'),
+      hashOrPayload,
+      stage: 'json_oversized',
+    });
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(decoded);
+  } catch (error) {
+    logShareableToolReportDecodeFailure({
+      decodedLength: decoded.length,
+      encoded,
+      error,
+      hashOrPayload,
+      stage: 'json_parse',
+    });
+    return null;
+  }
+
+  const normalized = normalizeShareableToolReportPayload(parsed);
+  if (!normalized) {
+    logShareableToolReportDecodeFailure({
+      decodedLength: decoded.length,
+      encoded,
+      error: new Error('shareable_tool_report_payload_invalid'),
+      hashOrPayload,
+      stage: 'payload_invalid',
+    });
+  }
+
+  return normalized;
 }
 
 export function createShareableToolReportUrl(payload: ShareableToolReportPayload, origin?: string): string {

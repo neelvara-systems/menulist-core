@@ -3,7 +3,7 @@
 **Feature:** Centralized AI Infrastructure for MenuList
 **Status:** ✅ PRODUCTION HARDENING ACTIVE — Gateway, rotation, model constants, daily health checks
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation
-**Last Updated:** June 28, 2026
+**Last Updated:** July 5, 2026
 
 ---
 
@@ -14,6 +14,20 @@ The AI System Layer is a centralized infrastructure that governs AI operations a
 **Core principle:** AI is an expensive, rate-limited external resource. Treat it like a database — centralize access, control cost, and monitor health.
 
 Production rule: API keys are failover and rotation credentials, not a quota scaling strategy. Google Gemini rate limits are enforced at the project/model tier, so production capacity must be handled with billing, quota monitoring, model choice, and provider health checks.
+
+July 5 Weekly narrative output boundary: `/api/analytics/weekly-narrative/generate-local` now normalizes AI-generated `narrative`, `highlights`, and `recommendations` before writing `insights/{tId}/stores/{sId}/ai/weekly`. The route strips control/template characters, collapses whitespace, caps the narrative and list items, keeps the existing deterministic fallback narrative, and returns only the existing count/length success envelope.
+
+July 5 text AI operation response summaries boundary: text/design AI routes now pass pre-summarized `clientResponse` payloads into AI accounting. Descriptions, translations, new-item metadata, business copy, SEO copy, Review Reply, Campaign Caption, and Menu Card Export design-advisor operation rows keep count/shape summaries with `responseSummaryKind` markers instead of generated owner-facing text objects. Valid owner API responses still return the generated content.
+
+July 5 transaction DB local error boundary: `/api/business-copy`, `/api/descriptions`, `/api/image-editing`, `/api/new-item-metadata`, `/api/seo`, and `/api/translations` now write bounded source-error metadata for local `TRANSACTION_DB_ERROR` logs instead of raw accounting exception objects. The existing `logAIRouteFailure(...)` diagnostics, rethrow behavior, successful accounting finalizer, credit consumption, and owner-facing output are unchanged.
+
+July 5 response-parse boundary: `/api/campaigns/caption` now logs unrecoverable provider-response parse failures through capped `campaign_caption_provider_response_parse_failed` diagnostics with fixed `return_caption_generation_failed` policy. Fenced JSON and extractable object-fragment JSON are accepted before the fail-closed caption failure path, and non-object provider output now fails closed. AI accounting input now carries bounded prompt summaries and caption response summaries instead of raw prompt item/business fields or generated caption objects. Raw provider response text, prompt item/business copy, generated captions, response preview text, raw prompt item/business fields, and exception text are not logged.
+
+July 5 response-parse boundary: `/api/new-item-metadata` now logs unrecoverable provider-response parse failures through capped `new_item_metadata_provider_response_parse_failed` diagnostics with fixed `return_metadata_generation_failed` policy. Fenced JSON and extractable object-fragment JSON are accepted before the existing fail-closed metadata failure path. Local response logs record response presence/length/usage metadata only, and AI accounting input now carries bounded item/language summaries instead of raw prompt item/language payloads. Raw provider response text, prompt item/language copy, generated metadata, response preview text, full provider response objects, and exception text are not logged.
+
+July 5 image route boundary: `/api/image-generation`, `/api/image-editing`, `/api/image-generation/batch-trigger`, and `/api/image-generation/batch-generation` now keep local route logs and AI operation input bounded. Local logs use request/response/transaction/task summaries, batch-trigger prompt-block responses return counts only, and operation rows use `itemSummary` plus `generationConfigSummary` instead of raw image item details or generation config payloads. Raw prompts, item descriptions/categories/attributes, reference image URLs, generated base64 images, raw item ID arrays, full provider responses, full transaction objects, and raw image accounting input payloads are not written by those paths.
+
+July 5 response-parse boundary: `/api/seo` now logs unrecoverable provider-response parse failures through capped `seo_provider_response_parse_failed` diagnostics with fixed `return_seo_generation_failed` policy. Fenced JSON and extractable object-fragment JSON are accepted before the existing fail-closed SEO failure path. Local accounting-error logs record bounded transaction/result summaries instead of full transaction objects. Raw provider response text, prompt/menu/store copy, generated metadata, store/tenant/user IDs, response preview text, full transaction objects, and exception text are not logged.
 
 ---
 
@@ -182,6 +196,8 @@ Billable AI routes must finalize successful provider output through `src/lib/ai/
 
 Every declared `AI_ACTIONS_TYPES` value must be present in both `AI_UNIT_COSTS` and `GEMINI_COST_USD`. Unknown AI actions throw during capacity/logging instead of defaulting to a free operation.
 
+Business Copy provider-response parsing remains fail-closed and observable. `/api/business-copy` still retries once when Gemini returns unrecoverable invalid JSON, and an unrecoverable retry still returns the existing generic owner-safe failure without writing a usable AI operation row or consuming credits. Empty, malformed non-object, or malformed object-fragment provider responses log capped `business_copy_provider_response_parse_failed` diagnostics with fixed `retry_once_then_return_business_copy_failed` policy and response-shape metadata only. Raw provider response text, prompt/menu/store copy, generated copy, store/tenant/user IDs, response preview text, and exception text are not logged.
+
 Regression command:
 
 ```bash
@@ -190,4 +206,4 @@ npm run verify:ai-accounting
 
 ---
 
-_Last Updated: June 28, 2026_
+_Last Updated: July 5, 2026_

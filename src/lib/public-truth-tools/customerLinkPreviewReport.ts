@@ -93,7 +93,7 @@ export function buildCustomerLinkPreviewReport(input: CustomerLinkPreviewInput):
   const cityOrArea = trimToSingleLine(input.cityOrArea);
   const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
   const hasCurrentCustomerLink = currentCustomerLink.length > 0;
-  const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink);
+  const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink, 'customer_link_preview_current_customer_link');
   const hasIdentityHint = businessName.length >= 2 || cityOrArea.length >= 2;
   const visibleFactCount = [
     input.businessNameVisible,

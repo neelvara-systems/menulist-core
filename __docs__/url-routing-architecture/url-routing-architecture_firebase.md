@@ -41,6 +41,12 @@ The July 2, 2026 safe outlet path segments boundary adds no Firebase reads, writ
 
 The July 2, 2026 safe project path segments boundary adds no Firebase reads, writes, deletes, indexes, Cloud Functions, live provider calls, cache invalidations, or deploy steps. Client menu lookup, previous-slug redirects, canonical URLs, metadata lookup, sitemap project entries, and OBP menu CTA links normalize stored project slugs at render/resolve time and hide invalid legacy values instead of rewriting Firestore. Source gate: `npm run verify:url-routing-boundary`.
 
+The July 5, 2026 public language parameter parse fallback adds no Firebase reads, writes, deletes, indexes, Cloud Functions, live provider calls, cache invalidations, or deploy steps. Valid `?lang=xx` public links still render the same way; malformed URL parse fallbacks log bounded `public_language_param_url_parse_failed` diagnostics only and return the original URL unchanged instead of writing or mutating routing state.
+
+The July 5, 2026 deleted-project slug reservation fail-closed update adds no Firebase reads, writes, deletes, indexes, Cloud Functions, live provider calls, cache invalidations, or deploy steps. The existing create/rename/duplicate reservation query is unchanged. If that query fails, creation and duplication treat the proposed slug as reserved and append a unique suffix, while rename and no-slug backfill refuse the new slug through the same path used for a confirmed 90-day reservation. This preserves QR/public URL permanence without changing normal valid slug creation, confirmed reservation handling, summary schema, or public resolver behavior.
+
+The July 5, 2026 tenant sitemap lookup diagnostic cap adds no Firebase reads, writes, deletes, indexes, Cloud Functions, live provider calls, cache invalidations, or deploy steps. Existing master-store, projects-summary, and stores-summary reads remain unchanged; failed lookup paths still return an empty sitemap or omit project/outlet entries. The change only caps repeated `tenant_sitemap_*_failed` diagnostics and records fallback-policy labels with bounded presence/length metadata.
+
 ### Cost Optimization Summary (Implemented Feb 19, 2026)
 
 | #     | Optimization                                                  | Surface         | Reads Saved Per Visit | Annual Savings (10K visits/day) |

@@ -844,7 +844,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                     }
                                     setGeneratingAsset('Feedback QR');
                                     try {
-                                        const { generateBrandedFeedbackQrCode, downloadQrCode } = await import('@lib/utils/feedbackQrCode');
+                                        const { generateBrandedFeedbackQrCode, downloadQrCode, getQrCodeFilename } = await import('@lib/utils/feedbackQrCode');
                                         const qrDataUrl = await generateBrandedFeedbackQrCode(data.projectId!, {
                                             brandColor: storeBrandColor,
                                             footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
@@ -854,7 +854,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                             title: t('feedbackQr'),
                                             activePlanType: (storeDetails as any)?.activePlanType,
                                         }, data.obpLink);
-                                        downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
+                                        downloadQrCode(qrDataUrl, getQrCodeFilename(data.storeName));
                                         message.success('Feedback QR downloaded');
                                     } catch (error) {
                                         logUseMenuListFailure('use_menulist_feedback_qr_download_failed', error, {
@@ -1493,7 +1493,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                 }
                                 setGeneratingAsset('Feedback QR');
                                 try {
-                                    const { generateBrandedFeedbackQrCode, downloadQrCode } = await import('@lib/utils/feedbackQrCode');
+                                    const { generateBrandedFeedbackQrCode, downloadQrCode, getQrCodeFilename } = await import('@lib/utils/feedbackQrCode');
                                     const qrDataUrl = await generateBrandedFeedbackQrCode(data.projectId!, {
                                         brandColor: storeBrandColor,
                                         footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
@@ -1503,7 +1503,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                         title: t('feedbackQr'),
                                         activePlanType: (storeDetails as any)?.activePlanType,
                                     }, data.obpLink);
-                                    downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
+                                    downloadQrCode(qrDataUrl, getQrCodeFilename(data.storeName));
                                     message.success('Feedback QR downloaded');
                                 } catch (error) {
                                     logUseMenuListFailure('use_menulist_feedback_qr_download_failed', error, {

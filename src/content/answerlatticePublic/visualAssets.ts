@@ -9,8 +9,8 @@ export const ANSWERLATTICE_VISUAL_ASSETS: AnswerlatticeVisualAsset[] = [
         format: 'animated-vector-diagram',
         currentAsset: 'AnswerlatticeHeroAutomationDiagram',
         futureAssetName: 'answerlattice-home-hero-automation-scene',
-        visualDirection: 'A low floating automation scene where small product-source tiles move into a target-like AnswerLattice center and slim approved-support cards emerge from that center.',
-        mustShow: ['small source tiles', 'central target', 'input motion paths', 'approved answer card', 'widget response card', 'hosted help card'],
+        visualDirection: 'A low floating automation scene where labeled product-source tiles move into the AnswerLattice logo target and slim approved-support cards emerge from that center.',
+        mustShow: ['labeled source tiles', 'AnswerLattice logo target', 'input motion paths', 'queued output cards', 'widget and hosted help outputs', 'FAQ, changelog, fallback, feedback, Support Board, custom domain, workflow update, future-context, and gap outputs'],
         mustAvoid: ['fake customer logos', 'autonomous support claims', 'helpdesk replacement framing'],
     },
     {

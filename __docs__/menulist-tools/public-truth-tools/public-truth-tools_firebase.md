@@ -20,6 +20,10 @@ July 3 Tools Hub note: Tools Hub at `/tools` is static website UI only. It group
 
 July 3 Shareable Tool Reports note: `/tools/reports` is a public viewer that decodes report payloads from the URL hash fragment. It has no report API route, no report collection, no report-view Firestore read/write, no Storage operation, no Cloud Function call, no external URL fetch, and no AI/provider call. Its optional visible follow-up form reuses the existing consented `/api/public/contact` enquiry path and can create one existing contact write; that write is not report storage. The contact write carries bounded `shareable_tool_report` metadata for triage. `/ops/report-leads` can read recent existing enquiries for platform-admin manual triage with 0 writes and no realtime listener. It is documented separately in `../shareable-tool-reports/`.
 
+July 5 public URL parse diagnostics note: malformed owner-entered public/customer URLs now log bounded `public_truth_tool_url_parse_failed` diagnostics from the shared browser-local URL helper. Diagnostics are console/runtime observability only and include source labels plus shape metadata; they do not add Firestore reads/writes/deletes, Storage operations, Cloud Functions, external URL fetches, DNS lookups, provider calls, saved reports, or report API routes.
+
+July 5 owner readiness menu URL diagnostics note: failed owner menu URL generation now logs bounded `public_truth_owner_menu_url_generation_failed` diagnostics and keeps the existing `menuUrl` omission fallback. Diagnostics are runtime observability only and include domain/project shape metadata; they do not add Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache invalidations, external URL fetches, DNS lookups, provider calls, report storage, or owner-visible tasks.
+
 | Resource | Current cost |
 | --- | --- |
 | Firestore reads | 0 |

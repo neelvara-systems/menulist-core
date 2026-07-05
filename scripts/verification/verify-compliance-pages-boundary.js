@@ -113,6 +113,7 @@ function verifyApiBoundary() {
 
   assertIncludes(route, "export const dynamic = 'force-dynamic';", 'Compliance API route dynamic boundary');
   assertIncludes(route, "import { withAuth } from '../../../middleware/auth';", 'Compliance API auth guard');
+  assertIncludes(route, 'getBoundedRuntimeStringContext, logRuntimeFailure', 'Compliance API bounded runtime diagnostics import');
   assertIncludes(route, 'export const GET = withAuth', 'Compliance API GET auth guard');
   assertIncludes(route, 'export const POST = withAuth', 'Compliance API POST auth guard');
   assertIncludes(route, 'FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES', 'Compliance API feature flag');
@@ -134,9 +135,19 @@ function verifyApiBoundary() {
   assertIncludes(route, 'sanitizeComplianceContent(content)', 'Compliance API sanitizer');
   assertIncludes(route, 'saveComplianceOverrideServer(sId, tId, type, sanitized)', 'Compliance API server-side save DAL');
   assertIncludes(route, 'deleteComplianceOverrideServer(sId, type)', 'Compliance API server-side reset DAL');
+  assertIncludes(route, 'type ComplianceStoreLookupResult', 'Compliance API typed store lookup result');
+  assertIncludes(route, 'const storeLookup = await getStoreData(sId, tId);', 'Compliance API passes tenant/store context to store lookup');
+  assertIncludes(route, 'if (!storeLookup.ok)', 'Compliance API distinguishes store lookup failure from missing inputs');
+  assertIncludes(route, "error: 'Unable to load compliance page details'", 'Compliance API fixed owner-facing store lookup failure');
+  assertIncludes(route, 'logRuntimeFailure(\'compliance_store_lookup_failed\'', 'Compliance API bounded store lookup failure diagnostic');
+  assertIncludes(route, "getBoundedRuntimeStringContext('storeId', sId)", 'Compliance API bounded store id diagnostic context');
+  assertIncludes(route, "getBoundedRuntimeStringContext('tenantId', tId)", 'Compliance API bounded tenant id diagnostic context');
+  assertIncludes(route, "failurePolicy: 'return_500'", 'Compliance API store lookup failure policy');
   assertIncludes(route, 'success: true', 'Compliance API success acknowledgement');
   assertIncludes(route, 'action,', 'Compliance API action acknowledgement');
   assertIncludes(route, 'type,', 'Compliance API type acknowledgement');
+  assertNotIncludes(route, 'async function getStoreData(sId: number): Promise<any | null>', 'Compliance API store lookup must not collapse read failures into null');
+  assertNotIncludes(route, '} catch {\n        return null;', 'Compliance API store lookup must not silently return missing data on failures');
   assertOrder(route, 'requireAnyStorePermission', "getRateLimitForFeature('DATA_WRITE')", 'Compliance API permission before write limiter');
   assertOrder(route, "getRateLimitForFeature('DATA_WRITE')", 'readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES', 'Compliance API limiter before body parse');
   assertOrder(route, 'readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES', 'OverrideSchema.safeParse(body)', 'Compliance API bounded body before validation');
@@ -167,8 +178,17 @@ function verifyPublicRouteBoundary() {
   assertIncludes(renderer, 'generateComplianceContent(type, inputs)', 'Compliance renderer template generation');
   assertIncludes(renderer, 'composeComplianceContent(systemContent, data[overrideField])', 'Compliance renderer override composition');
   assertIncludes(renderer, '.collection(DB_COLLECTIONS.COMPLIANCE_PAGES)', 'Compliance renderer override doc read');
+  assertIncludes(renderer, 'public_compliance_override_read_failed', 'Compliance renderer bounded override-read diagnostics');
+  assertIncludes(renderer, 'logComplianceOverrideReadFailure', 'Compliance renderer override-read diagnostic helper');
+  assertIncludes(renderer, "getBoundedRuntimeStringContext('storeId', context.storeId)", 'Compliance renderer bounded store context');
+  assertIncludes(renderer, "getBoundedRuntimeStringContext('pageType', context.type)", 'Compliance renderer bounded page type context');
+  assertIncludes(renderer, 'hasCustomDomain: Boolean(customDomain)', 'Compliance renderer domain presence metadata');
+  assertIncludes(renderer, 'hasSubdomain: Boolean(subdomain)', 'Compliance renderer subdomain presence metadata');
   assertIncludes(renderer, '<PublicMenuListAttribution', 'Compliance renderer MenuList attribution policy');
   assertNotIncludes(renderer, 'dangerouslySetInnerHTML', 'Compliance renderer must not render custom content as HTML');
+  assertNotIncludes(renderer, '} catch {\n        // Firestore error', 'Compliance renderer override read must not silently fall back');
+  assertNotIncludes(renderer, 'console.error', 'Compliance renderer direct error logging');
+  assertNotIncludes(renderer, 'console.warn', 'Compliance renderer direct warn logging');
 
   assertIncludes(menuFooter, "href: '/privacy'", 'Public menu footer privacy link');
   assertIncludes(menuFooter, "href: '/terms'", 'Public menu footer terms link');
@@ -293,11 +313,19 @@ function verifyDocsBoundary() {
   assertNotIncludes(spec, '**Status:** 🟡 Implementation Ready', 'Compliance spec stale implementation-ready status');
   assertIncludes(impl, 'src/app/client/compliance/CompliancePageContent.tsx', 'Compliance impl current renderer path');
   assertIncludes(impl, 'sanitize executable/style blocks before tag stripping', 'Compliance impl sanitizer hardening note');
+  assertIncludes(impl, 'public compliance override read failures log `public_compliance_override_read_failed`', 'Compliance impl public override-read diagnostics note');
+  assertIncludes(impl, 'owner compliance store lookup failures log `compliance_store_lookup_failed`', 'Compliance impl owner store lookup diagnostics note');
   assertIncludes(firebaseDoc, 'direct compliancePages doc read', 'Compliance Firebase current override read cost');
   assertIncludes(firebaseDoc, 'July 2 sanitizer/source-gate hardening', 'Compliance Firebase sanitizer/source-gate note');
+  assertIncludes(firebaseDoc, 'July 5 public override-read diagnostics', 'Compliance Firebase public override-read diagnostics note');
+  assertIncludes(firebaseDoc, 'July 5 owner store-lookup diagnostics', 'Compliance Firebase owner store lookup diagnostics note');
   assertIncludes(mobileDoc, 'npm run verify:compliance-pages-boundary', 'Compliance mobile source gate note');
   assertIncludes(audit, 'verify:compliance-pages-boundary', 'Production readiness audit compliance source gate evidence');
+  assertIncludes(audit, 'Compliance Pages owner store-lookup diagnostics checkpoint', 'Production readiness audit Compliance owner store lookup checkpoint');
+  assertIncludes(audit, 'Compliance Pages public override-read diagnostics checkpoint', 'Production readiness audit Compliance public override-read checkpoint');
   assertIncludes(audit, 'Compliance Pages spec launch-boundary checkpoint', 'Production readiness audit Compliance spec checkpoint');
+  assertIncludes(changelog, 'Compliance Pages Owner Store-Lookup Diagnostics', 'Changelog Compliance owner store lookup diagnostics entry');
+  assertIncludes(changelog, 'Compliance Pages Public Override-Read Diagnostics', 'Changelog Compliance public override-read diagnostics entry');
   assertIncludes(changelog, 'Compliance Pages Spec Launch Boundary', 'Changelog Compliance spec boundary entry');
 }
 

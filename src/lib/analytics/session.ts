@@ -1,12 +1,59 @@
 /**
  * Session management for analytics tracking
  */
-import { logAnalyticsFailure } from './analyticsDiagnostics';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';
 import { v4 as uuidv4 } from 'uuid';
 
 const SESSION_ID_KEY = 'menulist_session_id';
 const SESSION_TIMESTAMP_KEY = 'menulist_session_timestamp';
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+type AnalyticsSessionStorageOperation = 'get' | 'refresh' | 'clear';
+
+const ANALYTICS_SESSION_STORAGE_FAILURE_CODES: Record<AnalyticsSessionStorageOperation, string> = {
+  get: 'analytics_session_get_failed',
+  refresh: 'analytics_session_refresh_failed',
+  clear: 'analytics_session_clear_failed',
+};
+
+const reportedAnalyticsSessionStorageFailures = new Set<string>();
+
+const getAnalyticsSessionStorageFailureContext = (
+  operation: AnalyticsSessionStorageOperation,
+  values: {
+    existingId?: string | null;
+    timestamp?: string | null;
+  } = {},
+) => ({
+  operation,
+  ...getBoundedAnalyticsStringContext('sessionIdKey', SESSION_ID_KEY),
+  ...getBoundedAnalyticsStringContext('sessionTimestampKey', SESSION_TIMESTAMP_KEY),
+  ...getBoundedAnalyticsStringContext('existingSessionId', values.existingId),
+  ...getBoundedAnalyticsStringContext('sessionTimestamp', values.timestamp),
+  timeoutMs: SESSION_TIMEOUT_MS,
+  hasWindow: typeof window !== 'undefined',
+  hasSessionStorage: typeof sessionStorage !== 'undefined',
+  fallback: operation === 'get' ? 'new_anonymous_session_id' : 'skip_session_storage_update',
+});
+
+const logAnalyticsSessionStorageFailure = (
+  operation: AnalyticsSessionStorageOperation,
+  error: unknown,
+  values?: {
+    existingId?: string | null;
+    timestamp?: string | null;
+  },
+): void => {
+  const failureCode = ANALYTICS_SESSION_STORAGE_FAILURE_CODES[operation];
+  if (reportedAnalyticsSessionStorageFailures.has(failureCode)) return;
+  reportedAnalyticsSessionStorageFailures.add(failureCode);
+
+  logAnalyticsFailure(
+    failureCode,
+    error,
+    getAnalyticsSessionStorageFailureContext(operation, values),
+  );
+};
 
 /**
  * Gets the current session ID or creates a new one if needed
@@ -18,9 +65,12 @@ export function getSessionId(): string {
     return 'server-side';
   }
 
+  let existingId: string | null = null;
+  let timestampStr: string | null = null;
+
   try {
-    const existingId = sessionStorage.getItem(SESSION_ID_KEY);
-    const timestampStr = sessionStorage.getItem(SESSION_TIMESTAMP_KEY);
+    existingId = sessionStorage.getItem(SESSION_ID_KEY);
+    timestampStr = sessionStorage.getItem(SESSION_TIMESTAMP_KEY);
     
     // Check if we have an existing session
     if (existingId && timestampStr) {
@@ -41,8 +91,10 @@ export function getSessionId(): string {
     
     return newId;
   } catch (error) {
-    // Fallback in case sessionStorage is not available
-    logAnalyticsFailure('analytics_session_get_failed', error);
+    logAnalyticsSessionStorageFailure('get', error, {
+      existingId,
+      timestamp: timestampStr,
+    });
     return uuidv4();
   }
 }
@@ -54,14 +106,16 @@ export function refreshSession(): void {
   if (typeof window === 'undefined') {
     return;
   }
-  
+
+  let existingId: string | null = null;
+
   try {
-    const existingId = sessionStorage.getItem(SESSION_ID_KEY);
+    existingId = sessionStorage.getItem(SESSION_ID_KEY);
     if (existingId) {
       sessionStorage.setItem(SESSION_TIMESTAMP_KEY, Date.now().toString());
     }
   } catch (error) {
-    logAnalyticsFailure('analytics_session_refresh_failed', error);
+    logAnalyticsSessionStorageFailure('refresh', error, { existingId });
   }
 }
 
@@ -77,6 +131,6 @@ export function clearSession(): void {
     sessionStorage.removeItem(SESSION_ID_KEY);
     sessionStorage.removeItem(SESSION_TIMESTAMP_KEY);
   } catch (error) {
-    logAnalyticsFailure('analytics_session_clear_failed', error);
+    logAnalyticsSessionStorageFailure('clear', error);
   }
 }

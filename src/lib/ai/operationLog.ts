@@ -90,6 +90,10 @@ function isPlainRecord(value: unknown): value is JsonRecord {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function isPreSummarizedClientResponse(value: unknown): value is JsonRecord {
+    return isPlainRecord(value) && typeof value.responseSummaryKind === "string";
+}
+
 function countRecordKeys(value: unknown): number {
     return isPlainRecord(value) ? Object.keys(value).length : 0;
 }
@@ -118,6 +122,8 @@ function isImageGenerationOperation(action: unknown): boolean {
 
 function summarizeClientResponseForOperation(response: any, action?: string): JsonRecord | null {
     if (response === undefined || response === null) return null;
+
+    if (isPreSummarizedClientResponse(response)) return omitUndefined(response);
 
     if (Array.isArray(response)) {
         return omitUndefined({

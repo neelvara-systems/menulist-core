@@ -1,6 +1,7 @@
 import { LOGO_SMALL } from '@constant/common';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { getBoundedExportStringContext, logExportFailure } from '@lib/export/exportDiagnostics';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { Button, Checkbox, ColorPicker, Flex, QRCode, Typography, message } from 'antd';
 import { useState } from 'react';
@@ -18,6 +19,42 @@ interface QRCodeViewProps {
 
 function withQrEntrySource(url: string): string {
     return withAnalyticsSource(url, 'qr');
+}
+
+function getLegacyQrDownloadLogContext({
+    activePlanType,
+    logoUrl,
+    qrBgColor,
+    qrColor,
+    qrShareUrl,
+    qrSize,
+    shareUrl,
+    showLogo,
+    storeName,
+}: {
+    activePlanType?: string | null;
+    logoUrl?: string;
+    qrBgColor: string;
+    qrColor: string;
+    qrShareUrl: string;
+    qrSize: number;
+    shareUrl: string;
+    showLogo: boolean;
+    storeName: string;
+}) {
+    return {
+        ...getBoundedExportStringContext('activePlanType', activePlanType),
+        ...getBoundedExportStringContext('logoUrl', logoUrl),
+        ...getBoundedExportStringContext('qrShareUrl', qrShareUrl),
+        ...getBoundedExportStringContext('shareUrl', shareUrl),
+        ...getBoundedExportStringContext('storeName', storeName),
+        fallbackPolicy: 'show_qr_download_failed_message',
+        hasLogoUrl: Boolean(logoUrl),
+        qrBgColorLength: qrBgColor.length,
+        qrColorLength: qrColor.length,
+        qrSize,
+        showLogo,
+    };
 }
 
 function QRCodeView({ activePlanType, brandColor, logoUrl, shareUrl, storeName = 'menu' }: QRCodeViewProps) {
@@ -44,7 +81,18 @@ function QRCodeView({ activePlanType, brandColor, logoUrl, shareUrl, storeName =
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(`${storeName}-menu`, 'qr'));
             message.success('QR code downloaded successfully!');
-        } catch {
+        } catch (error) {
+            logExportFailure('project_share_legacy_qr_download_failed', error, getLegacyQrDownloadLogContext({
+                activePlanType,
+                logoUrl,
+                qrBgColor,
+                qrColor,
+                qrShareUrl,
+                qrSize,
+                shareUrl,
+                showLogo,
+                storeName,
+            }));
             message.error('Failed to download QR code');
         }
     };

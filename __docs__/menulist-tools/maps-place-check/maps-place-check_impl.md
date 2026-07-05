@@ -61,7 +61,6 @@ Output:
       placeId?: string;
     }>;
   } | null;
-  rawText?: string;
 }
 ```
 
@@ -74,7 +73,7 @@ Output:
 5. Upstash-backed Function rate limiting runs before the provider call.
 6. `runMapsPlaceCheck` calls `genAIClient.models.generateContent` with `tools: [{ googleMaps: {} }]`.
 7. The parser extracts JSON facts from the response text and Maps sources from `groundingMetadata.groundingChunks`.
-8. The response is returned to the caller.
+8. The response is returned to the caller without raw provider response text.
 9. No Firestore writes are performed.
 
 ## Model Path
@@ -114,6 +113,7 @@ Not allowed:
 - write `businessEntityIndex`
 - write menus, prices, reviews, ratings, availability, or hours
 - persist raw Maps grounded text
+- return raw provider response text
 - persist review snippets or photo payloads
 
 ## Future Confirmation Flow

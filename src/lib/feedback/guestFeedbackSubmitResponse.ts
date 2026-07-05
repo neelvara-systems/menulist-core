@@ -1,4 +1,10 @@
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+
 export const GUEST_FEEDBACK_SUBMIT_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
+const GUEST_FEEDBACK_REVIEW_URL_MAX_LENGTH = 2048;
+const MAX_GUEST_FEEDBACK_REVIEW_URL_PARSE_DIAGNOSTICS = 20;
+
+const reportedGuestFeedbackReviewUrlParseShapes = new Set<string>();
 
 export type GuestFeedbackSubmitResponse = {
     error?: string;
@@ -15,9 +21,36 @@ const isNonEmptyString = (value: unknown): value is string => (
     typeof value === 'string' && value.trim().length > 0
 );
 
-export function normalizeGuestFeedbackReviewUrl(value: unknown): string | null {
+function logGuestFeedbackReviewUrlParseFailure(source: string, value: unknown, error: unknown): void {
+    if (source === 'unknown') return;
+
     const raw = typeof value === 'string' ? value.trim() : '';
-    if (!raw || raw.length > 2048) return null;
+    const valueType = Array.isArray(value) ? 'array' : typeof value;
+    const shapeKey = [
+        source,
+        valueType,
+        raw.length > 0,
+        raw.length,
+        raw.length > GUEST_FEEDBACK_REVIEW_URL_MAX_LENGTH,
+    ].join(':');
+
+    if (reportedGuestFeedbackReviewUrlParseShapes.has(shapeKey)) return;
+    if (reportedGuestFeedbackReviewUrlParseShapes.size >= MAX_GUEST_FEEDBACK_REVIEW_URL_PARSE_DIAGNOSTICS) return;
+    reportedGuestFeedbackReviewUrlParseShapes.add(shapeKey);
+
+    logRuntimeFailure('guest_feedback_review_url_parse_failed', error, {
+        source,
+        valueType,
+        reviewUrlPresent: raw.length > 0,
+        reviewUrlLength: raw.length,
+        reviewUrlExceedsMaxLength: raw.length > GUEST_FEEDBACK_REVIEW_URL_MAX_LENGTH,
+        fallbackPolicy: 'omit_review_url',
+    });
+}
+
+export function normalizeGuestFeedbackReviewUrl(value: unknown, source = 'unknown'): string | null {
+    const raw = typeof value === 'string' ? value.trim() : '';
+    if (!raw || raw.length > GUEST_FEEDBACK_REVIEW_URL_MAX_LENGTH) return null;
 
     try {
         const parsed = new URL(raw);
@@ -33,7 +66,8 @@ export function normalizeGuestFeedbackReviewUrl(value: unknown): string | null {
         if ((isGoogleHost && isReviewPath) || isGPageReview || isGoogleMapsShortlink) {
             return raw;
         }
-    } catch {
+    } catch (error) {
+        logGuestFeedbackReviewUrlParseFailure(source, value, error);
         return null;
     }
 

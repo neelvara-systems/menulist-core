@@ -13,13 +13,16 @@ import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedTextBody } from '@lib/security/boundedRequestBody';
-import { getBoundedSecurityStringContext, logSecurityFailure } from '@lib/security/securityDiagnostics';
+import { getBoundedSecurityStringContext, logSecurityDiagnostic, logSecurityFailure } from '@lib/security/securityDiagnostics';
 import { NextRequest } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 const isDev = process.env.NODE_ENV === 'development';
 const CSP_REPORT_MAX_BYTES = 32 * 1024;
 const CSP_REPORT_FIELD_MAX_LENGTH = 500;
+const MAX_CSP_REPORT_JSON_PARSE_DIAGNOSTICS = 25;
+
+const reportedCspReportJsonParseFailures = new Set<string>();
 
 interface CSPReport {
     'csp-report': {
@@ -98,6 +101,53 @@ const getCspViolationLogContext = (violation: CSPViolationDetails) => ({
     ...getBoundedSecurityStringContext('reportUrl', violation.reportUrl),
 });
 
+const getBodyShapeKind = (trimmedBody: string): string => {
+    if (!trimmedBody) return 'empty';
+    if (trimmedBody.startsWith('{')) return 'object_like';
+    if (trimmedBody.startsWith('[')) return 'array_like';
+    if (/^[a-z]/i.test(trimmedBody)) return 'word_like';
+    return 'other';
+};
+
+const shouldLogCspReportJsonParseFailure = (body: string, request: NextRequest): boolean => {
+    const trimmedBody = body.trim();
+    const contentType = request.headers.get('content-type') || '';
+    const shapeKey = [
+        `kind:${getBodyShapeKind(trimmedBody)}`,
+        `bodyLength:${body.length}`,
+        `trimmedBodyLength:${trimmedBody.length}`,
+        `contentTypeLength:${contentType.length}`,
+    ].join('|');
+
+    if (reportedCspReportJsonParseFailures.has(shapeKey)) return false;
+    if (reportedCspReportJsonParseFailures.size >= MAX_CSP_REPORT_JSON_PARSE_DIAGNOSTICS) return false;
+    reportedCspReportJsonParseFailures.add(shapeKey);
+    return true;
+};
+
+const getCspReportJsonParseFailureContext = (
+    body: string,
+    parseError: unknown,
+    request: NextRequest,
+) => {
+    const trimmedBody = body.trim();
+
+    return {
+        endpoint: '/api/csp-report',
+        method: request.method,
+        bodyLength: body.length,
+        bodyShapeKind: getBodyShapeKind(trimmedBody),
+        cappedShapeGuard: MAX_CSP_REPORT_JSON_PARSE_DIAGNOSTICS,
+        fallbackPolicy: 'ignore_malformed_report',
+        sourceErrorName: parseError instanceof Error ? parseError.name || 'Error' : typeof parseError,
+        trimmedBodyLength: trimmedBody.length,
+        ...getBoundedSecurityStringContext('contentType', request.headers.get('content-type')),
+        ...getBoundedSecurityStringContext('reportUrl', request.headers.get('referer')),
+        ...getBoundedSecurityStringContext('requestIpHash', hashPublicRateLimitValue(getClientIp(request))),
+        ...getBoundedSecurityStringContext('userAgent', request.headers.get('user-agent')),
+    };
+};
+
 export async function POST(request: NextRequest) {
     try {
         const config = getRateLimitForFeature('CSP_REPORT');
@@ -122,7 +172,13 @@ export async function POST(request: NextRequest) {
         let report: CSPReport;
         try {
             report = JSON.parse(body);
-        } catch {
+        } catch (parseError) {
+            if (shouldLogCspReportJsonParseFailure(body, request)) {
+                logSecurityDiagnostic(
+                    'csp_report_json_parse_failed',
+                    getCspReportJsonParseFailureContext(body, parseError, request),
+                );
+            }
             return new Response(null, { status: 204 });
         }
         const cspReport = report['csp-report'];

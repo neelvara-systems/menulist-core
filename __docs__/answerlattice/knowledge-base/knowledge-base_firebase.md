@@ -1,7 +1,7 @@
 # Knowledge Base — Firebase Cost & Operations Tracking
 
 > **Version:** 1.1.0
-> **Last Updated:** 2026-05-16
+> **Last Updated:** 2026-07-05
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -117,6 +117,8 @@ Article acknowledgement hardening is cost-neutral. `addArticle()`, `updateArticl
 Bulk article status acknowledgement hardening is cost-neutral. `bulkUpdateArticleStatus()` still uses the existing `writeBatch` status update and cache revalidation path, but `ArticlePane` now requires `assertKnowledgeBaseArticleBulkStatusUpdateSucceeded()` before success copy, selected-id clearing, or bulk-mode exit. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
 
 Category navigation acknowledgement hardening is cost-neutral. `addCategory()`, `updateCategory()`, `deleteCategory()`, `updateArticleInParent()`, and `deleteArticleFromParent()` still use the same existing scoped categories-doc writes and cache revalidation paths, but platform KB category, section, article-parent, and delete callers now require explicit category/categories mutation acknowledgements before local navigation state or success copy advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
+
+July 5 session lookup diagnostics update: KB article and category session lookup failures now log bounded diagnostics instead of disappearing into anonymous/global fallback behavior. This adds no Firestore reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment. A failed category session lookup stops before the legacy categories doc read, so the degraded path can reduce reads instead of adding cost.
 
 ---
 

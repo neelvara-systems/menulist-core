@@ -114,6 +114,8 @@ Current production contract:
 | Website page JSON-LD                        | `src/components/website/SchemaMarkup.tsx`, `src/components/website/WebsitePageStructuredData.tsx` | ✅ Server-rendered homepage graph plus WebPage/BreadcrumbList on active platform pages |
 | Agent-readiness verifier                    | `scripts/verification/verify-agent-readiness.js` | ✅ Checks MenuList and Answerlattice route registries, structured-data wrappers, robots, sitemap, and LLM files |
 
+**Tenant sitemap read diagnostics:** master-store, project-summary, and outlet-summary/read failures in `src/app/client/sitemap.ts` keep the existing safe null/empty sitemap fallback and now log bounded `tenant_sitemap_master_store_lookup_failed`, `tenant_sitemap_projects_lookup_failed`, and `tenant_sitemap_outlets_lookup_failed` diagnostics. These diagnostics add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+
 ### Freshness & Truth Signals
 
 | Signal                 | Evidence                        |

@@ -41,6 +41,8 @@ const SESSION_MILESTONE_STORAGE_PREFIX = 'menulist_analytics_session_milestones_
 const SESSION_SOURCE_STORAGE_PREFIX = 'menulist_analytics_session_source_v1';
 const SESSION_FILTER_STORAGE_PREFIX = 'menulist_analytics_active_filter_v1';
 const ALLOWED_ATTRIBUTE_FILTERS = new Set(['popular', 'veg', 'nonveg', 'forMen', 'forWomen']);
+const MAX_ENTRY_SOURCE_INFERENCE_DIAGNOSTICS = 25;
+const reportedEntrySourceInferenceFailures = new Set<string>();
 
 type SessionMilestoneState = {
   menuSession?: boolean;
@@ -362,6 +364,22 @@ const normalizeOpenHoursState = (value?: string | null): 'open' | 'closed' | 'un
   return value === 'open' || value === 'closed' ? value : 'unknown';
 };
 
+const logEntrySourceInferenceFailure = (error: unknown): void => {
+  const locationSearch = typeof window !== 'undefined' ? window.location.search : '';
+  const referrer = typeof document !== 'undefined' ? document.referrer : '';
+  const failureKey = `${locationSearch.length}:${referrer.length}`;
+  if (reportedEntrySourceInferenceFailures.has(failureKey)) return;
+  if (reportedEntrySourceInferenceFailures.size >= MAX_ENTRY_SOURCE_INFERENCE_DIAGNOSTICS) return;
+  reportedEntrySourceInferenceFailures.add(failureKey);
+
+  logAnalyticsFailure('analytics_entry_source_inference_failed', error, {
+    ...getBoundedAnalyticsStringContext('locationSearch', locationSearch),
+    ...getBoundedAnalyticsStringContext('referrer', referrer),
+    hasWindow: typeof window !== 'undefined',
+    hasDocument: typeof document !== 'undefined',
+  });
+};
+
 const inferEntrySource = (data: TrackingData): EntrySource => {
   const explicit = normalizeEntrySource(data.entrySource);
   if (explicit) return explicit;
@@ -378,7 +396,8 @@ const inferEntrySource = (data: TrackingData): EntrySource => {
     if (referrer.includes('instagram.')) return 'instagram';
     if (referrer.includes('facebook.') || referrer.includes('fb.')) return 'facebook';
     if (referrer.includes('whatsapp.')) return 'whatsapp';
-  } catch {
+  } catch (error) {
+    logEntrySourceInferenceFailure(error);
     return 'direct';
   }
 

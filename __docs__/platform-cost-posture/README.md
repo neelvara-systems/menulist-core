@@ -13,7 +13,7 @@ This feature exists because Firebase and AI cost needs one platform-owned place 
 - Write behavior: read-only
 - Public/owner exposure: none
 
-Source gate: `npm run verify:platform-cost-posture-boundary` locks platform-only API admission, bounded Admin SDK source reads, the 256KB browser response guard, fixed failure copy, desktop navigation, the platform-only mobile wrapper, and docs parity. The verifier does not run Firestore reads/writes, provider calls, browser smoke, Firebase deploy, or Vercel deploy.
+Source gate: `npm run verify:platform-cost-posture-boundary` locks platform-only API admission, bounded Admin SDK source reads, the 256KB browser response guard, fixed failure copy, desktop navigation, the platform-only mobile wrapper, timestamp parser diagnostics, and docs parity. The verifier does not run Firestore reads/writes, provider calls, browser smoke, Firebase deploy, or Vercel deploy.
 
 ## Signals Included
 

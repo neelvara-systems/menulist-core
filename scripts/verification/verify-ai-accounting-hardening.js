@@ -149,6 +149,9 @@ for (const route of billableRoutes) {
   });
 
   const batchWorker = read('src/app/api/image-generation/batch-generation/route.ts');
+  const batchTransactionStart = batchWorker.indexOf('let transactionObject: any = {');
+  const batchTransactionEnd = batchWorker.indexOf('const randomStr', batchTransactionStart);
+  const batchTransactionInput = batchWorker.slice(batchTransactionStart, batchTransactionEnd);
   [
     'aspectRatio: generationConfig?.aspectRatio',
     'uploadBase64MediaImageAdmin({\n            aspectRatio,',
@@ -159,19 +162,76 @@ for (const route of billableRoutes) {
     "source: 'ai_image_prompt_cache'",
     'unitsConsumed: 0',
     "logLabel: 'Batch image generation cache hit'",
+    'summarizeBatchGenerationConfig',
+    'generationConfigSummary: summarizeBatchGenerationConfig',
   ].forEach((token) => {
     assert(batchWorker.includes(token), `batch worker passes generated-image preparation token ${token}`);
   });
+  assert(batchTransactionStart >= 0 && batchTransactionEnd > batchTransactionStart, 'batch worker transaction input block is detectable');
+  assert(batchTransactionInput.includes('itemSummary: summarizeBatchItem'), 'batch worker AI accounting input uses item summaries');
+  assert(batchTransactionInput.includes('generationConfigSummary: summarizeBatchGenerationConfig'), 'batch worker AI accounting input uses config summaries');
+  assert(!batchTransactionInput.includes('\n                itemDetails,'), 'batch worker AI accounting input must not persist raw item details');
+  assert(!batchTransactionInput.includes('generationConfig: sanitizeImageGenerationConfigForLogging'), 'batch worker AI accounting input must not persist raw generation config');
+  assert(!batchWorker.includes('logType: \'BATCH_GENERATION_IMAGE_GEN_STARTED\',\n            data: {\n                generationConfig: sanitizeImageGenerationConfigForLogging'), 'batch worker start logs must not write raw generation config payloads');
 
   const singleImageRoute = read('src/app/api/image-generation/route.ts');
+  const singleImageTransactionStart = singleImageRoute.indexOf('// Update the transaction object with calculated values and other details');
+  const singleImageTransactionEnd = singleImageRoute.indexOf('// Add the operation to the database', singleImageTransactionStart);
+  const singleImageTransactionInput = singleImageRoute.slice(singleImageTransactionStart, singleImageTransactionEnd);
   [
     'runImageGenerationPrompts',
     'checkAICapacity',
     'finalizeAiOperationAccounting',
+    'getImageGenerationConfigLogSummary',
+    'getImageItemDetailsLogSummary',
+    'getTransactionLogSummary',
+    'requestSummary',
+    'responseSummary',
   ].forEach((token) => {
     assert(singleImageRoute.includes(token), `single image generation route retains existing browser-draft flow token ${token}`);
   });
   assert(!singleImageRoute.includes('copyCachedImagePromptToStore'), 'single image generation route does not create cache-hit Storage drafts without cleanup');
+  assert(singleImageTransactionStart >= 0 && singleImageTransactionEnd > singleImageTransactionStart, 'single image generation transaction input block is detectable');
+  assert(singleImageTransactionInput.includes('itemSummary: getImageItemDetailsLogSummary'), 'single image generation AI accounting input uses item summaries');
+  assert(singleImageTransactionInput.includes('generationConfigSummary: getImageGenerationConfigLogSummary'), 'single image generation AI accounting input uses config summaries');
+  assert(!singleImageTransactionInput.includes('\n                itemDetails,'), 'single image generation AI accounting input must not persist raw item details');
+  assert(!singleImageTransactionInput.includes('generationConfig: sanitizeImageGenerationConfigForLogging'), 'single image generation AI accounting input must not persist raw generation config');
+  assert(!singleImageRoute.includes('transaction: transactionObject'), 'single image generation local logs must not write full transaction objects');
+  assert(!singleImageRoute.includes('data: transactionObject'), 'single image generation local error logs must not write full transaction objects');
+  assert(!singleImageRoute.includes('request: {\n                    generationConfig:'), 'single image generation local success logs must not write raw request payloads');
+  assert(!singleImageRoute.includes('generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),\n                    itemDetails,'), 'single image generation no-image logs must not write raw config/item payloads');
+  assert(!singleImageRoute.includes('writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId'), 'single image generation validation local logs must not write raw project IDs into local log fields');
+  assert(singleImageRoute.includes('attemptedData: getAIRouteLogContext({\n                    hasGenerationConfig:'), 'single image generation validation local logs use bounded attempted-data summaries');
+  assert(!singleImageRoute.includes("logger.debug('Prompts to execute'"), 'single image generation must not debug-log prompt-count breadcrumbs');
+  assert(!singleImageRoute.includes("logger.debug('Image generation transaction recorded'"), 'single image generation must not debug-log transaction breadcrumbs');
+
+  const imageEditingRoute = read('src/app/api/image-editing/route.ts');
+  const imageEditingTransactionStart = imageEditingRoute.indexOf('const transactionObject = {');
+  const imageEditingTransactionEnd = imageEditingRoute.indexOf('// Add the operation to the database', imageEditingTransactionStart);
+  const imageEditingTransactionInput = imageEditingRoute.slice(imageEditingTransactionStart, imageEditingTransactionEnd);
+  [
+    'getImageEditingConfigLogSummary',
+    'getImageItemDetailsLogSummary',
+    'getTransactionLogSummary',
+    'requestSummary',
+    'responseSummary',
+  ].forEach((token) => {
+    assert(imageEditingRoute.includes(token), `image editing route keeps bounded local log token ${token}`);
+  });
+  assert(imageEditingTransactionStart >= 0 && imageEditingTransactionEnd > imageEditingTransactionStart, 'image editing transaction input block is detectable');
+  assert(imageEditingTransactionInput.includes('itemSummary: getImageItemDetailsLogSummary'), 'image editing AI accounting input uses item summaries');
+  assert(imageEditingTransactionInput.includes('generationConfigSummary: getImageEditingConfigLogSummary'), 'image editing AI accounting input uses config summaries');
+  assert(!imageEditingTransactionInput.includes('\n            itemDetails,'), 'image editing AI accounting input must not persist raw item details');
+  assert(!imageEditingTransactionInput.includes('generationConfig: sanitizeImageGenerationConfigForLogging'), 'image editing AI accounting input must not persist raw generation config');
+  assert(!imageEditingRoute.includes('data: transactionObject'), 'image editing local error logs must not write full transaction objects');
+  assert(!imageEditingRoute.includes('\n                transactionObject,\n'), 'image editing local success logs must not write full transaction objects');
+  assert(!imageEditingRoute.includes('imageEditResponse: {'), 'image editing local success logs must use response summaries');
+  assert(!imageEditingRoute.includes('generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),\n                    itemDetails,'), 'image editing no-image logs must not write raw config/item payloads');
+  assert(!imageEditingRoute.includes('writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId, rawData?.fileId'), 'image editing validation local logs must not write raw project/file IDs into local log fields');
+  assert(imageEditingRoute.includes('attemptedData: getAIRouteLogContext({\n                    hasGenerationConfig:'), 'image editing validation local logs use bounded attempted-data summaries');
+  assert(!imageEditingRoute.includes("logger.debug('Started image edit via flash'"), 'image editing must not debug-log provider-start breadcrumbs');
+  assert(!imageEditingRoute.includes("logger.debug('Completed image edit via flash'"), 'image editing must not debug-log provider-complete breadcrumbs');
+  assert(!imageEditingRoute.includes("logger.debug('Prompt generated for image edit'"), 'image editing must not debug-log generated-prompt breadcrumbs');
 
   const packageJson = read('package.json');
   assert(packageJson.includes('"@napi-rs/canvas": "0.1.84"'), 'root package pins server-side canvas encoder dependency');
@@ -231,6 +291,9 @@ for (const route of billableRoutes) {
     'JSON.stringify(promptReviewText)',
     'businessType: promptBusinessType || null',
     'reviewLength: promptReviewText.length',
+    'getReviewReplyClientResponseSummary',
+    "responseSummaryKind: 'review_reply_suggestion'",
+    'replyLength: reply.length',
     "logRuntimeFailure('review_reply_accounting_failed'",
     "getBoundedRuntimeStringContext('tenantId'",
     "getBoundedRuntimeStringContext('storeId'",
@@ -240,6 +303,7 @@ for (const route of billableRoutes) {
     assert(reviewSuggest.includes(token), `review reply suggestion route includes bounded accounting diagnostic token ${token}`);
   });
   assert(!reviewSuggest.includes("logger.error('Failed to record review reply AI transaction'"), 'review reply suggestion route must not raw-log accounting failures');
+  assert(!reviewSuggest.includes('clientResponse: {\n                        rating,\n                        reply,'), 'review reply suggestion route must not persist generated reply text in transaction input');
   assert(!reviewSuggest.includes('transactionError, {'), 'review reply suggestion route must not pass raw accounting exceptions and context to logger');
   assert(!reviewSuggest.includes('reviewText.slice(0, 2000)'), 'review reply suggestion route must not inject raw review text into the prompt');
   assert(!reviewSuggest.includes('const normalizedType = businessType.toLowerCase();'), 'review reply suggestion route must not use raw business type for industry constraints');
@@ -419,6 +483,8 @@ for (const route of billableRoutes) {
     'responseTextLength',
     'usageMetadata',
     'summarizeClientResponseForOperation',
+    'isPreSummarizedClientResponse',
+    'responseSummaryKind',
     'descriptionSummary',
     'translationsCount',
     'generatedImageCount',
@@ -461,8 +527,12 @@ for (const route of billableRoutes) {
   const aiEnhancementPacksFirebase = read('__docs__/ai-enhancement-packs/ai-enhancement-packs_firebase.md');
   const aiDataExtractionFirebase = read('__docs__/projects/ai-data-extraction/ai-data-extraction_firebase.md');
   const extractionCostAudit = read('__docs__/projects/ai-data-extraction/firebase-cost-scalability-audit.md');
+  const aiImageReadme = read('__docs__/projects/ai-image-generation/README.md');
+  const aiImageImpl = read('__docs__/projects/ai-image-generation/ai-image-generation_impl.md');
+  const aiImageFirebase = read('__docs__/projects/ai-image-generation/ai-image-generation_firebase.md');
   const aiImageVerification = read('__docs__/projects/ai-image-generation/ai-image-generation_verification.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   [
     'App-route rows store count/shape summaries for `clientResponse` in `accounting_only` mode',
@@ -476,6 +546,21 @@ for (const route of billableRoutes) {
     'stores only count/shape metadata for client responses',
   ].forEach((token) => {
     assert(aiSystemFirebase.includes(token), `AI system Firebase doc documents clientResponse compaction token ${token}`);
+  });
+  [
+    ['AI System Layer README', aiSystemReadme],
+    ['AI System Layer implementation', aiSystemImpl],
+    ['AI System Layer Firebase', aiSystemFirebase],
+    ['Production-readiness audit', productionAudit],
+    ['Changelog', changelog],
+  ].forEach(([label, content]) => {
+    assert(content.toLowerCase().includes('text ai operation response summaries'), `${label} documents text AI operation response summaries`);
+    [
+      'responseSummaryKind',
+      'generated owner-facing text objects',
+    ].forEach((token) => {
+      assert(content.includes(token), `${label} documents text AI operation response summary token ${token}`);
+    });
   });
   [
     'Do not reuse the older broad command shape from that attempt.',
@@ -618,6 +703,22 @@ for (const route of billableRoutes) {
     'production readiness audit documents AI image-generation external certification gates',
   );
   [
+    ['AI Image README', aiImageReadme],
+    ['AI Image implementation', aiImageImpl],
+    ['AI Image Firebase', aiImageFirebase],
+    ['Production-readiness audit', productionAudit],
+    ['Changelog', changelog],
+	  ].forEach(([label, content]) => {
+	    [
+	      'bounded local',
+	      'request, response, and transaction summaries',
+	      'full transaction objects',
+	      'debug breadcrumbs',
+	    ].forEach((token) => {
+	      assert(content.includes(token), `${label} documents AI image local route-log summary token ${token}`);
+	    });
+	  });
+  [
     'Code-side hardening is complete for the reviewed scope',
     'controlled-owner-testing ready',
     'This is not current MenuList launch certification',
@@ -682,8 +783,43 @@ for (const route of billableRoutes) {
 
   const campaignCaptionRoute = read('src/app/api/campaigns/caption/route.ts');
   const campaignCaptionPrompt = read('src/services/gemini/prompts/v1/campaignCaption.prompt.ts');
+  const campaignCaptionTransactionStart = campaignCaptionRoute.indexOf('const transactionObject: any = {');
+  const campaignCaptionTransactionEnd = campaignCaptionRoute.indexOf('let remainingBalance', campaignCaptionTransactionStart);
+  const campaignCaptionTransactionInput = campaignCaptionRoute.slice(campaignCaptionTransactionStart, campaignCaptionTransactionEnd);
+  [
+    'campaign_caption_provider_response_parse_failed',
+    'MAX_CAMPAIGN_CAPTION_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS',
+    'reportedCampaignCaptionProviderResponseParseFailures',
+    "fallbackPolicy: 'return_caption_generation_failed'",
+    "stage: 'object_fragment'",
+    "stage: 'object_fragment_missing'",
+    "stage: 'empty_response'",
+    'parseCampaignCaptionProviderResponse(response.text',
+    'campaign_caption_non_object_response',
+    'getCampaignCaptionResponseSummary',
+    'clientResponse: getCampaignCaptionResponseSummary(generatedData)',
+    'promptSummary',
+  ].forEach((token) => {
+    assert(campaignCaptionRoute.includes(token), `campaign caption route includes provider-response boundary token ${token}`);
+  });
   assert(campaignCaptionRoute.includes('responseTextLength'), 'campaign caption parse diagnostics keep response length metadata');
+  assert(campaignCaptionRoute.includes('responseTextPresent: Boolean(response.text)'), 'campaign caption parse diagnostics keep response presence metadata');
+  assert(!campaignCaptionRoute.includes('JSON.parse(response.text)'), 'campaign caption route must parse provider responses through bounded parser');
+  assert(!campaignCaptionRoute.includes('responseTextSummary: getPreviewText'), 'campaign caption parse diagnostics must not log provider response preview summaries');
   assert(!campaignCaptionRoute.includes('rawResponse: response.text?.substring'), 'campaign caption parse diagnostics must not log raw provider responses');
+  assert(!campaignCaptionRoute.includes('rawTextLength'), 'campaign caption parse diagnostics must not use raw response text field names');
+  assert(!campaignCaptionRoute.includes('rawTextPreview: getPreviewText'), 'campaign caption parse diagnostics must not label bounded response diagnostics as raw previews');
+  assert(campaignCaptionTransactionStart >= 0 && campaignCaptionTransactionEnd > campaignCaptionTransactionStart, 'campaign caption transaction input block is detectable');
+  assert(!campaignCaptionTransactionInput.includes('businessName'), 'campaign caption transaction input must not persist raw business names');
+  assert(!campaignCaptionTransactionInput.includes('categoryName'), 'campaign caption transaction input must not persist raw category names');
+  assert(!campaignCaptionTransactionInput.includes('itemDescription'), 'campaign caption transaction input must not persist raw item descriptions');
+  assert(!campaignCaptionTransactionInput.includes('itemName'), 'campaign caption transaction input must not persist raw item names');
+  assert(!campaignCaptionTransactionInput.includes('itemPrice'), 'campaign caption transaction input must not persist raw item prices');
+  assert(!campaignCaptionTransactionInput.includes('language,'), 'campaign caption transaction input must not persist raw prompt language');
+  assert(!campaignCaptionTransactionInput.includes('clientResponse: generatedData'), 'campaign caption transaction input must not persist generated captions');
+  ['captionLength', 'shortCaptionLength', 'hashtagCount', 'hasCallToAction'].forEach((token) => {
+    assert(campaignCaptionRoute.includes(token), `campaign caption route keeps response summary token ${token}`);
+  });
   assert(campaignCaptionPrompt.includes('function sanitizePromptText('), 'campaign caption prompt includes prompt input sanitizer');
   assert(campaignCaptionPrompt.includes("sanitizePromptText(itemDescription, 'Not provided', 500)"), 'campaign caption prompt bounds item description interpolation');
   assert(campaignCaptionPrompt.includes('getSafeCampaignType(campaignType)'), 'campaign caption prompt clamps campaign type to known context');
@@ -736,26 +872,199 @@ for (const route of billableRoutes) {
   });
   assert(!read('src/app/api/new-item-metadata/route.ts').includes('substring(0, 50)'), 'new item metadata validation security logs must not include raw item text previews');
 
-  [
-    'src/app/api/business-copy/route.ts',
-    'src/app/api/descriptions/route.ts',
-    'src/app/api/menu-card-export/design-advisor/route.ts',
-    'src/app/api/new-item-metadata/route.ts',
-    'src/app/api/seo/route.ts',
-    'src/app/api/translations/route.ts',
-	  ].forEach((route) => {
-	    const source = read(route);
-	    assert(source.includes('responseTextSummary: getPreviewText'), `${route} labels bounded response text diagnostics as summaries`);
-	    assert(source.includes('responseTextLength'), `${route} keeps bounded response text length metadata`);
-	    assert(!source.includes('rawTextLength'), `${route} must not use raw response text field names`);
-	    assert(!source.includes('rawTextPreview: getPreviewText'), `${route} must not label bounded response diagnostics as raw previews`);
-	  });
+  {
+    const route = 'src/app/api/new-item-metadata/route.ts';
+    const source = read(route);
+    assert(source.includes('new_item_metadata_provider_response_parse_failed'), `${route} logs provider response parse failures with a stable code`);
+    assert(source.includes('MAX_NEW_ITEM_METADATA_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS'), `${route} caps provider response parse diagnostics`);
+    assert(source.includes('reportedNewItemMetadataProviderResponseParseFailures'), `${route} deduplicates provider response parse diagnostics`);
+    assert(source.includes("fallbackPolicy: 'return_metadata_generation_failed'"), `${route} uses fixed metadata parse fallback policy`);
+    assert(source.includes("stage: 'object_fragment'"), `${route} logs malformed object-fragment parse stage`);
+    assert(source.includes("stage: 'object_fragment_missing'"), `${route} logs missing object-fragment parse stage`);
+    assert(source.includes("stage: 'empty_response'"), `${route} logs empty provider response parse stage`);
+    assert(source.includes('parseNewItemMetadataProviderResponse(response.text'), `${route} parses provider response through bounded parser`);
+    assert(source.includes('responseTextPresent: Boolean(response.text)'), `${route} logs provider response presence metadata only for API_RESPONSE`);
+    assert(source.includes('responseTextLength: response.text?.length || 0'), `${route} keeps bounded response text length metadata`);
+    assert(source.includes('itemSummary'), `${route} stores bounded item summaries in AI accounting input`);
+    assert(source.includes('languageSummary'), `${route} stores bounded language summaries in AI accounting input`);
+    assert(source.includes('getNewItemMetadataClientResponseSummary'), `${route} stores generated metadata response summaries in AI accounting input`);
+    assert(source.includes("responseSummaryKind: 'new_item_metadata'"), `${route} labels generated metadata response summaries`);
+    assert(!source.includes("logType: 'API_RESPONSE', data: response"), `${route} must not hand full provider response objects to local API_RESPONSE logs`);
+    assert(!source.includes('clientResponse: generatedData'), `${route} must not persist generated metadata in transaction input`);
+    assert(!source.includes('responseTextSummary: getPreviewText'), `${route} must not log provider response preview summaries`);
+    assert(!source.includes('rawTextLength'), `${route} must not use raw response text field names`);
+    assert(!source.includes('rawTextPreview: getPreviewText'), `${route} must not label bounded response diagnostics as raw previews`);
+    assert(!source.includes('\n            item,\n            targetLang,\n            sourceLang,'), `${route} must not persist raw prompt item/language payloads in transaction input`);
+    assert(!source.includes('request: { item, targetLang, sourceLang, contentLength }'), `${route} must not write raw request payloads to local success logs`);
+    assert(!source.includes('response: generatedData'), `${route} must not write full generated metadata to local success logs`);
+    assert(!source.includes('transaction: transactionObject'), `${route} must not write full transaction object to local success logs`);
+    assert(!source.includes('data: transactionObject'), `${route} must not write full transaction object to local error logs`);
+  }
+  {
+    const route = 'src/app/api/campaigns/caption/route.ts';
+    const source = read(route);
+    const transactionStart = source.indexOf('const transactionObject: any = {');
+    const transactionEnd = source.indexOf('let remainingBalance', transactionStart);
+    const transactionInput = source.slice(transactionStart, transactionEnd);
+    assert(source.includes('campaign_caption_provider_response_parse_failed'), `${route} logs provider response parse failures with a stable code`);
+    assert(source.includes('MAX_CAMPAIGN_CAPTION_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS'), `${route} caps provider response parse diagnostics`);
+    assert(source.includes('reportedCampaignCaptionProviderResponseParseFailures'), `${route} deduplicates provider response parse diagnostics`);
+    assert(source.includes("fallbackPolicy: 'return_caption_generation_failed'"), `${route} uses fixed campaign-caption parse fallback policy`);
+    assert(source.includes("stage: 'object_fragment'"), `${route} logs malformed object-fragment parse stage`);
+    assert(source.includes("stage: 'object_fragment_missing'"), `${route} logs missing object-fragment parse stage`);
+    assert(source.includes("stage: 'empty_response'"), `${route} logs empty provider response parse stage`);
+    assert(source.includes('parseCampaignCaptionProviderResponse(response.text'), `${route} parses provider response through bounded parser`);
+    assert(source.includes('responseTextLength: response.text?.length || 0'), `${route} keeps bounded response text length metadata`);
+    assert(source.includes('campaign_caption_non_object_response'), `${route} fail-closes non-object provider responses`);
+    assert(source.includes('promptSummary'), `${route} stores bounded prompt summaries in AI accounting input`);
+    assert(source.includes("responseSummaryKind: 'campaign_caption'"), `${route} labels generated caption response summaries`);
+    assert(!source.includes('JSON.parse(response.text)'), `${route} must not parse provider response directly`);
+    assert(!source.includes('responseTextSummary: getPreviewText'), `${route} must not log provider response preview summaries`);
+    assert(!source.includes('rawTextLength'), `${route} must not use raw response text field names`);
+    assert(!source.includes('rawTextPreview: getPreviewText'), `${route} must not label bounded response diagnostics as raw previews`);
+    assert(transactionStart >= 0 && transactionEnd > transactionStart, `${route} transaction input block is detectable`);
+    assert(!transactionInput.includes('businessName'), `${route} must not persist raw business names in transaction input`);
+    assert(!transactionInput.includes('categoryName'), `${route} must not persist raw category names in transaction input`);
+    assert(!transactionInput.includes('itemDescription'), `${route} must not persist raw item descriptions in transaction input`);
+    assert(!transactionInput.includes('itemName'), `${route} must not persist raw item names in transaction input`);
+    assert(!transactionInput.includes('itemPrice'), `${route} must not persist raw item prices in transaction input`);
+    assert(!transactionInput.includes('language,'), `${route} must not persist raw prompt language in transaction input`);
+  }
+  {
+    const route = 'src/app/api/descriptions/route.ts';
+    const source = read(route);
+    const transactionStart = source.indexOf('let transactionObject = {');
+    const transactionEnd = source.indexOf('let remainingBalance', transactionStart);
+    const transactionInput = source.slice(transactionStart, transactionEnd);
+    assert(source.includes('description_provider_response_parse_failed'), `${route} logs provider response parse failures with a stable code`);
+    assert(source.includes('MAX_DESCRIPTION_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS'), `${route} caps provider response parse diagnostics`);
+    assert(source.includes('reportedDescriptionProviderResponseParseFailures'), `${route} deduplicates provider response parse diagnostics`);
+    assert(source.includes("fallbackPolicy: 'return_description_generation_failed'"), `${route} uses fixed description parse fallback policy`);
+    assert(source.includes("stage: 'object_fragment'"), `${route} logs malformed object-fragment parse stage`);
+    assert(source.includes("stage: 'object_fragment_missing'"), `${route} logs missing object-fragment parse stage`);
+    assert(source.includes("stage: 'empty_response'"), `${route} logs empty provider response parse stage`);
+    assert(source.includes('responseTextPresent: Boolean(response.text)'), `${route} logs provider response presence metadata only for API_RESPONSE`);
+    assert(source.includes('responseTextLength: response.text?.length || 0'), `${route} keeps bounded response text length metadata`);
+    assert(source.includes('itemSummary'), `${route} stores bounded item summaries in AI accounting input`);
+    assert(source.includes('languageSummary'), `${route} stores bounded language summaries in AI accounting input`);
+    assert(source.includes('getDescriptionClientResponseSummary'), `${route} stores generated description response summaries in AI accounting input`);
+    assert(source.includes("responseSummaryKind: 'description_generation'"), `${route} labels generated description response summaries`);
+    assert(source.includes('getTransactionLogSummary'), `${route} local transaction logs use bounded summaries`);
+    assert(source.includes('requestSummary'), `${route} local success logs use request summaries`);
+    assert(source.includes('responseSummary'), `${route} local success logs use response summaries`);
+    assert(transactionStart >= 0 && transactionEnd > transactionStart, `${route} transaction input block is detectable`);
+    assert(!transactionInput.includes('\n            itemsList,'), `${route} must not persist raw item lists in transaction input`);
+    assert(!transactionInput.includes('\n            targetLang,'), `${route} must not persist raw target language payloads in transaction input`);
+    assert(!transactionInput.includes('\n            sourceLang,'), `${route} must not persist raw source language payloads in transaction input`);
+    assert(!transactionInput.includes('clientResponse: generatedData'), `${route} must not persist generated descriptions in transaction input`);
+    assert(!source.includes("logType: 'API_RESPONSE', data: response"), `${route} must not hand full provider response objects to local API_RESPONSE logs`);
+    assert(!source.includes('responseTextSummary: getPreviewText'), `${route} must not log provider response preview summaries`);
+    assert(!source.includes('rawTextLength'), `${route} must not use raw response text field names`);
+    assert(!source.includes('rawTextPreview: getPreviewText'), `${route} must not label bounded response diagnostics as raw previews`);
+    assert(!source.includes('request: { itemsList, targetLang, sourceLang, contentLength }'), `${route} must not write raw request payloads to local success logs`);
+    assert(!source.includes('response: generatedData'), `${route} must not write full generated descriptions to local success logs`);
+    assert(!source.includes('transaction: transactionObject'), `${route} must not write full transaction object to local success logs`);
+    assert(!source.includes('data: transactionObject'), `${route} must not write full transaction object to local error logs`);
+  }
+  {
+    const route = 'src/app/api/business-copy/route.ts';
+    const source = read(route);
+    assert(source.includes('business_copy_provider_response_parse_failed'), `${route} logs provider response parse failures with a stable code`);
+    assert(source.includes('MAX_BUSINESS_COPY_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS'), `${route} caps provider response parse diagnostics`);
+    assert(source.includes('reportedBusinessCopyProviderResponseParseFailures'), `${route} deduplicates provider response parse diagnostics`);
+    assert(source.includes("fallbackPolicy: 'retry_once_then_return_business_copy_failed'"), `${route} uses fixed business-copy parse fallback policy`);
+    assert(source.includes("stage: 'object_fragment'"), `${route} logs malformed object-fragment parse stage`);
+    assert(source.includes("stage: 'object_fragment_missing'"), `${route} logs missing object-fragment parse stage`);
+    assert(source.includes("stage: 'empty_response'"), `${route} logs empty provider response parse stage`);
+    assert(source.includes('responseTextLength'), `${route} keeps bounded response text length metadata`);
+    assert(source.includes('getBusinessCopyClientResponseSummary'), `${route} stores generated business-copy response summaries in AI accounting input`);
+    assert(source.includes("responseSummaryKind: 'business_copy_generation'"), `${route} labels generated business-copy response summaries`);
+    assert(source.includes('getTransactionLogSummary'), `${route} local transaction error logs use bounded summaries`);
+    assert(source.includes('responseSummary'), `${route} local transaction error logs include result shape summaries`);
+    assert(!source.includes('responseTextSummary: getPreviewText'), `${route} must not log provider response preview summaries`);
+    assert(!source.includes('rawTextLength'), `${route} must not use raw response text field names`);
+    assert(!source.includes('rawTextPreview: getPreviewText'), `${route} must not label bounded response diagnostics as raw previews`);
+    assert(!source.includes('clientResponse: cleaned'), `${route} must not persist generated business copy in transaction input`);
+    assert(!source.includes('data: transactionObject'), `${route} must not write full transaction object to local error logs`);
+  }
+  {
+    const route = 'src/app/api/translations/route.ts';
+    const source = read(route);
+    const transactionStart = source.indexOf('let transactionObject = {');
+    const transactionEnd = source.indexOf('// Add the operation to the database', transactionStart);
+    const transactionInput = source.slice(transactionStart, transactionEnd);
+    assert(source.includes('translation_provider_response_parse_failed'), `${route} logs provider response parse failures with a stable code`);
+    assert(source.includes('MAX_TRANSLATION_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS'), `${route} caps provider response parse diagnostics`);
+    assert(source.includes('reportedTranslationProviderResponseParseFailures'), `${route} deduplicates provider response parse diagnostics`);
+    assert(source.includes("fallbackPolicy: 'retry_once_then_return_translation_failed'"), `${route} uses fixed translation parse fallback policy`);
+    assert(source.includes("stage: 'object_fragment'"), `${route} logs malformed object-fragment parse stage`);
+    assert(source.includes("stage: 'object_fragment_missing'"), `${route} logs missing object-fragment parse stage`);
+    assert(source.includes("stage: 'empty_response'"), `${route} logs empty provider response parse stage`);
+    assert(source.includes('responseTextLength'), `${route} keeps bounded response text length metadata`);
+    assert(source.includes('inputSummary'), `${route} stores bounded input summaries in AI accounting input`);
+    assert(source.includes('languageSummary'), `${route} stores bounded language summaries in AI accounting input`);
+    assert(source.includes('targetLanguages: targetLanguageSummary'), `${route} stores bounded target language summaries in AI accounting input`);
+    assert(source.includes('translationCoverageSummary'), `${route} stores bounded coverage summaries in AI accounting input`);
+    assert(source.includes('getTranslationClientResponseSummary'), `${route} stores generated translation response summaries in AI accounting input`);
+    assert(source.includes("responseSummaryKind: 'translation_generation'"), `${route} labels generated translation response summaries`);
+    assert(source.includes('getTransactionLogSummary'), `${route} local transaction logs use bounded summaries`);
+    assert(source.includes('requestSummary'), `${route} local success logs use request summaries`);
+    assert(source.includes('responseSummary'), `${route} local success logs use response summaries`);
+    assert(transactionStart >= 0 && transactionEnd > transactionStart, `${route} transaction input block is detectable`);
+    assert(!transactionInput.includes('\n            inputJson,'), `${route} must not persist raw input JSON in transaction input`);
+    assert(!transactionInput.includes('\n            targetLang,'), `${route} must not persist raw target language payloads in transaction input`);
+    assert(!transactionInput.includes('\n            sourceLang,'), `${route} must not persist raw source language payloads in transaction input`);
+    assert(!transactionInput.includes('\n            translationCoverage,'), `${route} must not persist raw coverage arrays in transaction input`);
+    assert(!transactionInput.includes('clientResponse: normalizedData'), `${route} must not persist normalized translations in transaction input`);
+    assert(!source.includes('responseTextSummary: getPreviewText'), `${route} must not log provider response preview summaries`);
+    assert(!source.includes('rawTextLength'), `${route} must not use raw response text field names`);
+    assert(!source.includes('rawTextPreview: getPreviewText'), `${route} must not label bounded response diagnostics as raw previews`);
+    assert(!source.includes('data: transactionObject'), `${route} must not write full transaction object to local error logs`);
+    assert(!source.includes('transaction: transactionObject'), `${route} must not write full transaction object to local success logs`);
+    assert(!source.includes('response: normalizedData'), `${route} must not write full normalized translations to local success logs`);
+    assert(!source.includes('inputJson,\n                    targetLang'), `${route} must not write raw request payloads to local success logs`);
+  }
+  {
+    const route = 'src/app/api/seo/route.ts';
+    const source = read(route);
+    assert(source.includes('seo_provider_response_parse_failed'), `${route} logs provider response parse failures with a stable code`);
+    assert(source.includes('MAX_SEO_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS'), `${route} caps provider response parse diagnostics`);
+    assert(source.includes('reportedSeoProviderResponseParseFailures'), `${route} deduplicates provider response parse diagnostics`);
+    assert(source.includes("fallbackPolicy: 'return_seo_generation_failed'"), `${route} uses fixed SEO parse fallback policy`);
+    assert(source.includes("stage: 'object_fragment'"), `${route} logs malformed object-fragment parse stage`);
+    assert(source.includes("stage: 'object_fragment_missing'"), `${route} logs missing object-fragment parse stage`);
+    assert(source.includes("stage: 'empty_response'"), `${route} logs empty provider response parse stage`);
+    assert(source.includes('parseSeoProviderResponse(response.text'), `${route} parses provider response through bounded parser`);
+    assert(source.includes('responseTextLength'), `${route} keeps bounded response text length metadata`);
+    assert(source.includes('getSeoClientResponseSummary'), `${route} stores generated SEO response summaries in AI accounting input`);
+    assert(source.includes("responseSummaryKind: 'seo_generation'"), `${route} labels generated SEO response summaries`);
+    assert(source.includes('getTransactionLogSummary'), `${route} local transaction error logs use bounded summaries`);
+    assert(source.includes('responseSummary'), `${route} local transaction error logs include result shape summaries`);
+    assert(!source.includes('responseTextSummary: getPreviewText'), `${route} must not log provider response preview summaries`);
+    assert(!source.includes('rawTextLength'), `${route} must not use raw response text field names`);
+    assert(!source.includes('rawTextPreview: getPreviewText'), `${route} must not label bounded response diagnostics as raw previews`);
+    assert(!source.includes('clientResponse: cleaned'), `${route} must not persist generated SEO copy in transaction input`);
+    assert(!source.includes('data: transactionObject'), `${route} must not write full transaction object to local error logs`);
+  }
+  {
+    const route = 'src/app/api/menu-card-export/design-advisor/route.ts';
+    const source = read(route);
+    assert(source.includes('menu_card_design_advisor_provider_response_parse_failed'), `${route} logs provider response parse failures with a stable code`);
+    assert(source.includes('responseTextLength'), `${route} keeps bounded response text length metadata`);
+    assert(source.includes('getMenuCardDesignAdvisorClientResponseSummary'), `${route} stores generated design-advice response summaries in AI accounting input`);
+    assert(source.includes("responseSummaryKind: 'menu_card_design_advisor'"), `${route} labels generated design-advice response summaries`);
+    assert(!source.includes('responseTextSummary: getPreviewText'), `${route} must not log provider response preview summaries`);
+    assert(!source.includes('rawTextLength'), `${route} must not use raw response text field names`);
+    assert(!source.includes('rawTextPreview: getPreviewText'), `${route} must not label bounded response diagnostics as raw previews`);
+    assert(!source.includes('clientResponse: recommendation'), `${route} must not persist generated design advice in transaction input`);
+  }
 
 	  [
 	    {
 	      route: 'src/app/api/business-copy/route.ts',
 	      codes: [
 	        'business_copy_generation_model_call_failed',
+	        'business_copy_provider_response_parse_failed',
 	        'business_copy_generation_invalid_json_after_retry',
 	        'business_copy_generation_non_object_response',
 	        'business_copy_generation_accounting_failed',
@@ -770,9 +1079,26 @@ for (const route of billableRoutes) {
 	      ],
 	    },
 	    {
+	      route: 'src/app/api/campaigns/caption/route.ts',
+	      codes: [
+	        'campaign_caption_model_call_failed',
+	        'campaign_caption_provider_response_parse_failed',
+	        'campaign_caption_invalid_json',
+	        'campaign_caption_non_object_response',
+	        'campaign_caption_accounting_failed',
+	        'campaign_caption_api_failed',
+	      ],
+	      legacy: [
+	        "logger.error('Campaign caption JSON parse error'",
+	        "logger.error('Failed to record campaign caption transaction'",
+	        "logger.error('Campaign Caption API error'",
+	      ],
+	    },
+	    {
 	      route: 'src/app/api/descriptions/route.ts',
 	      codes: [
 	        'description_generation_model_call_failed',
+	        'description_provider_response_parse_failed',
 	        'description_generation_invalid_json',
 	        'description_generation_non_object_response',
 	        'description_generation_accounting_failed',
@@ -791,6 +1117,7 @@ for (const route of billableRoutes) {
 	      route: 'src/app/api/seo/route.ts',
 	      codes: [
 	        'seo_generation_model_call_failed',
+	        'seo_provider_response_parse_failed',
 	        'seo_generation_invalid_json',
 	        'seo_generation_non_object_response',
 	        'seo_generation_accounting_failed',
@@ -808,6 +1135,7 @@ for (const route of billableRoutes) {
 	      route: 'src/app/api/new-item-metadata/route.ts',
 	      codes: [
 	        'new_item_metadata_model_call_failed',
+	        'new_item_metadata_provider_response_parse_failed',
 	        'new_item_metadata_invalid_json',
 	        'new_item_metadata_non_object_response',
 	        'new_item_metadata_accounting_failed',
@@ -826,6 +1154,7 @@ for (const route of billableRoutes) {
 	      codes: [
 	        'translation_model_call_failed',
 	        'translation_retry_model_call_failed',
+	        'translation_provider_response_parse_failed',
 	        'translation_invalid_json_after_retry',
 	        'translation_accounting_failed',
 	        'translation_api_failed',
@@ -838,24 +1167,39 @@ for (const route of billableRoutes) {
 	        "logger.error('Translation API error'",
 	      ],
 	    },
-	  ].forEach(({ route, codes, legacy }) => {
-	    const source = read(route);
-	    assert(source.includes('logAIRouteFailure'), `${route} uses bounded AI route failure diagnostics`);
-	    codes.forEach((code) => {
-	      assert(source.includes(code), `${route} includes stable AI route failure code ${code}`);
-	    });
-	    legacy.forEach((token) => {
-	      assert(!source.includes(token), `${route} removes legacy raw diagnostic token ${token}`);
-	    });
-	    assert(!source.includes('logger.error('), `${route} must not pass raw route exceptions to logger.error`);
-	  });
+		  ].forEach(({ route, codes, legacy }) => {
+		    const source = read(route);
+		    assert(source.includes('logAIRouteFailure'), `${route} uses bounded AI route failure diagnostics`);
+		    codes.forEach((code) => {
+		      assert(source.includes(code), `${route} includes stable AI route failure code ${code}`);
+		    });
+		    legacy.forEach((token) => {
+		      assert(!source.includes(token), `${route} removes legacy raw diagnostic token ${token}`);
+		    });
+		    assert(!source.includes('logger.error('), `${route} must not pass raw route exceptions to logger.error`);
+		  });
 
-	  const businessCopyRoute = read('src/app/api/business-copy/route.ts');
-	  assert(businessCopyRoute.includes("logger.warn('Business copy generation returned invalid JSON, retrying once', getAIRouteLogContext"), 'business copy route bounds invalid-JSON retry warning context');
+  [
+    'src/app/api/business-copy/route.ts',
+    'src/app/api/descriptions/route.ts',
+    'src/app/api/image-editing/route.ts',
+    'src/app/api/new-item-metadata/route.ts',
+    'src/app/api/seo/route.ts',
+    'src/app/api/translations/route.ts',
+  ].forEach((route) => {
+    const source = read(route);
+    assert(source.includes('error: getAIErrorDiagnostics(transactionError)'), `${route} writes bounded transaction DB error diagnostics to local logs`);
+    assert(!source.includes('error: transactionError'), `${route} must not write raw accounting exceptions to local transaction DB logs`);
+  });
+
+  const businessCopyRoute = read('src/app/api/business-copy/route.ts');
+	  assert(businessCopyRoute.includes('parseBusinessCopyProviderResponse(parsedRawText'), 'business copy route parses provider responses through bounded parser');
+	  assert(!businessCopyRoute.includes("logger.warn('Business copy generation returned invalid JSON, retrying once'"), 'business copy route must not use ad hoc invalid-JSON retry warnings');
 	  assert(businessCopyRoute.includes("logger.info('Business copy generation completed', getAIRouteLogContext"), 'business copy route bounds completion diagnostics');
 	  assert(!businessCopyRoute.includes("logger.info('Business copy generation completed', {"), 'business copy route must not log raw completion context');
 
 	  const descriptionRoute = read('src/app/api/descriptions/route.ts');
+	  assert(descriptionRoute.includes('parseDescriptionProviderResponse(response.text'), 'description route parses provider response through bounded parser');
 	  assert(descriptionRoute.includes("logger.warn('Description generation returned incomplete response', getAIRouteLogContext"), 'description route bounds incomplete-response warning context');
 	  assert(descriptionRoute.includes("logger.info('Description generation completed', getAIRouteLogContext"), 'description route bounds completion diagnostics');
 	  assert(!descriptionRoute.includes("logger.info('Description generation completed', {"), 'description route must not log raw completion context');
@@ -865,11 +1209,14 @@ for (const route of billableRoutes) {
 	  assert(!newItemMetadataRoute.includes("logger.info('New item metadata completed', {"), 'new item metadata route must not log raw completion context');
 
 	  const seoRoute = read('src/app/api/seo/route.ts');
+	  assert(seoRoute.includes('parseSeoProviderResponse(response.text'), 'SEO route parses provider response through bounded parser');
 	  assert(seoRoute.includes("logger.info('SEO generation completed', getAIRouteLogContext"), 'SEO route bounds completion diagnostics');
 	  assert(!seoRoute.includes("logger.info('SEO generation completed', {"), 'SEO route must not log raw completion context');
 
 	  const translationRoute = read('src/app/api/translations/route.ts');
-	  assert(translationRoute.includes("logger.warn('Translation returned invalid JSON, retrying once', getAIRouteLogContext"), 'translation route bounds invalid-JSON retry warning context');
+	  assert(translationRoute.includes('parseTranslationProviderResponse(response.text'), 'translation route parses initial provider response through bounded parser');
+	  assert(translationRoute.includes('parseTranslationProviderResponse(retryResponse.text'), 'translation route parses retry provider response through bounded parser');
+	  assert(!translationRoute.includes("logger.warn('Translation returned invalid JSON, retrying once'"), 'translation route must not use ad hoc invalid-JSON retry warnings');
 	  assert(translationRoute.includes("logger.warn('Translation completed with partial coverage', getAIRouteLogContext"), 'translation route bounds partial-coverage warning context');
 	  assert(translationRoute.includes("logger.info('Translation completed with full coverage', getAIRouteLogContext"), 'translation route bounds full-coverage completion diagnostics');
 	  assert(translationRoute.includes('geminiResponse: response'), 'translation route passes provider response through shared AI operation serializer');
@@ -877,6 +1224,253 @@ for (const route of billableRoutes) {
 	  assert(!translationRoute.includes("logger.warn('Translation completed with partial coverage', {"), 'translation route must not log raw partial-coverage context');
 	  assert(!translationRoute.includes("logger.info('Translation completed with full coverage', {"), 'translation route must not log raw full-coverage completion context');
 	  assert(!translationRoute.includes('translationCoverage,\n                transactionId'), 'translation route must not log raw translation coverage arrays in warning context');
+	  const translationReadme = read('__docs__/projects/multi-language-translation/README.md');
+	  const translationImpl = read('__docs__/projects/multi-language-translation/multi-language-translation_impl.md');
+	  const translationFirebase = read('__docs__/projects/multi-language-translation/multi-language-translation_firebase.md');
+	  const descriptionReadme = read('__docs__/projects/description-generation/README.md');
+	  const descriptionImpl = read('__docs__/projects/description-generation/description-generation_impl.md');
+	  const descriptionFirebase = read('__docs__/projects/description-generation/description-generation_firebase.md');
+	  const aiSystemReadme = read('__docs__/ai-system-layer/README.md');
+	  const aiSystemImpl = read('__docs__/ai-system-layer/ai-system-layer_impl.md');
+	  const aiSystemFirebase = read('__docs__/ai-system-layer/ai-system-layer_firebase.md');
+	  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+	  const changelog = read('__docs__/CHANGELOG.md');
+	  [
+	    ['AI System Layer README', aiSystemReadme],
+	    ['AI System Layer implementation', aiSystemImpl],
+	    ['AI System Layer Firebase', aiSystemFirebase],
+	    ['Production-readiness audit', productionReadinessAudit],
+	    ['Changelog', changelog],
+		  ].forEach(([label, content]) => {
+		    [
+		      'seo_provider_response_parse_failed',
+		      'return_seo_generation_failed',
+		    ].forEach((token) => {
+		      assert(content.includes(token), `${label} documents SEO provider-response parse diagnostic token ${token}`);
+		    });
+		  });
+		  [
+		    ['AI System Layer README', aiSystemReadme],
+		    ['AI System Layer implementation', aiSystemImpl],
+		    ['AI System Layer Firebase', aiSystemFirebase],
+		    ['Production-readiness audit', productionReadinessAudit],
+		    ['Changelog', changelog],
+		  ].forEach(([label, content]) => {
+		    [
+		      'transaction DB local error',
+		      'TRANSACTION_DB_ERROR',
+		      'raw accounting exception',
+		    ].forEach((token) => {
+		      assert(content.includes(token), `${label} documents AI transaction DB local error boundary token ${token}`);
+		    });
+		  });
+		  [
+		    ['AI System Layer README', aiSystemReadme],
+	    ['AI System Layer implementation', aiSystemImpl],
+	    ['AI System Layer Firebase', aiSystemFirebase],
+	    ['Production-readiness audit', productionReadinessAudit],
+	    ['Changelog', changelog],
+	  ].forEach(([label, content]) => {
+	    [
+	      'new_item_metadata_provider_response_parse_failed',
+	      'return_metadata_generation_failed',
+	    ].forEach((token) => {
+	      assert(content.includes(token), `${label} documents new-item metadata provider-response parse diagnostic token ${token}`);
+	    });
+	  });
+	  [
+	    ['AI System Layer README', aiSystemReadme],
+	    ['AI System Layer implementation', aiSystemImpl],
+	    ['AI System Layer Firebase', aiSystemFirebase],
+	    ['Production-readiness audit', productionReadinessAudit],
+	    ['Changelog', changelog],
+	  ].forEach(([label, content]) => {
+	    [
+	      'campaign_caption_provider_response_parse_failed',
+	      'return_caption_generation_failed',
+	      'caption response summaries',
+	    ].forEach((token) => {
+	      assert(content.includes(token), `${label} documents campaign caption provider-response parse diagnostic token ${token}`);
+	    });
+	  });
+	  [
+	    'extra provider calls',
+	    'AI accounting writes',
+	    'credit consumption',
+	    'Firebase deploy requirement',
+	    'Vercel deploy action',
+	  ].forEach((token) => {
+	    assert(aiSystemFirebase.includes(token), `AI System Layer Firebase doc documents SEO provider-response parse cost token ${token}`);
+	  });
+	  [
+	    'New item metadata provider response parse diagnostics checkpoint',
+	    'no raw response preview',
+	    'full provider response objects',
+	    'raw prompt item/language payloads',
+	  ].forEach((token) => {
+	    assert(productionReadinessAudit.includes(token), `Production-readiness audit documents new-item metadata provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    'New Item Metadata Provider Response Parse Diagnostics',
+	    'no raw response preview logging',
+	    'full provider response objects',
+	    'raw prompt item/language payloads',
+	  ].forEach((token) => {
+	    assert(changelog.includes(token), `Changelog documents new-item metadata provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    'Campaign Caption provider response parse diagnostics checkpoint',
+	    'no raw response preview',
+	    'raw prompt item/business fields',
+	    'generated caption objects',
+	  ].forEach((token) => {
+	    assert(productionReadinessAudit.includes(token), `Production-readiness audit documents campaign caption provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    'Campaign Caption Provider Response Parse Diagnostics',
+	    'no raw response preview logging',
+	    'raw prompt item/business fields',
+	    'generated caption objects',
+	  ].forEach((token) => {
+	    assert(changelog.includes(token), `Changelog documents campaign caption provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    'SEO provider response parse diagnostics checkpoint',
+	    'no raw response preview',
+	    'seo_provider_response_parse_failed',
+	    'local accounting-error logs',
+	  ].forEach((token) => {
+	    assert(productionReadinessAudit.includes(token), `Production-readiness audit documents SEO provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    'SEO Provider Response Parse Diagnostics',
+	    'no raw response preview logging',
+	    'seo_provider_response_parse_failed',
+	    'local accounting-error logs',
+	  ].forEach((token) => {
+	    assert(changelog.includes(token), `Changelog documents SEO provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    ['Description Generation README', descriptionReadme],
+	    ['Description Generation implementation', descriptionImpl],
+	    ['Description Generation Firebase', descriptionFirebase],
+	    ['Production-readiness audit', productionReadinessAudit],
+	    ['Changelog', changelog],
+	  ].forEach(([label, content]) => {
+	    [
+	      'description_provider_response_parse_failed',
+	      'return_description_generation_failed',
+	    ].forEach((token) => {
+	      assert(content.includes(token), `${label} documents description provider-response parse diagnostic token ${token}`);
+	    });
+	  });
+	  [
+	    'extra provider calls',
+	    'AI accounting writes',
+	    'credit consumption',
+	    'Firebase deploy requirement',
+	    'Vercel deploy action',
+	  ].forEach((token) => {
+	    assert(descriptionFirebase.includes(token), `Description Generation Firebase doc documents provider-response parse cost token ${token}`);
+	  });
+	  [
+	    'Description provider response parse diagnostics checkpoint',
+	    'no raw response preview',
+	    'full provider response objects',
+	    'raw prompt item/language payloads',
+	    'local success/error logs',
+	  ].forEach((token) => {
+	    assert(productionReadinessAudit.includes(token), `Production-readiness audit documents description provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    'Description Provider Response Parse Diagnostics',
+	    'no raw response preview logging',
+	    'full provider response objects',
+	    'raw prompt item/language payloads',
+	    'local success/error logs',
+	  ].forEach((token) => {
+	    assert(changelog.includes(token), `Changelog documents description provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    ['AI System Layer README', aiSystemReadme],
+	    ['AI System Layer implementation', aiSystemImpl],
+	    ['AI System Layer Firebase', aiSystemFirebase],
+	    ['Production-readiness audit', productionReadinessAudit],
+	    ['Changelog', changelog],
+	  ].forEach(([label, content]) => {
+	    [
+	      'business_copy_provider_response_parse_failed',
+	      'retry_once_then_return_business_copy_failed',
+	    ].forEach((token) => {
+	      assert(content.includes(token), `${label} documents business-copy provider-response parse diagnostic token ${token}`);
+	    });
+	  });
+	  [
+	    'extra provider calls beyond the existing retry policy',
+	    'AI accounting writes',
+	    'credit consumption',
+	    'Firebase deploy requirement',
+	    'Vercel deploy action',
+	  ].forEach((token) => {
+	    assert(aiSystemFirebase.includes(token), `AI System Layer Firebase doc documents business-copy provider-response parse cost token ${token}`);
+	  });
+	  [
+	    'Business Copy provider response parse diagnostics checkpoint',
+	    'no raw response preview',
+	    'local accounting-error logs',
+	    'old ad hoc invalid-JSON retry warning',
+	  ].forEach((token) => {
+	    assert(productionReadinessAudit.includes(token), `Production-readiness audit documents business-copy provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    'Business Copy Provider Response Parse Diagnostics',
+	    'no raw response preview logging',
+	    'local accounting-error logs',
+	    'old ad hoc invalid-JSON retry warning',
+	  ].forEach((token) => {
+	    assert(changelog.includes(token), `Changelog documents business-copy provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    ['Multi-Language Translation README', translationReadme],
+	    ['Multi-Language Translation implementation', translationImpl],
+	    ['Multi-Language Translation Firebase', translationFirebase],
+	    ['Production-readiness audit', productionReadinessAudit],
+	    ['Changelog', changelog],
+	  ].forEach(([label, content]) => {
+	    [
+	      'translation_provider_response_parse_failed',
+	      'retry_once_then_return_translation_failed',
+	    ].forEach((token) => {
+	      assert(content.includes(token), `${label} documents translation provider-response parse diagnostic token ${token}`);
+	    });
+	  });
+	  [
+	    'extra provider calls beyond the existing retry policy',
+	    'AI accounting writes',
+	    'credit consumption',
+	    'Firebase deploy requirement',
+	    'Vercel deploy action',
+	  ].forEach((token) => {
+	    assert(translationFirebase.includes(token), `Multi-Language Translation Firebase doc documents provider-response parse cost token ${token}`);
+	  });
+	  [
+	    'Translation provider response parse diagnostics checkpoint',
+	    'no raw response preview',
+	    'raw prompt input/language payloads',
+	    'local success/error logs',
+	    'old ad hoc invalid-JSON retry warning',
+	  ].forEach((token) => {
+	    assert(productionReadinessAudit.includes(token), `Production-readiness audit documents translation provider-response checkpoint token ${token}`);
+	  });
+	  [
+	    'Translation Provider Response Parse Diagnostics',
+	    'no raw response preview logging',
+	    'raw prompt input/language payloads',
+	    'local success/error logs',
+	    'old ad hoc invalid-JSON retry warning',
+	  ].forEach((token) => {
+	    assert(changelog.includes(token), `Changelog documents translation provider-response checkpoint token ${token}`);
+	  });
 	}
 
 {
@@ -885,12 +1479,15 @@ for (const route of billableRoutes) {
       route: 'src/app/api/campaigns/caption/route.ts',
       codes: [
         'campaign_caption_model_call_failed',
+        'campaign_caption_provider_response_parse_failed',
         'campaign_caption_invalid_json',
+        'campaign_caption_non_object_response',
         'campaign_caption_accounting_failed',
         'campaign_caption_api_failed',
       ],
       bounded: [
-        'responseTextSummary: getPreviewText',
+        'parseCampaignCaptionProviderResponse(response.text',
+        'campaign_caption_non_object_response',
         'getAIGatewayDiagnostics(genAIClient)',
       ],
       legacy: [
@@ -909,7 +1506,7 @@ for (const route of billableRoutes) {
       ],
       bounded: [
         'logger.info(\'Menu card design advisor requested\', getAIRouteLogContext',
-        'responseTextSummary: getPreviewText',
+        'menu_card_design_advisor_provider_response_parse_failed',
         'getAIGatewayDiagnostics(genAIClient)',
       ],
       legacy: [
@@ -928,7 +1525,7 @@ for (const route of billableRoutes) {
       bounded: [
         'attemptedData: getAIRouteLogContext',
         'getAIRouteSecurityContext(session, request)',
-        'getAIRouteLogContext({ transactionId: accounting.transactionId })',
+        'getTransactionLogSummary',
         'getAIGatewayDiagnostics(genAIClient)',
       ],
       legacy: [
@@ -1498,6 +2095,9 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
 {
   const route = 'src/app/api/image-generation/batch-trigger/route.ts';
   const source = read(route);
+  const taskStartLogStart = source.indexOf("logType: 'BATCH_GENERATION_TASK_STARTED'");
+  const taskStartLogEnd = source.indexOf('await updateImageBatchProcessingJobAdmin', taskStartLogStart);
+  const taskStartLog = source.slice(taskStartLogStart, taskStartLogEnd);
   assert(source.includes("'Image generation could not start.'"), `${route} uses owner-safe all-task enqueue failure reason`);
   assert(source.includes("'Some image generation tasks could not start.'"), `${route} uses owner-safe partial enqueue failure reason`);
   assert(source.includes("'Could not start the image batch. Please try again.'"), `${route} returns generic catch response`);
@@ -1516,8 +2116,19 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     ],
     'checks Cloud Tasks config before capacity reads and enqueue fanout',
   );
-  assert(source.includes('IMAGE_BATCH_TASK_ENQUEUE_FAILED'), `${route} uses stable enqueue failure codes`);
-  assert(!source.includes('message: errorMessage'), `${route} must not return raw exception messages`);
+	  assert(source.includes('IMAGE_BATCH_TASK_ENQUEUE_FAILED'), `${route} uses stable enqueue failure codes`);
+	  assert(source.includes('getBatchGenerationConfigSummary'), `${route} summarizes batch generation config before local start logging`);
+	  assert(source.includes('generationConfigSummary: getBatchGenerationConfigSummary'), `${route} writes batch trigger config summaries`);
+	  assert(source.includes('itemsWithoutPromptsCount'), `${route} reports no-prompt failures by count only`);
+	  assert(source.includes('itemsWithIdCount'), `${route} logs item ID presence by count only`);
+	  assert(!source.includes('itemsWithoutPrompts.push(itemDetails.id'), `${route} must not collect raw item identifiers for no-prompt responses`);
+	  assert(!source.includes('items: promptEstimate.itemsWithoutPrompts'), `${route} must not return raw no-prompt item identifiers`);
+	  assert(taskStartLogStart >= 0 && taskStartLogEnd > taskStartLogStart, `${route} local task-start log block is detectable`);
+	  assert(!taskStartLog.includes('generationConfig: sanitizeImageGenerationConfigForLogging'), `${route} must not write raw generation config payloads to local batch-trigger logs`);
+	  assert(!taskStartLog.includes('itemIds: itemsList.map((item) => item.id)'), `${route} must not write raw item ID arrays to local batch-trigger logs`);
+	  assert(!source.includes('message: errorMessage'), `${route} must not return raw exception messages`);
+  assert(!source.includes('writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId'), `${route} validation local logs must not write raw project IDs into local log fields`);
+  assert(source.includes('attemptedData: {\n                    ...requestLogContext,'), `${route} validation local logs reuse bounded request context`);
   assert(!source.includes('result.reason instanceof Error ? result.reason.message'), `${route} must not log raw rejected task messages`);
   assert(!source.includes('e.message ||'), `${route} must not summarize raw enqueue exception messages`);
   assert(!source.includes('GCT FAILURE'), `${route} must not expose internal Cloud Tasks labels`);
@@ -1565,6 +2176,14 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
   assert(!source.includes('Image generation failed for item ${itemDetails.name}-${itemDetails.id}'), `${route} must not persist raw item identifiers on failure`);
   assert(!source.includes('id: item.id'), `${route} must not log raw summarized item IDs`);
   assert(!source.includes('name: item.name'), `${route} must not log raw summarized item names`);
+  assert(!source.includes('writeMissingParamsLogEntry(LOG_FILE, userIdForLog, rawData?.projectId'), `${route} validation local logs must not write raw project IDs into local log fields`);
+  assert(!source.includes('projectId: rawData?.projectId,\n        });'), `${route} validation local logs must not write raw project IDs in data`);
+  assert(source.includes('attemptedData: getBatchWorkerLogContext({'), `${route} validation local logs use bounded attempted-data summaries`);
+  assert(!source.includes("logger.debug('Fetched job data'"), `${route} must not debug-log fetched job breadcrumbs`);
+  assert(!source.includes("logger.debug('Images uploaded'"), `${route} must not debug-log uploaded image breadcrumbs`);
+  assert(!source.includes("logger.debug('Batch image generation transaction recorded'"), `${route} must not debug-log raw transaction breadcrumbs`);
+  assert(!source.includes("logger.debug('Batch generation capacity consumed'"), `${route} must not debug-log capacity balance breadcrumbs`);
+  assert(!source.includes("logger.debug('Batch job updated'"), `${route} must not debug-log batch job update breadcrumbs`);
 }
 
 {

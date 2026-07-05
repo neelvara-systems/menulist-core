@@ -20,6 +20,7 @@
 | Non-English language codes rejected | PASS | `functions/src/logic/mapsPlaceCheck.ts:88` through `functions/src/logic/mapsPlaceCheck.ts:97` |
 | Maps sources returned for attribution UI | PASS | `functions/src/logic/mapsPlaceCheck.ts:209` through `functions/src/logic/mapsPlaceCheck.ts:228` |
 | No canonical Firestore write-back | PASS | `functions/src/logic/mapsPlaceCheck.ts:245` through `functions/src/logic/mapsPlaceCheck.ts:320` contains provider call and response mapping only |
+| No raw provider response in callable output | PASS | `functions/src/logic/mapsPlaceCheck.ts` omits `rawText` from `MapsPlaceCheckResult` and returns only status, attribution, model, candidate, and source fields |
 | Public Truth Tools boundary updated | PASS | `__docs__/menulist-tools/public-truth-tools/README.md` references Maps Place Check as a separate provider-backed prototype |
 
 ## Verification Commands
@@ -33,12 +34,13 @@
 | `git diff --check -- [touched paths]` | PASS |
 | `npx tsc --noEmit --incremental false --pretty false` | PASS |
 | `npm run verify:functions-deploy-preflight` | Current retry prerequisite; rerun before any scoped deploy attempt |
-| `firebase deploy --project menulist-qa --config firebase.json --only functions:mapsPlaceCheck --non-interactive` | Current scoped QA retry command after preflight and audit evidence |
+| `firebase deploy --project menulist-qa --config firebase.json --only functions:mapsPlaceCheck --non-interactive` | Latest July 5 raw-provider-output retry completed predeploy lint/build, then failed before upload with Cloud Resource Manager HTTP 403 caller permission |
 
 ## Runtime Notes
 
 - The callable is deployed only when Firebase Functions deployment succeeds.
 - The July 3, 2026 deploy attempt did not reach deployment because the active caller lacks permission on `menulist-qa`; preserve it as historical blocker evidence only.
+- The July 5, 2026 raw-provider-output boundary retry also completed predeploy lint/build and failed before upload with Cloud Resource Manager HTTP 403 caller permission for `menulist-qa`.
 - Do not reuse the older command shape from that attempt.
 - Current Maps Place Check retry evidence must start with `npm run verify:functions-deploy-preflight`, use the scoped `menulist-qa` command above, and record the exact target and reason in the production-readiness audit before deploy retry.
 - Production deploys require QA evidence and explicit production deploy approval.

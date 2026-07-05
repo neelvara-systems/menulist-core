@@ -47,6 +47,7 @@ V0 includes:
 - browser-local report payload in URL hash fragment
 - shared payload schema version
 - payload size cap
+- bounded decode diagnostics for invalid, oversized, malformed, or wrong-shape payloads
 - safe internal next-action link guard
 - explicit checked and not-checked text
 - explicit evidence text for every row
@@ -100,6 +101,8 @@ The report must never imply a source was fetched, opened, stored, scanned, or ch
 The viewer is public by design.
 
 The user must not need to be a MenuList user to open a report link. The base viewer route is discoverable, while individual hash payloads are not added to sitemap because they are URL fragments.
+
+Invalid report hashes must fail closed to the invalid-link state. Decode diagnostics may record failure stage and payload shape metadata, but must not log the hash payload, decoded JSON, business context, check rows, setup jobs, or contact details.
 
 The viewer may accept a consented follow-up request through the existing `/api/public/contact` route. That request sends a bounded report summary, contact details, and a small `sourceContext` object with tool id, report status, owner-entered business context, summary counts, and setup job list. It does not create a report record, stored report URL, or recurring report history.
 

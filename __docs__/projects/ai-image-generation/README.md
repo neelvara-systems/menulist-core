@@ -3,7 +3,7 @@
 > **Feature:** Menu Image Generation & Editing
 > **Status:** Controlled owner testing ready after July 2026 worker/auth/logging/preference diagnostics hardening
 > **Last Updated:** July 5, 2026
-> **Version:** 2.3
+> **Version:** 2.4
 
 ---
 
@@ -106,6 +106,8 @@ Toggle to disable AI image generation without code changes.
 
 | Version | Date         | Changes                                                                                                                                                       |
 | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.5     | Jul 5, 2026  | Removed redundant single-image and edit-image normal-path debug breadcrumbs while preserving bounded local summaries and failure diagnostics                   |
+| 2.4     | Jul 5, 2026  | Added bounded local request, response, and transaction summaries plus validation, batch-trigger, and AI accounting input summaries for image generation/editing paths instead of full transaction objects, raw IDs, raw item/config payloads, or redundant batch-worker debug breadcrumbs |
 | 2.3     | Jul 5, 2026  | Added bounded browser-local diagnostics for image-generation preference save/load/clear failures                                                               |
 | 2.2     | Jan 30, 2026 | **Model upgrade to Gemini 2.5 Flash!** Consolidated `FEATURE_FRIENDLY_INFO` into type, added Quick Generate, improved multi-mode toggle, added style previews |
 | 2.1     | Jan 30, 2026 | **Verification complete!** Added feature flag, removed debugger, fixed console.log, created verification.md                                                   |

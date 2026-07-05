@@ -9,14 +9,16 @@ import { getActiveSubscriptionForStore } from '@database/subscriptions/server';
 import { HarmBlockThreshold, HarmCategory } from '@google/genai';
 import { finalizeAiOperationAccounting } from '@lib/ai/accounting';
 import { checkAICapacity } from '@lib/ai/capacityCheck';
-import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, getPreviewText, logAIRouteFailure } from '@lib/google/genAi/diagnostics';
+import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from '@lib/google/genAi/diagnostics';
 import { genAIClient } from '@lib/google/genAi';
 import { logger } from '@lib/monitoring/logger';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { normalizeMenuCardDesignAdvice } from '@lib/menu-card-export/ai/designAdvisor';
+import type { MenuCardDesignAdvisorRecommendation } from '@lib/menu-card-export/ai/designAdvisor';
 import { MenuCardDesignAdvisorRequestSchema } from '@lib/validation/apiSchemas';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,6 +29,7 @@ const ACTION = AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR;
 const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const ENDPOINT = '/api/menu-card-export/design-advisor';
 const MENU_CARD_DESIGN_ADVISOR_MAX_BODY_BYTES = 128 * 1024;
+const MAX_MENU_CARD_DESIGN_ADVISOR_PARSE_DIAGNOSTICS = 25;
 const GENERATION_CONFIG = {
     responseMimeType: 'application/json' as const,
     temperature: 0.35,
@@ -41,6 +44,84 @@ const GENERATION_CONFIG = {
     ],
 };
 
+function getMenuCardDesignAdvisorClientResponseSummary(recommendation: MenuCardDesignAdvisorRecommendation) {
+    return {
+        density: recommendation.density,
+        includeContactBlock: recommendation.includeContactBlock,
+        includeDescriptions: recommendation.includeDescriptions,
+        includeQr: recommendation.includeQr,
+        objectKeyCount: Object.keys(recommendation).length,
+        ownerNoteLength: recommendation.ownerNote.length,
+        preset: recommendation.preset,
+        reasonLength: recommendation.reason.length,
+        responseShape: 'object',
+        responseSummaryKind: 'menu_card_design_advisor',
+        styleId: recommendation.styleId,
+        warningCount: recommendation.warnings.length,
+    };
+}
+
+type MenuCardDesignAdvisorParseStage =
+    | 'empty_response'
+    | 'object_fragment'
+    | 'object_fragment_missing';
+
+type MenuCardDesignAdvisorParseBaseContext = {
+    projectId: unknown;
+    requestId: string;
+    storeId: unknown;
+    tenantId: unknown;
+    userId: unknown;
+};
+
+type MenuCardDesignAdvisorParseFailureContext = MenuCardDesignAdvisorParseBaseContext & {
+    candidateLength: number;
+    hasFence: boolean;
+    hasObjectFragment: boolean;
+    responseTextLength: number;
+    stage: MenuCardDesignAdvisorParseStage;
+    trimmedTextLength: number;
+};
+
+const reportedMenuCardDesignAdvisorParseFailures = new Set<string>();
+
+function logMenuCardDesignAdvisorParseFailure(
+    error: unknown,
+    context: MenuCardDesignAdvisorParseFailureContext,
+): void {
+    const failureKey = [
+        context.stage,
+        context.responseTextLength,
+        context.trimmedTextLength,
+        context.candidateLength,
+        context.hasFence ? 'fenced' : 'plain',
+        context.hasObjectFragment ? 'object-fragment' : 'no-object-fragment',
+    ].join(':');
+
+    if (reportedMenuCardDesignAdvisorParseFailures.has(failureKey)) return;
+    if (reportedMenuCardDesignAdvisorParseFailures.size >= MAX_MENU_CARD_DESIGN_ADVISOR_PARSE_DIAGNOSTICS) return;
+    reportedMenuCardDesignAdvisorParseFailures.add(failureKey);
+
+    logRuntimeFailure('menu_card_design_advisor_provider_response_parse_failed', error, {
+        ...getAIRouteLogContext({
+            action: ACTION,
+            model: AI_MODEL,
+            projectId: context.projectId,
+            requestId: context.requestId,
+            storeId: context.storeId,
+            tenantId: context.tenantId,
+            userId: context.userId,
+        }),
+        candidateLength: context.candidateLength,
+        fallbackPolicy: 'return_layout_suggestion_failed',
+        hasFence: context.hasFence,
+        hasObjectFragment: context.hasObjectFragment,
+        parseStage: context.stage,
+        responseTextLength: context.responseTextLength,
+        trimmedTextLength: context.trimmedTextLength,
+    });
+}
+
 function getResponseText(response: any): string {
     return String(
         response?.text
@@ -49,24 +130,59 @@ function getResponseText(response: any): string {
     ).trim();
 }
 
-function parseJsonLikeResponse(rawText: string): unknown {
-    const cleaned = rawText
+function parseJsonLikeResponse(rawText: string, context: MenuCardDesignAdvisorParseBaseContext): unknown {
+    const trimmedText = rawText.trim();
+    const hasFence = trimmedText.startsWith('```') || trimmedText.endsWith('```');
+    const cleaned = trimmedText
         .replace(/^```(?:json)?\s*\n?/i, '')
         .replace(/\n?```\s*$/i, '')
         .trim();
 
     if (!cleaned) {
+        logMenuCardDesignAdvisorParseFailure(new Error('Empty AI response'), {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment: false,
+            responseTextLength: rawText.length,
+            stage: 'empty_response',
+            trimmedTextLength: trimmedText.length,
+        });
         throw new Error('Empty AI response');
     }
 
     try {
         return JSON.parse(cleaned);
-    } catch {
+    } catch (fullParseError) {
         const firstBrace = cleaned.indexOf('{');
         const lastBrace = cleaned.lastIndexOf('}');
-        if (firstBrace >= 0 && lastBrace > firstBrace) {
-            return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+        const hasObjectFragment = firstBrace >= 0 && lastBrace > firstBrace;
+        if (hasObjectFragment) {
+            const objectCandidate = cleaned.slice(firstBrace, lastBrace + 1);
+            try {
+                return JSON.parse(objectCandidate);
+            } catch (fragmentParseError) {
+                logMenuCardDesignAdvisorParseFailure(fragmentParseError, {
+                    ...context,
+                    candidateLength: objectCandidate.length,
+                    hasFence,
+                    hasObjectFragment,
+                    responseTextLength: rawText.length,
+                    stage: 'object_fragment',
+                    trimmedTextLength: trimmedText.length,
+                });
+                throw fragmentParseError;
+            }
         }
+        logMenuCardDesignAdvisorParseFailure(fullParseError, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment,
+            responseTextLength: rawText.length,
+            stage: 'object_fragment_missing',
+            trimmedTextLength: trimmedText.length,
+        });
         throw new Error('Invalid JSON response');
     }
 }
@@ -218,7 +334,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         let responseText = '';
         try {
             responseText = getResponseText(response);
-            const parsed = parseJsonLikeResponse(responseText);
+            const parsed = parseJsonLikeResponse(responseText, {
+                projectId: payload.projectId,
+                requestId,
+                storeId,
+                tenantId,
+                userId,
+            });
             recommendation = normalizeMenuCardDesignAdvice(parsed, {
                 preset: payload.currentSettings.preset || 'home_print',
                 styleId: payload.currentSettings.styleId || 'classic',
@@ -239,7 +361,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 action: ACTION,
                 model: AI_MODEL,
                 responseTextLength: responseText.length,
-                responseTextSummary: getPreviewText(responseText, 400),
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 storeId,
@@ -268,7 +389,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     action: ACTION,
                     billingMode: 'billable',
                     chargePerCredit: CHARGE_PER_CREDIT,
-                    clientResponse: recommendation,
+                    clientResponse: getMenuCardDesignAdvisorClientResponseSummary(recommendation),
                     generationConfig: { responseMimeType: 'application/json', temperature: 0.35, topP: 0.8, topK: 30 },
                     geminiResponse: response,
                     model: AI_MODEL,

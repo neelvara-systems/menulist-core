@@ -1,7 +1,7 @@
 # WhatsApp Action Link Check - Test Cases
 
 **Status:** Implemented - V0 public browser-local checker
-**Last Updated:** July 4, 2026
+**Last Updated:** July 5, 2026
 **Audience:** QA and engineering
 
 ---
@@ -26,6 +26,7 @@
 | Valid phone but no message | Number only | Unclear |
 | Valid phone but no customer link | Number and message only | Unclear |
 | Invalid WhatsApp link | `https://example.com/whatsapp` | Missing basics or unclear depending on number |
+| Malformed WhatsApp link | Parser cannot construct a URL | Link is treated as invalid and capped `whatsapp_action_link_url_parse_failed` diagnostics do not log raw link, phone, message, customer link, report row, or exception text |
 
 ---
 

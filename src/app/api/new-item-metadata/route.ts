@@ -7,11 +7,12 @@ import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
-import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
+import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { NewItemMetadataRequestSchema } from "@lib/validation/apiSchemas";
@@ -25,6 +26,148 @@ const AI_MODEL = getModelName('NEW_ITEM_METADATA');
 const LOG_FILE = "new-item-metadata.log";
 const action = AI_ACTIONS_TYPES.NEW_ITEM_METADATA;
 const NEW_ITEM_METADATA_AI_MAX_BODY_BYTES = 256 * 1024;
+const MAX_NEW_ITEM_METADATA_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS = 25;
+
+type NewItemMetadataProviderResponseParseStage =
+    | 'empty_response'
+    | 'object_fragment'
+    | 'object_fragment_missing';
+
+type NewItemMetadataProviderResponseParseContext = {
+    action: string;
+    attributeCount: number;
+    businessType: string;
+    contentLength: string;
+    fileId?: unknown;
+    projectId?: unknown;
+    requestId: string;
+    responseUsage?: unknown;
+    sourceLang: string;
+    storeId: unknown;
+    targetLangs: string[];
+    tenantId: unknown;
+    tone: string;
+    userId: unknown;
+};
+
+type NewItemMetadataProviderResponseParseFailureContext = NewItemMetadataProviderResponseParseContext & {
+    candidateLength: number;
+    hasFence: boolean;
+    hasObjectFragment: boolean;
+    responseTextLength: number;
+    stage: NewItemMetadataProviderResponseParseStage;
+    trimmedTextLength: number;
+};
+
+const reportedNewItemMetadataProviderResponseParseFailures = new Set<string>();
+
+function logNewItemMetadataProviderResponseParseFailure(
+    error: unknown,
+    context: NewItemMetadataProviderResponseParseFailureContext,
+): void {
+    const failureKey = [
+        context.stage,
+        context.responseTextLength,
+        context.trimmedTextLength,
+        context.candidateLength,
+        context.hasFence ? 'fenced' : 'plain',
+        context.hasObjectFragment ? 'object-fragment' : 'no-object-fragment',
+    ].join(':');
+
+    if (reportedNewItemMetadataProviderResponseParseFailures.has(failureKey)) return;
+    if (reportedNewItemMetadataProviderResponseParseFailures.size >= MAX_NEW_ITEM_METADATA_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS) return;
+    reportedNewItemMetadataProviderResponseParseFailures.add(failureKey);
+
+    logRuntimeFailure('new_item_metadata_provider_response_parse_failed', error, {
+        ...getAIRouteLogContext({
+            action: context.action,
+            attributeCount: context.attributeCount,
+            businessType: context.businessType,
+            contentLength: context.contentLength,
+            fileId: context.fileId,
+            model: AI_MODEL,
+            projectId: context.projectId,
+            requestId: context.requestId,
+            responseUsage: context.responseUsage,
+            sourceLang: context.sourceLang,
+            storeId: context.storeId,
+            targetLangs: context.targetLangs,
+            tenantId: context.tenantId,
+            tone: context.tone,
+            userId: context.userId,
+        }),
+        candidateLength: context.candidateLength,
+        fallbackPolicy: 'return_metadata_generation_failed',
+        hasFence: context.hasFence,
+        hasObjectFragment: context.hasObjectFragment,
+        parseStage: context.stage,
+        responseTextLength: context.responseTextLength,
+        trimmedTextLength: context.trimmedTextLength,
+    });
+}
+
+function parseNewItemMetadataProviderResponse(
+    responseText: string | undefined,
+    context: NewItemMetadataProviderResponseParseContext,
+): Record<string, any> {
+    const rawText = String(responseText || '');
+    const trimmedText = rawText.trim();
+    const hasFence = trimmedText.startsWith('```') || trimmedText.endsWith('```');
+    const cleaned = trimmedText
+        .replace(/^```(?:json)?\s*\n?/i, '')
+        .replace(/\n?```\s*$/i, '')
+        .trim();
+
+    if (!cleaned) {
+        const error = new Error('New item metadata returned empty response');
+        logNewItemMetadataProviderResponseParseFailure(error, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment: false,
+            responseTextLength: rawText.length,
+            stage: 'empty_response',
+            trimmedTextLength: trimmedText.length,
+        });
+        throw error;
+    }
+
+    try {
+        return JSON.parse(cleaned);
+    } catch (fullParseError) {
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        const hasObjectFragment = firstBrace >= 0 && lastBrace > firstBrace;
+        if (hasObjectFragment) {
+            const objectCandidate = cleaned.slice(firstBrace, lastBrace + 1);
+            try {
+                return JSON.parse(objectCandidate);
+            } catch (fragmentParseError) {
+                logNewItemMetadataProviderResponseParseFailure(fragmentParseError, {
+                    ...context,
+                    candidateLength: objectCandidate.length,
+                    hasFence,
+                    hasObjectFragment,
+                    responseTextLength: rawText.length,
+                    stage: 'object_fragment',
+                    trimmedTextLength: trimmedText.length,
+                });
+                throw fragmentParseError;
+            }
+        }
+
+        logNewItemMetadataProviderResponseParseFailure(fullParseError, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment,
+            responseTextLength: rawText.length,
+            stage: 'object_fragment_missing',
+            trimmedTextLength: trimmedText.length,
+        });
+        throw fullParseError;
+    }
+}
 
 function stripForbiddenGeneratedMetadata<T extends Record<string, unknown>>(generatedData: T): T {
     const sanitized = { ...generatedData };
@@ -39,6 +182,24 @@ function stripForbiddenGeneratedMetadata<T extends Record<string, unknown>>(gene
         (sanitized as Record<string, unknown>).decisionFacts = Object.keys(decisionFacts).length > 0 ? decisionFacts : undefined;
     }
     return sanitized;
+}
+
+function getNewItemMetadataClientResponseSummary(response: Record<string, unknown>) {
+    const attributes = Array.isArray(response.attributes) ? response.attributes : [];
+    const description = typeof response.description === 'string' ? response.description : '';
+    const name = typeof response.name === 'string' ? response.name : '';
+
+    return {
+        attributeCount: attributes.length,
+        descriptionLength: description.length,
+        hasAttributes: attributes.length > 0,
+        hasDescription: description.trim().length > 0,
+        hasName: name.trim().length > 0,
+        nameLength: name.length,
+        objectKeyCount: Object.keys(response).length,
+        responseShape: 'object',
+        responseSummaryKind: 'new_item_metadata',
+    };
 }
 
 function toPromptLanguage(language: {
@@ -132,6 +293,17 @@ export const POST = withAuth(async (request, session) => {
         const promptTargetLang = targetLang.map(toPromptLanguage);
         const promptSourceLang = toPromptLanguage(sourceLang);
         const targetLangCodes = promptTargetLang.map((language) => language.code || 'unspecified');
+        const itemAttributeCount = Array.isArray(item.attributes) ? item.attributes.length : 0;
+        const itemSummary = {
+            attributeCount: itemAttributeCount,
+            hasCategory: Boolean(item.category),
+            hasDescription: Boolean(item.description),
+            hasName: Boolean(item.name),
+        };
+        const languageSummary = {
+            sourceLang: promptSourceLang.code || 'unspecified',
+            targetLangCount: targetLangCodes.length,
+        };
 
         const permissionError = await requireAnyStorePermission(
             request,
@@ -250,22 +422,50 @@ export const POST = withAuth(async (request, session) => {
             }
             throw generationError;
         }
-        await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'API_RESPONSE', data: response });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            userId,
+            projectId,
+            fileId,
+            logType: 'API_RESPONSE',
+            data: {
+                model: AI_MODEL,
+                requestId,
+                responseTextLength: response.text?.length || 0,
+                responseTextPresent: Boolean(response.text),
+                responseUsage: response.usageMetadata || null,
+            },
+        });
 
         const endTime = new Date().getTime();
         const processingTime = endTime - startTime;
 
         let generatedData: any;
         try {
-            const rawText = String(response.text || '').replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-            generatedData = JSON.parse(rawText);
+            generatedData = parseNewItemMetadataProviderResponse(response.text, {
+                action,
+                attributeCount: itemAttributeCount,
+                businessType: businessType || 'unspecified',
+                contentLength,
+                fileId,
+                projectId,
+                requestId,
+                responseUsage: response.usageMetadata || null,
+                sourceLang: promptSourceLang.code || 'unspecified',
+                storeId: session.sId,
+                targetLangs: targetLangCodes,
+                tenantId: session.tId,
+                tone: tone || 'Professional',
+                userId,
+            });
         } catch (parseError) {
-            const rawText = String(response.text || '').trim();
             logAIRouteFailure('new_item_metadata_invalid_json', parseError, {
+                businessType: businessType || 'unspecified',
+                contentLength,
+                fileId,
                 model: AI_MODEL,
                 projectId,
-                responseTextLength: rawText.length,
-                responseTextSummary: getPreviewText(rawText, 300),
+                responseTextLength: response.text?.length || 0,
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 sourceLang: promptSourceLang.code || 'unspecified',
@@ -280,9 +480,10 @@ export const POST = withAuth(async (request, session) => {
                 fileId,
                 logType: 'INVALID_JSON_RESPONSE',
                 data: {
+                    businessType: businessType || 'unspecified',
+                    contentLength,
                     model: AI_MODEL,
-                    responseTextLength: rawText.length,
-                    responseTextSummary: getPreviewText(rawText, 300),
+                    responseTextLength: response.text?.length || 0,
                     requestId,
                     responseUsage: response.usageMetadata || null,
                     sourceLang: promptSourceLang.code || 'unspecified',
@@ -331,14 +532,15 @@ export const POST = withAuth(async (request, session) => {
         let transactionObject = {
             transactionId: null,
             contentLength,
-            item,
-            targetLang,
-            sourceLang,
+            itemSummary,
+            languageSummary,
+            businessType: businessType || 'unspecified',
+            tone: tone || 'Professional',
             projectId,
             fileId,
             action,
             unitsConsumed: 0,
-            clientResponse: generatedData,
+            clientResponse: getNewItemMetadataClientResponseSummary(generatedData),
             geminiResponse: response,
             generationConfig,
             model: AI_MODEL,
@@ -355,6 +557,24 @@ export const POST = withAuth(async (request, session) => {
             ourChargePaise: getOurChargePaise(action),
             marginPaise: getOurChargePaise(action) - getRealCostPaise(action),
         };
+        const getTransactionLogSummary = () => ({
+            action: transactionObject.action,
+            businessType: transactionObject.businessType,
+            contentLength: transactionObject.contentLength,
+            fileId: transactionObject.fileId,
+            itemSummary: transactionObject.itemSummary,
+            languageSummary: transactionObject.languageSummary,
+            model: transactionObject.model,
+            processingTime: transactionObject.processingTime,
+            projectId: transactionObject.projectId,
+            promptTokenCount: transactionObject.promptTokenCount,
+            candidatesTokenCount: transactionObject.candidatesTokenCount,
+            totalTokenCount: transactionObject.totalTokenCount,
+            totalCharge: transactionObject.totalCharge,
+            totalCredits: transactionObject.totalCredits,
+            transactionId: transactionObject.transactionId,
+            unitsConsumed: transactionObject.unitsConsumed,
+        });
 
         let remainingBalance = null;
         try {
@@ -380,17 +600,31 @@ export const POST = withAuth(async (request, session) => {
                 tenantId: session.tId,
                 userId,
             });
-            await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
+            await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: getTransactionLogSummary(), error: getAIErrorDiagnostics(transactionError) });
             throw transactionError;
         }
+
+        const generatedDataRecord = generatedData && typeof generatedData === 'object' && !Array.isArray(generatedData)
+            ? generatedData as Record<string, unknown>
+            : {};
 
         await writeLogEntry({
             logFileName: LOG_FILE, userId, projectId, fileId, logType: 'SUCCESS_RESPONSE',
             data: {
                 action,
-                request: { item, targetLang, sourceLang, contentLength },
-                response: generatedData,
-                transaction: transactionObject,
+                requestSummary: {
+                    ...itemSummary,
+                    contentLength,
+                    sourceLang: promptSourceLang.code || 'unspecified',
+                    targetLangCount: targetLangCodes.length,
+                },
+                responseSummary: {
+                    hasAttributes: Array.isArray(generatedDataRecord.attributes),
+                    hasDescription: typeof generatedDataRecord.description === 'string' && generatedDataRecord.description.trim().length > 0,
+                    hasName: typeof generatedDataRecord.name === 'string' && generatedDataRecord.name.trim().length > 0,
+                    objectKeyCount: Object.keys(generatedDataRecord).length,
+                },
+                transaction: getTransactionLogSummary(),
             }
         });
 

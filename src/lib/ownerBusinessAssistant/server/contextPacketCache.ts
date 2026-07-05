@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { FEATURE_FLAGS } from '@config/features';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { OWNER_BUSINESS_ASSISTANT_CACHE } from '../constants';
 import type { OwnerBusinessAssistantContextPacket, OwnerBusinessAssistantPacketProfile } from '../types';
 
@@ -59,10 +60,33 @@ const buildOwnerBusinessAssistantPacketIndexKey = (params: {
   sId: string | number;
 }) => `${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketIndexPrefix}:${params.tId}:${params.sId}`;
 
+const getPacketProfileFromCacheKey = (cacheKey: string): string | undefined => {
+  const match = cacheKey.match(/:profile:([a-z_]+)$/);
+  return match?.[1];
+};
+
 const getPacketValidUntilMs = (packet: CachedOwnerBusinessAssistantPacket) => {
   const parsed = Date.parse(packet.validUntil || '');
   return Number.isFinite(parsed) ? parsed : null;
 };
+
+const getOwnerBusinessAssistantPacketCacheContext = (params: {
+  cacheKey?: unknown;
+  fallbackPolicy?: string;
+  indexKey?: unknown;
+  packetProfile?: unknown;
+  projectId?: unknown;
+  sId?: unknown;
+  tId?: unknown;
+}) => ({
+  ...getBoundedRuntimeStringContext('cacheKey', params.cacheKey),
+  ...getBoundedRuntimeStringContext('indexKey', params.indexKey),
+  ...getBoundedRuntimeStringContext('packetProfile', params.packetProfile),
+  ...getBoundedRuntimeStringContext('projectId', params.projectId),
+  ...getBoundedRuntimeStringContext('storeId', params.sId),
+  ...getBoundedRuntimeStringContext('tenantId', params.tId),
+  fallbackPolicy: params.fallbackPolicy,
+});
 
 const resolvePacketTtlSeconds = (packet: CachedOwnerBusinessAssistantPacket) => {
   const validUntilMs = getPacketValidUntilMs(packet);
@@ -85,7 +109,13 @@ const readIndexedPacketKeys = async (indexKey: string): Promise<string[]> => {
       new Promise<string[]>((resolve) => setTimeout(() => resolve([]), CACHE_TIMEOUT_MS)),
     ]);
     return Array.isArray(result) ? result.map(String) : [];
-  } catch {
+  } catch (error) {
+    logRuntimeFailure('owner_business_assistant_packet_cache_index_read_failed', error, {
+      ...getOwnerBusinessAssistantPacketCacheContext({
+        fallbackPolicy: 'empty_index',
+        indexKey,
+      }),
+    });
     return [];
   }
 };
@@ -127,7 +157,13 @@ export async function readOwnerBusinessAssistantPacketCache(
     if (validUntilMs && validUntilMs <= Date.now()) return null;
     if (isNotReadyFallbackPacket(result)) return null;
     return result;
-  } catch {
+  } catch (error) {
+    logRuntimeFailure('owner_business_assistant_packet_cache_read_failed', error, {
+      ...getOwnerBusinessAssistantPacketCacheContext({
+        cacheKey,
+        fallbackPolicy: 'cache_miss',
+      }),
+    });
     return null;
   }
 }
@@ -139,10 +175,13 @@ export async function writeOwnerBusinessAssistantPacketCache(
   if (!redis || !FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_CONTEXT_PACKET_CACHE) return;
   if (isNotReadyFallbackPacket(packet)) return;
 
+  let payloadLength = 0;
+  let ttlSeconds = 0;
   try {
     const payload = JSON.stringify(packet);
+    payloadLength = payload.length;
     if (payload.length > OWNER_BUSINESS_ASSISTANT_CACHE.maxServerPayloadBytes) return;
-    const ttlSeconds = resolvePacketTtlSeconds(packet);
+    ttlSeconds = resolvePacketTtlSeconds(packet);
     if (ttlSeconds <= 0) return;
     await redis.set(cacheKey, packet, { ex: ttlSeconds });
     await redis.sadd(buildOwnerBusinessAssistantPacketIndexKey({
@@ -153,7 +192,18 @@ export async function writeOwnerBusinessAssistantPacketCache(
       tId: packet.tId,
       sId: packet.sId,
     }), Math.max(ttlSeconds, MIN_CACHE_TTL_SECONDS));
-  } catch {
+  } catch (error) {
+    logRuntimeFailure('owner_business_assistant_packet_cache_write_failed', error, {
+      ...getOwnerBusinessAssistantPacketCacheContext({
+        cacheKey,
+        fallbackPolicy: 'skip_cache_write',
+        packetProfile: getPacketProfileFromCacheKey(cacheKey),
+        sId: packet.sId,
+        tId: packet.tId,
+      }),
+      payloadLength,
+      ttlSeconds,
+    });
     // Cache is an optimization only. Answers fall back to Firestore-backed packets.
   }
 }
@@ -223,7 +273,18 @@ export async function invalidateOwnerBusinessAssistantPacketCache(params: {
         keysDeleted += keysToDelete.length;
       }
     }
-  } catch {
+  } catch (error) {
+    logRuntimeFailure('owner_business_assistant_packet_cache_invalidate_failed', error, {
+      ...getOwnerBusinessAssistantPacketCacheContext({
+        fallbackPolicy: 'best_effort_invalidation',
+        packetProfile: params.packetProfile,
+        projectId: params.projectId,
+        sId,
+        tId: params.tId,
+      }),
+      keysDeleted,
+      patternCount: uniquePatterns.length,
+    });
     return { attempted: true, keysDeleted, patterns: uniquePatterns };
   }
 

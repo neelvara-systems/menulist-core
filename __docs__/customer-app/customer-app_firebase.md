@@ -19,6 +19,10 @@
 - **Diagnostics policy:** Desktop and mobile owner settings save failures plus desktop and mobile install-link copy failures use `src/lib/pwa/pwaDiagnostics.ts` with bounded store/tenant/install-link presence and length, toggle/icon/domain flags, language count, clipboard/fallback support booleans, and source error metadata only. Install-link copied feedback waits for Clipboard API success or acknowledged textarea fallback success. The diagnostic pass adds no Firestore read/write, Storage operation, route call, Cloud Function, index, rule, or cache-invalidation change.
 - **Acknowledgement policy:** Desktop and mobile Customer App settings require explicit `updatePWASettings()` and `updatePWAIconOverride()` acknowledgements before local state or saved copy changes. The icon acknowledgement must include `pwaIconUpdatedAt`; the pwaShortName metadata side write must also be acknowledged. This adds no new Firestore read/write/delete, Storage operation, API route, Cloud Function, rule, index, or cache invalidation.
 - **Public rate-limit key policy:** Dynamic icon, splash, and screenshot routes still use `PUBLIC_DYNAMIC_ASSET` before Firestore reads, but rate-limit keys hash client IPs through `hashPublicRateLimitValue()` so raw IP addresses are not stored in provider keys. This changes no reads/writes and only resets existing rate-limit buckets once.
+- **Manifest start-url lookup diagnostics:** The tenant manifest keeps the existing cached `platformSummary` project-summary read for choosing `/menu` versus `/`. If that cached read fails, the manifest falls back to `/` and logs capped `customer_app_manifest_start_url_lookup_failed` diagnostics with store-id and summary-doc presence/length metadata only. This adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+- **Service-worker domain-resolution diagnostics:** Failed browser domain resolution in `src/components/ServiceWorkerRegister.tsx` logs bounded `service_worker_domain_resolution_failed` diagnostics once per browser session and registers no worker for the unknown origin. These diagnostics add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+- **Prompt-shown timestamp diagnostics:** Failed prompt-shown timestamp localStorage availability/write paths for iOS install inference log bounded `customer_app_prompt_shown_*` diagnostics once per operation. These diagnostics add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+- **Install de-dupe storage diagnostics:** Failed install-fired de-dupe localStorage availability/read/write paths log bounded `customer_app_install_dedupe_*` diagnostics once per operation. These diagnostics add no Firestore read/write/delete, analytics write beyond the existing accepted `CUSTOMER_APP_INSTALLED` event, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
 ---
 
@@ -46,7 +50,7 @@
 | `CUSTOMER_APP_PROMPT_DISMISSED` | analytics  | Dismiss tap               | Per dismiss               | 1 (increment)                  | `totalPromptDismissed`                                                | Same daily doc                                   |
 | `CUSTOMER_APP_INSTALL_STARTED`  | analytics  | Install CTA tap           | Per tap                   | 1 (increment)                  | `totalInstallStarted`                                                 | Same daily doc                                   |
 | `CUSTOMER_APP_INSTALLED`        | analytics  | `appinstalled` event      | Once per device per store | 1 (increment)                  | `totalInstalled`, `uniqueInstallSessions`, device/location breakdowns | Deduped via `localStorage`                       |
-| `CUSTOMER_APP_OPENED`           | analytics  | Standalone-mode page load | Per open (debounced)      | 1 (increment)                  | `totalAppOpens`, hourly, device, location                             | Fires only in `display-mode: standalone`         |
+| `CUSTOMER_APP_OPENED`           | analytics  | Standalone-mode page load | Per open (debounced)      | 1 (increment)                  | `totalAppOpens`, hourly, device, location                             | Fires only in `display-mode: standalone`; browser-local session guard failures log bounded diagnostics and create no fallback write |
 | `CUSTOMER_APP_SHORTCUT_*`       | analytics  | Shortcut launch           | Per launch                | 1 (increment)                  | `shortcutClicks.{menu,call,directions}`                               | Detected via `?entry_source=shortcut-*` URL param |
 | Nightly aggregation             | analytics  | Cloud Function            | 1/day/store-local date    | 1-4 (summary, weekly, monthly, dashboard summary) | All metric fields                                                     | Reuses shared locked analytics settlement        |
 
@@ -199,6 +203,10 @@ match /pwa-icons/{storeId}/{size} {
    - Cost: no Firestore reads/writes and no extra analytics write
    - Raw hostnames, raw service-worker URLs, store IDs, tenant IDs, and route paths are not logged
    - Cleanup remains best-effort; failed unregister does not block the page render
+9. **Service-worker degraded fallback diagnostics:** Malformed registered service-worker script URLs log `service_worker_script_url_label_parse_failed`, and blocked cleanup reload session guards log `service_worker_public_cleanup_reload_storage_failed`, through bounded runtime diagnostics only.
+   - Cost: no Firestore reads/writes/deletes, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement
+   - Raw hostnames, raw script URLs, route paths, store IDs, tenant IDs, customer identity, storage values, and browser exception text are not logged
+   - Existing fallback behavior remains unchanged: malformed script URLs become the `unknown` worker label, and public stale-worker cleanup can still reload without a session guard when storage is unavailable
 
 ### Potential Future Optimizations
 
@@ -219,7 +227,7 @@ match /pwa-icons/{storeId}/{size} {
 | Cross-tenant icon queries                      | Security risk + cost              | Strict path validation                               |
 | Per-event writes without debounce              | Write storm on spammy sessions    | Inherited `shouldDebounce` / `shouldRateLimit`       |
 | Install event without per-device dedupe        | Reinstalls inflate install counts | `fireInstalledEventOnce` via `localStorage`          |
-| `CUSTOMER_APP_OPENED` firing on every page nav | Write storm                       | Fire once per session on mount, not per route change |
+| `CUSTOMER_APP_OPENED` firing on every page nav | Write storm                       | Fire once per session on mount, not per route change; failed sessionStorage guard logs bounded diagnostics only |
 
 ---
 
@@ -248,6 +256,14 @@ match /pwa-icons/{storeId}/{size} {
 | **Total**             |                  |            | **~$29.71/month** |
 
 **Scaling note:** Analytics cost scales linearly with app opens. If this becomes significant, the existing `shouldBlockMenuView` pattern in `src/lib/analytics/unified.ts` can be extended to `CUSTOMER_APP_OPENED` with a session-based cooldown (e.g., 30s), reducing cost by ~80%.
+
+**Standalone-open storage diagnostics:** Failed sessionStorage availability checks, standalone-open session guard reads/writes, and iOS install-inference prompt-storage reads log bounded `customer_app_open_*` diagnostics once per operation. These diagnostics add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+
+**Prompt gate storage diagnostics:** Failed prompt visit-count and dismissal localStorage availability/read/write paths log bounded `customer_app_prompt_*` diagnostics once per operation. These diagnostics add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+
+**Install detection and URL intent diagnostics:** Failed install-mode detection, shortcut `entry_source` parsing, and direct-install `pwa` intent parsing log bounded `customer_app_install_detection_failed`, `customer_app_shortcut_source_parse_failed`, and `customer_app_direct_install_intent_parse_failed` diagnostics once per failure path. These diagnostics add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+
+**Install de-dupe storage diagnostics:** Failed install-fired de-dupe localStorage availability/read/write paths log bounded `customer_app_install_dedupe_*` diagnostics once per operation. These diagnostics add no Firestore read/write/delete, analytics write beyond the existing accepted `CUSTOMER_APP_INSTALLED` event, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
 ---
 

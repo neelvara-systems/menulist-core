@@ -198,6 +198,157 @@ function verifyPricingPublicCopyBoundary() {
   }
 }
 
+function verifyWebsiteAnalyticsBoundary() {
+  const websiteLayout = read('src/app/(website)/layout.tsx');
+  const websiteAnalyticsConsent = read('src/components/website/WebsiteAnalyticsConsent.tsx');
+  const publicCookieConsentBanner = read('src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx');
+  const plausibleHelper = read('src/lib/website/plausible.ts');
+  const clarityAnalytics = read('src/components/website/ClarityAnalytics.tsx');
+  const mainWebsiteImpl = read('__docs__/main-website/main-website_impl.md');
+  const mainWebsiteContent = read('__docs__/main-website/main-website_content.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  assertIncludes(
+    websiteLayout,
+    '<WebsiteAnalyticsConsent />',
+    'Main website layout analytics consent mount',
+  );
+  assertNotIncludes(websiteLayout, '<GoogleAnalytics', 'Main website layout direct Google Analytics mount');
+  assertNotIncludes(websiteLayout, '<ClarityAnalytics', 'Main website layout direct Clarity mount');
+  assertIncludes(
+    websiteAnalyticsConsent,
+    '<PublicCookieConsentBanner',
+    'Main website analytics consent component',
+  );
+  assertIncludes(
+    websiteAnalyticsConsent,
+    '<PlausibleAnalytics />',
+    'Main website analytics consent children',
+  );
+  assertIncludes(
+    websiteAnalyticsConsent,
+    '<GoogleAnalytics />',
+    'Main website analytics consent children',
+  );
+  assertIncludes(
+    websiteAnalyticsConsent,
+    '<ClarityAnalytics />',
+    'Main website analytics consent children',
+  );
+  assertIncludes(
+    publicCookieConsentBanner,
+    "{choice === 'accepted' ? children : null}",
+    'Public cookie consent accepted-only child rendering',
+  );
+  assertIncludes(
+    publicCookieConsentBanner,
+    "logRuntimeFailure('public_cookie_consent_storage_failed'",
+    'Public cookie consent storage fallback diagnostics',
+  );
+  assertIncludes(
+    publicCookieConsentBanner,
+    "fallbackPolicy: operation === 'read' ? 'show_consent_panel' : 'keep_page_runtime_choice'",
+    'Public cookie consent storage fallback policy',
+  );
+  assertIncludes(
+    publicCookieConsentBanner,
+    "getBoundedRuntimeStringContext('storageKey', storageKey)",
+    'Public cookie consent bounded storage-key context',
+  );
+  assertIncludes(
+    plausibleHelper,
+    "logAnalyticsFailure('public_website_plausible_consent_read_failed'",
+    'Public website Plausible consent read diagnostics',
+  );
+  assertIncludes(
+    plausibleHelper,
+    "fallbackPolicy: 'skip_plausible_event_until_consent_known'",
+    'Public website Plausible consent fail-closed policy',
+  );
+  assertIncludes(
+    plausibleHelper,
+    "getBoundedAnalyticsStringContext('consentKey', consentKey)",
+    'Public website Plausible bounded consent-key context',
+  );
+  assertNotIncludes(
+    publicCookieConsentBanner,
+    '} catch {\n        return null;\n    }',
+    'Public cookie consent read fallback silent catch',
+  );
+  assertNotIncludes(
+    publicCookieConsentBanner,
+    '} catch {\n            // If localStorage is unavailable, keep the runtime choice for this page.',
+    'Public cookie consent write fallback silent catch',
+  );
+  assertNotIncludes(
+    plausibleHelper,
+    '} catch {\n        return false;\n    }',
+    'Public website Plausible consent read silent catch',
+  );
+  assertIncludes(
+    clarityAnalytics,
+    "process.env.NEXT_PUBLIC_CLARITY_ID?.trim() || ''",
+    'Clarity analytics explicit env gate',
+  );
+  assertIncludes(
+    clarityAnalytics,
+    'const isConfiguredClarityId = /^[a-z0-9]+$/i.test(CLARITY_ID);',
+    'Clarity analytics ID shape gate',
+  );
+  assertIncludes(
+    clarityAnalytics,
+    'if (!isConfiguredClarityId) return null;',
+    'Clarity analytics fail-closed config boundary',
+  );
+  assertNotIncludes(clarityAnalytics, 'sc0tsmzg6b', 'Clarity analytics hardcoded project fallback');
+  assertNotIncludes(
+    clarityAnalytics,
+    'process.env.NEXT_PUBLIC_CLARITY_ID ||',
+    'Clarity analytics permissive env fallback',
+  );
+  assertIncludes(
+    mainWebsiteImpl,
+    'Microsoft Clarity remains MenuList-only and env-gated by `NEXT_PUBLIC_CLARITY_ID`',
+    'Main website implementation Clarity env-gated boundary',
+  );
+  assertIncludes(
+    mainWebsiteContent,
+    'Clarity is MenuList-only and env-gated by `NEXT_PUBLIC_CLARITY_ID`',
+    'Main website content Clarity env-gated boundary',
+  );
+  assertIncludes(
+    mainWebsiteImpl,
+    'Public website consent storage diagnostics',
+    'Main website implementation public consent storage diagnostics',
+  );
+  assertIncludes(
+    mainWebsiteContent,
+    'Consent storage fallback diagnostics',
+    'Main website content public consent storage diagnostics',
+  );
+  assertIncludes(
+    productionAudit,
+    'Website analytics Clarity configuration checkpoint',
+    'Production readiness audit website analytics Clarity checkpoint',
+  );
+  assertIncludes(
+    productionAudit,
+    'Website analytics consent storage diagnostics checkpoint',
+    'Production readiness audit website analytics consent storage diagnostics checkpoint',
+  );
+  assertIncludes(
+    changelog,
+    'Website Analytics Clarity Configuration Boundary',
+    'Changelog website analytics Clarity boundary entry',
+  );
+  assertIncludes(
+    changelog,
+    'Website Analytics Consent Storage Diagnostics',
+    'Changelog website analytics consent storage diagnostics entry',
+  );
+}
+
 function verifyDocsBoundary() {
   const mainWebsiteReadme = read('__docs__/main-website/README.md');
   const mainWebsiteContent = read('__docs__/main-website/main-website_content.md');
@@ -559,6 +710,7 @@ verifyPackageScript();
 verifyMountedHomepageBoundary();
 verifyLocaleAndDiscoveryCopy();
 verifyPricingPublicCopyBoundary();
+verifyWebsiteAnalyticsBoundary();
 verifyDocsBoundary();
 
 console.log('Website public copy boundary verifier passed.');

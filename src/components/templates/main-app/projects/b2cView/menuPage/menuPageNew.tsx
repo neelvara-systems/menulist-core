@@ -42,6 +42,7 @@ import {
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { getPublicMenuSpecialNote } from '@lib/menu/publicMenuSpecialNote';
 import { getMenuItemImageAltText } from '@lib/media/altText';
+import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl } from '@lib/obp/publicLinks';
 import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { slugify } from '@lib/utils/slugify';
@@ -515,7 +516,9 @@ function MenuPageNew({
             phoneNumber: publicPresence?.whatsappNumber || storeDetails?.phoneNumber,
         });
         const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber}` : undefined;
-        const directionsHref = publicPresence?.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : undefined);
+        const directionsHref = normalizeOBPGoogleMapsUrl(publicPresence?.googleMapsUrl) || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : undefined);
+        const reservationHref = normalizeOBPExternalHttpsUrl(publicPresence?.reservationUrl) || undefined;
+        const orderHref = normalizeOBPExternalHttpsUrl(publicPresence?.orderUrl) || undefined;
         const hasWorkingHours = !!storeDetails?.workingHours && Object.keys(storeDetails.workingHours).length > 0;
         const openHoursState: TrackingData['openHoursState'] = hasWorkingHours
             ? (getStoreStatus(storeDetails.workingHours, storeDetails.timeZone).isOpen ? 'open' : 'closed')
@@ -553,15 +556,15 @@ function MenuPageNew({
                 external: true,
                 track: () => trackRecoveryAction('directions'),
             } : null,
-            (publicPresence?.showReservation !== false) && publicPresence?.reservationUrl ? {
+            (publicPresence?.showReservation !== false) && reservationHref ? {
                 label: 'Reserve',
-                href: publicPresence.reservationUrl,
+                href: reservationHref,
                 external: true,
                 track: () => trackRecoveryAction('reserve'),
             } : null,
-            (publicPresence?.showOrder !== false) && publicPresence?.orderUrl ? {
+            (publicPresence?.showOrder !== false) && orderHref ? {
                 label: 'Order',
-                href: publicPresence.orderUrl,
+                href: orderHref,
                 external: true,
                 track: () => trackRecoveryAction('order'),
             } : null,

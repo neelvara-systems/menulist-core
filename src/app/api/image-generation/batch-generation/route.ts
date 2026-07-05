@@ -7,7 +7,7 @@ import { uploadBase64MediaImageAdmin } from "@database/storage/uploadBase64Media
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { copyCachedImagePromptToStore, isImagePromptCacheEligible, writeImagePromptCacheSource } from "@lib/ai/imageGenerationPromptCache";
-import { sanitizeImageGenerationConfigForLogging, summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
+import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { mapWithConcurrency } from "@lib/async/boundedConcurrency";
 import { logger } from "@lib/monitoring/logger";
 import { createUppercaseRandomIdSegment } from "@lib/runtime/randomId";
@@ -81,6 +81,30 @@ function summarizeUploadedGeneratedImages(images: Array<{ mimeType: string; uplo
         hasUploadedUrl: Boolean(image.uploadedUrl),
         mimeType: image.mimeType,
     }));
+}
+
+function summarizeBatchGenerationConfig(config: Record<string, any> | undefined | null) {
+    return {
+        aspectRatio: typeof config?.aspectRatio === 'string' ? config.aspectRatio : undefined,
+        colorCount: Array.isArray(config?.colors) ? config.colors.length : 0,
+        compositionCount: Array.isArray(config?.compositions) ? config.compositions.length : 0,
+        environmentCount: Array.isArray(config?.environments) ? config.environments.length : 0,
+        hasBackgroundColor: Boolean(config?.backgroundColor),
+        hasForegroundColor: Boolean(config?.foregroundColor),
+        hasNegativePrompt: Boolean(config?.negativePrompt),
+        hasPrompt: typeof config?.prompt === 'string' && config.prompt.length > 0,
+        hasReferenceImage: Boolean(config?.referanceImage?.url),
+        isMultiMode: Boolean(config?.isMultiMode),
+        lightingCount: Array.isArray(config?.lighting) ? config.lighting.length : 0,
+        moodCount: Array.isArray(config?.moods) ? config.moods.length : 0,
+        negativePromptLength: typeof config?.negativePrompt === 'string' ? config.negativePrompt.length : 0,
+        numberOfImages: Number(config?.numberOfImages || 1),
+        promptLength: typeof config?.prompt === 'string' ? config.prompt.length : 0,
+        selectedImageTypeCount: Array.isArray(config?.selectedImageTypes) ? config.selectedImageTypes.length : 0,
+        styleCount: Array.isArray(config?.styles) ? config.styles.length : 0,
+        stylesCategoryPresent: Boolean(config?.stylesCategory),
+        transparentBg: Boolean(config?.transparentBg),
+    };
 }
 
 async function uploadGeneratedImages({
@@ -166,10 +190,15 @@ export async function POST(request: Request) {
     const validation = validateAPIInput(BatchImageGenerationWorkerRequestSchema, rawData);
     if (!validation.success) {
         const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
-        await writeMissingParamsLogEntry(LOG_FILE, userIdForLog, rawData?.projectId, '', {
+        await writeMissingParamsLogEntry(LOG_FILE, userIdForLog, undefined, undefined, {
             error: errorMsg,
-            jobId: rawData?.jobId,
-            projectId: rawData?.projectId,
+            attemptedData: getBatchWorkerLogContext({
+                itemId: rawData?.itemDetails?.id,
+                itemName: rawData?.itemDetails?.name,
+                jobId: rawData?.jobId,
+                projectId: rawData?.projectId,
+            }),
+            hasGenerationConfig: !!rawData?.generationConfig,
         });
         return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
     }
@@ -190,10 +219,6 @@ export async function POST(request: Request) {
     }
 
     const currentJobData = await getImageBatchProcessingJobByIdAdmin(jobId, { tId, sId });
-    logger.debug('Fetched job data', {
-        ...workerLogContext,
-        jobStatus: currentJobData?.status,
-    });
 
     if (!currentJobData) {
         logRuntimeDiagnostic(IMAGE_BATCH_WORKER_JOB_NOT_FOUND, workerLogContext);
@@ -305,7 +330,7 @@ export async function POST(request: Request) {
             projectId,
             logType: 'BATCH_GENERATION_IMAGE_GEN_STARTED',
             data: {
-                generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
+                generationConfigSummary: summarizeBatchGenerationConfig(generationConfig as Record<string, any>),
                 item: summarizeBatchItem(itemDetails),
                 jobId,
                 promptCount: promptsToExecute.length,
@@ -349,7 +374,6 @@ export async function POST(request: Request) {
         if (!genratedImages?.length) {
             throw new Error('Image generation produced no image.');
         }
-        logger.debug('Images uploaded', { count: genratedImages.length })
         const endTime = new Date().getTime();
         const processingTime = endTime - startTime;
 
@@ -370,10 +394,10 @@ export async function POST(request: Request) {
                 billingMode: 'free',
                 failedPromptCount: 0,
                 imageCount: genratedImages.length,
-                itemDetails,
+                itemSummary: summarizeBatchItem(itemDetails),
                 promptCacheHitCount: genratedImages.filter((image) => image.cacheHit).length,
                 promptCount: promptRun.promptCount,
-                generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
+                generationConfigSummary: summarizeBatchGenerationConfig(generationConfig as Record<string, any>),
                 projectId,
                 processingTime,
                 clientResponse: genratedImages.map((image: { mimeType: string }) => image.mimeType),
@@ -426,9 +450,9 @@ export async function POST(request: Request) {
                 action: AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
                 failedPromptCount: promptRun.failedPromptCount,
                 imageCount: genratedImages.length,
-                itemDetails,
+                itemSummary: summarizeBatchItem(itemDetails),
                 promptCount: promptRun.promptCount,
-                generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
+                generationConfigSummary: summarizeBatchGenerationConfig(generationConfig as Record<string, any>),
                 projectId,
                 processingTime,
                 clientResponse: genratedImages.map((image: { base64: string; mimeType: string }) => image.mimeType),
@@ -455,10 +479,8 @@ export async function POST(request: Request) {
                 input: transactionObject,
                 logLabel: 'Batch image generation',
             });
-            logger.debug('Batch image generation transaction recorded', { transactionId: accounting.transactionId });
             transactionObject.unitsConsumed = accounting.unitsConsumed;
             transactionObject.transactionId = accounting.transactionId;
-            logger.debug('Batch generation capacity consumed', { remainingBalance: accounting.remainingBalance });
         }
 
         const randomStr = createUppercaseRandomIdSegment(6);
@@ -506,11 +528,6 @@ export async function POST(request: Request) {
                 ...updatedJobSummary,
             },
         });
-        logger.debug('Batch job updated', {
-            ...workerLogContext,
-            ...updatedJobSummary,
-        });
-
         // Task succeeded, return 200 OK to Cloud Tasks
         return NextResponse.json({ success: true, message: 'Image generation completed for this item.' }, { status: 200 });
 

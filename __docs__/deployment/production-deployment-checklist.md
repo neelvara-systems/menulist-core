@@ -43,7 +43,7 @@ npm run verify:functions-deploy-preflight
 Current MenuList QA retry target:
 
 ```bash
-firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:verifyMenuPublish --non-interactive
 ```
 
 If certification is retrying only the July 2 source-file path hardening slice, use the exact changed subset from the External Certification Runbook instead of broadening the deploy:

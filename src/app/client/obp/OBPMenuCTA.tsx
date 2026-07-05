@@ -18,6 +18,7 @@
  */
 
 import { getSessionId } from '@lib/analytics/session';
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPMenuClick, trackProjectSwitch } from '@lib/analytics/unified';
@@ -35,6 +36,8 @@ export interface OBPMenuCTAProjectEntry {
 }
 
 type OBPOpenHoursState = 'open' | 'closed' | 'unknown';
+const MAX_OBP_MENU_CTA_ENTRY_SOURCE_DIAGNOSTICS = 25;
+const reportedOBPMenuCTAEntrySourceFallbackFailures = new Set<string>();
 
 interface OBPMenuCTAProps {
     /** Fallback URL for the "View Menu" safety rail when projects is empty. */
@@ -59,13 +62,38 @@ interface OBPMenuCTAProps {
     openHoursState?: OBPOpenHoursState;
 }
 
+function isAbsoluteOBPMenuCTAUrl(url: string): boolean {
+    return /^[a-z][a-z\d+\-.]*:\/\//i.test(url);
+}
+
+function logOBPMenuCTAEntrySourceFallbackFailure(error: unknown, url: string): void {
+    const failureKey = [
+        url.length,
+        isAbsoluteOBPMenuCTAUrl(url) ? 'absolute' : 'relative',
+        url.includes('?') ? 'query' : 'no-query',
+        url.includes('#') ? 'hash' : 'no-hash',
+    ].join(':');
+
+    if (reportedOBPMenuCTAEntrySourceFallbackFailures.has(failureKey)) return;
+    if (reportedOBPMenuCTAEntrySourceFallbackFailures.size >= MAX_OBP_MENU_CTA_ENTRY_SOURCE_DIAGNOSTICS) return;
+    reportedOBPMenuCTAEntrySourceFallbackFailures.add(failureKey);
+
+    logAnalyticsFailure('obp_menu_cta_entry_source_fallback_failed', error, {
+        ...getBoundedAnalyticsStringContext('menuUrl', url),
+        isAbsoluteUrl: isAbsoluteOBPMenuCTAUrl(url),
+        hasQuery: url.includes('?'),
+        hasHash: url.includes('#'),
+    });
+}
+
 function withOBPEntrySource(url: string): string {
     if (!url) return url;
     try {
         return withAnalyticsSource(url, 'obp');
-    } catch {
+    } catch (error) {
+        logOBPMenuCTAEntrySourceFallbackFailure(error, url);
         const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}entry_source=obp`;
+        return `${url}${separator}entry_source=${encodeURIComponent('obp')}`;
     }
 }
 

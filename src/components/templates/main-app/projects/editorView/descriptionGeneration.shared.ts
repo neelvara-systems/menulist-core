@@ -3,11 +3,11 @@ import GlobalLanguagesList from '@data/languages';
 import { assertProjectUpdateSucceeded, updateProject } from '@database/projects';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { hasMeaningfulDescription, hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
-import { logger } from '@lib/monitoring/logger';
 import { addDescription, type DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
 import getDescriptionsViaAPI from '@services/ai/description/generateDescriptionViaAPI';
 import { removeObjRef } from '@util/utils';
 import type { ExtractedDataItem, Project, ProjectFileType } from '../types';
+import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorFailure } from '../utils/editorDiagnostics';
 
 export type DescriptionContentLength = 'Standard' | 'Detailed';
 export type DescriptionTone = 'Professional' | 'Friendly' | 'Premium';
@@ -127,7 +127,7 @@ export async function runDescriptionGeneration({
     let processedFiles = 0;
     for (const file of filesToProcess) {
         onFileProcessingIdChange?.(file.uid);
-        const { updatedProject, message: resultMessage, messageType } = await addDescription(
+        const descriptionResult = await addDescription(
             nextProject,
             file,
             targetLanguages as any,
@@ -137,12 +137,15 @@ export async function runDescriptionGeneration({
             tone,
             governance
         );
+        const { updatedProject, messageType } = descriptionResult;
+        const resultMessage = descriptionResult.message;
 
         if (messageType === 'error' && resultMessage) {
-            logger.warn('Description generation returned error message', {
-                fileId: file.uid,
-                message: resultMessage,
-                projectId: projectData.projectId,
+            logMenuEditorFailure('menu_editor_description_generation_returned_error_message', new Error('description_generation_returned_error_message'), {
+                ...getMenuEditorProjectLogContext(projectData.projectId),
+                ...getBoundedMenuEditorStringContext('fileId', file.uid),
+                ...getBoundedMenuEditorStringContext('resultMessage', resultMessage),
+                ...getBoundedMenuEditorStringContext('messageType', messageType),
             });
         }
 

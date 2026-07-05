@@ -21,6 +21,8 @@ import { ProviderSendResult } from '../types';
 const DEFAULT_FROM = 'MenuList <system@menulist.ai>';
 const SMTP_NOT_CONFIGURED_ERROR = 'SMTP_NOT_CONFIGURED';
 const SMTP_SEND_FAILED_ERROR = 'SMTP_SEND_FAILED';
+const SMTP_MIN_PORT = 1;
+const SMTP_MAX_PORT = 65535;
 const logger = functions.logger;
 
 // Cached transporter (reused across invocations in same CF instance)
@@ -43,19 +45,32 @@ function getSmtpErrorContext(error: unknown): {
   };
 }
 
+function parseSmtpPort(rawPort: string | undefined): number | null {
+  const normalizedPort = String(rawPort ?? '').trim();
+  if (!/^\d+$/.test(normalizedPort)) return null;
+
+  const port = Number(normalizedPort);
+  return Number.isSafeInteger(port) && port >= SMTP_MIN_PORT && port <= SMTP_MAX_PORT
+    ? port
+    : null;
+}
+
 function getTransporter(): nodemailer.Transporter | null {
   if (cachedTransporter) return cachedTransporter;
 
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const host = String(process.env.SMTP_HOST || '').trim();
+  const port = parseSmtpPort(process.env.SMTP_PORT);
+  const user = String(process.env.SMTP_USER || '').trim();
+  const pass = process.env.SMTP_PASS || '';
+  const hasPassword = pass.trim().length > 0;
 
-  if (!host || !user || !pass) {
+  if (!host || port === null || !user || !hasPassword) {
     logger.error('[Mailer] SMTP credentials not configured', {
       hasHost: Boolean(host),
+      hasPort: Boolean(String(process.env.SMTP_PORT ?? '').trim()),
+      smtpPortValid: port !== null,
       hasUser: Boolean(user),
-      hasPassword: Boolean(pass),
+      hasPassword,
     });
     return null;
   }

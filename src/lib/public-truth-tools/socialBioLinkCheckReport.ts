@@ -124,7 +124,7 @@ export function buildSocialBioLinkCheckReport(input: SocialBioLinkCheckInput): S
   const cityOrArea = trimToSingleLine(input.cityOrArea);
   const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
   const hasCurrentCustomerLink = currentCustomerLink.length > 0;
-  const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink);
+  const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink, 'social_bio_link_current_customer_link');
   const placementCount = getPlacementCount(input);
   const status = getStatus(validCurrentCustomerLink, placementCount, input.oldLinksRemoved, input.actionClear);
 

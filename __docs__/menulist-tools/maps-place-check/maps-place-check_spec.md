@@ -29,6 +29,7 @@ Build a backend-only Maps Place Check callable that returns evidence for owner/a
 - No Google Business Profile mutation.
 - No automatic overwrite of MenuList address, hours, amenities, menu items, prices, reviews, ratings, or availability.
 - No storage of broad Maps source snapshots, review snippets, photos, or generated Maps text.
+- No raw provider response text in callable output.
 - No Firebase AI Logic Web SDK migration.
 
 ## Owner Experience
@@ -51,4 +52,5 @@ Normal owners should not see raw grounding mechanics.
 - Rate limiting runs before the provider call.
 - Missing business name returns a validation error.
 - Results include source metadata and an attribution-required marker when grounding metadata exists.
+- Results never include raw provider response text.
 - The prototype performs no Firestore writes.

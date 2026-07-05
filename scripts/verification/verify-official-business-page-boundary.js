@@ -29,6 +29,17 @@ function assertNotIncludes(content, needle, label) {
   assert(!content.includes(needle), `${label}: did not expect to find ${needle}`);
 }
 
+function withSuppressedConsoleError(fn) {
+  const originalConsoleError = console.error;
+  console.error = () => undefined;
+
+  try {
+    return fn();
+  } finally {
+    console.error = originalConsoleError;
+  }
+}
+
 function verifyPackageScript() {
   const pkg = JSON.parse(read('package.json'));
   assert(
@@ -65,6 +76,7 @@ function verifyPublicLinkHelperRuntime() {
   const rejected = [
     ['JavaScript URL', normalizeOBPExternalHttpsUrl('javascript:alert(1)')],
     ['HTTP URL', normalizeOBPExternalHttpsUrl('http://example.com/order')],
+    ['Malformed HTTPS URL', withSuppressedConsoleError(() => normalizeOBPExternalHttpsUrl('https://[bad-url'))],
     ['Fake Google Maps host', normalizeOBPGoogleMapsUrl('https://evil-google.com/maps/place/example')],
     ['Generic Google search URL', normalizeOBPGoogleMapsUrl('https://google.com/search?q=not-maps')],
     ['Non-Google review URL', normalizeOBPReviewUrl('https://example.com/review')],
@@ -96,11 +108,21 @@ function verifyPublicRenderingBoundary() {
     'normalizeOBPReviewUrl',
     'normalizeOBPSocialUrl',
     'normalizeOBPWebsiteUrl',
+    'obp_public_link_url_parse_failed',
+    'logOBPPublicLinkParseFailure',
+    'MAX_OBP_PUBLIC_LINK_PARSE_DIAGNOSTICS',
+    'reportedOBPPublicLinkParseFailures',
+    "getBoundedRuntimeStringContext('valueKind', valueKind)",
+    'candidateLength: candidate.length',
+    'allowedHostBaseCount: options.allowedHostBases?.length || 0',
+    'hasFallbackBase: Boolean(options.fallbackBase)',
+    'hasProtocol: /^[a-z][a-z\\d+\\-.]*:/i.test(candidate)',
     "parsed.protocol !== 'https:'",
     'parsed.username || parsed.password',
   ]) {
     assertIncludes(helper, token, 'OBP public link helper');
   }
+  assertNotIncludes(helper, '    } catch {\n        return null;\n    }', 'OBP public link URL parsing must not fail silently');
 
   for (const token of [
     'normalizeOBPGoogleMapsUrl(pp.googleMapsUrl)',
@@ -229,10 +251,12 @@ function verifyDocsParity() {
 
   assertIncludes(docs.readme, 'Public link safety boundary', 'OBP README public link boundary');
   assertIncludes(docs.impl, 'Public link safety boundary', 'OBP implementation public link boundary');
+  assertIncludes(docs.impl, 'Public link parse diagnostics', 'OBP implementation public link parse diagnostics');
   assertIncludes(docs.impl, 'tag invalidation on acknowledged store update', 'OBP implementation cache invalidation boundary');
   assertIncludes(docs.marketing, 'public cache path', 'OBP marketing public cache path wording');
   assertIncludes(docs.marketing, 'current owner-approved source', 'OBP marketing owner-approved freshness wording');
   assertIncludes(docs.firebase, 'Public link safety is render-time and cost-neutral', 'OBP Firebase cost-neutral public link boundary');
+  assertIncludes(docs.firebase, 'Public link parse diagnostics', 'OBP Firebase public link parse diagnostics');
   assertIncludes(docs.mobile, 'Public OBP external-link source gate', 'OBP mobile external-link source gate');
   assertIncludes(docs.helpdoc, 'secure public links', 'OBP helpdoc secure public links wording');
   assertIncludes(docs.helpdoc, 'After the save succeeds', 'OBP helpdoc save acknowledgement wording');
@@ -243,7 +267,13 @@ function verifyDocsParity() {
   assertIncludes(docs.readme, 'current cache window documented as 60 seconds', 'OBP README cache-window wording');
   assertIncludes(docs.audit, 'Official Business Page boundary source-gate checkpoint', 'Production audit OBP checkpoint');
   assertIncludes(docs.audit, 'Official Business Page freshness-copy boundary checkpoint', 'Production audit OBP freshness checkpoint');
+  assertIncludes(docs.audit, 'Official Business Page server fallback diagnostics checkpoint', 'Production audit OBP server fallback checkpoint');
+  assertIncludes(docs.audit, 'OBP public link parse diagnostics checkpoint', 'Production audit OBP public link parse diagnostics checkpoint');
+  assertIncludes(docs.impl, 'OBP server fallback diagnostics log `public_obp_menu_info_lookup_failed`, `public_obp_menu_info_resolution_failed`, and `public_obp_store_count_lookup_failed`', 'OBP implementation server fallback diagnostics');
+  assertIncludes(docs.firebase, 'OBP server fallback diagnostics', 'OBP Firebase server fallback diagnostics');
   assertIncludes(docs.changelog, 'Official Business Page Freshness Copy Boundary', 'Changelog OBP freshness checkpoint');
+  assertIncludes(docs.changelog, 'Official Business Page Server Fallback Diagnostics', 'Changelog OBP server fallback checkpoint');
+  assertIncludes(docs.changelog, 'OBP Public Link Parse Diagnostics', 'Changelog OBP public link parse diagnostics checkpoint');
 }
 
 function verifyFreshnessBoundary() {
@@ -291,6 +321,33 @@ function verifyFreshnessBoundary() {
   assertIncludes(clientStoreLookup, "Tag `client-stores`", 'OBP lookup shared cache tag documentation');
   assertIncludes(clientStoreLookup, "{ revalidate: 60, tags: ['client-stores'] }", 'OBP lookup 60s public cache window');
   assertIncludes(obpContent, "{ revalidate: 60, tags: ['client-stores'] }", 'OBP content 60s public cache window');
+
+  for (const token of [
+    'logObpServerResolutionFailure',
+    'public_obp_menu_info_lookup_failed',
+    'public_obp_menu_info_resolution_failed',
+    'public_obp_store_count_lookup_failed',
+    "getBoundedRuntimeStringContext('storeId', context.storeId)",
+    "getBoundedRuntimeStringContext('tenantId', context.tenantId)",
+    "getBoundedRuntimeStringContext('tenantType', context.tenantType)",
+    "getBoundedRuntimeStringContext('activeSpecialMenuId', context.activeSpecialMenuId)",
+    "getBoundedRuntimeStringContext('operation', context.operation)",
+    "operation: 'menu_info_lookup'",
+    "operation: 'store_count_lookup'",
+    "operation: 'menu_info_resolution'",
+  ]) {
+    assertIncludes(obpContent, token, 'OBP server fallback bounded diagnostics');
+  }
+
+  for (const token of [
+    '} catch {\n            return empty;\n        }',
+    '} catch {\n            return 1;\n        }',
+    '.catch(() => ({ hasMenu: false, defaultSlug: undefined, projects: [] } as ObpMenuInfo))',
+    'console.error',
+    'console.warn',
+  ]) {
+    assertNotIncludes(obpContent, token, 'OBP server fallback silent/direct diagnostics');
+  }
 }
 
 verifyPackageScript();

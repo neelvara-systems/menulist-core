@@ -160,7 +160,7 @@ export function buildPriceAvailabilityGapReport(input: PriceAvailabilityGapInput
   const publicUrl = trimToSingleLine(input.publicUrl);
   const sourceExists = hasUsefulSource(sourceText);
   const hasPublicUrl = publicUrl.length > 0;
-  const validPublicUrl = isValidHttpUrl(publicUrl);
+  const validPublicUrl = isValidHttpUrl(publicUrl, 'price_availability_gap_public_url');
   const priceHint = hasPriceHint(sourceText);
   const currencyOrUnitHint = hasCurrencyOrUnitHint(sourceText);
   const variantHint = hasVariantHint(sourceText);

@@ -67,6 +67,7 @@ const schemas = read('src/lib/ownerBusinessAssistant/schemas.ts');
 const constants = read('src/lib/ownerBusinessAssistant/constants.ts');
 const clientResponses = read('src/lib/ownerBusinessAssistant/clientResponses.ts');
 const apiGuards = read('src/lib/ownerBusinessAssistant/server/apiGuards.ts');
+const contextPacketCache = read('src/lib/ownerBusinessAssistant/server/contextPacketCache.ts');
 const contextPacketBuilder = read('src/lib/ownerBusinessAssistant/server/buildOwnerBusinessAssistantContextPacket.ts');
 const domainMatrix = read('src/lib/ownerBusinessAssistant/server/domainCapabilityMatrix.ts');
 const answerResolver = read('src/lib/ownerBusinessAssistant/server/resolveOwnerBusinessAssistantAnswer.ts');
@@ -260,6 +261,21 @@ forbidToken(feedbackRoute, 'request.json()', 'feedback route raw request parsing
 forbidToken(constants, 'action:', 'owner business action endpoint');
 
 [
+  'owner_business_assistant_packet_cache_index_read_failed',
+  'owner_business_assistant_packet_cache_read_failed',
+  'owner_business_assistant_packet_cache_write_failed',
+  'owner_business_assistant_packet_cache_invalidate_failed',
+  'getOwnerBusinessAssistantPacketCacheContext',
+  "getBoundedRuntimeStringContext('cacheKey', params.cacheKey)",
+  "getBoundedRuntimeStringContext('indexKey', params.indexKey)",
+  "fallbackPolicy: 'cache_miss'",
+  "fallbackPolicy: 'skip_cache_write'",
+  "fallbackPolicy: 'best_effort_invalidation'",
+].forEach((token) => requireToken(contextPacketCache, token, 'owner business packet cache diagnostics'));
+forbidToken(contextPacketCache, 'catch {\n    return null;', 'owner business packet cache silent read fallback');
+forbidToken(contextPacketCache, 'catch {\n    return { attempted: true', 'owner business packet cache silent invalidation fallback');
+
+[
   'OwnerBusinessAssistantScopeSchema',
   'OwnerBusinessAssistantStoreIdSchema',
   'projectId: z.string().min(1).max(160).optional()',
@@ -383,6 +399,9 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   'read-only source gate',
   'No public truth writes',
   'Public Truth owner fix list is Firebase-cost neutral',
+  'Server packet cache diagnostics are cost-neutral',
+  'owner_business_assistant_packet_cache_read_failed',
+  'owner_business_assistant_packet_cache_invalidate_failed',
 ].forEach((token) => requireToken(firebaseDoc, token, 'firebase doc'));
 
 [
@@ -398,8 +417,12 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   ['report', report, '`npm run verify:owner-business-health-boundary`'],
   ['audit', audit, 'Owner Business Health boundary checkpoint'],
   ['audit', audit, '`npm run verify:owner-business-health-boundary`'],
+  ['audit', audit, 'Business Health packet-cache diagnostics checkpoint'],
+  ['audit', audit, 'owner_business_assistant_packet_cache_read_failed'],
   ['changelog', changelog, 'Owner Business Health Boundary'],
   ['changelog', changelog, '`npm run verify:owner-business-health-boundary`'],
+  ['changelog', changelog, 'Business Health Packet Cache Diagnostics'],
+  ['changelog', changelog, 'owner_business_assistant_packet_cache_*_failed'],
 ].forEach(([label, source, token]) => requireToken(source, token, `owner business health ledger ${label}`));
 
 requireOrder(

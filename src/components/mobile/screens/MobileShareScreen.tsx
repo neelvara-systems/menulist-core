@@ -985,7 +985,7 @@ export default function MobileShareScreen({
 
         setGeneratingDownload('feedback_qr');
         try {
-            const { downloadQrCode, generateBrandedFeedbackQrCode } = await import('@lib/utils/feedbackQrCode');
+            const { downloadQrCode, generateBrandedFeedbackQrCode, getQrCodeFilename } = await import('@lib/utils/feedbackQrCode');
             const qrDataUrl = await generateBrandedFeedbackQrCode(data.projectId, {
                 brandColor: storeBrandColor,
                 footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
@@ -995,7 +995,7 @@ export default function MobileShareScreen({
                 title: t('feedbackQr'),
                 activePlanType: (storeDetails as any)?.activePlanType,
             }, data.obpLink);
-            downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
+            downloadQrCode(qrDataUrl, getQrCodeFilename(data.storeName));
             Toast.show({ content: t('assetDownloaded', { label: t('feedbackQr') }), duration: 1400, icon: 'success' });
         } catch (error) {
             logMobileOwnerFailure('mobile_share_feedback_qr_download_failed', error, buildMobileShareLogContext('feedback_qr_download'));

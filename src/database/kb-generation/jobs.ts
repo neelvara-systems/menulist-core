@@ -5,6 +5,7 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
 import { answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
 import { triggerStartGeneration } from "@lib/firebase/functions";
 import { INGESTION_JOB_STATUS, IngestionJob } from "@type/knowledgeBase";
@@ -32,6 +33,10 @@ type ReadableIngestionJobScope = {
     isPlatform: boolean;
     tId?: number;
     sId?: number;
+};
+
+type IngestionJobSessionLookup = {
+    session: Awaited<ReturnType<typeof getActiveSession>> | null;
 };
 
 const getCollectionRef = () => {
@@ -84,8 +89,25 @@ export const getIngestionJobCollectionRef = (session: any) => {
     );
 };
 
+const resolveIngestionJobSession = async (operation: string): Promise<IngestionJobSessionLookup> => {
+    try {
+        return {
+            session: await getActiveSession(),
+        };
+    } catch (error) {
+        logAnswerlatticeFailure(
+            'answerlattice_kb_generation_session_lookup_failed',
+            error,
+            getBoundedAnswerlatticeStringContext('operation', operation),
+        );
+        return {
+            session: null,
+        };
+    }
+};
+
 const resolveReadableIngestionJobScope = async (session?: any): Promise<ReadableIngestionJobScope> => {
-    const activeSession = session || await getActiveSession().catch(() => null);
+    const activeSession = session || (await resolveIngestionJobSession('resolve_readable_ingestion_job_scope')).session;
     const tId = Number(activeSession?.tId);
     const sId = Number(activeSession?.sId);
     return {

@@ -176,7 +176,7 @@ export function buildCustomerQuestionCoverageReport(input: CustomerQuestionCover
   const sourceExists = hasUsefulText(sourceText, 50);
   const questionsExist = hasUsefulText(commonQuestions, 12);
   const hasPublicUrl = publicUrl.length > 0;
-  const validPublicUrl = isValidHttpUrl(publicUrl);
+  const validPublicUrl = isValidHttpUrl(publicUrl, 'customer_question_coverage_public_url');
 
   const checks: CustomerQuestionCoverageItem[] = [
     makeCheck(

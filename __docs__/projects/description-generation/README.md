@@ -2,14 +2,16 @@
 
 > **Feature:** AI-Powered Menu Item Description Generation
 > **Status:** Implemented source evidence; not current launch certification
-> **Last Updated:** March 13, 2026
-> **Version:** 2.3
+> **Last Updated:** July 5, 2026
+> **Version:** 2.4
 
 ---
 
 ## Current Launch Boundary
 
 This documentation hub links source evidence for description generation. It is not current production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, AI accounting/source gates, provider smoke, browser/mobile editor QA, and deploy evidence for the target environment.
+
+Provider-response parsing is fail-closed and bounded. `/api/descriptions` strips JSON fences, accepts extractable object-fragment JSON, and returns the existing generic owner-safe failure when Gemini returns empty, malformed non-object, or malformed object-fragment JSON. Those unrecoverable parse failures log capped `description_provider_response_parse_failed` diagnostics with fixed `return_description_generation_failed` policy and response-shape metadata only. Local success/error logs use bounded request, response, and transaction summaries. The editor service-layer returned-error branch logs `menu_editor_description_generation_returned_error_message` with result-message/file/project presence-length metadata only. Raw provider response text, prompt/menu/item copy, generated descriptions, project/file/store/tenant/user IDs, response preview text, full provider response objects, raw prompt item/language payloads, raw editor returned-error messages, and exception text are not logged.
 
 ---
 

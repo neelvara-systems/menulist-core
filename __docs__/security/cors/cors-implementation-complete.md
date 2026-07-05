@@ -165,21 +165,24 @@ const ALLOWED_ORIGINS = [
 
 ### 3. Security Logging
 
-**CORS failures logged to Sentry**:
+**CORS failures logged with bounded metadata**:
 
 ```typescript
-logger.security(
-  "CORS Validation Failed",
+logSecurityDiagnostic(
+  "cors_origin_blocked",
   {
-    origin: "https://evil-site.com",
-    endpoint: "/api/descriptions",
-    method: "POST",
-    ip: "192.168.1.1",
-    userAgent: "Mozilla/5.0...",
-  },
-  "high"
-); // HIGH severity
+    originPresent: true,
+    originLength: 21,
+    originParseable: true,
+    originHttps: true,
+    originHttp: false,
+    originHasCredentials: false,
+    allowedOriginCount: 3,
+  }
+);
 ```
+
+Blocked-origin diagnostics are bounded: raw Origin header values, raw IP addresses, raw user agents, and the full allowed-origin list are not logged.
 
 **Benefits**:
 

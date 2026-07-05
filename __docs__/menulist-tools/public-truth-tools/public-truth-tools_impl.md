@@ -65,6 +65,8 @@ V0 tools may parse owner-entered URLs only as local readiness hints. The shared 
 
 The parser does not fetch, open, resolve DNS, crawl, inspect, store, or mutate the target. It only decides whether an owner-entered link is suitable to count as a public customer link in a browser-local report.
 
+Malformed URL syntax uses bounded parse diagnostics. `public_truth_tool_url_parse_failed` includes the manifest/tool source label, value kind, value string length, candidate length, explicit-protocol shape, fixed `treat_as_missing_public_url` fallback policy, and normalized source error metadata only. It does not log the owner-entered URL, hostname, path, query string, fragment, report payload, store identifiers, or exception text. Repeated shapes are capped before logging.
+
 URL-derived evidence text in manifest-backed public reports must name the public HTTPS boundary. Generic "URL format was checked" wording is not enough because it hides the local/private/insecure rejection rule from the generated report.
 
 ---
@@ -130,6 +132,8 @@ Current desktop focused surfaces are:
 These targets are navigation only. They add no Public Truth report storage, external scans, provider calls, or new write paths.
 
 The owner fix list is not a new dashboard or work queue. `buildOwnerPublicTruthSetupJobList(...)` derives it from already-computed readiness modules, caps it at `OWNER_PUBLIC_TRUTH_MAX_SETUP_JOBS`, and keeps every item tied to the same desktop/mobile fix target as its module.
+
+Owner readiness menu-link generation remains best-effort. If `generateProjectUrl(...)` throws while deriving the public menu URL from the current store domain and project summary, the report keeps the existing fallback by omitting `publicLinks.menuUrl`. The failure logs bounded `public_truth_owner_menu_url_generation_failed` diagnostics with subdomain/custom-domain presence and length, project slug/name/project-id shape metadata, default-project state, fixed `omit_menu_url` fallback policy, and normalized source error metadata only. It does not log raw domains, project names, slugs, project IDs, tenant/store IDs, generated URLs, or exception text.
 
 ---
 

@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.104 (Customer FAQ Reply Pack)
+**Version:** 3.6.105 (Website Analytics Clarity Configuration Boundary)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** July 4, 2026
+**Last Updated:** July 5, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,11 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.104** | **Customer FAQ Reply Pack** | **MenuList Tools now includes a public browser-local FAQ pack that turns repeated customer questions and owner-entered facts into reusable answers.** | **ACTIVE** |
+| **3.6.105** | **Website Analytics Clarity Configuration Boundary** | **Microsoft Clarity remains consent-gated and now fails closed unless `NEXT_PUBLIC_CLARITY_ID` is explicitly configured.** | **ACTIVE** |
+
+Version 3.6.105 removes the committed Microsoft Clarity project fallback from the public MenuList marketing website. `ClarityAnalytics` still mounts only inside `WebsiteAnalyticsConsent` after accepted analytics consent, but it now also requires an explicit alphanumeric `NEXT_PUBLIC_CLARITY_ID`; missing or malformed config disables Clarity instead of loading a baked-in project. `npm run verify:website-public-copy-boundary` source-gates the consent mount, accepted-only child rendering, Clarity env/shape guard, and docs parity. This is public website analytics configuration hardening only; Plausible, Google Analytics, website marketing events, owner dashboard analytics, customer menu/OBP analytics, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
+
+Version 3.6.104 remains Customer FAQ Reply Pack and is preserved below as the previous website version note.
 
 Version 3.6.104 adds `/tools/customer-faq-reply-pack` as a public MenuList Tools route. The tool runs browser-local self-report checks, generates deterministic FAQ/menu/hours/price/location/action/availability/fallback answers from owner-entered questions and facts, supports copy/download/shareable report actions, and can submit an optional consented follow-up through the existing bounded `/api/public/contact` route. It is feature-flagged through `ENABLE_PUBLIC_TRUTH_TOOLS` and `ENABLE_PUBLIC_TRUTH_CUSTOMER_FAQ_REPLY_PACK`, registered in Tools Hub, platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`, and guarded by `npm run verify:customer-faq-reply-pack` against customer-conversation reads, chatbot creation, automation configuration, message sending, external source fetches, report storage, provider calls, and ranking/citation claims. This is public website route/component/locale/discovery/docs/verifier work only; owner dashboard runtime, customer menu/OBP runtime, external source adapters, AI/search readability checks, new Firebase collections, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
 

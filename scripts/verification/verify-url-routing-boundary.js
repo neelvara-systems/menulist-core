@@ -248,6 +248,7 @@ function verifyPublicPathSegmentBoundary() {
   const sitemap = read('src/app/client/sitemap.ts');
   const pathSegments = read('src/lib/publicRouting/pathSegments.ts');
   const reservedSlugs = read('src/constants/reservedSlugs.ts');
+  const publicRenderLanguage = read('src/lib/localization/publicRenderLanguage.ts');
 
   [
     ['simple segment', normalizePublicPathSegment('pune'), 'pune'],
@@ -278,6 +279,26 @@ function verifyPublicPathSegmentBoundary() {
     'export function normalizePublicProjectSlug',
     'isReservedProjectSlug(segment)',
   ].forEach((token) => assertIncludes(pathSegments, token, 'Public path segment helper boundary'));
+
+  [
+    'public_language_param_url_parse_failed',
+    'PUBLIC_LANGUAGE_PARAM_DIAGNOSTIC_LIMIT',
+    'reportedPublicLanguageParamFailures.add(failureKey)',
+    "getBoundedRuntimeStringContext('languageParamUrl', url)",
+    "getBoundedRuntimeStringContext('language', language)",
+    "fallbackPolicy: 'return_original_url'",
+    'logPublicLanguageParamFailure(error, url, normalizedLanguage)',
+  ].forEach((token) => assertIncludes(publicRenderLanguage, token, 'Public language param parse fallback boundary'));
+  assertNotIncludes(
+    publicRenderLanguage,
+    "const separator = url.includes('?') ? '&' : '?';",
+    'Public language param parse fallback must not append to raw malformed URLs',
+  );
+  assertNotIncludes(
+    publicRenderLanguage,
+    'return `${url}${separator}lang=${encodeURIComponent(normalizedLanguage)}`;',
+    'Public language param parse fallback must not return string-concatenated raw URLs',
+  );
 
   [
     "'menu',            // /menu is the universal menu alias and cannot be an outlet root",
@@ -350,11 +371,23 @@ function verifyPublicPathSegmentBoundary() {
     '.filter((entry): entry is OutletSitemapEntry => Boolean(entry))',
     'Outlets without a safe `outletSlug`',
     'projects without a safe `projectSlug`',
+    'logTenantSitemapFailure',
+    'MAX_TENANT_SITEMAP_DIAGNOSTICS',
+    'reportedTenantSitemapFailures.add(failureKey)',
+    'fallbackPolicy: TENANT_SITEMAP_FALLBACK_POLICIES[failureType]',
+    'return_empty_sitemap',
+    'omit_outlet_sitemap_entries',
+    'omit_project_sitemap_entries',
+    'tenant_sitemap_master_store_lookup_failed',
+    'tenant_sitemap_projects_lookup_failed',
+    'tenant_sitemap_outlets_lookup_failed',
   ].forEach((token) => assertIncludes(sitemap, token, 'Sitemap public path-segment boundary'));
   [
     'data.outletSlug.trim()',
     'typeof data?.outletSlug === \'string\' ? data.outletSlug.trim()',
     'typeof p?.slug === \'string\' ? p.slug.trim()',
+    '} catch {\n            return null;\n        }',
+    '} catch {\n            return [];\n        }',
   ].forEach((token) => assertNotIncludes(sitemap, token, 'Sitemap raw path-segment output'));
 }
 
@@ -467,6 +500,14 @@ function verifyDocsBoundary() {
   assertIncludes(docs[3][1], 'safe project path segments', 'URL routing Firebase project path-segment boundary');
   assertIncludes(docs[4][1], 'safe project path segments', 'URL routing mobile project path-segment boundary');
   assertIncludes(audit, 'safe project path segments', 'production readiness audit project path-segment boundary');
+  assertIncludes(readme, 'tenant_sitemap_*_failed', 'URL routing README sitemap diagnostic boundary');
+  assertIncludes(impl, 'tenant_sitemap_master_store_lookup_failed', 'URL routing implementation sitemap diagnostic boundary');
+  assertIncludes(docs[3][1], 'tenant sitemap lookup diagnostic cap', 'URL routing Firebase sitemap diagnostic cost boundary');
+  assertIncludes(audit, 'Tenant sitemap diagnostic cap checkpoint', 'production readiness audit sitemap diagnostic boundary');
+  assertIncludes(readme, 'public language parameter parse fallback', 'URL routing README language param parse boundary');
+  assertIncludes(impl, 'public language parameter parse fallback', 'URL routing implementation language param parse boundary');
+  assertIncludes(docs[3][1], 'public_language_param_url_parse_failed', 'URL routing Firebase language param parse cost boundary');
+  assertIncludes(audit, 'Public language parameter parse fallback checkpoint', 'production readiness audit language param parse boundary');
 }
 
 function verifyUrlRoutingBoundary() {

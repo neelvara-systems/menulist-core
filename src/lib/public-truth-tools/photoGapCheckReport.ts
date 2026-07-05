@@ -110,7 +110,7 @@ export function buildPhotoGapCheckReport(input: PhotoGapCheckInput): PhotoGapChe
   const cityOrArea = trimToSingleLine(input.cityOrArea);
   const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
   const hasCustomerLink = currentCustomerLink.length > 0;
-  const validCustomerLink = isValidHttpUrl(currentCustomerLink);
+  const validCustomerLink = isValidHttpUrl(currentCustomerLink, 'photo_gap_check_current_customer_link');
 
   const checks: PhotoGapCheckItem[] = [
     makeCheck(

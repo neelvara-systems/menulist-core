@@ -39,6 +39,10 @@ The Guest Feedback System is a **private correction channel** for guest feedback
 - Helps owners correct the same approved source that feeds customer-facing public surfaces
 - Optionally prompts all guests, regardless of rating, toward the configured public review URL when enabled
 
+Feedback nudge storage diagnostics: the inline public menu feedback nudge uses a browser-local, tab-scoped sessionStorage guard only to avoid repeating the nudge in the same session. Failed guard reads/writes log bounded `public_menu_feedback_nudge_storage_read_failed` / `public_menu_feedback_nudge_storage_write_failed` diagnostics only and do not create a fallback Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+
+Safe review URL boundary now includes review URL parse diagnostics. Malformed configured Google review URLs are still treated as absent before guest-facing output, but parser failures log bounded `guest_feedback_review_url_parse_failed` diagnostics with source label, value type, length metadata, and fixed `omit_review_url` fallback policy only.
+
 **What it is NOT:**
 
 - ❌ A review manager

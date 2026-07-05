@@ -77,6 +77,17 @@ const messageTemplates = read('src/lib/communication/messageTemplates.ts');
   'activeProjects',
   'getOfferingLabels',
   'getLocalizedText',
+  'communication_kit_today_hours_timezone_fallback_failed',
+  'communication_kit_today_hours_range_invalid',
+  'MAX_COMMUNICATION_KIT_TODAY_HOURS_DIAGNOSTICS',
+  'reportedCommunicationKitTodayHoursTimezoneFailures',
+  'reportedCommunicationKitTodayHoursRangeFailures',
+  'parseCommunicationKitTimeToMinutes',
+  "getBoundedRuntimeStringContext('timeZone', timeZone)",
+  "fallbackPolicy: 'browser_local_day'",
+  "getBoundedRuntimeStringContext('dayKey', dayKey)",
+  'todayValueLength: todayValue.length',
+  'return { hours: null, isClosed: false };',
 ].forEach((token) => requireToken(messageTemplates, token, 'message templates'));
 [
   'fetch(',
@@ -84,6 +95,7 @@ const messageTemplates = read('src/lib/communication/messageTemplates.ts');
   'setDoc(',
   'addDoc(',
   'updateDoc(',
+  '    } catch {\n        dayIndex = new Date().getDay();\n    }',
 ].forEach((token) => forbidToken(messageTemplates, token, 'message templates'));
 
 const desktopCommunicationKit = read('src/components/templates/main-app/useMenuList/CommunicationKit.tsx');
@@ -241,6 +253,7 @@ const customerImpl = read('__docs__/customer-communication-kit/customer-communic
 [
   'bounded Use MenuList diagnostics',
   'bounded mobile owner diagnostics',
+  'Today-hours diagnostics',
   'Do not log raw generated messages',
   'npm run verify:communication-kit-boundary',
 ].forEach((token) => requireToken(customerImpl, token, 'Customer Communication Kit implementation doc'));
@@ -250,6 +263,7 @@ const customerFirebase = read('__docs__/customer-communication-kit/customer-comm
   'Zero new reads, zero new writes',
   'Firebase deploy requirement',
   'browser-local owner actions',
+  'Today-hours diagnostics',
   'npm run verify:communication-kit-boundary',
 ].forEach((token) => requireToken(customerFirebase, token, 'Customer Communication Kit Firebase doc'));
 
@@ -302,12 +316,13 @@ const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 [
   'Communication Kit and physical-surface output boundary checkpoint',
+  'Communication Kit today-hours diagnostics checkpoint',
   'npm run verify:communication-kit-boundary',
-  'No Customer Communication Kit runtime behavior',
 ].forEach((token) => requireToken(audit, token, 'production readiness audit'));
 
 const changelog = read('__docs__/CHANGELOG.md');
 [
+  'Customer Communication Kit Today-Hours Diagnostics',
   'July 2, 2026 - Communication Kit and Physical Surface Output Boundary',
   'verify:communication-kit-boundary',
   'source/docs verification only',

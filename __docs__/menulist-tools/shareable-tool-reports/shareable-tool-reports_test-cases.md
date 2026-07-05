@@ -40,6 +40,7 @@ npm run verify:public-truth-tools
 | STR-013 | Report capture boundary | Accepted follow-up stores an existing contact enquiry only; no report API route or report collection exists |
 | STR-014 | Report lead metadata | Follow-up request includes bounded `sourceContext` with `setupJobList`, and the contact route stores queryable `sourceKind`, `sourceToolId`, `sourceReportStatus`, and nested source context on the existing enquiry |
 | STR-015 | Report Lead Ops monitor | `/ops/report-leads` is platform-admin only, manual-refresh, reads recent existing enquiries, shows setup job lists, parses bounded responses, and performs no lead mutation or report storage |
+| STR-016 | Invalid, oversized, malformed, or wrong-shape hash payload | Decoder logs bounded `shareable_tool_report_payload_decode_failed` diagnostics with shape metadata only and keeps the invalid-report state |
 
 ---
 
@@ -49,6 +50,7 @@ npm run verify:public-truth-tools
 - A future tool adds report storage without V2 docs.
 - A tampered report link tries to route users to a non-MenuList URL.
 - A very large hash freezes the report viewer.
+- Decode diagnostics leak the report hash, decoded JSON, business context, evidence rows, setup jobs, or contact details.
 - The setup job list drifts from visible report gaps or is treated as canonical truth before owner confirmation.
 - The follow-up form drifts into hidden capture, unbounded payloads, missing lead metadata, or claimed email delivery.
 - The internal lead monitor drifts into public access, realtime listeners, lead mutation, or saved report history.

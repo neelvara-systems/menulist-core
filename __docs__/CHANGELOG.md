@@ -8,6 +8,976 @@
 
 ---
 
+## July 5, 2026 - Answerlattice KB Session Lookup Diagnostics
+
+### Fixed
+
+- **KB article, category, and job session lookup failures are visible** - deprecated compatibility reads now log bounded Answerlattice diagnostics instead of silently collapsing thrown `getActiveSession()` failures into anonymous scope.
+- **Category reads no longer fall through after session infrastructure failure** - `getCategories()` returns `null` when session lookup itself failed, instead of reading the legacy categories document.
+- **The boundary is source-gated** - `npm run verify:answerlattice-runtime-truth` now rejects silent `getActiveSession().catch(() => null)` fallbacks in the KB article, category, and generation-job DALs and checks docs parity.
+
+### Boundaries
+
+- This changes Answerlattice KB observability and scope admission only. It does not change valid scoped reads/writes, entity extraction, cache versioning, Firestore rules/indexes, Cloud Functions, Firebase deployment, Vercel deployment, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Weekly Narrative Output Boundary
+
+### Fixed
+
+- **Weekly narrative generated text is normalized before storage** - the local generator now strips control/template characters, normalizes whitespace, caps narrative/list-item lengths, and caps generated highlight/recommendation list counts before writing the weekly insight document.
+- **Fallback copy remains deterministic** - unusable generated narrative, highlight, or recommendation text falls back to the existing local summary copy.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now rejects trim-only generated-output persistence and checks AI System docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes `/api/analytics/weekly-narrative/generate-local` output normalization only. It does not change authentication, permissions, SAFE_MODE, rate limits, analytics reads, Gemini calls, insight writes, AI operation accounting, Firestore rules/indexes, Cloud Functions, Firebase deploys, Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Maps Place Check Raw Provider Output Boundary
+
+### Fixed
+
+- **Maps Place Check no longer returns raw provider text** - the callable result now omits raw Gemini/Maps response snippets when grounding is missing or JSON parsing fails.
+- **Diagnostics stay bounded** - Functions logs keep response length and parse-state metadata instead of returning provider text to the caller.
+- **The boundary is source-gated** - `npm run verify:public-truth-tools` now rejects `rawText` in the Maps Place Check callable output contract and checks the feature docs.
+
+### Boundaries
+
+- This changes the guarded Maps Place Check callable output only. It does not enable the feature flag, add Firestore writes, change canonical store truth, alter Maps source attribution fields, add public UI, change public tool reports, change Storage rules, run a Vercel deploy, complete provider smoke, approve production launch, or certify release. A scoped Firebase Functions deploy is required for live effect.
+
+## July 5, 2026 - Legacy Lifecycle Event/Status Diagnostics
+
+### Fixed
+
+- **Legacy lifecycle logs no longer include raw event/status strings** - Functions lifecycle messaging diagnostics now report event type and delivery status as presence/length/type metadata.
+- **Feature-disabled and no-template branches use bounded context** - those branches no longer pass raw `eventType` values directly to Cloud Functions logs.
+- **The boundary is source-gated** - `npm run verify:owner-notifications-boundary` now checks the bounded lifecycle messaging context and raw event/status logging exclusions.
+
+### Boundaries
+
+- This changes legacy lifecycle messaging observability only. It does not change valid sends, owner-notification migration delivery, idempotency queries, retry/digest queries, stored `messageLogs.eventType`, stored `messageLogs.status`, Firestore rules/indexes, Storage rules, Vercel deploys, production builds, provider smoke, browser/device QA, launch approval, or release certification. A scoped Firebase Functions deploy is required for live effect.
+
+## July 5, 2026 - Owner Notification Flag and Trigger Diagnostics
+
+### Fixed
+
+- **Owner-notification lifecycle flag read failures are no longer silent** - the queue-first Functions processor still skips delivery when `ops_config/system.ENABLE_LIFECYCLE_MESSAGING` cannot be read, but now logs bounded `owner_notification_lifecycle_flag_check_failed` diagnostics.
+- **Unknown owner-notification triggers no longer log raw trigger text** - incoming and stored unknown-trigger paths log trigger presence/length/type metadata only, then keep the existing skip behavior.
+- **The boundary is source-gated** - `npm run verify:owner-notifications-boundary` now checks the flag-read diagnostic, unknown-trigger diagnostic, docs parity, and raw-trigger logging exclusion.
+
+### Boundaries
+
+- This changes owner-notification Functions observability only. It does not change valid lifecycle delivery, event creation for known triggers, provider sends, delivery rows, rate limits, Firestore rules/indexes, Storage rules, Vercel deploys, production builds, browser/device QA, launch approval, or release certification. A scoped Firebase Functions deploy is required for live effect.
+
+## July 5, 2026 - Owner Dashboard OBP Summary Read Diagnostics
+
+### Fixed
+
+- **OBP overview summary read failures are no longer silent** - owner dashboard OBP overview still builds status, WTD, MTD, and history from daily docs, but a failed optional `_obp_overall_summary` read now logs bounded `owner_dashboard_obp_summary_read_failed` diagnostics.
+- **Owner-facing fallback is unchanged** - failed summary reads keep `viewsChange` as `null` and do not block the dashboard.
+- **The boundary is source-gated** - `npm run verify:owner-dashboard-today-boundary` now rejects the old silent summary-read catch and requires docs/audit parity.
+
+### Boundaries
+
+- This changes Owner Dashboard OBP overview observability only. It does not change OBP daily-doc reads, settled dashboard summary reads, owner dashboard status copy, Firestore writes, analytics writes, Cloud Functions, cache invalidation, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Pricing Integrity PDF Failure Reason Persistence
+
+### Fixed
+
+- **Dormant Pricing Integrity PDF failures no longer persist arbitrary text** - `markPDFFailed()` stores only a bounded local failure code in `pricingIntegrity.pdf.lastFailureReason`.
+- **Unknown failure text is normalized** - arbitrary caller text collapses to `pricing_pdf_generation_failed`; code-shaped reasons can still be retained.
+- **Diagnostics stay bounded** - pricing diagnostics include the stored code plus raw input presence/length metadata only.
+- **The boundary is source-gated** - `npm run verify:pricing-integrity-boundary` and `npm run verify:menulist-api-tenant-safety` now reject direct raw-error persistence for this field.
+
+### Boundaries
+
+- This changes dormant Pricing Integrity PDF failure metadata only. It does not wire `runPricingIntegrity()` into editor saves, enable background PDF regeneration, change current on-demand PDF generation, change project save behavior, change public menu output, change Digital Screens invalidation, add active Firebase cost, require Firebase/Vercel deployment, run production builds, complete browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Scheduler-Hour Timezone Diagnostics
+
+### Fixed
+
+- **Scheduler-hour timezone fallback is no longer silent** - app and Functions `computeSchedulerHour()` still fall back to the UTC settlement hour when a configured timezone is malformed, but that degraded path now logs bounded diagnostics.
+- **Raw timezone values stay out of logs** - diagnostics include only timezone presence/length metadata, target local hour, Intl availability, fallback policy, and normalized source error metadata.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now requires the app and Functions scheduler-hour diagnostic guards, analytics docs parity, and rejects the old silent fallback catch.
+
+### Boundaries
+
+- This changes scheduler-hour fallback observability only. It does not change valid scheduler-hour calculation, valid store-local analytics settlement, stored `schedulerHour` fallback semantics, Firestore reads/writes, analytics writes, Cloud Function schedules, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Deleted Project Slug Reservation Fail Closed
+
+### Fixed
+
+- **Deleted-project URL reservations now fail closed** - if the 90-day deleted-slug reservation lookup cannot be completed, MenuList treats the proposed slug as reserved instead of available.
+- **Create and duplicate stay usable without hijacking old URLs** - those flows append a unique suffix when reservation state is unknown.
+- **Rename and backfill preserve public URL permanence** - those flows refuse the new slug through the same path used for a confirmed recently deleted slug reservation.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now checks the conservative return, old fail-open wording exclusion, and URL-routing docs parity.
+
+### Boundaries
+
+- This changes deleted-project slug reservation lookup failure handling only. It does not change normal valid slug generation, confirmed reservation handling, previous-slug redirects, public resolver behavior, summary schema, public cache invalidation, Firestore rules, Firebase/Vercel deployment, production build, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Staleness Lifecycle Delivery Diagnostics
+
+### Fixed
+
+- **Staleness delivery failures now leave bounded diagnostics** - if the nightly staleness detector writes the cooldown row but `MENU_STALE` lifecycle delivery throws, Functions now logs `STALENESS_LIFECYCLE_DELIVERY_FAILED`.
+- **The existing fallback is unchanged** - the detection cooldown row remains in place and the nightly scan continues, so one failed delivery path cannot duplicate stale-menu prompts in the same cooldown window.
+- **The boundary is source-gated** - `npm run verify:owner-notifications-boundary` now checks the staleness delivery diagnostic, fallback policy, and lifecycle docs parity.
+
+### Boundaries
+
+- This changes staleness lifecycle delivery observability only. It does not change valid lifecycle delivery, SMTP provider behavior, owner-notification migration delivery, staleness detection writes, message-log schema, Firestore rules, Storage rules, Vercel deployment, production build, provider smoke, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - SMTP Port Configuration Fail Closed
+
+### Fixed
+
+- **SMTP port config is now explicit** - the legacy Functions SMTP adapter and root app SMTP senders no longer fall back to port `587` when `SMTP_PORT` is missing.
+- **Invalid SMTP ports do not send** - missing, malformed, or out-of-range SMTP ports return the local not-configured result before creating a nodemailer transporter.
+- **App-side safety read failures now skip sends** - root lifecycle and generic notification duplicate/rate-limit read failures now log bounded diagnostics and stop the send instead of sending optimistically.
+- **The boundary is source-gated** - `npm run verify:owner-notifications-boundary` checks the Functions SMTP provider port gate and lifecycle docs parity; `npm run verify:menulist-api-tenant-safety` checks the root app SMTP helper and app-side fail-closed send paths.
+
+### Boundaries
+
+- This changes SMTP configuration failure handling and app-side safety-read failure handling only. It does not change valid SMTP delivery, lifecycle templates, owner-notification migration delivery, normal duplicate skips, normal rate-limit skips, message-log schema, Firestore rules, Firebase/Vercel deployment, production build, provider smoke, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Lifecycle Messaging Fail Closed
+
+### Fixed
+
+- **Legacy lifecycle email safety reads now fail closed** - if Functions cannot verify message idempotency or the daily store email cap, the legacy lifecycle sender skips the email instead of sending optimistically.
+- **Previous silent paths now leave bounded diagnostics** - feature-flag, idempotency, rate-limit, and retry-send failures log stable failure codes without raw store, tenant, recipient, subject, reference, or provider exception text.
+- **The boundary is source-gated** - `npm run verify:owner-notifications-boundary` now checks the legacy Functions sender behavior and lifecycle docs parity.
+
+### Boundaries
+
+- This changes legacy lifecycle email failure handling only. It does not change valid owner-notification migration delivery, valid SMTP sends, duplicate skips, normal rate-limit skips, templates, message-log schema, Firestore rules, Vercel deployment, production build, provider smoke, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Customer App Service Worker Degraded Fallback Diagnostics
+
+### Fixed
+
+- **Service-worker degraded fallbacks now leave bounded diagnostics** - malformed registered worker script URLs log `service_worker_script_url_label_parse_failed`, and blocked public cleanup reload session guards log `service_worker_public_cleanup_reload_storage_failed`.
+- **Valid behavior is unchanged** - known owner/customer/MyCodex worker URLs still map to bounded labels, malformed registered script URLs still fall back to `unknown`, and stale public-worker cleanup still uses the existing reload fallback when the session guard cannot be stored.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` and `npm run verify:auth-security-failure-matrix` now reject the old silent fallback catches and require docs parity.
+
+### Boundaries
+
+- This changes service-worker fallback observability only. It does not change valid worker selection, worker scripts, worker cache policy, install prompt behavior, manifest behavior, Customer App analytics, Firestore reads/writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Root App Sentry DSN Fail Closed
+
+### Fixed
+
+- **Root app Sentry no longer embeds DSNs** - Next.js client/server/edge Sentry now reads configured DSN env vars instead of falling back to committed dev/prod Sentry project URLs.
+- **Missing config disables app Sentry** - when no matching browser or server DSN is configured, `isSentryMonitoringEnabled` remains false and the Sentry SDK is not initialized.
+- **The boundary is source-gated** - `npm run verify:auth-security-failure-matrix` now rejects hardcoded root app Sentry DSNs and requires the diagnostics/docs boundary.
+
+### Boundaries
+
+- This changes root app Sentry configuration only. It does not change monitoring sanitization, Functions Sentry setup, logger console output, owner/customer UI, Firebase rules, Cloud Functions, Vercel deployment, production build, browser/device QA, Sentry project setup, launch approval, or release certification.
+
+## July 5, 2026 - Website Analytics Consent Storage Diagnostics
+
+### Fixed
+
+- **Consent storage fallbacks now leave bounded diagnostics** - public website cookie-consent read/write failures log `public_cookie_consent_storage_failed`, and Plausible consent-read failures log `public_website_plausible_consent_read_failed`.
+- **Consent behavior is unchanged** - analytics still render only after accepted consent, Plausible still skips events until consent can be read, and failed consent writes keep the page-local runtime choice.
+- **The boundary is source-gated** - `npm run verify:website-public-copy-boundary` now rejects the old silent consent-storage catches and requires docs parity.
+
+### Boundaries
+
+- This changes public website consent-storage observability only. It does not change analytics consent choices, valid Plausible/GA4/Clarity loading, public website copy, owner/customer analytics, Firestore reads/writes, Storage operations, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Website Analytics Clarity Configuration Boundary
+
+### Fixed
+
+- **Clarity no longer has a committed project fallback** - the public MenuList marketing website now loads Microsoft Clarity only when `NEXT_PUBLIC_CLARITY_ID` is explicitly configured with an alphanumeric project ID.
+- **Consent behavior is unchanged** - Clarity still mounts only through `WebsiteAnalyticsConsent` after accepted analytics consent.
+- **The boundary is source-gated** - `npm run verify:website-public-copy-boundary` now rejects the old hardcoded Clarity fallback and checks the consent/configuration boundary.
+
+### Boundaries
+
+- This changes public website Clarity configuration only. It does not change Plausible, Google Analytics, owner dashboard analytics, customer menu/OBP analytics, Firebase rules, Cloud Functions, Vercel deployment, production build, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - CORS Blocked-Origin Diagnostics
+
+### Fixed
+
+- **Blocked-origin logs are bounded** - CORS rejected-origin handling now logs `cors_origin_blocked` with origin shape metadata and allowed-origin count instead of raw Origin values or the full allowed-origin list.
+- **CORS behavior is unchanged** - same-origin requests, configured HTTPS origins, HTTPS subdomains, and development-only localhost handling keep the same allow/deny behavior.
+- **The boundary is source-gated** - `npm run verify:auth-security-failure-matrix` now rejects raw blocked-origin logging and requires CORS docs parity.
+
+### Boundaries
+
+- This changes CORS observability only. It does not change valid origin matching, rejected-origin responses, public or owner route behavior, Firestore reads/writes, Storage operations, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - CSP Report Malformed JSON Diagnostics
+
+### Fixed
+
+- **Malformed CSP report bodies now leave bounded diagnostics** - `/api/csp-report` still returns the standard non-blocking 204 for malformed JSON reports, but the parse fallback now logs capped `csp_report_json_parse_failed` metadata instead of disappearing silently.
+- **Raw report data stays out of logs** - diagnostics include only body shape/length and presence-length request metadata, not report bodies, referrers, user agents, IP addresses, URLs, or parser messages.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now rejects the old silent malformed-JSON fallback and raw body previews.
+
+### Boundaries
+
+- This changes malformed CSP report observability only. It does not change valid CSP violation handling, CSP headers, owner/customer UI, Firestore reads/writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Razorpay Normal-Path Debug Diagnostics
+
+### Fixed
+
+- **Razorpay normal-path debug breadcrumbs were removed** - plan lookup no longer emits the `Searching for Razorpay plan` debug breadcrumb, and webhook handling no longer emits the `Unhandled webhook event type` debug breadcrumb.
+- **Durable observability remains** - plan found/create/failure paths still use bounded Razorpay diagnostics, and unhandled webhook events still write the existing `RAZORPAY_WEBHOOK_UNHANDLED_EVENT` local audit row.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now rejects the removed Razorpay debug labels.
+
+### Boundaries
+
+- This changes payment debug diagnostics only. It does not change Razorpay plan lookup/create behavior, provider subscription/order/payment calls, webhook signature validation, webhook idempotency, subscription/top-up writes, entitlement sync, local webhook audit rows, Firestore rules/indexes, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, Razorpay sandbox smoke, launch approval, or release certification.
+
+## July 5, 2026 - Public Language Link Fallback
+
+### Fixed
+
+- **Malformed language-link fallbacks no longer append raw URLs** - `appendPublicLanguageParam()` now returns the original URL unchanged if URL parsing fails instead of adding `?lang=` by string concatenation.
+- **The degraded path is bounded** - parse failures log `public_language_param_url_parse_failed` with URL/language shape metadata and the fixed `return_original_url` fallback policy, without raw URLs.
+- **The boundary is source-gated** - `npm run verify:url-routing-boundary` now rejects the old raw string-concat fallback and requires URL-routing docs parity.
+
+### Boundaries
+
+- This changes malformed public language-link fallback behavior only. It does not change valid `?lang=` links, menu rendering, OBP rendering, canonical routing, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - AI Image Route Debug Diagnostics
+
+### Fixed
+
+- **Single-image and edit-image normal-path debug breadcrumbs were removed** - `/api/image-generation` no longer emits redundant prompt-count or transaction-recorded `logger.debug()` entries, and `/api/image-editing` no longer emits provider start/finish or generated-prompt debug entries.
+- **Durable summaries remain** - both routes still write bounded local request, response, and transaction summaries where needed, and security/failure paths keep their existing bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now rejects the removed single-image and edit-image debug labels.
+
+### Boundaries
+
+- This changes route debug diagnostics only. It does not change provider calls, prompt generation, generated image previews, image editing output, AI capacity checks, AI accounting behavior, owner acceptance/upload flow, Firestore writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Create Menu Success URL Normalization
+
+### Fixed
+
+- **Success-page query URLs are normalized before use** - `/create-menu/success` now accepts only absolute HTTPS, non-credentialed `menuUrl` and `officialPageUrl` values before rendering links, copying the menu URL, or composing WhatsApp share text.
+- **Unsafe success-page URLs are suppressed** - invalid, oversized, whitespace-containing, non-HTTPS, credentialed, or malformed query values are treated as absent and log bounded `public_create_menu_success_url_invalid` diagnostics without raw URLs.
+- **The boundary is source-gated** - `npm run verify:menu-extraction-pipeline` now rejects raw success-page query URL assignments and requires the normalization boundary.
+
+### Boundaries
+
+- This changes browser-local success-page URL handling only. It does not change valid claim/publish URLs, preview polling, public menu rendering, QR rendering, copy/open behavior for valid URLs, starter activation writes, Firestore reads/writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Batch Image Worker Debug Diagnostics
+
+### Fixed
+
+- **Batch worker normal-path debug breadcrumbs were removed** - `/api/image-generation/batch-generation` no longer emits redundant `logger.debug()` entries for fetched job data, uploaded images, recorded transaction IDs, remaining capacity balance, or batch job updates.
+- **Durable summaries remain** - worker start, success, and job-updated local log entries still use bounded item/config/image/job summaries, and failure/security paths still use stable runtime/security diagnostics.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now rejects the removed worker debug labels.
+
+### Boundaries
+
+- This changes worker debug diagnostics only. It does not change task admission, idempotent skips, capacity checks, provider calls, generated images, Storage writes, AI accounting behavior, batch job writes, owner review flow, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Public Menu External Link Normalization
+
+### Fixed
+
+- **Public menu external links are normalized before render** - customer menu footer actions, footer social icons, unavailable-item recovery actions, and the feedback nudge review link now reuse the shared OBP public-link policy before emitting owner-managed public URLs.
+- **Unsafe owner-managed URLs are suppressed** - invalid, non-HTTPS, wrong-host Maps/review/social, credentialed, oversized, or malformed reservation/order/social/review links are hidden or fall back to internal feedback instead of becoming public `href` values.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now rejects raw `publicPresence` reservation/order URLs, raw Maps URLs, raw social URL filtering, and raw feedback review URLs in public menu output paths.
+
+### Boundaries
+
+- This changes customer-facing link normalization only. It does not change valid public links, owner public-link saves, menu rendering data reads, analytics event shapes, Firestore reads/writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Desktop Menu Upload Job Diagnostics
+
+### Fixed
+
+- **Desktop job-start debug breadcrumbs were removed** - `getProcessedFile.ts` no longer logs raw project IDs, job IDs, or existing job IDs on normal job start, active-job reuse, or job-created paths.
+- **The failure path stays bounded** - failed desktop job creation still logs `desktop_menu_upload_job_create_failed` through the menu-processing diagnostic helper and shows fixed retry copy.
+- **The boundary is source-gated** - `npm run verify:menu-extraction-pipeline` now rejects raw `logger.debug()` breadcrumbs in the desktop processing helper.
+
+### Boundaries
+
+- This changes browser-local debug diagnostics only. It does not change upload admission, active-job reuse, job creation, extraction worker behavior, provider calls, owner copy, Firestore reads/writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Menu Editor Description Generation Diagnostics
+
+### Fixed
+
+- **Description generation returned-error logs are bounded** - the menu editor service helper now logs `menu_editor_description_generation_returned_error_message` with project/file/result-message/message-type presence-length metadata instead of a raw logger warning.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now rejects the old raw logger warning plus raw `resultMessage` and `file.uid` fields in `descriptionGeneration.shared.ts`.
+
+### Boundaries
+
+- This changes editor-local diagnostics only. It does not change valid description generation, owner review/save behavior, project write count/order, Firestore writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - AI Transaction DB Local Error Diagnostics
+
+### Fixed
+
+- **AI transaction DB local errors are bounded** - Business Copy, Description Generation, Image Editing, New Item Metadata, SEO, and Translation local `TRANSACTION_DB_ERROR` logs now store bounded source-error metadata instead of raw accounting exception objects.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now rejects `error: transactionError` in those local transaction DB log paths.
+
+### Boundaries
+
+- This changes local error-log diagnostics only. It does not change valid provider calls, generated output, owner review/save flows, AI accounting finalizer behavior, credit consumption, Firestore writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Text AI Operation Response Summaries
+
+### Fixed
+
+- **Text AI operation rows stop retaining generated output objects** - descriptions, translations, new-item metadata, business copy, SEO copy, Review Reply, Campaign Caption, and Menu Card Export design-advisor routes now pass count/shape response summaries into AI accounting instead of generated owner-facing text objects.
+- **Pre-summarized responses are preserved** - the shared AI operation logger now recognizes `responseSummaryKind` summaries so `accounting_only` mode keeps those bounded route summaries instead of collapsing them into generic object-key counts.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now rejects raw generated `clientResponse` assignments for those routes and requires the summary helpers plus `responseSummaryKind` markers.
+
+### Boundaries
+
+- This changes AI operation ledger payload shape only. It does not change valid owner API responses, generated descriptions/translations/metadata/copy/captions/design advice, phrase guards, owner review/save/copy flows, plan/permission/capacity checks, AI accounting write count/order/credit behavior, Firestore rules/indexes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Item Photo Capture Camera Diagnostics
+
+### Fixed
+
+- **Camera startup failures are bounded** - `ItemPhotoCaptureAssist` now logs `item_photo_camera_start_failed` with bounded shape metadata when browser camera startup fails, then keeps the existing upload fallback.
+- **The boundary is source-gated** - `npm run verify:auth-security-failure-matrix` now rejects the old silent camera-start catch.
+
+### Boundaries
+
+- This changes browser-local capture observability only. It does not change valid camera capture, blocked-camera upload fallback, readiness scoring, accepted-image upload/save behavior, Firestore reads/writes, Storage operations, Cloud Functions, API routes, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - AI Image Route Accounting and Log Summaries
+
+### Fixed
+
+- **Single image generation local logs are summary-only** - `/api/image-generation` success and no-image logs now record bounded request, response, and transaction summaries instead of raw config/item payloads or full transaction objects.
+- **Image editing local logs are summary-only** - `/api/image-editing` success, no-image, and accounting-error logs now record bounded summaries instead of raw config/item payloads or full transaction objects.
+- **Batch worker start logs are summary-only** - `/api/image-generation/batch-generation` now records config shape and prompt lengths instead of sanitized config payloads that can retain prompt text.
+- **Batch trigger start logs are summary-only** - `/api/image-generation/batch-trigger` now records generation config shape and item counts instead of sanitized config payloads or raw item ID arrays.
+- **Batch trigger no-prompt responses are count-only** - no-prompt failures now return `itemsWithoutPromptsCount` instead of raw item IDs or names.
+- **Validation local logs are summary-only** - invalid image generation, image editing, batch-trigger, and batch-worker payload logs now use bounded attempted-data summaries instead of raw project, file, or job IDs.
+- **Image AI accounting input is summary-only** - single generation, image editing, and batch worker operation rows now use `itemSummary` and `generationConfigSummary` fields instead of raw item details or generation config payloads.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now rejects full transaction-object local logs, raw config/item local log payloads, raw validation IDs, and raw image accounting input payloads.
+
+### Boundaries
+
+- This changes local route logging, one batch-trigger failure response shape, and AI operation ledger payload shape only. It does not change valid provider calls, generated image previews, image editing output, owner acceptance/upload flow, batch generation behavior, AI accounting write count, credit consumption behavior, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Campaign Caption Provider Response Parse Diagnostics
+
+### Fixed
+
+- **Unrecoverable Campaign Caption parse failures are observable** - `/api/campaigns/caption` now logs capped `campaign_caption_provider_response_parse_failed` diagnostics with fixed `return_caption_generation_failed` policy when Gemini returns unusable JSON.
+- **Recoverable object fragments are accepted before failure** - Fenced JSON and extractable object-fragment JSON can now parse before the fail-closed path.
+- **Non-object provider output fails closed** - Parsed arrays, strings, or null values now return the generic caption failure before phrase guarding or accounting.
+- **Provider response previews were removed** - The invalid-JSON path records response-shape metadata only, with no raw response preview logging.
+- **Raw prompt item/business fields and generated captions were removed from transaction input** - AI accounting input now carries bounded prompt summaries and caption response summaries instead of raw item, category, business, price, description, language, or generated caption objects.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now requires the bounded Campaign Caption provider-response parser, capped guard, non-object failure path, docs parity, no raw response preview logging, no raw prompt item/business fields, and no generated captions in transaction input.
+
+### Boundaries
+
+- This changes Campaign Caption provider-response parse resilience, observability, and AI operation ledger payload shape only. It does not change valid caption output, phrase guard behavior, owner review/copy flow, plan/permission/capacity checks, successful AI accounting write count/order/credit behavior, Firestore writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - New Item Metadata Provider Response Parse Diagnostics
+
+### Fixed
+
+- **Unrecoverable New Item Metadata parse failures are observable** - `/api/new-item-metadata` still returns the existing generic failure when Gemini returns unusable JSON, but empty, malformed non-object, or malformed object-fragment provider responses now log capped `new_item_metadata_provider_response_parse_failed` diagnostics with fixed `return_metadata_generation_failed` policy.
+- **Recoverable object fragments are accepted before failure** - Fenced JSON and extractable object-fragment JSON can now parse before the fail-closed path.
+- **Provider response previews and object handoff were removed** - The invalid-JSON path records response-shape metadata only, with no raw response preview logging, and local `API_RESPONSE` logging no longer receives full provider response objects.
+- **Raw prompt item/language payloads were removed from transaction input** - AI accounting input now carries bounded item/language summaries, and local success/error logs use request, response, and transaction summaries instead of raw prompt item/language payloads or generated metadata.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now requires the bounded New Item Metadata provider-response parser, capped guard, shape-only response metadata, docs parity, no raw response preview logging, no full provider response object handoff, and no raw prompt item/language payloads in transaction input.
+
+### Boundaries
+
+- This changes New Item Metadata provider-response parse resilience and observability only. It does not change valid generated metadata normalization, owner review/save flow, plan/permission/capacity checks, forbidden-field stripping, successful AI accounting behavior, client save behavior, Firestore writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - SEO Provider Response Parse Diagnostics
+
+### Fixed
+
+- **Unrecoverable SEO parse failures are observable** - `/api/seo` still returns the existing generic failure when Gemini returns unusable JSON, but empty, malformed non-object, or malformed object-fragment provider responses now log capped `seo_provider_response_parse_failed` diagnostics with fixed `return_seo_generation_failed` policy.
+- **Recoverable object fragments are accepted before failure** - Fenced JSON and extractable object-fragment JSON can now parse before the fail-closed path.
+- **Provider response previews were removed from parse diagnostics** - The invalid-JSON path records response-shape metadata only, with no raw response preview logging.
+- **Local accounting-error logs are bounded** - SEO accounting failures now write transaction/result summaries instead of full transaction objects.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now requires the bounded SEO provider-response parser, capped guard, shape-only response metadata, docs parity, no raw response preview logging, and local accounting-error logs.
+
+### Boundaries
+
+- This changes SEO provider-response parse resilience and observability only. It does not change valid generated SEO metadata normalization, owner review/save flow, plan/permission/capacity checks, successful AI accounting behavior, client save behavior, Firestore writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Description Provider Response Parse Diagnostics
+
+### Fixed
+
+- **Unrecoverable Description parse failures are observable** - `/api/descriptions` still returns the existing generic failure when Gemini returns unusable JSON, but empty, malformed non-object, or malformed object-fragment provider responses now log capped `description_provider_response_parse_failed` diagnostics with fixed `return_description_generation_failed` policy.
+- **Recoverable object fragments are accepted before failure** - Fenced JSON and extractable object-fragment JSON can now parse before the fail-closed path.
+- **Provider response previews and object handoff were removed** - The invalid-JSON path records response-shape metadata only, with no raw response preview logging, and local `API_RESPONSE` logging no longer receives full provider response objects.
+- **Raw prompt item/language payloads were removed from transaction input** - AI accounting input now carries bounded item/language summaries, and local success/error logs use request, response, and transaction summaries instead of raw prompt item/language payloads or generated descriptions.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now requires the bounded Description provider-response parser, capped guard, shape-only response metadata, docs parity, no raw response preview logging, no full provider response object handoff, no raw prompt item/language payloads, and local success/error logs.
+
+### Boundaries
+
+- This changes Description provider-response parse resilience and observability only. It does not change valid generated description normalization, owner review/save flow, linked-outlet policy, plan/permission/capacity checks, successful AI accounting behavior, client save behavior, Firestore writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Business Copy Provider Response Parse Diagnostics
+
+### Fixed
+
+- **Unrecoverable Business Copy parse failures are observable** - `/api/business-copy` still retries once when Gemini returns unrecoverable invalid JSON and still returns the existing generic failure after an unrecoverable retry, but empty, malformed non-object, or malformed object-fragment provider responses now log capped `business_copy_provider_response_parse_failed` diagnostics with fixed `retry_once_then_return_business_copy_failed` policy.
+- **Provider response previews were removed from parse diagnostics** - The invalid-JSON retry/failure path now records response-shape metadata only, with no raw response preview logging.
+- **Local accounting-error logs are bounded** - Business Copy accounting failures now write transaction/result summaries instead of full transaction objects.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now requires the bounded Business Copy provider-response parser, capped guard, shape-only response metadata, docs parity, no raw response preview logging, local accounting-error logs, and absence of the old ad hoc invalid-JSON retry warning.
+
+### Boundaries
+
+- This changes Business Copy provider-response parse observability only. It does not change valid generated copy normalization, owner review/save flow, plan/permission/capacity checks, successful AI accounting behavior, client save behavior, Firestore writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Translation Provider Response Parse Diagnostics
+
+### Fixed
+
+- **Recoverable translation JSON formatting is handled before retry** - `/api/translations` can now parse fenced JSON and extractable object-fragment JSON before spending the existing retry call.
+- **Unrecoverable parse failures are observable** - Empty, malformed non-object, or malformed object-fragment provider responses now log capped `translation_provider_response_parse_failed` diagnostics with fixed `retry_once_then_return_translation_failed` policy.
+- **Raw prompt input/language payloads were removed from transaction input** - AI accounting input and local success/error logs now carry bounded input, language, coverage, request, response, and transaction summaries instead of raw prompt input/language payloads, raw coverage arrays, or normalized translation output.
+- **The boundary is source-gated** - `npm run verify:ai-accounting` now requires the bounded translation provider-response parser, capped guard, shape-only response metadata, docs parity, no raw response preview logging, no raw prompt input/language payloads, local success/error logs, and absence of the old ad hoc invalid-JSON retry warning.
+
+### Boundaries
+
+- This changes translation provider-response parse resilience and observability only. It does not change valid translation normalization, owner review/publish flow, linked-outlet policy, plan/permission/capacity checks, successful AI accounting behavior, client save behavior, Firestore writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Menu Card Export AI Advisor Provider Response Parse Diagnostics
+
+### Fixed
+
+- **Malformed layout-suggestion responses are observable** - Menu Card Export still returns the existing owner-safe suggestion failure when Gemini returns empty, malformed non-object, or malformed object-fragment JSON, but parser failures now log capped `menu_card_design_advisor_provider_response_parse_failed` diagnostics with fixed `return_layout_suggestion_failed` policy.
+- **The boundary is source-gated** - `npm run verify:menu-card-export` now requires the bounded provider-response parse diagnostic, shape-only response metadata, docs parity, no raw response preview logging, and the old silent parser catch exclusion.
+
+### Boundaries
+
+- This changes Menu Card Export AI advisor provider-response parse observability only. It does not change valid layout suggestions, extractable-object JSON fallback success, plan gating, permission checks, capacity checks, AI accounting success behavior, export rendering, PDF/packet output, Firestore reads/writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 5, 2026 - Menu-Intake Identity Provider Response Parse Diagnostics
+
+### Fixed
+
+- **Malformed identity preflight responses are observable** - Menu-intake identity still uses the existing low-confidence fallback analysis when Gemini returns malformed or non-object JSON, but parser failures now log capped `menu_intake_identity_provider_response_parse_failed` diagnostics with fixed `use_low_confidence_identity_fallback` policy.
+- **The boundary is source-gated** - `npm run verify:menu-extraction-pipeline` now requires the bounded provider-response parse diagnostic, shape-only response metadata, docs parity, and the raw response/logging exclusion boundary.
+
+### Boundaries
+
+- This changes menu-intake identity provider-response parse observability only. It does not change valid identity parsing, invalid-response fallback analysis, owner upload admission, job creation, Storage URL allowlisting, Firestore reads/writes, Storage operations, Cloud Functions, AI provider call rules, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Legacy Project QR Download Diagnostics
+
+### Fixed
+
+- **Legacy QR download failures are observable** - The tracked legacy project QR component still shows the existing failed-download owner copy when browser-local branded QR generation or download fails, but the failure now logs bounded `project_share_legacy_qr_download_failed` diagnostics with fixed `show_qr_download_failed_message` policy.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires the bounded legacy QR download diagnostic, shape-only URL/name/logo/color metadata, docs parity, and the raw console/logging exclusion boundary.
+
+### Boundaries
+
+- This changes legacy project QR download failure observability only. It does not change successful QR generation, QR file contents, share modal primary QR behavior, public menu routing, public cache behavior, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Customer App Manifest Start-URL Diagnostics
+
+### Fixed
+
+- **Manifest start-url degradation is observable** - Customer App manifests still fall back to `/` when the cached project-summary lookup cannot confirm an active customer menu, but that degraded path now logs capped `customer_app_manifest_start_url_lookup_failed` diagnostics with fixed `use_root_manifest_start_url` policy.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now requires the capped manifest start-url diagnostic, bounded store/project-summary metadata, docs parity, and the raw console/logging exclusion boundary.
+
+### Boundaries
+
+- This changes Customer App manifest start-url degradation observability only. It does not change valid `/menu` start-url selection, root fallback behavior, manifest eligibility, PWA install identity, service-worker behavior, Customer App analytics, Firestore reads/writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Public Menu Gradient Parser Diagnostics
+
+### Fixed
+
+- **Malformed gradient parsing is observable** - Owner Menu Design still falls back when a saved gradient string is malformed, but parser exceptions now log capped `public_menu_gradient_parse_failed` diagnostics with fixed `use_existing_gradient_fallback` policy.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires the capped gradient parser diagnostic, bounded shape metadata, docs parity, and the raw console/logging exclusion boundary.
+
+### Boundaries
+
+- This changes owner Menu Design gradient parser observability only. It does not change valid gradient rendering, design save behavior, public menu output for valid gradients, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - WhatsApp Action Link Malformed-Link Diagnostics
+
+### Fixed
+
+- **Malformed WhatsApp link parsing is observable** - WhatsApp Action Link Check still treats malformed owner-entered WhatsApp links as invalid local evidence, but parser failures now log capped `whatsapp_action_link_url_parse_failed` diagnostics with fixed `treat_as_invalid_whatsapp_link` fallback policy.
+- **The boundary is source-gated** - `npm run verify:whatsapp-action-link-check` now requires the capped parser diagnostic, bounded link-shape metadata, docs parity, and the V0 no-send/no-open/no-fetch/no-storage boundaries.
+
+### Boundaries
+
+- This changes WhatsApp Action Link Check malformed-link observability only. It does not change valid link recognition, phone-shape checks, report status rules, contact handoff writes, Firestore reads/writes, Storage operations, Cloud Functions, external URL fetches, WhatsApp API calls, provider calls, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Tenant Sitemap Diagnostic Cap
+
+### Fixed
+
+- **Sitemap lookup failure diagnostics are capped** - Tenant sitemap generation still returns an empty sitemap or omits project/outlet entries on lookup failure, but repeated `tenant_sitemap_*_failed` diagnostics now use fixed fallback-policy labels and a capped unique-shape guard.
+- **The boundary is source-gated** - `npm run verify:url-routing-boundary` now requires the sitemap diagnostic cap, fallback policies, docs parity, and safe public path-segment guardrails.
+
+### Boundaries
+
+- This changes tenant sitemap observability only. It does not change valid sitemap entries, indexability decisions, middleware rewrites, public menu/OBP rendering, Firestore reads/writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Public Truth Owner Menu URL Diagnostics
+
+### Fixed
+
+- **Owner readiness menu-link failures are observable** - Public Truth owner readiness still omits `publicLinks.menuUrl` when the MenuList customer link cannot be generated, but failures now log bounded `public_truth_owner_menu_url_generation_failed` diagnostics with fixed `omit_menu_url` fallback policy.
+- **The boundary is source-gated** - `npm run verify:public-truth-tools` now requires the capped owner menu URL diagnostic, bounded domain/project shape metadata, docs parity, and the raw domain/project logging exclusion boundary.
+
+### Boundaries
+
+- This changes Public Truth owner readiness menu URL observability only. It does not change valid customer links, owner readiness module status, setup job lists, Business Health UI, Firestore reads/writes, Storage operations, Cloud Functions, cache invalidations, external URL fetches, DNS lookups, provider calls, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Shareable Tool Reports Decode Diagnostics
+
+### Fixed
+
+- **Malformed report links are observable** - Shareable Tool Reports still show the invalid-report state for invalid, oversized, malformed, or wrong-shape hash payloads, but decode failures now log bounded `shareable_tool_report_payload_decode_failed` diagnostics with fixed `show_invalid_report_state` fallback policy.
+- **The boundary is source-gated** - `npm run verify:shareable-tool-reports` now requires the capped decode diagnostic, failure-stage coverage, payload-shape metadata, docs parity, and the report-content logging exclusion boundary.
+
+### Boundaries
+
+- This changes Shareable Tool Reports hash decode observability only. It does not change valid report links, invalid-link UI behavior, report payload schema, follow-up contact writes, Firestore reads/writes, Storage operations, Cloud Functions, external URL fetches, DNS lookups, provider calls, saved reports, report API routes, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Public Truth Tools URL Parse Diagnostics
+
+### Fixed
+
+- **Malformed public-tool URLs are observable** - Public Truth Tools still treat malformed owner-entered public/customer URLs as missing or invalid local hints, but parser failures now log bounded `public_truth_tool_url_parse_failed` diagnostics with fixed `treat_as_missing_public_url` fallback policy.
+- **The boundary is source-gated** - `npm run verify:public-truth-tools` now requires the capped parser diagnostic, source-labelled report calls, URL shape metadata, docs parity, and the raw entered URL exclusion boundary.
+
+### Boundaries
+
+- This changes Public Truth Tools URL parse observability only. It does not change public HTTPS validation results, URL evidence text, report output, follow-up contact writes, Firestore reads/writes, Storage operations, Cloud Functions, external URL fetches, DNS lookups, provider calls, saved reports, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Guest Feedback Review URL Parse Diagnostics
+
+### Fixed
+
+- **Malformed configured review URLs are observable** - Guest Feedback still omits invalid Google review URLs before guest-facing output, but parser failures now log bounded `guest_feedback_review_url_parse_failed` diagnostics with fixed `omit_review_url` fallback policy.
+- **The boundary is source-gated** - `npm run verify:guest-feedback-boundary` now requires the parse diagnostic, capped shape guard, source-labelled API/browser call sites, and docs parity.
+
+### Boundaries
+
+- This changes Guest Feedback review URL observability only. It does not change valid review links, invalid-link omission, feedback submission, feedback writes, owner inbox behavior, Firestore rules/indexes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Menu Link Import Render Fallback Diagnostics
+
+### Fixed
+
+- **Render fallback failures are observable** - Menu Link Import still treats Chrome-rendered HTML as an optional fallback, but render failures now log bounded `menu_link_import_render_fallback_failed` diagnostics with fixed `skip_rendered_html` fallback policy.
+- **The boundary is source-gated** - `npm run verify:menu-extraction-pipeline` now requires the render-fallback diagnostic, bounded render metadata, docs parity, and the absence of the old silent render fallback catch.
+
+### Boundaries
+
+- This changes Menu Link Import render fallback observability only. It does not change valid link fetching, Chrome network isolation, rendered-source acceptance, artifact/job creation, owner-facing import responses, Firestore reads/writes, Storage operations, Cloud Functions, provider calls, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Platform Cost Posture Timestamp Diagnostics
+
+### Fixed
+
+- **Throwing timestamp parsing is observable** - Cost Posture still omits malformed or unreadable source timestamps from the read model, but timestamp conversion failures now log bounded `platform_cost_posture_timestamp_parse_failed` diagnostics with value-shape metadata and fixed `omit_timestamp` fallback policy.
+- **The boundary is source-gated** - `npm run verify:platform-cost-posture-boundary` now requires the timestamp parser diagnostics, capped shape guard, docs parity, and rejects unsafe raw timestamp logging by source shape.
+
+### Boundaries
+
+- This changes Platform Cost Posture timestamp parser diagnostics only. It does not change valid source reads, valid timestamp display, platform admission, read limits, browser response guards, Firestore reads/writes, Storage operations, Cloud Functions, provider calls, cache tags, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Business Health Packet Cache Diagnostics
+
+### Fixed
+
+- **Packet-cache failures are observable** - Business Health still treats the Upstash server context-packet cache as an optimization, but read, index-read, write, and invalidation failures now log bounded `owner_business_assistant_packet_cache_*_failed` diagnostics instead of silently degrading.
+- **The boundary is source-gated** - `npm run verify:owner-business-assistant` and `npm run verify:owner-business-health-boundary` now require the bounded cache diagnostics, fallback policies, docs parity, and reject the old silent cache read/invalidation catches.
+
+### Boundaries
+
+- This changes Business Health packet-cache observability only. It does not change valid cache hits, Firestore-backed packet generation, answer behavior, Business Health UI, public truth writes, Firestore reads/writes, Storage operations, Cloud Functions, provider calls, cache tags, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Menu Intake Preflight File Diagnostics
+
+### Fixed
+
+- **Unreadable preflight files are observable** - menu-intake identity still skips an individual file when fetch or bounded response reading fails, but now logs bounded `menu_intake_identity_preflight_file_unreadable` diagnostics with file type presence-length metadata, file index, file size, and fixed `skip_file` fallback policy.
+- **The boundary is source-gated** - `npm run verify:menu-extraction-pipeline` now requires the unreadable-file diagnostic, bounded file context, docs parity, and rejects the old silent preflight-file catch.
+
+### Boundaries
+
+- This changes menu-intake preflight observability only. It does not change valid preflight analysis, full extraction behavior, owner upload admission, Storage URL allowlisting, Firestore reads/writes, Storage operations, Cloud Functions, AI provider call rules, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Compliance Pages Owner Store-Lookup Diagnostics
+
+### Fixed
+
+- **Owner compliance loads no longer hide store-read failures** - `GET /api/compliance` still shows `missingData` when the store exists but lacks contact inputs, but a Firestore store lookup failure now logs bounded `compliance_store_lookup_failed` diagnostics and returns a fixed 500 response.
+- **The boundary is source-gated** - `npm run verify:compliance-pages-boundary` now requires the typed store lookup result, bounded tenant/store diagnostics, fixed failure response, and rejects the old silent store lookup `catch { return null; }` pattern.
+
+### Boundaries
+
+- This changes owner compliance load failure handling and observability only. It does not change valid compliance previews, custom override saves/resets, public compliance page rendering, compliance Firestore rules, Firestore reads/writes beyond the existing owner load read, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Customer App Service Worker Domain Diagnostics
+
+### Fixed
+
+- **Service-worker domain fallback is observable** - if browser-side domain resolution fails while selecting the owner, customer, or MyCodex service worker, MenuList still registers no worker for the unknown origin, but now logs bounded `service_worker_domain_resolution_failed` diagnostics once per browser session.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now requires the diagnostic code, one-per-path guard, bounded host context, Customer App docs parity, and rejects the old silent domain-resolution catch.
+
+### Boundaries
+
+- This changes service-worker selection observability only. It does not change valid owner/customer/MyCodex worker selection, worker scripts, install prompt behavior, manifest behavior, Customer App analytics, Firestore reads/writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Analytics Location Fallback Diagnostics
+
+### Fixed
+
+- **Location fallback failures are bounded** - opt-in public analytics location lookup still keeps browser geolocation permission denial quiet and still falls back to timezone or `unknown`, but unexpected location/timezone lookup failures now log bounded `analytics_location_lookup_failed` diagnostics with API availability and timezone presence-length metadata only.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now requires bounded location lookup context, analytics docs parity, and rejects the old unbounded location lookup failure logging.
+
+### Boundaries
+
+- This changes analytics location fallback observability only. It does not change location opt-in rules, coordinate rounding, location key format, event admission, Firestore analytics writes, GA4 forwarding, owner analytics reads, Cloud Functions, API routes, cache behavior, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Analytics Session ID Storage Diagnostics
+
+### Fixed
+
+- **Anonymous analytics session storage failures are bounded** - public analytics still keeps session ids browser-local and non-blocking, but failed sessionStorage get, refresh, or clear paths now log bounded `analytics_session_get_failed`, `analytics_session_refresh_failed`, and `analytics_session_clear_failed` diagnostics with storage-key and value presence-length metadata only.
+- **Lookup fallback stays local** - when session id lookup fails, analytics still falls back to a fresh anonymous id for the current runtime call. No fallback Firestore write or separate session document is created.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now requires capped session-storage diagnostics, bounded session context, analytics docs parity, and rejects the old unbounded session failure logging.
+
+### Boundaries
+
+- This changes browser-local analytics session observability only. It does not change accepted analytics events, session milestone counters, search de-duplication, local analytics queueing, Firestore analytics writes, GA4 forwarding, owner analytics reads, Cloud Functions, API routes, cache behavior, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Public Menu Search Focus Diagnostics
+
+### Fixed
+
+- **Search focus fallback is no longer silent** - public menu search still focuses the input on row tap, first using `focus({ preventScroll: true })` and then normal focus if the browser rejects prevent-scroll focus, but those degraded paths now log bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires `public_menu_search_focus_prevent_scroll_failed`, `public_menu_search_focus_fallback_failed`, one-per-path guards, bounded focus context, client-menu docs parity, and rejects the old silent focus fallback catch.
+
+### Boundaries
+
+- This changes public menu search focus resilience and observability only. It does not change valid search input behavior, search filtering, suggestions, result scrolling, analytics writes, Firestore reads/writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Customer Communication Kit Today-Hours Diagnostics
+
+### Fixed
+
+- **Communication Kit today-hours fallback is no longer silent** - copied customer-message templates still use already-loaded store working hours, and invalid timezone resolution still falls back to the browser-local day, but that degraded path now logs bounded `communication_kit_today_hours_timezone_fallback_failed` diagnostics.
+- **Malformed today-hours ranges are suppressed** - invalid `HH:mm-HH:mm` values now omit today-hours copy instead of formatting unsafe text into customer messages. The invalid range path logs bounded `communication_kit_today_hours_range_invalid` diagnostics.
+- **The boundary is source-gated** - `npm run verify:communication-kit-boundary` now requires the today-hours diagnostics, capped per-shape guards, invalid range suppression, docs parity, and rejects the old silent timezone catch.
+
+### Boundaries
+
+- This changes Customer Communication Kit message-generation resilience and observability only. It does not change valid templates, valid hours copy, copy/share/WhatsApp behavior, Firestore reads/writes, Storage operations, Cloud Functions, API routes, Menu Kit generation, printable output generation, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - OBP Public Link Parse Diagnostics
+
+### Fixed
+
+- **Malformed OBP public-link URL parsing no longer fails silently** - public actions, social links, review links, schema links, manifest shortcuts, and PWA handoffs still hide invalid or unsafe stored owner URLs, but unexpected `URL` parser failures now log bounded `obp_public_link_url_parse_failed` diagnostics.
+- **The boundary is source-gated** - `npm run verify:official-business-page-boundary` now requires the bounded parse diagnostic, a capped per-shape guard, malformed HTTPS URL rejection, docs parity, and rejects the old silent public-link parse catch.
+
+### Boundaries
+
+- This changes OBP public-link observability only. It does not change valid public links, invalid-link hiding policy, owner public-link saves, analytics writes, Firestore reads/writes, Storage operations, Cloud Functions, API routes, public cache behavior, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Hours Status Fallback Diagnostics
+
+### Fixed
+
+- **Public hours timezone fallback is no longer silent** - the shared hours engine and OBP-specific status calculator still fall back to local/browser time if an invalid timezone prevents `Intl.DateTimeFormat` from resolving store time, but that degraded path now logs bounded `hours_status_timezone_fallback_failed` diagnostics.
+- **Malformed time ranges no longer produce confident public status** - invalid current-day time ranges now resolve to the existing `Hours not available` fallback, and invalid future ranges are skipped when calculating the next opening time.
+- **The boundary is source-gated** - `npm run verify:working-hours-boundary` now requires the shared hours diagnostics helper, capped timezone/time-range guards, core hours engine wiring, OBP hours status wiring, docs parity, and rejects the old silent timezone catches.
+
+### Boundaries
+
+- This changes public hours-status resilience and observability only. It does not change valid working-hours display, valid OBP status display, owner working-hours saves, Today quick-hours saves, time-slot presets, public cache behavior, Firestore reads/writes, Storage operations, Cloud Functions, API routes, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Hours Confidence Timestamp Diagnostics
+
+### Fixed
+
+- **Output Control timestamp parsing no longer fails silently** - the hours confidence resolver still treats missing or unparseable freshness metadata as untrusted output, but unexpected timestamp parser failures now log bounded `hours_confidence_timestamp_parse_failed` diagnostics.
+- **Malformed numeric freshness cannot be trusted** - invalid epoch values and serialized timestamp seconds now resolve to the existing `Check with store` fallback instead of bypassing stale/broken checks through an invalid `Date`.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires bounded timestamp-shape metadata, a capped diagnostic guard, invalid numeric freshness guards, Hours docs parity, and rejects the old silent timestamp catch.
+
+### Boundaries
+
+- This changes Output Control hours-confidence resilience and observability only. It does not change valid working-hours display, valid freshness parsing, current `ENABLE_OUTPUT_CONTROL` flag state, owner working-hours saves, public menu fallback policy, OBP fallback policy, Firestore reads/writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - OBP Menu CTA Entry Source Diagnostics
+
+### Fixed
+
+- **Official Business Page menu-link attribution fallback is no longer silent** - OBP menu CTA links still use the shared `withAnalyticsSource()` path and still fall back to `entry_source=obp` if the helper unexpectedly fails, but that degraded path now logs bounded `obp_menu_cta_entry_source_fallback_failed` diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires bounded menu URL shape metadata, a capped diagnostic guard, OBP docs parity, and rejects the old silent OBP CTA fallback catch.
+
+### Boundaries
+
+- This changes OBP menu CTA attribution observability only. It does not change valid CTA URLs, menu navigation, OBP menu-click analytics, project-switch analytics, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Analytics Entry Source Inference Diagnostics
+
+### Fixed
+
+- **Entry-source inference fallback is no longer silent** - analytics still uses explicit `entrySource` first, then `entry_source` query/referrer inference, and still falls back to `direct` when browser URL/referrer parsing fails, but that degraded path now logs bounded `analytics_entry_source_inference_failed` diagnostics.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now requires bounded query/referrer metadata, a capped diagnostic guard, analytics docs parity, and rejects the old silent `direct` downgrade catch.
+
+### Boundaries
+
+- This changes analytics entry-source observability only. It does not change valid source attribution, accepted entry-source labels, event admission, analytics event shapes, Firestore reads/writes, analytics writes, GA4 forwarding, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Analytics Timezone Validation Diagnostics
+
+### Fixed
+
+- **Shared analytics timezone fallback is no longer silent** - date-key and business-day helpers still fall back to UTC when a configured timezone is malformed, but that degraded path now logs bounded `analytics_timezone_validation_failed` diagnostics.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now requires the shared timezone diagnostics helper, date-key/business-day callers, bounded timezone/source metadata, a capped diagnostic guard, analytics docs parity, and rejects the old silent invalid-timezone catch.
+
+### Boundaries
+
+- This changes analytics timezone-fallback observability only. It does not change valid store-local date keys, business-day cutoff behavior, hourly buckets, event admission, analytics event shapes, Firestore reads/writes, analytics writes, GA4 forwarding, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Public Menu Decision Blocks Timezone Diagnostics
+
+### Fixed
+
+- **Decision Blocks store-time fallback is no longer silent** - runtime availability filtering still falls back to browser time when the stored timezone is invalid, keeping customer menus usable and hiding unsafe blocks, but the degraded path now logs bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires `public_menu_decision_blocks_timezone_failed`, bounded timezone metadata, a one-per-session diagnostic guard, client-menu docs parity, and rejects the old silent timezone fallback.
+
+### Boundaries
+
+- This changes public menu Decision Blocks observability only. It does not change valid store-time availability filtering, block labels, block ordering, click analytics, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Public Menu Footer Freshness Diagnostics
+
+### Fixed
+
+- **Public menu footer freshness parsing is guarded** - malformed `lastPublishedAt` values no longer risk footer render failure through an unguarded `toISOString()` call. The footer still omits freshness text rather than showing an unverified update date.
+- **Footer freshness failures are no longer silent** - failed relative-date or ISO metadata parsing now logs bounded `public_menu_footer_freshness_relative_failed` / `public_menu_footer_freshness_iso_failed` diagnostics with timestamp-shape metadata only.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires guarded timestamp helpers, bounded diagnostics, client-menu docs parity, and rejects the old unguarded `data-last-updated` expression and silent timestamp catch.
+
+### Boundaries
+
+- This changes public menu footer freshness resilience and observability only. It does not change valid update-date display, menu version display, footer actions, feedback links, analytics event shapes, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Public Menu Feedback Nudge Storage Diagnostics
+
+### Fixed
+
+- **Public menu feedback nudge session de-dupe failures are no longer silent** - the nudge still appears after the existing time or scroll-depth trigger, still records only a browser-local session guard, and still keeps feedback usable when sessionStorage is unavailable, but failed guard reads and writes now log bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires `public_menu_feedback_nudge_storage_read_failed` and `public_menu_feedback_nudge_storage_write_failed`, bounded session-key/project metadata, a one-per-operation diagnostic guard, client-menu and Guest Feedback docs parity, and rejects the old silent sessionStorage catches.
+
+### Boundaries
+
+- This changes public menu feedback-nudge observability only. It does not change nudge timing, scroll-depth behavior, feedback links, review links, submitted feedback payloads, analytics event shapes, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Public Menu Language Preference Storage Diagnostics
+
+### Fixed
+
+- **Public menu language preference storage failures are no longer silent** - the language picker still restores and saves the project-scoped preferred language when browser storage works, and still keeps the menu usable when storage is unavailable, but failed storage reads and writes now log bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires `public_menu_language_storage_read_failed` and `public_menu_language_storage_write_failed`, bounded storage-key/language metadata, a one-per-operation diagnostic guard, client-menu docs parity, and rejects the old silent localStorage catches.
+
+### Boundaries
+
+- This changes public menu language-preference observability only. It does not change valid language selection, route `?lang=` behavior, language dropdown rendering, breadcrumb language preservation, analytics event shapes, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Public Menu Breadcrumb Language Preservation Diagnostics
+
+### Fixed
+
+- **Public menu breadcrumb language-preservation failures are no longer silent** - breadcrumb links still preserve the current `?lang=` value when URL parsing succeeds, and still fall back to the original link when preservation fails, but the fallback path now logs bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires `public_menu_breadcrumb_language_preserve_failed`, bounded href/current-URL metadata, a one-per-session diagnostic guard, client-menu docs parity, and rejects the old silent breadcrumb fallback.
+
+### Boundaries
+
+- This changes public menu breadcrumb observability only. It does not change valid breadcrumb URLs, selected-language persistence, menu rendering, OBP routing, analytics event shapes, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - OBP Resolved Surface Fallback Diagnostics
+
+### Fixed
+
+- **OBP render-time timezone, map-embed, and freshness parse fallbacks are no longer silent** - the public page still falls back to the existing safe display behavior, but invalid timezone/day-key resolution, Google Maps embed URL parsing, and modified-on freshness timestamp parsing now log bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires `public_obp_today_day_key_timezone_failed`, `public_obp_google_maps_embed_url_parse_failed`, and `public_obp_freshness_timestamp_parse_failed`, bounded time-zone/map/freshness metadata, OBP docs parity, and rejects the old silent parse fallbacks.
+
+### Boundaries
+
+- This changes public OBP render observability only. It does not change valid hours display, valid map embed output, valid freshness text, fallback display behavior, OBP analytics event shapes, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - OBP Language Switch Attribution Diagnostics
+
+### Fixed
+
+- **OBP language switch attribution preservation failures are no longer silent** - language links still preserve `entry_source` and intentional UTM parameters when URL parsing succeeds, and still fall back to the language URL when preservation fails, but the fallback path now logs bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires `obp_language_switcher_attribution_preserve_failed`, bounded URL/language metadata, a one-per-session diagnostic guard, OBP docs parity, and rejects the old silent language-link fallback.
+
+### Boundaries
+
+- This changes public OBP language-link observability only. It does not change valid language switch URLs, attribution parameter preservation on valid URLs, language rendering, OBP analytics event shapes, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Analytics Source Attribution URL Diagnostics
+
+### Fixed
+
+- **Malformed public share/source URLs no longer fall back silently** - `withAnalyticsSource()` still preserves the existing manual `entry_source` fallback when URL parsing fails, but the parse failure now logs bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires `analytics_source_attribution_url_parse_failed`, bounded URL/source metadata, a diagnostic cap, analytics docs parity, and rejects the old silent parse fallback.
+
+### Boundaries
+
+- This changes shared source-attribution observability only. It does not change generated share URLs on valid inputs, manual `entry_source` fallback behavior on malformed inputs, analytics event shapes, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 5, 2026 - Tenant Sitemap Read Diagnostics
+
+### Fixed
+
+- **Tenant sitemap store, project, and outlet read failures are no longer silent** - tenant sitemap generation still omits unsafe or unavailable entries when Firestore lookups fail, but master-store, project-summary, and outlet-summary/read failures now log bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` and `npm run verify:url-routing-boundary` now require `tenant_sitemap_master_store_lookup_failed`, `tenant_sitemap_projects_lookup_failed`, and `tenant_sitemap_outlets_lookup_failed`, bounded tenant/domain/store metadata, and reject the old silent lookup catches.
+
+### Boundaries
+
+- This changes tenant sitemap observability only. It does not change sitemap inclusion rules, public truth indexability gates, tenant routing, slug normalization, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, API routes, cache invalidations, Firebase/Vercel deploys, production builds, browser custom-domain smoke, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Public Menu Canonical URL Diagnostics
+
+### Fixed
+
+- **Malformed stored public canonical URLs are no longer silent** - public menu/OBP metadata still falls back to the generated current URL when a stored canonical URL cannot be parsed, but the failure now logs bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires `public_menu_resolution_canonical_url_parse_failed`, bounded canonical URL metadata, and the metadata call-site context.
+
+### Boundaries
+
+- This changes public metadata observability only. It does not change canonical URL output for valid stored URLs, generated fallback canonical URLs, public routing, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser custom-domain smoke, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Customer App Install Detection and URL Intent Diagnostics
+
+### Fixed
+
+- **Customer App install-mode and shortcut intent parse failures are no longer silent** - install detection still fails closed, shortcut parsing still skips invalid `entry_source` values, and direct install intent still skips invalid `pwa` query values, but those failure paths now log bounded diagnostics once per path.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now requires `customer_app_install_detection_failed`, `customer_app_shortcut_source_parse_failed`, and `customer_app_direct_install_intent_parse_failed`, bounded browser-capability/search metadata, and rejects the old silent fail-closed catches.
+
+### Boundaries
+
+- This changes browser-local Customer App PWA diagnostics only. It does not change install prompt eligibility, shortcut event tracking on valid inputs, direct-install intent behavior on valid links, analytics event shapes, Firestore analytics counters, public analytics route validation, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Official Business Page Server Fallback Diagnostics
+
+### Fixed
+
+- **Public Official Business Page server fallback failures are no longer silent** - OBP still keeps the public page usable when menu-summary, menu-resolution timeout, or tenant-store-count reads fail, but those fallback paths now log bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:official-business-page-boundary` and `npm run verify:public-business-truth` now require `public_obp_menu_info_lookup_failed`, `public_obp_menu_info_resolution_failed`, and `public_obp_store_count_lookup_failed`, bounded store/tenant/menu-operation metadata, and reject the old silent fallback shapes.
+
+### Boundaries
+
+- This changes public OBP server observability only. It does not change menu CTA behavior on valid reads, brand/outlet routing, tenant lookup, public cache TTL, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser custom-domain smoke, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Compliance Pages Public Override-Read Diagnostics
+
+### Fixed
+
+- **Public compliance override read failures are no longer silent** - `/privacy`, `/terms`, and `/refund` still render generated policy text when owner override lookup fails, but the failed override read now logs bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:compliance-pages-boundary` and `npm run verify:public-business-truth` now require `public_compliance_override_read_failed`, bounded store/page metadata, and reject the old silent Firestore fallback.
+
+### Boundaries
+
+- This changes public compliance page observability only. It does not change generated policy text, owner override behavior on valid reads, compliance API behavior, owner editor behavior, Firestore writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser custom-domain smoke, owner/legal approval, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Customer App Install De-Dupe Storage Diagnostics
+
+### Fixed
+
+- **Customer App install de-dupe storage failures are no longer hidden in a broad tracking catch** - the per-device install-fired guard remains browser-local, but failed localStorage availability, read, and write paths now log bounded diagnostics once per operation.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now requires `customer_app_install_dedupe_storage_unavailable`, `customer_app_install_dedupe_read_failed`, and `customer_app_install_dedupe_write_failed`, bounded store/storage-key metadata, and rejects the old broad storage-write tracking catch.
+
+### Boundaries
+
+- This changes browser-local Customer App install de-dupe diagnostics only. It does not change prompt eligibility rules, prompt-shown analytics, accepted install analytics shape, Firestore analytics counters, public analytics route validation, customer identity policy, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Customer App Prompt-Shown Timestamp Diagnostics
+
+### Fixed
+
+- **Customer App prompt-shown timestamp storage failures are no longer silent** - prompt-shown timestamp storage remains browser-local for iOS install inference, but failed localStorage availability and write paths now log bounded diagnostics once per operation.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now requires `customer_app_prompt_shown_storage_unavailable`, `customer_app_prompt_shown_storage_write_failed`, bounded store/storage-key metadata, and rejects the old silent prompt-shown timestamp catch.
+
+### Boundaries
+
+- This changes browser-local Customer App prompt-shown timestamp diagnostics only. It does not change prompt eligibility rules, prompt-shown analytics, install detection, standalone launch detection, iOS install inference success behavior, analytics event shapes, Firestore analytics counters, public analytics route validation, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Customer App Prompt Storage Diagnostics
+
+### Fixed
+
+- **Customer App prompt gate storage failures are no longer silent** - visit-count and 30-day dismissal suppression remain browser-local and keep their existing fallback behavior, but failed localStorage availability, visit read/write, and dismissal read/write paths now log bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now requires `customer_app_prompt_storage_unavailable`, `customer_app_prompt_visit_increment_failed`, `customer_app_prompt_visit_read_failed`, `customer_app_prompt_dismissal_write_failed`, and `customer_app_prompt_dismissal_read_failed`, bounded store/storage-key metadata, and rejects the old silent visit-counter catches.
+
+### Boundaries
+
+- This changes browser-local Customer App prompt-gate diagnostics only. It does not change prompt eligibility rules, dismissal duration, install detection, standalone launch detection, analytics event shapes, Firestore analytics counters, public analytics route validation, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Customer App Open Storage Diagnostics
+
+### Fixed
+
+- **Customer App standalone-open storage failures are no longer silent** - `CUSTOMER_APP_OPENED` tracking remains non-blocking and still uses `sessionStorage` to avoid repeated standalone-open writes within a tab session when browser storage is available, but failed storage availability, session guard, and iOS install-inference reads now log bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:customer-app-pwa` now requires `customer_app_open_session_storage_unavailable`, `customer_app_open_session_guard_failed`, and `customer_app_ios_install_inference_storage_failed`, bounded store/tenant/storage-key metadata, and rejects the old silent standalone-detector catches.
+
+### Boundaries
+
+- This changes browser-local Customer App PWA diagnostics only. It does not change standalone launch detection, install detection, shortcut routing, analytics event shapes, Firestore analytics counters, queue coalescing, public analytics route validation, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - OBP Theme Preference Storage Diagnostics
+
+### Fixed
+
+- **OBP theme preference storage failures are no longer silent** - the public Official Business Page still applies the selected light/dark display preference immediately, but failed localStorage read/write paths now log bounded diagnostics once per operation.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires `obp_theme_storage_read_failed` / `obp_theme_storage_write_failed`, bounded storage-key/theme metadata, and rejects the old silent OBP theme storage catches.
+
+### Boundaries
+
+- This changes browser-local OBP theme preference diagnostics only. It does not add owner theme customization, page-builder behavior, Firestore reads/writes, analytics writes, Storage operations, Cloud Functions, cache invalidations, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - OBP Language Analytics Storage Diagnostics
+
+### Fixed
+
+- **OBP language-adoption storage failures are no longer silent** - Official Business Page language usage still stays non-blocking and still uses tab-scoped `sessionStorage` to detect meaningful language switches for the store-local analytics day, but blocked, full, unavailable, or malformed storage now logs bounded diagnostics before skipping unsafe adoption de-dupe.
+- **The boundary is source-gated** - `npm run verify:public-business-truth` now requires the `obp_analytics_language_storage` failure type, bounded storage-key/language metadata, read/write operation context, and rejects the old silent previous-language clear.
+
+### Boundaries
+
+- This changes browser-local OBP language analytics diagnostics only. It does not change OBP rendering, language switching, dwell timing, OBP view analytics, OBP action analytics, Firestore analytics counters, public analytics route validation, queue coalescing, owner analytics reads, cache behavior, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 5, 2026 - Search Analytics De-Dupe Diagnostics
+
+### Fixed
+
+- **Search de-dupe storage failures are no longer silent** - public menu search tracking remains non-blocking and still uses tab-scoped `sessionStorage` to avoid repeated writes for the same normalized search term when browser storage is available, but blocked, full, unavailable, or malformed search de-dupe storage now logs bounded diagnostics.
+- **The boundary is source-gated** - `npm run verify:menulist-api-tenant-safety` now requires `analytics_search_dedup_storage_unavailable`, `analytics_search_dedup_read_failed`, and `analytics_search_dedup_write_failed` diagnostics, bounded storage-key/search-term/payload metadata, and rejects the old silent search de-dupe catches.
+
+### Boundaries
+
+- This changes browser-local public search analytics de-dupe diagnostics only. It does not change public search UI, search debounce timing, search result counts, analytics event admission, Firestore analytics counters, queue coalescing, public analytics route validation, GA4 forwarding, owner analytics reads, cache behavior, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
 ## July 5, 2026 - Analytics Session Storage Diagnostics
 
 ### Fixed
@@ -6260,7 +7230,7 @@
 ### Fixed
 
 - **CSP violation logs are bounded** - production CSP report events now store directive category, blocked-URI kind, numeric location metadata, and presence/length fields instead of raw report strings.
-- **Malformed reports stay quiet** - malformed JSON CSP reports now return the standard no-content response instead of entering unexpected-failure logging.
+- **Malformed reports stay non-blocking** - malformed JSON CSP reports return the standard no-content response instead of entering unexpected-failure logging.
 - **Verifier tightened** - `npm run verify:menulist-api-tenant-safety` now guards the bounded CSP violation log context and bans raw violation payload logging.
 
 ### Boundaries
@@ -19934,3 +20904,9 @@ TEMPLATE FOR NEW ENTRIES:
 - **Translation Prompt Input Normalization** — `/api/translations` now caps translation keys and values at request validation, preserves stable identifiers for response mapping, and serializes sanitized bounded prompt values instead of raw owner/menu strings. Existing translation routing, linked-outlet policy checks, fallback normalization, client merge behavior, and AI accounting remain unchanged.
 - **Image Editing Prompt Input Normalization** — `/api/image-editing` now rejects missing generated edit prompts before Gemini work, and the active prompt router sanitizes owner prompt text plus item name/category/description placeholders before edit-template interpolation. Existing media fetch guards, valid edit-feature behavior, response handling, and AI accounting remain unchanged.
 - **Campaign Caption Prompt Input Normalization** — Campaign Caption prompt construction now sanitizes item, price, category, business, and language fields before Gemini prompt interpolation, with safe campaign/surface context lookups. Existing `/api/campaigns/caption` admission, phrase guard, response shape, and AI accounting remain unchanged.
+
+## July 5, 2026
+
+### Fixed
+
+- **Owner Notification Template Output Boundary** — MenuList owner notification and lifecycle email templates now normalize subject/text metadata, escape HTML metadata before rendering, validate rendered email links, and map publish-health failure codes to fixed owner copy instead of printing arbitrary `failureReason` text. Existing delivery routing, SMTP configuration, owner-notification migration, idempotency, rate limits, message logs, and recovery tooling remain unchanged.

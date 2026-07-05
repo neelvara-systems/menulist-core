@@ -162,6 +162,19 @@ assertIncludes(shared, 'TextEncoder', 'Shareable Tool Reports UTF-8 encoder');
 assertIncludes(shared, 'TextDecoder', 'Shareable Tool Reports UTF-8 decoder');
 assertIncludes(shared, 'toBase64Url', 'Shareable Tool Reports base64url encoder');
 assertIncludes(shared, 'fromBase64Url', 'Shareable Tool Reports base64url decoder');
+assertIncludes(shared, "logRuntimeFailure('shareable_tool_report_payload_decode_failed'", 'Shareable Tool Reports decode diagnostics');
+assertIncludes(shared, 'MAX_SHAREABLE_TOOL_REPORT_DECODE_DIAGNOSTICS', 'Shareable Tool Reports decode diagnostic cap');
+assertIncludes(shared, 'reportedShareableToolReportDecodeFailures.add(failureKey)', 'Shareable Tool Reports decode diagnostic shape guard');
+assertIncludes(shared, "fallbackPolicy: 'show_invalid_report_state'", 'Shareable Tool Reports decode fallback policy');
+assertIncludes(shared, "stage: 'base64_decode'", 'Shareable Tool Reports base64 decode failure stage');
+assertIncludes(shared, "stage: 'json_parse'", 'Shareable Tool Reports JSON parse failure stage');
+assertIncludes(shared, "stage: 'json_oversized'", 'Shareable Tool Reports JSON oversized failure stage');
+assertIncludes(shared, "stage: 'payload_invalid'", 'Shareable Tool Reports invalid payload failure stage');
+assertIncludes(shared, "stage: 'payload_oversized'", 'Shareable Tool Reports encoded payload oversized failure stage');
+assertIncludes(shared, 'hashInputLength', 'Shareable Tool Reports bounded hash metadata');
+assertIncludes(shared, 'encodedPayloadLength', 'Shareable Tool Reports bounded encoded metadata');
+assertIncludes(shared, 'decodedPayloadLength', 'Shareable Tool Reports bounded decoded metadata');
+assertIncludes(shared, 'hasReportHashKey', 'Shareable Tool Reports hash-key shape metadata');
 
 assertIncludes(component, "useTranslations('Website.ToolReportPage')", 'Shareable Tool Reports localized viewer copy');
 assertIncludes(component, 'window.location.hash', 'Shareable Tool Reports hash-fragment reader');
@@ -293,6 +306,7 @@ assertIncludes(readmeDoc, '/tools/reports', 'Shareable Tool Reports README route
 assertIncludes(readmeDoc, 'all current public MenuList Tools can copy a public report link', 'Shareable Tool Reports README coverage');
 assertIncludes(readmeDoc, 'bounded setup job list', 'Shareable Tool Reports README setup job coverage');
 assertIncludes(readmeDoc, 'optional consented report follow-up capture', 'Shareable Tool Reports README follow-up coverage');
+assertIncludes(readmeDoc, 'bounded decode diagnostics', 'Shareable Tool Reports README decode diagnostics');
 assertIncludes(specDoc, 'URL hash fragment', 'Shareable Tool Reports spec hash boundary');
 assertIncludes(specDoc, 'The user must not need to be a MenuList user to open a report link', 'Shareable Tool Reports public access rule');
 assertIncludes(specDoc, 'all current public MenuList Tool report-card integrations', 'Shareable Tool Reports spec coverage');
@@ -300,6 +314,7 @@ assertIncludes(specDoc, '`setupJobList`', 'Shareable Tool Reports spec setup job
 assertIncludes(specDoc, 'consented follow-up request through the existing `/api/public/contact` route', 'Shareable Tool Reports spec contact boundary');
 assertIncludes(implDoc, '/tools/reports#r=', 'Shareable Tool Reports implementation hash format');
 assertIncludes(implDoc, 'Do not add a report API route', 'Shareable Tool Reports implementation API boundary');
+assertIncludes(implDoc, 'shareable_tool_report_payload_decode_failed', 'Shareable Tool Reports implementation decode diagnostics');
 assertIncludes(implDoc, 'All current public MenuList Tools are source-tool integrations', 'Shareable Tool Reports implementation coverage');
 assertIncludes(implDoc, 'where report gaps become the job list', 'Shareable Tool Reports implementation setup job mapping');
 assertIncludes(implDoc, 'The accepted write is one existing public contact enquiry', 'Shareable Tool Reports implementation contact boundary');
@@ -310,6 +325,7 @@ assertIncludes(firebaseDoc, 'Firestore reads | 0', 'Shareable Tool Reports Fireb
 assertIncludes(firebaseDoc, '0 for report viewing; 1 existing contact enquiry write per accepted follow-up', 'Shareable Tool Reports Firebase writes boundary');
 assertIncludes(firebaseDoc, 'Report storage | 0', 'Shareable Tool Reports Firebase report storage boundary');
 assertIncludes(firebaseDoc, 'The submitted message contains a bounded report summary', 'Shareable Tool Reports Firebase contact boundary');
+assertIncludes(firebaseDoc, 'shareable_tool_report_payload_decode_failed', 'Shareable Tool Reports Firebase decode diagnostics');
 assertIncludes(firebaseDoc, 'sourceKind: shareable_tool_report', 'Shareable Tool Reports Firebase source kind metadata');
 assertIncludes(firebaseDoc, 'bounded `setupJobList`', 'Shareable Tool Reports Firebase setup job metadata');
 assertIncludes(followUpPlaybookDoc, 'sourceKind', 'Shareable Tool Reports follow-up playbook metadata');
@@ -319,11 +335,13 @@ assertIncludes(mobileDoc, 'keep the follow-up form usable with 44px controls', '
 assertIncludes(testCasesDoc, 'STR-004', 'Shareable Tool Reports test case coverage');
 assertIncludes(testCasesDoc, 'STR-012', 'Shareable Tool Reports follow-up test case coverage');
 assertIncludes(testCasesDoc, 'STR-014', 'Shareable Tool Reports source metadata test case coverage');
+assertIncludes(testCasesDoc, 'STR-016', 'Shareable Tool Reports decode diagnostic test case coverage');
 assertIncludes(testCasesDoc, 'setup job list', 'Shareable Tool Reports setup job test coverage');
 assertIncludes(validationDoc, 'npm run verify:shareable-tool-reports', 'Shareable Tool Reports validation gate');
 assertIncludes(validationDoc, 'consented follow-up uses only `/api/public/contact`', 'Shareable Tool Reports validation contact boundary');
 assertIncludes(validationDoc, 'follow-up request includes bounded `shareable_tool_report` source metadata', 'Shareable Tool Reports validation source metadata boundary');
 assertIncludes(validationDoc, 'setup job list is derived from visible report gaps', 'Shareable Tool Reports setup job validation gate');
+assertIncludes(validationDoc, 'decode diagnostics', 'Shareable Tool Reports decode diagnostics validation gate');
 assertIncludes(toolsReadmeDoc, '[shareable-tool-reports](./shareable-tool-reports/README.md)', 'MenuList Tools README');
 assertIncludes(familyReadmeDoc, '[Shareable Tool Reports](../shareable-tool-reports/README.md)', 'Public Truth Tools README');
 assertIncludes(familyReadmeDoc, '/tools/reports', 'Public Truth Tools routes');

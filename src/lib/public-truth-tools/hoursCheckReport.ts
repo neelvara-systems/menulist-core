@@ -169,7 +169,7 @@ export function buildHoursCheckReport(input: HoursCheckInput): HoursCheckReport 
   const timezoneContextClear = Boolean(cityOrArea || timeZone) && (Boolean(cityOrArea) || hasTimezoneHint(timeZone));
   const timezoneContextUnclear = Boolean(timeZone) && !timezoneContextClear;
   const hasCustomerLink = currentCustomerLink.length > 0;
-  const validCustomerLink = isValidHttpUrl(currentCustomerLink);
+  const validCustomerLink = isValidHttpUrl(currentCustomerLink, 'hours_check_current_customer_link');
 
   const checks: HoursCheckItem[] = [
     makeCheck(

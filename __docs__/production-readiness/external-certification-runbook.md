@@ -103,6 +103,7 @@ Current production-readiness blocker target set:
 - `processMenuImagesJob` - production Firestore trigger for queued menu image processing jobs.
 - `menulistMaintenanceScheduler` - consolidated scheduler for reseller license expiry, lifecycle/owner-notification retention, image batch retention cleanup, AI image prompt-cache source cleanup, and operational maintenance.
 - `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, and `triggerStoreNightlyScheduler` - Decision Intelligence scheduler and guarded manual recovery callables.
+- `messagingOnboarding` and `backfillStoresSummary` - scheduler-hour timezone diagnostics used when publishing or backfilling store summaries.
 - `verifyMenuPublish` - guarded publish verification callable used by lifecycle notification hardening.
 
 Changed-function subset note: the July 2, 2026 source-file path hardening slice changes the shared Functions temp-file helper, KB source-file Storage path guard, and deterministic menu-link text-artifact path guard used by `processMenuImages`, `processMenuImagesJob`, `startGeneration`, `embedArticleWorker`, and `regenerateEmbedding`. If the full Gate 1 target list is not being retried, deploy exactly this changed subset and record it separately from the broader blocked set:
@@ -123,6 +124,24 @@ Changed-function subset note: the July 2, 2026 menu extraction SAFE_MODE worker 
 firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImagesJob --non-interactive
 ```
 
+Changed-function subset note: the July 5, 2026 scheduler-hour timezone diagnostics slice changes `functions/src/utils/schedulerHour.ts`, which is imported by `functions:messagingOnboarding` and `functions:backfillStoresSummary`. If only this slice is being retried, deploy exactly this pair and record the result separately from the broader blocked set:
+
+```bash
+firebase deploy --project menulist-qa --config firebase.json --only functions:messagingOnboarding,functions:backfillStoresSummary --non-interactive
+```
+
+Changed-function subset note: the July 5, 2026 Maps Place Check raw provider output slice changes `functions/src/logic/mapsPlaceCheck.ts`, which is exported by `functions:mapsPlaceCheck`. If only this slice is being retried, deploy exactly this callable and record the result separately from the broader blocked set:
+
+```bash
+firebase deploy --project menulist-qa --config firebase.json --only functions:mapsPlaceCheck --non-interactive
+```
+
+Changed-function subset note: the July 5, 2026 owner-notification template-output slice changes `functions/src/messaging/templates.ts`, which is imported by `functions/src/messaging/messagingEngine.ts` and reached by the publish verification callable plus the Decision Intelligence/nightly scheduler exports. The July 5, 2026 owner-notification flag/trigger diagnostics slice changes `functions/src/ownerNotifications/processor.ts`, which is dynamically imported by `functions/src/messaging/messagingEngine.ts` and reached by the same exports. The July 5, 2026 legacy lifecycle event/status diagnostics slice changes `functions/src/messaging/messagingEngine.ts` and is reached by the same exports. If only one of these slices is being retried, deploy exactly this subset and record the result separately from the broader blocked set:
+
+```bash
+firebase deploy --project menulist-qa --config firebase.json --only functions:verifyMenuPublish,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler --non-interactive
+```
+
 Local preflight:
 
 ```bash
@@ -139,12 +158,12 @@ npm --prefix functions run build
 
 Passing preflight proves the Functions package lints and compiles locally, the listed source guards still pass, and the current blocked deploy target set remains documented. It does not prove Firebase CLI authentication, project IAM, enabled Google Cloud APIs, Secret Manager access, function upload, deployed revisions, scheduler execution, callable behavior, trigger delivery, or live production effect.
 
-Current blocker recorded July 2, 2026: local readiness now passes with 67/67 checks. The latest documented scoped attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), the SAFE_MODE worker retry (`functions:processMenuImagesJob`), and the scheduler retry (`functions:menulistMaintenanceScheduler`) completed predeploy lint/build before failing ahead of upload with Cloud Resource Manager HTTP 403: the caller does not have permission.
+Current blocker recorded July 5, 2026: local readiness now passes with 93/93 checks. The latest documented scoped attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), the SAFE_MODE worker retry (`functions:processMenuImagesJob`), the scheduler retry (`functions:menulistMaintenanceScheduler`), the staleness lifecycle delivery retry (`functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`), the scheduler-hour diagnostics retry (`functions:messagingOnboarding` and `functions:backfillStoresSummary`), the Maps Place Check raw provider output retry (`functions:mapsPlaceCheck`), and the owner-notification template-output, owner-notification flag/trigger diagnostics, and legacy lifecycle event/status diagnostics retries (`functions:verifyMenuPublish`, `functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`) completed predeploy lint/build before failing ahead of upload with Cloud Resource Manager HTTP 403: the caller does not have permission.
 
 Staging deploy retry:
 
 ```bash
-firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:verifyMenuPublish --non-interactive
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish --non-interactive
 ```
 
 Narrow this list only when a later audit slice has changed a documented subset and the remaining blocked functions are already live.

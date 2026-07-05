@@ -6,12 +6,13 @@ import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
-import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
+import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { TranslationRequestSchema } from "@lib/validation/apiSchemas";
@@ -23,6 +24,150 @@ import getPrompt, { systemInstruction } from "./prompt";
 const AI_MODEL = getModelName('TRANSLATION');
 const LOG_FILE = "translations.log"
 const TRANSLATION_AI_MAX_BODY_BYTES = 1024 * 1024;
+const MAX_TRANSLATION_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS = 25;
+
+type TranslationProviderResponseParseAttempt = 'initial' | 'retry';
+type TranslationProviderResponseParseStage =
+    | 'empty_response'
+    | 'object_fragment'
+    | 'object_fragment_missing';
+
+type TranslationProviderResponseParseContext = {
+    action: string;
+    attempt: TranslationProviderResponseParseAttempt;
+    fileId?: unknown;
+    inputKeyCount: number;
+    isBatch: boolean;
+    projectId?: unknown;
+    requestId: string;
+    responseUsage?: unknown;
+    sourceLang: string;
+    storeId: unknown;
+    targetLangs: string[];
+    tenantId: unknown;
+    userId: unknown;
+};
+
+type TranslationProviderResponseParseFailureContext = TranslationProviderResponseParseContext & {
+    candidateLength: number;
+    hasFence: boolean;
+    hasObjectFragment: boolean;
+    responseTextLength: number;
+    stage: TranslationProviderResponseParseStage;
+    trimmedTextLength: number;
+};
+
+const reportedTranslationProviderResponseParseFailures = new Set<string>();
+
+function logTranslationProviderResponseParseFailure(
+    error: unknown,
+    context: TranslationProviderResponseParseFailureContext,
+): void {
+    const failureKey = [
+        context.attempt,
+        context.stage,
+        context.responseTextLength,
+        context.trimmedTextLength,
+        context.candidateLength,
+        context.hasFence ? 'fenced' : 'plain',
+        context.hasObjectFragment ? 'object-fragment' : 'no-object-fragment',
+    ].join(':');
+
+    if (reportedTranslationProviderResponseParseFailures.has(failureKey)) return;
+    if (reportedTranslationProviderResponseParseFailures.size >= MAX_TRANSLATION_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS) return;
+    reportedTranslationProviderResponseParseFailures.add(failureKey);
+
+    logRuntimeFailure('translation_provider_response_parse_failed', error, {
+        ...getAIRouteLogContext({
+            action: context.action,
+            attempt: context.attempt,
+            fileId: context.fileId,
+            inputKeyCount: context.inputKeyCount,
+            isBatch: context.isBatch,
+            model: AI_MODEL,
+            projectId: context.projectId,
+            requestId: context.requestId,
+            responseUsage: context.responseUsage,
+            sourceLang: context.sourceLang,
+            storeId: context.storeId,
+            targetLangs: context.targetLangs,
+            tenantId: context.tenantId,
+            userId: context.userId,
+        }),
+        candidateLength: context.candidateLength,
+        fallbackPolicy: 'retry_once_then_return_translation_failed',
+        hasFence: context.hasFence,
+        hasObjectFragment: context.hasObjectFragment,
+        parseStage: context.stage,
+        responseTextLength: context.responseTextLength,
+        trimmedTextLength: context.trimmedTextLength,
+    });
+}
+
+function parseTranslationProviderResponse(
+    responseText: string | undefined,
+    context: TranslationProviderResponseParseContext,
+): Record<string, any> {
+    const rawText = String(responseText || '');
+    const trimmedText = rawText.trim();
+    const hasFence = trimmedText.startsWith('```') || trimmedText.endsWith('```');
+    const cleaned = trimmedText
+        .replace(/^```(?:json)?\s*\n?/i, '')
+        .replace(/\n?```\s*$/i, '')
+        .trim();
+
+    if (!cleaned) {
+        const error = new Error(context.attempt === 'retry'
+            ? 'Gemini retry also returned empty response'
+            : 'Gemini returned empty response');
+        logTranslationProviderResponseParseFailure(error, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment: false,
+            responseTextLength: rawText.length,
+            stage: 'empty_response',
+            trimmedTextLength: trimmedText.length,
+        });
+        throw error;
+    }
+
+    try {
+        return JSON.parse(cleaned);
+    } catch (fullParseError) {
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        const hasObjectFragment = firstBrace >= 0 && lastBrace > firstBrace;
+        if (hasObjectFragment) {
+            const objectCandidate = cleaned.slice(firstBrace, lastBrace + 1);
+            try {
+                return JSON.parse(objectCandidate);
+            } catch (fragmentParseError) {
+                logTranslationProviderResponseParseFailure(fragmentParseError, {
+                    ...context,
+                    candidateLength: objectCandidate.length,
+                    hasFence,
+                    hasObjectFragment,
+                    responseTextLength: rawText.length,
+                    stage: 'object_fragment',
+                    trimmedTextLength: trimmedText.length,
+                });
+                throw fragmentParseError;
+            }
+        }
+
+        logTranslationProviderResponseParseFailure(fullParseError, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment,
+            responseTextLength: rawText.length,
+            stage: 'object_fragment_missing',
+            trimmedTextLength: trimmedText.length,
+        });
+        throw fullParseError;
+    }
+}
 
 const isStringRecord = (value: unknown): value is Record<string, string> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -149,6 +294,25 @@ const normalizeBatchTranslationResponse = ({
         translationCoverage,
     };
 };
+
+const getTranslationClientResponseSummary = (
+    normalizedData: Record<string, unknown>,
+    translationCoverageSummary: {
+        fallbackKeyCount: number;
+        hasPartialCoverage: boolean;
+        translatedKeyCount: number;
+        translationCoverageCount: number;
+    },
+) => ({
+    fallbackKeyCount: translationCoverageSummary.fallbackKeyCount,
+    hasPartialCoverage: translationCoverageSummary.hasPartialCoverage,
+    objectKeyCount: Object.keys(normalizedData).length,
+    responseShape: 'object',
+    responseSummaryKind: 'translation_generation',
+    targetLanguageCount: translationCoverageSummary.translationCoverageCount,
+    translatedKeyCount: translationCoverageSummary.translatedKeyCount,
+    translationsCount: translationCoverageSummary.translatedKeyCount,
+});
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
@@ -345,16 +509,13 @@ export const POST = withAuth(async (request, session) => {
 
         let generatedData: Record<string, any>;
         try {
-            if (!response.text) throw new Error('Gemini returned empty response');
-            generatedData = JSON.parse(response.text);
-        } catch (parseError) {
-            // Retry once — LLMs occasionally produce malformed JSON
-            logger.warn('Translation returned invalid JSON, retrying once', getAIRouteLogContext({
+            generatedData = parseTranslationProviderResponse(response.text, {
+                action,
+                attempt: 'initial',
+                fileId,
                 inputKeyCount: Object.keys(inputJson || {}).length,
                 isBatch: Array.isArray(targetLang),
-                model: AI_MODEL,
-                responseTextLength: response.text?.length || 0,
-                responseTextSummary: getPreviewText(response.text, 300),
+                projectId,
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 sourceLang: sourceLang.code,
@@ -362,7 +523,9 @@ export const POST = withAuth(async (request, session) => {
                 targetLangs: targetLanguages.map((language) => language.code),
                 tenantId: session.tId,
                 userId,
-            }));
+            });
+        } catch (parseError) {
+            // Retry once — LLMs occasionally produce malformed JSON
             let retryResponse;
             try {
                 retryResponse = await genAIClient.models.generateContent({
@@ -415,17 +578,29 @@ export const POST = withAuth(async (request, session) => {
                 }
                 throw retryGenerationError;
             }
-            if (!retryResponse.text) throw new Error('Gemini retry also returned empty response');
             try {
-                generatedData = JSON.parse(retryResponse.text);
+                generatedData = parseTranslationProviderResponse(retryResponse.text, {
+                    action,
+                    attempt: 'retry',
+                    fileId,
+                    inputKeyCount: Object.keys(inputJson || {}).length,
+                    isBatch: Array.isArray(targetLang),
+                    projectId,
+                    requestId,
+                    responseUsage: retryResponse.usageMetadata || null,
+                    sourceLang: sourceLang.code,
+                    storeId: session.sId,
+                    targetLangs: targetLanguages.map((language) => language.code),
+                    tenantId: session.tId,
+                    userId,
+                });
                 response = retryResponse;
             } catch (retryParseError) {
                 logAIRouteFailure('translation_invalid_json_after_retry', retryParseError, {
                     inputKeyCount: Object.keys(inputJson || {}).length,
                     isBatch: Array.isArray(targetLang),
                     model: AI_MODEL,
-                    responseTextLength: retryResponse.text.length,
-                    responseTextSummary: getPreviewText(retryResponse.text, 300),
+                    responseTextLength: retryResponse.text?.length || 0,
                     requestId,
                     responseUsage: retryResponse.usageMetadata || null,
                     sourceLang: sourceLang.code,
@@ -443,8 +618,7 @@ export const POST = withAuth(async (request, session) => {
                         inputKeyCount: Object.keys(inputJson || {}).length,
                         isBatch: Array.isArray(targetLang),
                         model: AI_MODEL,
-                        responseTextLength: retryResponse.text.length,
-                        responseTextSummary: getPreviewText(retryResponse.text, 300),
+                        responseTextLength: retryResponse.text?.length || 0,
                         requestId,
                         responseUsage: retryResponse.usageMetadata || null,
                         sourceLang: sourceLang.code,
@@ -479,17 +653,37 @@ export const POST = withAuth(async (request, session) => {
                 languageCode: targetLanguages[0]?.code || sourceLang.code,
             });
         const hasPartialCoverage = translationCoverage.some((entry) => entry.fallbackKeyCount > 0);
+        const fallbackKeyCount = translationCoverage.reduce((total, entry) => total + entry.fallbackKeyCount, 0);
+        const translatedKeyCount = translationCoverage.reduce((total, entry) => total + entry.translatedKeyCount, 0);
+        const targetLanguageSummary = targetLanguages.map((language) => ({
+            code: language.code || 'unspecified',
+        }));
+        const inputSummary = {
+            inputKeyCount: inputKeys.length,
+            inputValueTotalLength: inputKeys.reduce((total, key) => total + String(inputJson[key] || '').length, 0),
+            isBatchRequest,
+        };
+        const languageSummary = {
+            sourceLang: sourceLang.code,
+            targetLangCount: targetLanguageSummary.length,
+        };
+        const translationCoverageSummary = {
+            fallbackKeyCount,
+            hasPartialCoverage,
+            translatedKeyCount,
+            translationCoverageCount: translationCoverage.length,
+        };
 
         let transactionObject = {
             transactionId: null,
-            inputJson,
-            targetLang,
-            sourceLang,
+            inputSummary,
+            languageSummary,
+            targetLanguages: targetLanguageSummary,
             projectId,
             fileId,
             action,
             unitsConsumed: 0,
-            clientResponse: normalizedData,
+            clientResponse: getTranslationClientResponseSummary(normalizedData, translationCoverageSummary),
             geminiResponse: response,
             generationConfig,
             model: AI_MODEL,
@@ -505,8 +699,25 @@ export const POST = withAuth(async (request, session) => {
             realCostPaise: getRealCostPaise(action),
             ourChargePaise: getOurChargePaise(action),
             marginPaise: getOurChargePaise(action) - getRealCostPaise(action),
-            translationCoverage,
+            translationCoverageSummary,
         };
+        const getTransactionLogSummary = () => ({
+            action: transactionObject.action,
+            fileId: transactionObject.fileId,
+            inputSummary: transactionObject.inputSummary,
+            languageSummary: transactionObject.languageSummary,
+            model: transactionObject.model,
+            processingTime: transactionObject.processingTime,
+            projectId: transactionObject.projectId,
+            promptTokenCount: transactionObject.promptTokenCount,
+            candidatesTokenCount: transactionObject.candidatesTokenCount,
+            totalTokenCount: transactionObject.totalTokenCount,
+            totalCharge: transactionObject.totalCharge,
+            totalCredits: transactionObject.totalCredits,
+            transactionId: transactionObject.transactionId,
+            translationCoverageSummary: transactionObject.translationCoverageSummary,
+            unitsConsumed: transactionObject.unitsConsumed,
+        });
 
         // Add the operation to the database
         let remainingBalance = null;
@@ -541,7 +752,7 @@ export const POST = withAuth(async (request, session) => {
                 tenantId: session.tId,
                 userId,
             });
-            await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
+            await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: getTransactionLogSummary(), error: getAIErrorDiagnostics(transactionError) });
             throw transactionError;
         }
 
@@ -549,13 +760,13 @@ export const POST = withAuth(async (request, session) => {
             logFileName: LOG_FILE, userId, projectId, fileId, logType: 'SUCCESS_RESPONSE',
             data: {
                 action,
-                request: {
-                    inputJson,
-                    targetLang: targetLanguages.map((language) => language.code),
-                    sourceLang: sourceLang.code
+                requestSummary: {
+                    ...inputSummary,
+                    sourceLang: sourceLang.code,
+                    targetLangCount: targetLanguageSummary.length,
                 },
-                response: normalizedData,
-                transaction: transactionObject,
+                responseSummary: translationCoverageSummary,
+                transaction: getTransactionLogSummary(),
             }
         });
 

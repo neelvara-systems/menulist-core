@@ -1,18 +1,43 @@
+import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from './analyticsDiagnostics';
+
 const SEARCH_SESSION_KEY_PREFIX = 'menulist_search_terms_';
 const MAX_TRACKED_SEARCH_TERMS = 25;
+const SEARCH_SESSION_STORAGE_TEST_KEY = '__menulist_search_test__';
+
+type SearchDedupStorageOperation = 'read' | 'write';
+
+const reportedSearchDedupStorageAvailabilityFailures = new Set<SearchDedupStorageOperation>();
 
 function normalizeSearchTerm(term: string): string {
   return term.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function isSessionStorageAvailable(): boolean {
+function getSearchDedupStorageContext(
+  key: string,
+  rawTerms?: string | null,
+  includeRawTerms = false,
+) {
+  return {
+    ...getBoundedAnalyticsStringContext('storageKey', key),
+    ...(includeRawTerms ? getBoundedAnalyticsStringContext('storedSearchTerms', rawTerms) : {}),
+  };
+}
+
+function getSearchDedupTermContext(normalizedTerm: string) {
+  return getBoundedAnalyticsStringContext('normalizedSearchTerm', normalizedTerm);
+}
+
+function isSessionStorageAvailable(operation: SearchDedupStorageOperation): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const key = '__menulist_search_test__';
-    window.sessionStorage.setItem(key, '1');
-    window.sessionStorage.removeItem(key);
+    window.sessionStorage.setItem(SEARCH_SESSION_STORAGE_TEST_KEY, '1');
+    window.sessionStorage.removeItem(SEARCH_SESSION_STORAGE_TEST_KEY);
     return true;
-  } catch {
+  } catch (error) {
+    if (!reportedSearchDedupStorageAvailabilityFailures.has(operation)) {
+      reportedSearchDedupStorageAvailabilityFailures.add(operation);
+      logAnalyticsFailure('analytics_search_dedup_storage_unavailable', error, { operation });
+    }
     return false;
   }
 }
@@ -28,15 +53,20 @@ export function hasTrackedSearchTermInSession(
 ): boolean {
   const normalized = normalizeSearchTerm(term);
   if (!normalized) return false;
-  if (!isSessionStorageAvailable()) return false;
+  if (!isSessionStorageAvailable('read')) return false;
 
   const key = `${SEARCH_SESSION_KEY_PREFIX}${storeId}_${projectId}`;
+  let raw: string | null = null;
 
   try {
-    const raw = window.sessionStorage.getItem(key);
+    raw = window.sessionStorage.getItem(key);
     const trackedTerms = raw ? JSON.parse(raw) : [];
     return Array.isArray(trackedTerms) && trackedTerms.includes(normalized);
-  } catch {
+  } catch (error) {
+    logAnalyticsFailure('analytics_search_dedup_read_failed', error, {
+      ...getSearchDedupStorageContext(key, raw, true),
+      ...getSearchDedupTermContext(normalized),
+    });
     return false;
   }
 }
@@ -48,20 +78,27 @@ export function markSearchTermTrackedInSession(
 ): void {
   const normalized = normalizeSearchTerm(term);
   if (!normalized) return;
-  if (!isSessionStorageAvailable()) return;
+  if (!isSessionStorageAvailable('write')) return;
 
   const key = `${SEARCH_SESSION_KEY_PREFIX}${storeId}_${projectId}`;
+  let raw: string | null = null;
+  let serializedTerms = '';
 
   try {
-    const raw = window.sessionStorage.getItem(key);
+    raw = window.sessionStorage.getItem(key);
     const trackedTerms = raw ? JSON.parse(raw) : [];
     const nextTerms = Array.isArray(trackedTerms) ? trackedTerms : [];
     if (nextTerms.includes(normalized)) return;
+    serializedTerms = JSON.stringify([...nextTerms, normalized].slice(-MAX_TRACKED_SEARCH_TERMS));
     window.sessionStorage.setItem(
       key,
-      JSON.stringify([...nextTerms, normalized].slice(-MAX_TRACKED_SEARCH_TERMS)),
+      serializedTerms,
     );
-  } catch {
-    /* noop */
+  } catch (error) {
+    logAnalyticsFailure('analytics_search_dedup_write_failed', error, {
+      ...getSearchDedupStorageContext(key, raw, true),
+      ...getSearchDedupTermContext(normalized),
+      ...getBoundedAnalyticsStringContext('serializedSearchTerms', serializedTerms),
+    });
   }
 }

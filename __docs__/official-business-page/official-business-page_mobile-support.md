@@ -113,7 +113,7 @@ Already mobile-first by design:
 
 ## Settings Inheritance
 
-- Theme mode (dark/light): N/A for public page (own design). Dashboard: inherits from `clientThemeConfig`
+- Public customer theme mode (dark/light): `OBPThemeToggle` applies a browser-local display preference and falls back to system preference; failed localStorage persistence logs bounded diagnostics and creates no Firestore or analytics write. Dashboard: inherits from `clientThemeConfig`
 - Language, timezone, date format: All from AppSettings Redux state
 - Icons: `react-icons/lu` (Lucide) — same as desktop
 

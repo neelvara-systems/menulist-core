@@ -425,6 +425,7 @@ Contract:
 - Response is `MenuCardDesignAdvisorRecommendation`: approved preset, style, density, `includeDescriptions`, `includeQr`, `includeContactBlock`, `ownerNote`, `reason`, and bounded warnings.
 - Starter/no-subscription users receive `403 plan_required` before the provider call.
 - The browser client parses plan-gate and recommendation responses through a 16KB bounded JSON reader. Malformed or oversized route responses log `ai_menu_card_design_advisor_response_parse_failed` with bounded project/source/status/phase metadata only and fall back to the existing owner-safe suggestion failure path.
+- The provider-response parser keeps the existing extractable-object fallback when possible. Empty, malformed non-object, or malformed object-fragment provider JSON logs capped `menu_card_design_advisor_provider_response_parse_failed` diagnostics with fixed `return_layout_suggestion_failed` policy, response length, trimmed length, candidate length, parse stage, fenced-response flag, and object-fragment flag only. Raw provider response text, menu/source content, warnings, project/store/tenant/user IDs, source hashes, response preview text, and exception text are not logged.
 - Provider/validation failure returns no usable suggestion and consumes no credits.
 - Applying the suggestion changes route settings only; final PDF/packet generation still runs through `renderPdf()` / `buildPrintShopPacket()`.
 

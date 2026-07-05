@@ -70,6 +70,9 @@ import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 // Collection
 const COLLECTION = DB_COLLECTIONS.ANALYTICS;
 const OWNER_ACTION_MARK_DONE_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
+const MAX_OBP_DASHBOARD_SUMMARY_READ_DIAGNOSTICS = 25;
+const OBP_PROJECT_ID = 'obp';
+const reportedOBPDashboardSummaryReadFailures = new Set<string>();
 
 // ================================================================
 // DOCUMENT ID HELPERS
@@ -87,6 +90,29 @@ const getDocId = {
     dashboardSummary: (tId: string, sId: string, projectId: string) =>
         `${tId}_${sId}_${projectId}_dashboard_summary`,
 };
+
+function logOBPDashboardSummaryReadFailure(
+    error: unknown,
+    params: {
+        tId: string;
+        sId: string;
+        summaryDocId: string;
+    },
+): void {
+    const failureKey = `${params.tId.length}:${params.sId.length}:${params.summaryDocId.length}`;
+    if (reportedOBPDashboardSummaryReadFailures.has(failureKey)) return;
+    if (reportedOBPDashboardSummaryReadFailures.size >= MAX_OBP_DASHBOARD_SUMMARY_READ_DIAGNOSTICS) return;
+    reportedOBPDashboardSummaryReadFailures.add(failureKey);
+
+    logAnalyticsFailure('owner_dashboard_obp_summary_read_failed', error, {
+        ...getBoundedAnalyticsStringContext('tenantId', params.tId),
+        ...getBoundedAnalyticsStringContext('storeId', params.sId),
+        ...getBoundedAnalyticsStringContext('projectId', OBP_PROJECT_ID),
+        ...getBoundedAnalyticsStringContext('summaryDocId', params.summaryDocId),
+        fallbackPolicy: 'use_daily_obp_docs_without_views_change',
+        summaryDocKind: 'overall_summary',
+    });
+}
 
 // ================================================================
 // DATE HELPERS
@@ -2076,8 +2102,6 @@ export async function getCustomerAppDashboardSummary(
 // @see __docs__/official-business-page/official-business-page_impl.md ADR-9
 // ================================================================
 
-const OBP_PROJECT_ID = 'obp';
-
 // ── OBP Types ──
 
 export interface OBPActionBreakdown {
@@ -2603,15 +2627,15 @@ export async function getOBPDashboardOverview(
 
             // Step 8: Read viewsChange from summary doc (written by nightly CF)
             let viewsChange: number | null = null;
+            const summaryDocId = getDocId.summary(tId, sId, OBP_PROJECT_ID);
             try {
-                const summaryDocId = getDocId.summary(tId, sId, OBP_PROJECT_ID);
                 const summaryRef = doc(firebaseClient, COLLECTION, summaryDocId);
                 const summarySnap = await getDoc(summaryRef);
                 if (summarySnap.exists()) {
                     viewsChange = summarySnap.data()?.weekly?.viewsChange ?? null;
                 }
-            } catch {
-                // Non-critical
+            } catch (error) {
+                logOBPDashboardSummaryReadFailure(error, { tId, sId, summaryDocId });
             }
 
             // Step 9: Determine status

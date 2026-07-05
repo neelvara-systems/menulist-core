@@ -63,6 +63,10 @@ July 1 mutation acknowledgement shape hardening is Firebase-cost neutral. `POST 
 
 July 2 sanitizer/source-gate hardening is Firebase-cost neutral. The compliance sanitizer now removes script/style blocks before generic tag stripping, and `npm run verify:compliance-pages-boundary` checks sanitizer behavior, API admission, public route intercepts, owner editor acknowledgement guards, Firestore rule shape, and docs parity locally. This changes no Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, or public route shape.
 
+July 5 public override-read diagnostics are Firebase-cost neutral. Public `/privacy`, `/terms`, and `/refund` pages still perform the existing direct `compliancePages/{sId}` doc read for owner overrides and still fall back to generated policy text if the override read fails. Failed override reads now log bounded `public_compliance_override_read_failed` diagnostics only. This adds no Firestore reads/writes/deletes beyond the existing read, no analytics write, no Storage operation, no Cloud Function, no API route, no cache invalidation, no rule, no index, no schema field, no provider call, no owner setting, and no deploy requirement.
+
+July 5 owner store-lookup diagnostics are Firebase-cost neutral beyond the existing owner compliance load read. `GET /api/compliance` still performs one authenticated store doc read before generating owner previews, and missing contact inputs still return the existing `missingData` response. If that store read itself fails, the route now logs bounded `compliance_store_lookup_failed` diagnostics and returns a fixed 500 response instead of collapsing the infrastructure failure into missing inputs. This adds no Firestore reads/writes/deletes beyond the existing read, no Storage operation, no Cloud Function, no cache invalidation, no rule, no index, no schema field, no provider call, no owner setting, no public compliance rendering change, and no deploy requirement.
+
 ---
 
 ## Cost Estimates

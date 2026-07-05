@@ -248,9 +248,9 @@ export function buildCustomerFaqReplyPackReport(input: CustomerFaqReplyPackInput
   const menuOrServices = trimToSingleLine(input.menuOrServices);
   const prices = trimToSingleLine(input.prices);
   const hasCurrentCustomerLink = currentCustomerLink.length > 0;
-  const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink);
+  const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink, 'customer_faq_reply_pack_current_customer_link');
   const hasActionLink = actionLink.length > 0;
-  const validActionLink = isValidHttpUrl(actionLink);
+  const validActionLink = isValidHttpUrl(actionLink, 'customer_faq_reply_pack_action_link');
 
   const checks: CustomerFaqReplyPackItem[] = [
     makeCheck(

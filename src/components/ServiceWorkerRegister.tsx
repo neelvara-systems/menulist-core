@@ -34,12 +34,17 @@
  */
 
 import { resolveDomain } from '@lib/multiTenant/domainResolver';
-import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { useEffect } from 'react';
 
 const OWNER_SW_URL = '/sw.js';
 const CUSTOMER_SW_URL = '/sw-customer.js';
 const MYCODEX_SW_URL = '/mycodex-sw.js';
+const PUBLIC_SW_CLEARED_RELOAD_KEY = '__menulist_public_sw_cleared__';
+const MAX_SERVICE_WORKER_SCRIPT_LABEL_DIAGNOSTICS = 6;
+let reportedServiceWorkerDomainResolutionFailure = false;
+let reportedServiceWorkerPublicCleanupReloadStorageFailure = false;
+const reportedServiceWorkerScriptLabelFailures = new Set<string>();
 const OWNER_APP_PATHS = [
     /^\/dashboard(?:\/|$)/,
     /^\/billing(?:\/|$)/,
@@ -66,7 +71,16 @@ function getResolvedDomain() {
 
     try {
         return resolveDomain(window.location.host);
-    } catch {
+    } catch (error) {
+        if (!reportedServiceWorkerDomainResolutionFailure) {
+            reportedServiceWorkerDomainResolutionFailure = true;
+            logRuntimeFailure('service_worker_domain_resolution_failed', error, {
+                hasLocation: Boolean(window.location),
+                hasWindow: true,
+                ...getBoundedRuntimeStringContext('host', window.location.host),
+                failurePolicy: 'register_nothing',
+            });
+        }
         return null;
     }
 }
@@ -143,11 +157,56 @@ function getRegisteredSwLabel(scriptUrl: string | undefined): string {
         if (pathname === OWNER_SW_URL) return 'owner';
         if (pathname === CUSTOMER_SW_URL) return 'customer';
         if (pathname === MYCODEX_SW_URL) return 'mycodex';
-    } catch {
+    } catch (error) {
+        logServiceWorkerScriptLabelFailure(error, scriptUrl);
         return 'unknown';
     }
 
     return 'unknown';
+}
+
+function logServiceWorkerScriptLabelFailure(error: unknown, scriptUrl: string): void {
+    const scriptUrlContext = getBoundedRuntimeStringContext('scriptUrl', scriptUrl);
+    const scriptUrlShape = {
+        ...scriptUrlContext,
+        hasProtocolSeparator: scriptUrl.includes('://'),
+        startsWithSlash: scriptUrl.startsWith('/'),
+        hasQuery: scriptUrl.includes('?'),
+        hasHash: scriptUrl.includes('#'),
+    };
+    const failureKey = [
+        scriptUrlContext.scriptUrlPresent,
+        scriptUrlContext.scriptUrlLength,
+        scriptUrlShape.hasProtocolSeparator,
+        scriptUrlShape.startsWithSlash,
+        scriptUrlShape.hasQuery,
+        scriptUrlShape.hasHash,
+    ].join(':');
+
+    if (
+        reportedServiceWorkerScriptLabelFailures.has(failureKey)
+        || reportedServiceWorkerScriptLabelFailures.size >= MAX_SERVICE_WORKER_SCRIPT_LABEL_DIAGNOSTICS
+    ) {
+        return;
+    }
+
+    reportedServiceWorkerScriptLabelFailures.add(failureKey);
+    logRuntimeFailure('service_worker_script_url_label_parse_failed', error, {
+        ...scriptUrlShape,
+        fallbackPolicy: 'label_unknown',
+    });
+}
+
+function logServiceWorkerPublicCleanupReloadStorageFailure(error: unknown): void {
+    if (reportedServiceWorkerPublicCleanupReloadStorageFailure) return;
+    reportedServiceWorkerPublicCleanupReloadStorageFailure = true;
+
+    logRuntimeFailure('service_worker_public_cleanup_reload_storage_failed', error, {
+        hasController: Boolean(navigator.serviceWorker.controller),
+        hasSessionStorage: typeof window !== 'undefined' && 'sessionStorage' in window,
+        ...getBoundedRuntimeStringContext('reloadKey', PUBLIC_SW_CLEARED_RELOAD_KEY),
+        fallbackPolicy: 'reload_without_session_guard',
+    });
 }
 
 async function unregisterServiceWorker(
@@ -206,12 +265,12 @@ export default function ServiceWorkerRegister() {
 
                     if (process.env.NODE_ENV === 'production' && !targetUrl && removedRegistration && navigator.serviceWorker.controller) {
                         try {
-                            const reloadKey = '__menulist_public_sw_cleared__';
-                            if (!sessionStorage.getItem(reloadKey)) {
-                                sessionStorage.setItem(reloadKey, '1');
+                            if (!sessionStorage.getItem(PUBLIC_SW_CLEARED_RELOAD_KEY)) {
+                                sessionStorage.setItem(PUBLIC_SW_CLEARED_RELOAD_KEY, '1');
                                 window.location.reload();
                             }
-                        } catch {
+                        } catch (error) {
+                            logServiceWorkerPublicCleanupReloadStorageFailure(error);
                             window.location.reload();
                         }
                     }

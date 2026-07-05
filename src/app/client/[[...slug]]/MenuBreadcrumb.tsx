@@ -19,6 +19,7 @@ import Link from 'next/link';
 import type { CSSProperties, MouseEvent } from 'react';
 import { appendPublicLanguageParam, normalizePublicLanguageCode } from '@lib/localization/publicRenderLanguage';
 import { getBusinessLogoAltText } from '@lib/media/altText';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 
 interface MenuBreadcrumbProps {
     /** Master-tenant brand display name (always shown as the root node). */
@@ -66,6 +67,25 @@ const currentStyle: CSSProperties = {
     fontWeight: 500,
 };
 
+let reportedBreadcrumbLanguagePreserveFailure = false;
+
+function logBreadcrumbLanguagePreserveFailure(
+    error: unknown,
+    context: {
+        href?: unknown;
+        currentUrl?: unknown;
+    },
+): void {
+    if (reportedBreadcrumbLanguagePreserveFailure) return;
+    reportedBreadcrumbLanguagePreserveFailure = true;
+
+    logRuntimeFailure('public_menu_breadcrumb_language_preserve_failed', error, {
+        ...getBoundedRuntimeStringContext('href', context.href),
+        ...getBoundedRuntimeStringContext('currentUrl', context.currentUrl),
+        hasWindow: typeof window !== 'undefined',
+    });
+}
+
 export default function MenuBreadcrumb({
     businessName,
     outletName,
@@ -99,7 +119,11 @@ export default function MenuBreadcrumb({
         try {
             const currentLanguage = normalizePublicLanguageCode(new URL(window.location.href).searchParams.get('lang'));
             return currentLanguage ? appendPublicLanguageParam(href, currentLanguage) : href;
-        } catch {
+        } catch (error) {
+            logBreadcrumbLanguagePreserveFailure(error, {
+                href,
+                currentUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+            });
             return href;
         }
     };

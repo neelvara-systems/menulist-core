@@ -10,6 +10,18 @@
 
 ## 1. Architecture Overview
 
+## July 5, 2026 - Public Override-Read Diagnostics
+
+Public compliance pages still generate system policy text first, then read `compliancePages/{sId}` for optional owner overrides. If that override read fails, `src/app/client/compliance/CompliancePageContent.tsx` now keeps the generated policy fallback: public compliance override read failures log `public_compliance_override_read_failed` with bounded diagnostics. The diagnostic includes only store/page/tenant-type presence-length metadata, subdomain/custom-domain presence booleans, and normalized source error metadata. It must not log raw store IDs, custom domains, subdomains, policy text, override text, or browser/provider exception payloads.
+
+Cost impact: `$0.00`. This changes public compliance page observability only. It adds no Firestore reads/writes/deletes beyond the existing direct compliance override doc read, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, or public page route shape.
+
+## July 5, 2026 - Owner Store-Lookup Diagnostics
+
+`GET /api/compliance` still loads the authenticated owner store once, generates Privacy, Terms, and Refund previews from the same pure template functions, and returns the existing `missingData` response when the store exists but lacks contact inputs. The owner compliance store lookup failures log `compliance_store_lookup_failed` with bounded tenant/store presence-length metadata and normalized source error metadata, then return a fixed 500 response instead of presenting a Firestore read failure as missing owner inputs.
+
+Cost impact: `$0.00` beyond the existing owner compliance load read. This changes owner compliance load failure handling and observability only. It adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, public page rendering, or public compliance output changes.
+
 ## June 30, 2026 - Browser Request Boundary Hardening
 
 Desktop Official Page compliance, embedded Custom Domain compliance, and mobile compliance editor load/save/reset requests must call `/api/compliance` through the shared `AUTH_BROWSER_REQUEST_POLICY` from `src/lib/auth/browserRequestPolicy.ts`. That policy pins `cache: 'no-store'`, `credentials: 'same-origin'`, and `redirect: 'manual'` before bounded response parsing.

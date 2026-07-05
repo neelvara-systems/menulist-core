@@ -6,12 +6,13 @@ import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
-import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
+import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
+import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { DescriptionRequestSchema } from "@lib/validation/apiSchemas";
@@ -24,6 +25,170 @@ import descriptionPrompt, { descriptionPromptSystemInstruction } from "./prompt"
 const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const LOG_FILE = "descriptions.log";
 const DESCRIPTION_AI_MAX_BODY_BYTES = 256 * 1024;
+const MAX_DESCRIPTION_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS = 25;
+
+type DescriptionProviderResponseParseStage =
+    | 'empty_response'
+    | 'object_fragment'
+    | 'object_fragment_missing';
+
+type DescriptionProviderResponseParseContext = {
+    action: string;
+    contentLength: string;
+    fileId?: unknown;
+    itemCount: number;
+    projectId?: unknown;
+    requestId: string;
+    responseUsage?: unknown;
+    sourceLang: string;
+    storeId: unknown;
+    targetLangs: string[];
+    tenantId: unknown;
+    tone: string;
+    userId: unknown;
+};
+
+type DescriptionProviderResponseParseFailureContext = DescriptionProviderResponseParseContext & {
+    candidateLength: number;
+    hasFence: boolean;
+    hasObjectFragment: boolean;
+    responseTextLength: number;
+    stage: DescriptionProviderResponseParseStage;
+    trimmedTextLength: number;
+};
+
+const reportedDescriptionProviderResponseParseFailures = new Set<string>();
+
+function logDescriptionProviderResponseParseFailure(
+    error: unknown,
+    context: DescriptionProviderResponseParseFailureContext,
+): void {
+    const failureKey = [
+        context.stage,
+        context.responseTextLength,
+        context.trimmedTextLength,
+        context.candidateLength,
+        context.hasFence ? 'fenced' : 'plain',
+        context.hasObjectFragment ? 'object-fragment' : 'no-object-fragment',
+    ].join(':');
+
+    if (reportedDescriptionProviderResponseParseFailures.has(failureKey)) return;
+    if (reportedDescriptionProviderResponseParseFailures.size >= MAX_DESCRIPTION_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS) return;
+    reportedDescriptionProviderResponseParseFailures.add(failureKey);
+
+    logRuntimeFailure('description_provider_response_parse_failed', error, {
+        ...getAIRouteLogContext({
+            action: context.action,
+            contentLength: context.contentLength,
+            fileId: context.fileId,
+            itemCount: context.itemCount,
+            model: AI_MODEL,
+            projectId: context.projectId,
+            requestId: context.requestId,
+            responseUsage: context.responseUsage,
+            sourceLang: context.sourceLang,
+            storeId: context.storeId,
+            targetLangs: context.targetLangs,
+            tenantId: context.tenantId,
+            tone: context.tone,
+            userId: context.userId,
+        }),
+        candidateLength: context.candidateLength,
+        fallbackPolicy: 'return_description_generation_failed',
+        hasFence: context.hasFence,
+        hasObjectFragment: context.hasObjectFragment,
+        parseStage: context.stage,
+        responseTextLength: context.responseTextLength,
+        trimmedTextLength: context.trimmedTextLength,
+    });
+}
+
+function parseDescriptionProviderResponse(
+    responseText: string | undefined,
+    context: DescriptionProviderResponseParseContext,
+): Record<string, any> {
+    const rawText = String(responseText || '');
+    const trimmedText = rawText.trim();
+    const hasFence = trimmedText.startsWith('```') || trimmedText.endsWith('```');
+    const cleaned = trimmedText
+        .replace(/^```(?:json)?\s*\n?/i, '')
+        .replace(/\n?```\s*$/i, '')
+        .trim();
+
+    if (!cleaned) {
+        const error = new Error('Description generation returned empty response');
+        logDescriptionProviderResponseParseFailure(error, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment: false,
+            responseTextLength: rawText.length,
+            stage: 'empty_response',
+            trimmedTextLength: trimmedText.length,
+        });
+        throw error;
+    }
+
+    try {
+        return JSON.parse(cleaned);
+    } catch (fullParseError) {
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        const hasObjectFragment = firstBrace >= 0 && lastBrace > firstBrace;
+        if (hasObjectFragment) {
+            const objectCandidate = cleaned.slice(firstBrace, lastBrace + 1);
+            try {
+                return JSON.parse(objectCandidate);
+            } catch (fragmentParseError) {
+                logDescriptionProviderResponseParseFailure(fragmentParseError, {
+                    ...context,
+                    candidateLength: objectCandidate.length,
+                    hasFence,
+                    hasObjectFragment,
+                    responseTextLength: rawText.length,
+                    stage: 'object_fragment',
+                    trimmedTextLength: trimmedText.length,
+                });
+                throw fragmentParseError;
+            }
+        }
+
+        logDescriptionProviderResponseParseFailure(fullParseError, {
+            ...context,
+            candidateLength: 0,
+            hasFence,
+            hasObjectFragment,
+            responseTextLength: rawText.length,
+            stage: 'object_fragment_missing',
+            trimmedTextLength: trimmedText.length,
+        });
+        throw fullParseError;
+    }
+}
+
+function getDescriptionClientResponseSummary(response: Record<string, unknown>) {
+    let languageBucketCount = 0;
+    let descriptionCount = 0;
+
+    Object.values(response).forEach((languageDescriptions) => {
+        if (!languageDescriptions || typeof languageDescriptions !== 'object' || Array.isArray(languageDescriptions)) return;
+        languageBucketCount += 1;
+        descriptionCount += Object.values(languageDescriptions as Record<string, unknown>)
+            .filter((description) => typeof description === 'string' && description.trim().length > 0)
+            .length;
+    });
+
+    return {
+        descriptionSummary: {
+            descriptionCount,
+            itemCount: Object.keys(response).length,
+        },
+        languageBucketCount,
+        objectKeyCount: Object.keys(response).length,
+        responseShape: 'object',
+        responseSummaryKind: 'description_generation',
+    };
+}
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
@@ -76,6 +241,14 @@ export const POST = withAuth(async (request, session) => {
         const { itemsList, targetLang, sourceLang, projectId, fileId, contentLength, tone } = validated;
         const targetLangList = (Array.isArray(targetLang) ? targetLang : [targetLang]) as Array<{ code?: string }>;
         const targetLangCodes = targetLangList.map((language) => language?.code || 'unspecified');
+        const itemSummary = {
+            itemCount: itemsList.length,
+            itemIdCount: itemsList.filter((item) => Boolean(item.id)).length,
+        };
+        const languageSummary = {
+            sourceLang: sourceLang?.code || 'unspecified',
+            targetLangCount: targetLangCodes.length,
+        };
 
         const permissionError = await requireAnyStorePermission(
             request,
@@ -245,24 +418,47 @@ export const POST = withAuth(async (request, session) => {
             }
             throw generationError;
         }
-        await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'API_RESPONSE', data: response });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            userId,
+            projectId,
+            fileId,
+            logType: 'API_RESPONSE',
+            data: {
+                model: AI_MODEL,
+                requestId,
+                responseTextLength: response.text?.length || 0,
+                responseTextPresent: Boolean(response.text),
+                responseUsage: response.usageMetadata || null,
+            },
+        });
 
         const endTime = new Date().getTime();
         const processingTime = endTime - startTime;
 
-        // Safe JSON extraction — strip markdown wrappers if model returns ```json blocks
-        let rawText = response.text || '';
-        rawText = rawText.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
         let generatedData: any;
         try {
-            generatedData = JSON.parse(rawText);
+            generatedData = parseDescriptionProviderResponse(response.text, {
+                action,
+                contentLength,
+                fileId,
+                itemCount: itemsList.length,
+                projectId,
+                requestId,
+                responseUsage: response.usageMetadata || null,
+                sourceLang: sourceLang?.code || 'unspecified',
+                storeId: session.sId,
+                targetLangs: targetLangCodes,
+                tenantId: session.tId,
+                tone: tone || 'default',
+                userId,
+            });
         } catch (parseError) {
             logAIRouteFailure('description_generation_invalid_json', parseError, {
                 fileId,
                 model: AI_MODEL,
                 projectId,
-                responseTextLength: rawText.length,
-                responseTextSummary: getPreviewText(rawText, 300),
+                responseTextLength: response.text?.length || 0,
                 requestId,
                 responseUsage: response.usageMetadata || null,
                 sourceLang: sourceLang?.code || 'unspecified',
@@ -278,8 +474,7 @@ export const POST = withAuth(async (request, session) => {
                 logType: 'INVALID_JSON_RESPONSE',
                 data: {
                     model: AI_MODEL,
-                    responseTextLength: rawText.length,
-                    responseTextSummary: getPreviewText(rawText, 300),
+                    responseTextLength: response.text?.length || 0,
                     requestId,
                     responseUsage: response.usageMetadata || null,
                     sourceLang: sourceLang?.code || 'unspecified',
@@ -344,14 +539,14 @@ export const POST = withAuth(async (request, session) => {
         let transactionObject = {
             transactionId: null,
             contentLength,
-            itemsList,
-            targetLang,
-            sourceLang,
+            itemSummary,
+            languageSummary,
+            tone: tone || 'default',
             projectId,
             fileId,
             action,
             unitsConsumed: 0,
-            clientResponse: generatedData,
+            clientResponse: getDescriptionClientResponseSummary(generatedData),
             geminiResponse: response,
             generationConfig,
             model: AI_MODEL,
@@ -368,6 +563,23 @@ export const POST = withAuth(async (request, session) => {
             ourChargePaise: getOurChargePaise(action),
             marginPaise: getOurChargePaise(action) - getRealCostPaise(action),
         };
+        const getTransactionLogSummary = () => ({
+            action: transactionObject.action,
+            contentLength: transactionObject.contentLength,
+            fileId: transactionObject.fileId,
+            itemSummary: transactionObject.itemSummary,
+            languageSummary: transactionObject.languageSummary,
+            model: transactionObject.model,
+            processingTime: transactionObject.processingTime,
+            projectId: transactionObject.projectId,
+            promptTokenCount: transactionObject.promptTokenCount,
+            candidatesTokenCount: transactionObject.candidatesTokenCount,
+            totalTokenCount: transactionObject.totalTokenCount,
+            totalCharge: transactionObject.totalCharge,
+            totalCredits: transactionObject.totalCredits,
+            transactionId: transactionObject.transactionId,
+            unitsConsumed: transactionObject.unitsConsumed,
+        });
 
         let remainingBalance = null;
         try {
@@ -393,17 +605,31 @@ export const POST = withAuth(async (request, session) => {
                 tenantId: session.tId,
                 userId,
             });
-            await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
+            await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: getTransactionLogSummary(), error: getAIErrorDiagnostics(transactionError) });
             throw transactionError;
         }
+
+        const generatedDataRecord = generatedData && typeof generatedData === 'object' && !Array.isArray(generatedData)
+            ? generatedData as Record<string, unknown>
+            : {};
 
         await writeLogEntry({
             logFileName: LOG_FILE, userId, projectId, fileId, logType: 'SUCCESS_RESPONSE',
             data: {
                 action,
-                request: { itemsList, targetLang, sourceLang, contentLength },
-                response: generatedData,
-                transaction: transactionObject,
+                requestSummary: {
+                    ...itemSummary,
+                    contentLength,
+                    sourceLang: sourceLang?.code || 'unspecified',
+                    targetLangCount: targetLangCodes.length,
+                },
+                responseSummary: {
+                    objectKeyCount: Object.keys(generatedDataRecord).length,
+                    requestedCount: requestedIds.size,
+                    returnedCount: returnedIds.size,
+                    missingIdCount: missingIds.length,
+                },
+                transaction: getTransactionLogSummary(),
             }
         });
 

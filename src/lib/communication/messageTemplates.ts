@@ -11,6 +11,11 @@
 
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import {
+    getBoundedRuntimeStringContext,
+    logRuntimeDiagnostic,
+    logRuntimeFailure,
+} from '@lib/runtime/runtimeDiagnostics';
 import { formatClockTime } from '@util/dateTime';
 
 export interface MessageTemplateInput {
@@ -36,6 +41,11 @@ export interface MessageTemplate {
     description: string;
     message: string;
 }
+
+const MAX_COMMUNICATION_KIT_TODAY_HOURS_DIAGNOSTICS = 25;
+
+const reportedCommunicationKitTodayHoursTimezoneFailures = new Set<string>();
+const reportedCommunicationKitTodayHoursRangeFailures = new Set<string>();
 
 /**
  * Generate message templates from store data.
@@ -223,6 +233,47 @@ function getOfferingReference(fallback: string, projectName?: string): string {
     return trimmedProjectName || fallback;
 }
 
+function parseCommunicationKitTimeToMinutes(time: string): number | null {
+    const match = time.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return null;
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+    return (hours * 60) + minutes;
+}
+
+function logCommunicationKitTodayHoursTimezoneFallback(error: unknown, timeZone?: string): void {
+    const failureKey = timeZone ? `timezone:${timeZone.length}` : 'timezone:missing';
+
+    if (reportedCommunicationKitTodayHoursTimezoneFailures.has(failureKey)) return;
+    if (reportedCommunicationKitTodayHoursTimezoneFailures.size >= MAX_COMMUNICATION_KIT_TODAY_HOURS_DIAGNOSTICS) return;
+    reportedCommunicationKitTodayHoursTimezoneFailures.add(failureKey);
+
+    logRuntimeFailure('communication_kit_today_hours_timezone_fallback_failed', error, {
+        ...getBoundedRuntimeStringContext('timeZone', timeZone),
+        fallbackPolicy: 'browser_local_day',
+        hasIntl: typeof Intl !== 'undefined',
+    });
+}
+
+function logCommunicationKitTodayHoursInvalidRange(dayKey: string, todayValue: string): void {
+    const failureKey = `${dayKey}:${todayValue.length}:${todayValue.includes('-') ? 'range' : 'no-range'}`;
+
+    if (reportedCommunicationKitTodayHoursRangeFailures.has(failureKey)) return;
+    if (reportedCommunicationKitTodayHoursRangeFailures.size >= MAX_COMMUNICATION_KIT_TODAY_HOURS_DIAGNOSTICS) return;
+    reportedCommunicationKitTodayHoursRangeFailures.add(failureKey);
+
+    logRuntimeDiagnostic('communication_kit_today_hours_range_invalid', {
+        ...getBoundedRuntimeStringContext('dayKey', dayKey),
+        todayValueLength: todayValue.length,
+        hasRangeSeparator: todayValue.includes('-'),
+    });
+}
+
 /**
  * Result from getTodayHours — includes isClosed flag for templates.
  */
@@ -250,7 +301,8 @@ export function getTodayHours(
         }).format(now).toLowerCase();
         dayIndex = dayKeys.indexOf(dayStr as any);
         if (dayIndex === -1) dayIndex = now.getDay();
-    } catch {
+    } catch (error) {
+        logCommunicationKitTodayHoursTimezoneFallback(error, timeZone);
         dayIndex = new Date().getDay();
     }
 
@@ -263,6 +315,13 @@ export function getTodayHours(
     }
 
     const [openRaw, closeRaw] = todayValue.split('-').map(t => t.trim());
+    const openMinutes = parseCommunicationKitTimeToMinutes(openRaw);
+    const closeMinutes = parseCommunicationKitTimeToMinutes(closeRaw);
+
+    if (openMinutes === null || closeMinutes === null) {
+        logCommunicationKitTodayHoursInvalidRange(todayKey, todayValue);
+        return { hours: null, isClosed: false };
+    }
 
     // Handle 24-hour businesses (00:00-23:59 or 00:00-00:00)
     if (

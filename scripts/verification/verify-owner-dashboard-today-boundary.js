@@ -60,6 +60,8 @@ const mobileDashboard = read('src/components/mobile/screens/MobileDashboardScree
 const mobileHistory = read('src/components/mobile/screens/MobileTodayHistoryScreen.tsx');
 const pastActivityHook = read('src/hooks/usePastActivity.ts');
 const ownerDashboardDoc = read('__docs__/projects/owner-dashboard.md');
+const obpImplDoc = read('__docs__/official-business-page/official-business-page_impl.md');
+const obpFirebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
 const mobileSupportDoc = read('__docs__/mobile-operational-support/mobile-operational-support_mobile-support.md');
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
@@ -132,7 +134,16 @@ forbidToken(ownerDashboardHook, 'Fetches overview + overall on initial load', 'o
   'const summaryDocId = getDocId.dashboardSummary(tId, sId, OBP_PROJECT_ID);',
   'const OWNER_ACTION_MARK_DONE_RESPONSE_JSON_MAX_BYTES = 16 * 1024;',
   'readJsonResponseWithLimit<unknown>(response, OWNER_ACTION_MARK_DONE_RESPONSE_JSON_MAX_BYTES)',
+  'const MAX_OBP_DASHBOARD_SUMMARY_READ_DIAGNOSTICS = 25;',
+  'reportedOBPDashboardSummaryReadFailures',
+  'function logOBPDashboardSummaryReadFailure(',
+  "'owner_dashboard_obp_summary_read_failed'",
+  "getBoundedAnalyticsStringContext('summaryDocId', params.summaryDocId)",
+  "fallbackPolicy: 'use_daily_obp_docs_without_views_change'",
+  "summaryDocKind: 'overall_summary'",
+  'logOBPDashboardSummaryReadFailure(error, { tId, sId, summaryDocId });',
 ].forEach((token) => requireToken(ownerDashboardDb, token, 'owner dashboard DAL'));
+forbidToken(ownerDashboardDb, '} catch {\n                // Non-critical\n            }', 'owner dashboard OBP summary read silent catch');
 
 [
   'const [showHistorical, setShowHistorical] = useState(false);',
@@ -249,6 +260,9 @@ forbidToken(mobileHours, 'console.error(', 'mobile Today raw error logging');
   '`npm run verify:owner-dashboard-today-boundary`',
   'Today-first live dashboard',
   'loadHistorical: showHistorical',
+  'OBP overview summary read diagnostics',
+  'owner_dashboard_obp_summary_read_failed',
+  'viewsChange` as `null`',
   'Past Activity remains disabled unless `ENABLE_PAST_ACTIVITY_HISTORY` is enabled',
   'desktop/mobile browser QA',
 ].forEach((token) => requireToken(ownerDashboardDoc, token, 'owner dashboard docs'));
@@ -266,13 +280,26 @@ forbidToken(ownerDashboardDoc, 'Overview data (fetched on initial load)', 'owner
 ].forEach((token) => requireToken(mobileSupportDoc, token, 'mobile support docs'));
 
 [
+  ['OBP implementation', obpImplDoc, 'OBP dashboard summary read diagnostics'],
+  ['OBP implementation', obpImplDoc, 'owner_dashboard_obp_summary_read_failed'],
+  ['OBP implementation', obpImplDoc, 'use_daily_obp_docs_without_views_change'],
+  ['OBP Firebase', obpFirebaseDoc, 'OBP dashboard summary-read diagnostics'],
+  ['OBP Firebase', obpFirebaseDoc, 'owner_dashboard_obp_summary_read_failed'],
+  ['OBP Firebase', obpFirebaseDoc, 'adds no fallback Firestore read, write, delete'],
+].forEach(([label, source, token]) => requireToken(source, token, `${label} docs`));
+
+[
   ['inventory', inventory, 'owner_dashboard_today'],
   ['inventory', inventory, 'owner-dashboard-today boundary source gate passed'],
   ['report', report, '## Owner Dashboard Today Boundary'],
   ['report', report, '`npm run verify:owner-dashboard-today-boundary`'],
   ['audit', audit, 'Owner Dashboard Today boundary checkpoint'],
+  ['audit', audit, 'Owner Dashboard OBP summary read diagnostics checkpoint'],
+  ['audit', audit, 'owner_dashboard_obp_summary_read_failed'],
   ['audit', audit, '`npm run verify:owner-dashboard-today-boundary`'],
   ['changelog', changelog, 'Owner Dashboard Today Boundary'],
+  ['changelog', changelog, 'Owner Dashboard OBP Summary Read Diagnostics'],
+  ['changelog', changelog, 'owner_dashboard_obp_summary_read_failed'],
   ['changelog', changelog, '`npm run verify:owner-dashboard-today-boundary`'],
 ].forEach(([label, source, token]) => requireToken(source, token, `owner dashboard Today ledger ${label}`));
 

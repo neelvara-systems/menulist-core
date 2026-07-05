@@ -1,4 +1,5 @@
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
+import { getSmtpConfigFromEnv, isSmtpConfigured } from '@lib/notifications/smtpConfig';
 import * as nodemailer from 'nodemailer';
 import type { OwnerNotificationChannelResult } from '../types';
 
@@ -7,25 +8,22 @@ let cachedTransporter: nodemailer.Transporter | null = null;
 function getTransporter(): nodemailer.Transporter | null {
     if (cachedTransporter) return cachedTransporter;
 
-    const host = process.env.SMTP_HOST;
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
+    const smtpConfig = getSmtpConfigFromEnv();
 
-    if (!host || !user || !pass) return null;
+    if (!smtpConfig) return null;
 
     cachedTransporter = nodemailer.createTransport({
-        host,
-        port,
-        secure: port === 465,
-        auth: { user, pass },
+        host: smtpConfig.host,
+        port: smtpConfig.port,
+        secure: smtpConfig.secure,
+        auth: { user: smtpConfig.user, pass: smtpConfig.pass },
     });
 
     return cachedTransporter;
 }
 
 export function isOwnerNotificationEmailConfigured(): boolean {
-    return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+    return isSmtpConfigured();
 }
 
 export async function sendOwnerNotificationEmail(params: {

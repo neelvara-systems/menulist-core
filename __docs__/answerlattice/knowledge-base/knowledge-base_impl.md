@@ -1,7 +1,7 @@
 # Knowledge Base — Technical Implementation Blueprint
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-06-30
+> **Last Updated:** 2026-07-05
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -58,6 +58,8 @@ The Knowledge Base is a **client-side DAL feature** with no dedicated API routes
 Article create/update/delete and bulk publish/archive UI paths must require `assertKnowledgeBaseArticleWriteSucceeded()`, `assertKnowledgeBaseArticleDeleteSucceeded()`, or `assertKnowledgeBaseArticleBulkStatusUpdateSucceeded()` before local article, category, selection, or ingestion-job state advances. Category, section, article-parent, and category-delete navigation writes must require `assertKnowledgeBaseCategoryWriteSucceeded()` or `assertKnowledgeBaseCategoriesMutationSucceeded()` before local category/section/navigation state advances. Rejected acknowledgements use `platform_kb_article_create_rejected`, `platform_kb_article_update_rejected`, `platform_kb_article_delete_rejected`, `platform_kb_section_article_delete_rejected`, `platform_kb_category_article_delete_rejected`, `platform_kb_bulk_article_status_update_rejected`, `platform_kb_category_create_rejected`, `platform_kb_category_update_rejected`, `platform_kb_section_create_rejected`, `platform_kb_section_update_rejected`, `platform_kb_article_parent_update_rejected`, `platform_kb_article_parent_delete_rejected`, `platform_kb_section_delete_category_update_rejected`, `platform_kb_category_delete_rejected`, `kb_generation_review_article_update_rejected`, or `kb_generation_reconciliation_article_delete_rejected`.
 
 When Answerlattice product surfaces are enabled, KB article create/update and approved KB-generation publish paths must await `rebuildProductSurfaceContentSummaryWithDiagnostics()` after the confirmed write. Refresh failures log `answerlattice_article_summary_refresh_after_create_failed`, `answerlattice_article_summary_refresh_after_update_failed`, or `answerlattice_kb_generation_summary_refresh_after_publish_failed` with bounded article/job metadata and show fixed contextual-help refresh warning copy. The primary article/job write remains successful; embedding failures are also caught inside `ArticleModal.tsx` so a post-write embedding failure cannot be reported as a failed article save.
+
+Answerlattice KB session lookup diagnostics (July 5, 2026): category and article DAL session lookups no longer collapse thrown `getActiveSession()` failures into anonymous or global fallback scope. Categories log `answerlattice_kb_categories_session_lookup_failed`, articles log `answerlattice_kb_articles_session_lookup_failed`, and operation metadata is presence/length/type only. Category reads return `null` if the session lookup itself failed, so they do not fall through to the legacy categories doc. Legitimate no-session/null behavior and scoped tenant/store reads remain unchanged.
 
 ### 2.3 Database Layer
 

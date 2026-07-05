@@ -27,6 +27,10 @@ Client-created `guestFeedback` documents are denied in `firestore.rules`. Public
 
 Guest feedback writes do not invalidate public menu/OBP cache because feedback is private owner workflow data and does not change public menu, store, outlet, Official Business Page, or screen-display truth packets.
 
+Feedback nudge storage diagnostics: the public menu inline feedback nudge uses browser-local sessionStorage only to avoid repeating the nudge in one tab session. Failed read/write paths log bounded `public_menu_feedback_nudge_storage_read_failed` / `public_menu_feedback_nudge_storage_write_failed` diagnostics only and add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+
+Review URL parse diagnostics are cost-neutral. Malformed configured review URLs still resolve to absent guest-facing review links, while `guest_feedback_review_url_parse_failed` logs bounded source/value-shape metadata with fixed `omit_review_url` fallback policy only. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache tags, rules, indexes, owner settings, Firebase deploy requirement, or Vercel deploy action.
+
 ---
 
 ## Indexes And Retention

@@ -143,6 +143,25 @@ function getReviewSuggestLogContext(
     };
 }
 
+function getReviewReplyClientResponseSummary({
+    rating,
+    reply,
+    source,
+}: {
+    rating: number;
+    reply: string;
+    source: 'ai' | 'fallback';
+}) {
+    return {
+        hasReply: reply.trim().length > 0,
+        rating,
+        replyLength: reply.length,
+        responseShape: 'object',
+        responseSummaryKind: 'review_reply_suggestion',
+        source,
+    };
+}
+
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION || !FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST) {
         return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
@@ -274,11 +293,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     billingMode: 'billable',
                     businessType: promptBusinessType || null,
                     chargePerCredit: CHARGE_PER_CREDIT,
-                    clientResponse: {
+                    clientResponse: getReviewReplyClientResponseSummary({
                         rating,
                         reply,
                         source: usedFallback ? 'fallback' : 'ai',
-                    },
+                    }),
                     generationConfig: {
                         maxOutputTokens: 200,
                         temperature: 0.7,

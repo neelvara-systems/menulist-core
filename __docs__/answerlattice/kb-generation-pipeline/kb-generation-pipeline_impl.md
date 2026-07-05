@@ -1,7 +1,7 @@
 # KB Generation Pipeline — Technical Implementation Blueprint
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-06-29
+> **Last Updated:** 2026-07-05
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -63,6 +63,8 @@ KB source-file links in the active job card, job details drawer, and reconciliat
 KB job status rendering is shared through `getIngestionJobStatusData()` in the active job card, status tag, history preview card, and job details drawer. That shared map covers the seven persisted `INGESTION_JOB_STATUS` values, including `cancelled`. Each renderer keeps an `Unknown` fallback so malformed or older status strings do not crash the job history or detail views.
 
 The active job card and processing progress component must not keep commented test-only progress or status override code. Runtime progress and status displays come only from the persisted `IngestionJob` fields, and the progress component bounds malformed or missing article counts before computing percentage text.
+
+Answerlattice KB generation session lookup diagnostics (July 5, 2026): deprecated `getIngestionJobs()` compatibility reads no longer collapse thrown `getActiveSession()` failures silently. Failed session lookup logs `answerlattice_kb_generation_session_lookup_failed` with bounded operation metadata, and the compatibility helper keeps the existing fail-closed non-platform behavior rather than widening into global job reads.
 
 ### 2.2 Database Layer
 

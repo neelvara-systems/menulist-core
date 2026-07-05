@@ -2,7 +2,7 @@
 
 **Feature:** AI-Powered Menu Item Description Generation
 **Status:** Firebase cost evidence; not current launch certification
-**Last Updated:** March 14, 2026
+**Last Updated:** July 5, 2026
 **Priority:** MEDIUM — Gemini API cost per call, but lighter than image generation.
 
 ---
@@ -71,6 +71,10 @@ None — uses Next.js API route `/api/descriptions`.
 - **Batch processing**: All items in a file processed in one Gemini call (not per-item)
 - **"Generate Empty" mode**: Only generates for items without descriptions (skips existing)
 - **Sequential file processing**: Files processed one at a time to prevent rate limits
+
+July 5 provider-response parse diagnostics are Firebase-cost neutral. Empty, malformed non-object, or malformed object-fragment provider JSON now logs capped `description_provider_response_parse_failed` diagnostics with fixed `return_description_generation_failed` policy and response-shape metadata only. The route still uses the existing bounded body admission, validation, permission gate, linked-outlet policy check, SAFE_MODE/rate-limit/capacity checks, single Gemini call, response normalization, `finalizeAiOperationAccounting()` write, and credit consumption order for valid output. Unusable provider responses still return the existing generic Description failure without a usable operation row or credit consumption. Shape-only local success/error logs and bounded item/language summaries in accounting input add no Firestore reads/writes/deletes, Storage operations, extra provider calls, AI accounting writes, credit consumption, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+July 5 editor returned-error diagnostics are also Firebase-cost neutral. `descriptionGeneration.shared.ts` still runs the same generated-description flow and direct-save fallback, but returned-error service results now log `menu_editor_description_generation_returned_error_message` with bounded result-message/file/project/message-type metadata only. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, AI accounting writes, cache invalidations, rules, indexes, schema fields, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
 ### Warnings: Expensive Patterns
 

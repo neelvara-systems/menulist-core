@@ -1,6 +1,7 @@
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage, isLocalizedText } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { evaluatePublicTruthIndexability, type PublicTruthIndexDecision } from '@lib/seo/publicTruthIndexing';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import type { Project, ProjectSummaryData } from '@template/main-app/projects/types';
@@ -125,6 +126,9 @@ const OWNER_REQUIRED_FACTS = new Set<PublicTruthCheckFactId>([
   'public_link',
 ]);
 export const OWNER_PUBLIC_TRUTH_MAX_SETUP_JOBS = 6;
+const MAX_OWNER_MENU_URL_DIAGNOSTICS = 25;
+
+const reportedOwnerMenuUrlGenerationFailures = new Set<string>();
 
 function hasText(value: unknown): boolean {
   return typeof value === 'string' && value.trim().length > 0;
@@ -459,6 +463,60 @@ function getSourceKind(store: Record<string, any>): PublicTruthCheckSourceKind {
   return 'menu';
 }
 
+function getProjectUrlSourceKind(value: unknown): string {
+  if (value === undefined) return 'undefined';
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+function getProjectUrlSourceLength(value: unknown): number {
+  if (typeof value === 'string') return value.trim().length;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value).length;
+  if (isLocalizedText(value)) {
+    return Object.values(value)
+      .map((entry) => String(entry || '').trim().length)
+      .reduce((total, length) => total + length, 0);
+  }
+  return 0;
+}
+
+function logOwnerMenuUrlGenerationFailure(
+  error: unknown,
+  store: Record<string, any>,
+  projectSummary: OwnerPublicTruthProjectSummary,
+): void {
+  const slugOrName = projectSummary.slug || projectSummary.name;
+  const sourceKind = getProjectUrlSourceKind(slugOrName);
+  const sourceLength = getProjectUrlSourceLength(slugOrName);
+  const failureKey = [
+    hasText(store.subdomain) ? 'subdomain' : 'no-subdomain',
+    hasText(store.customDomain) ? 'custom-domain' : 'no-custom-domain',
+    projectSummary.isDefault ? 'default' : 'non-default',
+    sourceKind,
+    sourceLength,
+  ].join(':');
+
+  if (reportedOwnerMenuUrlGenerationFailures.has(failureKey)) return;
+  if (reportedOwnerMenuUrlGenerationFailures.size >= MAX_OWNER_MENU_URL_DIAGNOSTICS) return;
+  reportedOwnerMenuUrlGenerationFailures.add(failureKey);
+
+  logRuntimeFailure('public_truth_owner_menu_url_generation_failed', error, {
+    hasSubdomain: hasText(store.subdomain),
+    subdomainLength: getProjectUrlSourceLength(store.subdomain),
+    hasCustomDomain: hasText(store.customDomain),
+    customDomainLength: getProjectUrlSourceLength(store.customDomain),
+    projectSlugPresent: hasText(projectSummary.slug),
+    projectSlugLength: getProjectUrlSourceLength(projectSummary.slug),
+    projectNameKind: getProjectUrlSourceKind(projectSummary.name),
+    projectNameLength: getProjectUrlSourceLength(projectSummary.name),
+    projectIdPresent: hasText(projectSummary.projectId),
+    projectIdLength: getProjectUrlSourceLength(projectSummary.projectId),
+    isDefaultProject: Boolean(projectSummary.isDefault),
+    fallbackPolicy: 'omit_menu_url',
+  });
+}
+
 function getMenuUrl(
   store: Record<string, any>,
   projectSummary?: OwnerPublicTruthProjectSummary | null,
@@ -467,7 +525,8 @@ function getMenuUrl(
   if (!projectSummary) return undefined;
   try {
     return generateProjectUrl(store.subdomain, store.customDomain, projectSummary.slug || projectSummary.name, projectSummary.isDefault);
-  } catch {
+  } catch (error) {
+    logOwnerMenuUrlGenerationFailure(error, store, projectSummary);
     return undefined;
   }
 }

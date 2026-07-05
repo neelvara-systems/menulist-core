@@ -18,6 +18,9 @@ import { detectInstallSurface } from './surfaceDetection';
 import { getBoundedPwaStringContext, logPwaTrackingFailure } from './pwaDiagnostics';
 
 const OPENED_FIRED_SESSION_KEY_PREFIX = 'menulist_customerApp_openedFired_';
+const STANDALONE_SESSION_STORAGE_TEST_KEY = '__menulist_customer_app_open_test__';
+type CustomerAppOpenStorageOperation = 'session_availability' | 'session_guard' | 'ios_install_inference';
+const reportedCustomerAppOpenStorageFailures = new Set<CustomerAppOpenStorageOperation>();
 
 // iOS never fires `appinstalled`. If an iOS device launches the app in
 // standalone mode within this window of a prompt-shown event, we treat it as
@@ -25,14 +28,46 @@ const OPENED_FIRED_SESSION_KEY_PREFIX = 'menulist_customerApp_openedFired_';
 // without capturing unrelated re-opens weeks later.
 const IOS_INSTALL_INFERENCE_WINDOW_MS = 48 * 60 * 60 * 1000;
 
-function isSessionStorageAvailable(): boolean {
+function logCustomerAppOpenStorageFailure(
+  operation: CustomerAppOpenStorageOperation,
+  failureCode: string,
+  error: unknown,
+  context: Record<string, boolean | number | string | null | undefined> = {},
+): void {
+  if (reportedCustomerAppOpenStorageFailures.has(operation)) return;
+  reportedCustomerAppOpenStorageFailures.add(operation);
+
+  logPwaTrackingFailure(failureCode, error, {
+    operation,
+    ...context,
+  });
+}
+
+function getCustomerAppOpenStorageContext(
+  storeId: string | number,
+  tenantId: string | number | undefined,
+  storageKey: string,
+) {
+  return {
+    ...getBoundedPwaStringContext('storeId', storeId),
+    ...getBoundedPwaStringContext('tenantId', tenantId),
+    ...getBoundedPwaStringContext('storageKey', storageKey),
+  };
+}
+
+function isSessionStorageAvailable(storeId: string | number, tenantId?: string | number): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const k = '__menulist_test__';
-    window.sessionStorage.setItem(k, '1');
-    window.sessionStorage.removeItem(k);
+    window.sessionStorage.setItem(STANDALONE_SESSION_STORAGE_TEST_KEY, '1');
+    window.sessionStorage.removeItem(STANDALONE_SESSION_STORAGE_TEST_KEY);
     return true;
-  } catch {
+  } catch (error) {
+    logCustomerAppOpenStorageFailure(
+      'session_availability',
+      'customer_app_open_session_storage_unavailable',
+      error,
+      getCustomerAppOpenStorageContext(storeId, tenantId, STANDALONE_SESSION_STORAGE_TEST_KEY),
+    );
     return false;
   }
 }
@@ -62,13 +97,18 @@ export async function detectAndTrackAppOpen(
   const { tenantId, storeTimeZone, businessDayEndTime, includeLocation = false } = options;
 
   // One fire per session per store — prevents SPA route changes from inflating opens
-  if (isSessionStorageAvailable()) {
+  if (isSessionStorageAvailable(storeId, tenantId)) {
     const key = `${OPENED_FIRED_SESSION_KEY_PREFIX}${storeId}`;
     try {
       if (window.sessionStorage.getItem(key)) return false;
       window.sessionStorage.setItem(key, String(Date.now()));
-    } catch {
-      /* fall through and still fire */
+    } catch (error) {
+      logCustomerAppOpenStorageFailure(
+        'session_guard',
+        'customer_app_open_session_guard_failed',
+        error,
+        getCustomerAppOpenStorageContext(storeId, tenantId, key),
+      );
     }
   }
 
@@ -96,9 +136,10 @@ export async function detectAndTrackAppOpen(
     // `ios-inferred`; otherwise keep it explicit as `ios-standalone` so the
     // dashboard can separate prompted installs from manual/share-link installs.
     if (platform === 'ios') {
+      const promptStorageKey = `${PROMPT_SHOWN_AT_KEY_PREFIX}${storeId}`;
       try {
         const promptShownRaw = window.localStorage.getItem(
-          `${PROMPT_SHOWN_AT_KEY_PREFIX}${storeId}`,
+          promptStorageKey,
         );
         const promptShownAt = promptShownRaw ? parseInt(promptShownRaw, 10) : 0;
         const source =
@@ -116,8 +157,13 @@ export async function detectAndTrackAppOpen(
           includeLocation,
           source,
         });
-      } catch {
-        /* non-fatal — analytics should never break the customer experience */
+      } catch (error) {
+        logCustomerAppOpenStorageFailure(
+          'ios_install_inference',
+          'customer_app_ios_install_inference_storage_failed',
+          error,
+          getCustomerAppOpenStorageContext(storeId, tenantId, promptStorageKey),
+        );
       }
     }
 
