@@ -1,6 +1,7 @@
 import { getUnitCost, isFreeTierAction } from '@constant/AI/unitCosts';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { AiOperationLogInput, recordAiOperation } from '@lib/ai/operationLog';
 import { getAnswerlatticeScopeLogContext, getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { getActiveProductSubscriptionForStore } from '@lib/billing/productBillingServer';
@@ -121,7 +122,8 @@ const isSubscriptionInScope = (
 async function refreshMonthlyCreditsIfNeeded(
     subscription: FirestoreSubscriptionDoc,
 ): Promise<FirestoreSubscriptionDoc> {
-    if (!subscription?.id || Number(subscription.monthlyCreditsAllowance || 0) <= 0) {
+    const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscription?.id);
+    if (!normalizedSubscriptionId || Number(subscription.monthlyCreditsAllowance || 0) <= 0) {
         return subscription;
     }
 
@@ -130,7 +132,7 @@ async function refreshMonthlyCreditsIfNeeded(
         return subscription;
     }
 
-    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscription.id);
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSubscriptionId);
     return db.runTransaction(async (transaction) => {
         const subscriptionSnap = await transaction.get(subscriptionRef);
         if (!subscriptionSnap.exists) return subscription;
@@ -217,9 +219,14 @@ export async function consumeAnswerlatticeAICapacity(
     subscription: FirestoreSubscriptionDoc,
     unitsToConsume: number,
 ): Promise<AnswerlatticeRemainingBalance | null> {
-    if (!subscription?.id || unitsToConsume <= 0) return null;
+    if (unitsToConsume <= 0) return null;
 
-    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscription.id);
+    const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscription?.id);
+    if (!normalizedSubscriptionId) {
+        throw new Error('Answerlattice subscription is not available.');
+    }
+
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSubscriptionId);
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(scope.sId));
 
     const balance = await db.runTransaction(async (transaction) => {

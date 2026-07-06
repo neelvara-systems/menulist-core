@@ -16,6 +16,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, getDocs, limit, orderBy, query, Timestamp, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { normalizeAnswerlatticeResolvedEntityId, normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { AnswerlatticeSignalEvent } from "@type/answerlattice";
@@ -57,6 +58,9 @@ export const getSignalEventsForEntity = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
+            if (!normalizedEntityId) return [];
+
             const windowStart = new Date();
             windowStart.setDate(windowStart.getDate() - windowDays);
             const windowTimestamp = Timestamp.fromDate(windowStart);
@@ -65,7 +69,7 @@ export const getSignalEventsForEntity = async (
                 getCollectionRef(),
                 where('tId', '==', tId),
                 where('sId', '==', sId),
-                where('entityId', '==', entityId),
+                where('entityId', '==', normalizedEntityId),
                 where('timestamp', '>=', windowTimestamp),
                 orderBy('timestamp', 'desc'),
                 limit(200)
@@ -157,12 +161,13 @@ export const getBatchSignalCounts = async (
     return await apiCallComposer(
         async () => {
             const result: BatchSignalCounts = {};
+            const normalizedEntityIds = normalizeAnswerlatticeResolvedEntityIds(entityIds, entityIds.length);
             // Initialize all entities with zero counts
-            for (const eid of entityIds) {
+            for (const eid of normalizedEntityIds) {
                 result[eid] = { ticket: 0, chat_negative: 0, escalation: 0, total: 0 };
             }
 
-            if (entityIds.length === 0) return result;
+            if (normalizedEntityIds.length === 0) return result;
 
             const boundedWindowDays = clampPositiveInt(windowDays, 14, 90);
             const windowStart = new Date();
@@ -171,8 +176,8 @@ export const getBatchSignalCounts = async (
 
             // Firestore `in` supports max 30 values per query
             const BATCH_SIZE = 30;
-            for (let i = 0; i < entityIds.length; i += BATCH_SIZE) {
-                const batch = entityIds.slice(i, i + BATCH_SIZE);
+            for (let i = 0; i < normalizedEntityIds.length; i += BATCH_SIZE) {
+                const batch = normalizedEntityIds.slice(i, i + BATCH_SIZE);
                 const q = query(
                     getCollectionRef(),
                     where('tId', '==', tId),

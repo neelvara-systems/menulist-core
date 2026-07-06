@@ -252,6 +252,8 @@ Active entity-bound triggers may include `resolvedSuggestion` with title, summar
 
 **Purpose:** CRUD operations on individual triggers. Nightly batch rebuilds the platformSummary cache from this collection.
 
+Answerlattice App Predictive Trigger ID Boundary: app-side trigger actions validate and normalize trigger document IDs through `src/lib/answerlattice/predictiveTriggerIdBoundary.ts` before individual trigger refs are built. Update, activate, disable, delete, and single-trigger reads use the normalized ID; hook audit entries also write the normalized trigger ID so action history matches the document touched. Malformed, reserved, empty, or path-shaped trigger IDs fail through the fixed owner-facing action messages before Firestore document access.
+
 **Why both?**
 
 - platformSummary doc = **read-optimized** (1 read loads all triggers)

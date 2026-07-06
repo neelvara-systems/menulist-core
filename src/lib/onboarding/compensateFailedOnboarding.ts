@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { requireOnboardingUserId } from "./onboardingUserId";
 
 export type FailedOnboardingCompensationSource = "WEBSITE_ONBOARDING" | "RESELLER_ONBOARDING";
 
@@ -35,6 +36,7 @@ export async function compensateFailedTenantStoreOnboarding(params: {
 }): Promise<void> {
     const tenantId = normalizePositiveId(params.tenantId);
     const storeId = normalizePositiveId(params.storeId);
+    const userId = requireOnboardingUserId(params.userId);
     const reason = params.reason.slice(0, 80);
 
     await params.db.runTransaction(async (transaction) => {
@@ -42,7 +44,7 @@ export async function compensateFailedTenantStoreOnboarding(params: {
         const tenantRef = params.db.collection(DB_COLLECTIONS.TENANTS).doc(String(tenantId));
         const storeRef = params.db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
         const storesSummaryRef = params.db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc("storesSummary");
-        const userRef = params.db.collection(DB_COLLECTIONS.USERS).doc(params.userId);
+        const userRef = params.db.collection(DB_COLLECTIONS.USERS).doc(userId);
         const userSnap = await transaction.get(userRef);
         const userData = userSnap.exists ? userSnap.data() || {} : {};
         const remainingStores = removeStoreFromList(userData.stores, storeId);

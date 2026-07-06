@@ -12,6 +12,7 @@ import {
   logExportFailure,
 } from '@lib/export/exportDiagnostics';
 import { logger } from '@lib/monitoring/logger';
+import { escapeCSVValue } from '@util/exportUtils';
 
 // ================================================================
 // TYPES
@@ -95,6 +96,7 @@ export async function exportDashboardData(
  */
 function generateCSV(data: DashboardData): string {
   const lines: string[] = [];
+  const csvRow = (values: unknown[]): string => values.map(escapeCSVValue).join(',');
 
   // Header
   lines.push('# Analytics Summary Report');
@@ -103,19 +105,19 @@ function generateCSV(data: DashboardData): string {
 
   // Summary Metrics
   lines.push('## Summary Metrics');
-  lines.push('Metric,Value');
-  lines.push(`Total Chats,${data.summary.totalChats}`);
-  lines.push(`Satisfaction Rate,${data.summary.satisfactionRate}%`);
-  lines.push(`Avg Messages per Chat,${data.summary.avgMessagesPerChat}`);
-  lines.push(`Knowledge Gaps,${data.summary.knowledgeGaps}`);
+  lines.push(csvRow(['Metric', 'Value']));
+  lines.push(csvRow(['Total Chats', data.summary.totalChats]));
+  lines.push(csvRow(['Satisfaction Rate', `${data.summary.satisfactionRate}%`]));
+  lines.push(csvRow(['Avg Messages per Chat', data.summary.avgMessagesPerChat]));
+  lines.push(csvRow(['Knowledge Gaps', data.summary.knowledgeGaps]));
   lines.push('');
 
   // Top Questions
   if (data.topQuestions && data.topQuestions.length > 0) {
     lines.push('## Top Questions');
-    lines.push('Question,Count,Category');
+    lines.push(csvRow(['Question', 'Count', 'Category']));
     data.topQuestions.forEach(q => {
-      lines.push(`"${q.question}",${q.count},${q.category || 'N/A'}`);
+      lines.push(csvRow([q.question, q.count, q.category || 'N/A']));
     });
     lines.push('');
   }
@@ -123,20 +125,20 @@ function generateCSV(data: DashboardData): string {
   // Knowledge Gaps
   if (data.knowledgeGaps && data.knowledgeGaps.length > 0) {
     lines.push('## Knowledge Gaps');
-    lines.push('Question,Count,Severity,Examples');
+    lines.push(csvRow(['Question', 'Count', 'Severity', 'Examples']));
     data.knowledgeGaps.forEach(gap => {
       const examples = gap.examples.join('; ');
-      lines.push(`"${gap.question}",${gap.count},${gap.severity || 'N/A'},"${examples}"`);
+      lines.push(csvRow([gap.question, gap.count, gap.severity || 'N/A', examples]));
     });
     lines.push('');
   }
 
   // Feedback
   lines.push('## Feedback Summary');
-  lines.push('Type,Count');
-  lines.push(`Positive,${data.feedback.positive}`);
-  lines.push(`Negative,${data.feedback.negative}`);
-  lines.push(`Total,${data.feedback.total}`);
+  lines.push(csvRow(['Type', 'Count']));
+  lines.push(csvRow(['Positive', data.feedback.positive]));
+  lines.push(csvRow(['Negative', data.feedback.negative]));
+  lines.push(csvRow(['Total', data.feedback.total]));
 
   return lines.join('\n');
 }

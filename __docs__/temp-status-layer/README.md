@@ -5,7 +5,7 @@
 **Created:** February 19, 2026
 **Source:** ChatGPT Strategic Planning Session — Part 9
 **Status:** ✅ IMPLEMENTED (February 19, 2026)
-**Last Source Gate Update:** July 2, 2026
+**Last Source Gate Update:** July 6, 2026
 **Parent:** [`__docs__/customer-facing-infrastructure/`](../customer-facing-infrastructure/README.md)
 
 ---
@@ -32,7 +32,7 @@ Current source/docs parity is guarded by `npm run verify:temporary-status-bounda
 npm run verify:temporary-status-boundary
 ```
 
-The gate checks the authenticated set/clear route, hashed write limiter, 4KB body cap, bounded 8KB browser response parser, desktop and mobile optimistic rollback, Mobile Today shortcuts, OBP/menu/feedback/public API expiry guards, public pull API hides expired temporary status values, public cache invalidation, Digital Screens invalidation, Owner Business Assistant cache invalidation, and this doc set.
+The gate checks the authenticated set/clear route, strict session document-ID admission for tenant/store/actor IDs, hashed write limiter, 4KB body cap, bounded 8KB browser response parser, desktop and mobile optimistic rollback, Mobile Today shortcuts, OBP/menu/feedback/public API expiry guards, public pull API hides expired temporary status values, public cache invalidation, Digital Screens invalidation, Owner Business Assistant cache invalidation, and this doc set.
 
 ## One-Liner
 

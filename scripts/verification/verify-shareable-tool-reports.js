@@ -118,6 +118,9 @@ const familyReadmeDoc = read('__docs__/menulist-tools/public-truth-tools/README.
 const familyImplDoc = read('__docs__/menulist-tools/public-truth-tools/public-truth-tools_impl.md');
 const familyFirebaseDoc = read('__docs__/menulist-tools/public-truth-tools/public-truth-tools_firebase.md');
 const familyTestsDoc = read('__docs__/menulist-tools/public-truth-tools/public-truth-tools_test-cases.md');
+const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+const changelog = read('__docs__/CHANGELOG.md');
+const systemStrengtheningLedger = read('__docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md');
 const features = read('src/config/features.ts');
 const discoveryPolicy = read('src/lib/seo/discoveryPolicy.ts');
 const sitemap = read('public/sitemap.xml');
@@ -147,6 +150,8 @@ assertIncludes(shared, 'SHAREABLE_TOOL_REPORT_MAX_ENCODED_LENGTH', 'Shareable To
 assertIncludes(shared, 'SHAREABLE_TOOL_REPORT_MAX_CHECKS', 'Shareable Tool Reports check cap');
 assertIncludes(shared, 'SHAREABLE_TOOL_REPORT_MAX_BOUNDARIES', 'Shareable Tool Reports boundary cap');
 assertIncludes(shared, 'SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS', 'Shareable Tool Reports setup job cap');
+assertIncludes(shared, 'SHAREABLE_TOOL_REPORT_ISO_TIMESTAMP_PATTERN', 'Shareable Tool Reports ISO timestamp guard');
+assertIncludes(shared, "replace(/[\\x00-\\x1F\\x7F]+/g, ' ')", 'Shareable Tool Reports control-character stripping');
 assertIncludes(shared, "| 'not_applicable'", 'Shareable Tool Reports not-applicable result preservation');
 assertIncludes(shared, 'evidenceText: string', 'Shareable Tool Reports evidence text type');
 assertIncludes(shared, 'ShareableToolReportSetupJob', 'Shareable Tool Reports setup job type');
@@ -158,6 +163,11 @@ assertIncludes(shared, "return '/create-menu'", 'Shareable Tool Reports unsafe h
 assertIncludes(shared, 'encodeShareableToolReportPayload', 'Shareable Tool Reports encoder');
 assertIncludes(shared, 'decodeShareableToolReportPayload', 'Shareable Tool Reports decoder');
 assertIncludes(shared, 'createShareableToolReportUrl', 'Shareable Tool Reports URL builder');
+assertIncludes(shared, 'function coerceIsoTimestamp', 'Shareable Tool Reports timestamp normalizer');
+assertIncludes(shared, 'Date.parse(timestamp)', 'Shareable Tool Reports timestamp parse guard');
+assertIncludes(shared, 'new Date(timestampMs).toISOString()', 'Shareable Tool Reports timestamp canonicalization');
+assertIncludes(shared, 'normalizedTimestamp === timestamp ? normalizedTimestamp :', 'Shareable Tool Reports timestamp exactness guard');
+assertIncludes(shared, 'generatedAt: coerceIsoTimestamp(source.generatedAt)', 'Shareable Tool Reports generatedAt guard');
 assertIncludes(shared, 'TextEncoder', 'Shareable Tool Reports UTF-8 encoder');
 assertIncludes(shared, 'TextDecoder', 'Shareable Tool Reports UTF-8 decoder');
 assertIncludes(shared, 'toBase64Url', 'Shareable Tool Reports base64url encoder');
@@ -217,6 +227,8 @@ assertNotIncludes(component, 'useSearchParams', 'Shareable Tool Reports must not
 assertNotIncludes(component, '/api/tools/reports', 'Shareable Tool Reports must not submit to report API');
 assertNotIncludes(component, '/api/public-truth-tools/reports', 'Shareable Tool Reports must not submit to report API');
 assertNotIncludes(component, '/api/shareable-tool-reports', 'Shareable Tool Reports must not submit to report API');
+
+assertNotIncludes(shared, 'generatedAt: coerceString(source.generatedAt, 80)', 'Shareable Tool Reports must not accept arbitrary generatedAt strings');
 
 assertIncludes(contactRoute, 'ShareableToolReportSourceContextSchema', 'MenuList public contact source-context schema');
 assertIncludes(contactRoute, "sourceKind: z.literal('shareable_tool_report')", 'MenuList public contact source-context kind');
@@ -315,6 +327,8 @@ assertIncludes(specDoc, 'consented follow-up request through the existing `/api/
 assertIncludes(implDoc, '/tools/reports#r=', 'Shareable Tool Reports implementation hash format');
 assertIncludes(implDoc, 'Do not add a report API route', 'Shareable Tool Reports implementation API boundary');
 assertIncludes(implDoc, 'shareable_tool_report_payload_decode_failed', 'Shareable Tool Reports implementation decode diagnostics');
+assertIncludes(implDoc, 'strict ISO `generatedAt`', 'Shareable Tool Reports implementation timestamp boundary');
+assertIncludes(implDoc, 'control characters are stripped', 'Shareable Tool Reports implementation display string boundary');
 assertIncludes(implDoc, 'All current public MenuList Tools are source-tool integrations', 'Shareable Tool Reports implementation coverage');
 assertIncludes(implDoc, 'where report gaps become the job list', 'Shareable Tool Reports implementation setup job mapping');
 assertIncludes(implDoc, 'The accepted write is one existing public contact enquiry', 'Shareable Tool Reports implementation contact boundary');
@@ -326,6 +340,7 @@ assertIncludes(firebaseDoc, '0 for report viewing; 1 existing contact enquiry wr
 assertIncludes(firebaseDoc, 'Report storage | 0', 'Shareable Tool Reports Firebase report storage boundary');
 assertIncludes(firebaseDoc, 'The submitted message contains a bounded report summary', 'Shareable Tool Reports Firebase contact boundary');
 assertIncludes(firebaseDoc, 'shareable_tool_report_payload_decode_failed', 'Shareable Tool Reports Firebase decode diagnostics');
+assertIncludes(firebaseDoc, 'Strict `generatedAt` timestamp and control-character display-string hardening', 'Shareable Tool Reports Firebase timestamp/display boundary');
 assertIncludes(firebaseDoc, 'sourceKind: shareable_tool_report', 'Shareable Tool Reports Firebase source kind metadata');
 assertIncludes(firebaseDoc, 'bounded `setupJobList`', 'Shareable Tool Reports Firebase setup job metadata');
 assertIncludes(followUpPlaybookDoc, 'sourceKind', 'Shareable Tool Reports follow-up playbook metadata');
@@ -336,12 +351,17 @@ assertIncludes(testCasesDoc, 'STR-004', 'Shareable Tool Reports test case covera
 assertIncludes(testCasesDoc, 'STR-012', 'Shareable Tool Reports follow-up test case coverage');
 assertIncludes(testCasesDoc, 'STR-014', 'Shareable Tool Reports source metadata test case coverage');
 assertIncludes(testCasesDoc, 'STR-016', 'Shareable Tool Reports decode diagnostic test case coverage');
+assertIncludes(testCasesDoc, 'STR-017', 'Shareable Tool Reports timestamp/display string test case coverage');
 assertIncludes(testCasesDoc, 'setup job list', 'Shareable Tool Reports setup job test coverage');
 assertIncludes(validationDoc, 'npm run verify:shareable-tool-reports', 'Shareable Tool Reports validation gate');
 assertIncludes(validationDoc, 'consented follow-up uses only `/api/public/contact`', 'Shareable Tool Reports validation contact boundary');
 assertIncludes(validationDoc, 'follow-up request includes bounded `shareable_tool_report` source metadata', 'Shareable Tool Reports validation source metadata boundary');
 assertIncludes(validationDoc, 'setup job list is derived from visible report gaps', 'Shareable Tool Reports setup job validation gate');
 assertIncludes(validationDoc, 'decode diagnostics', 'Shareable Tool Reports decode diagnostics validation gate');
+assertIncludes(validationDoc, 'strict ISO timestamp guard', 'Shareable Tool Reports timestamp validation gate');
+assertIncludes(productionReadinessAudit, 'Shareable Tool Reports timestamp/display-string payload boundary', 'Production-readiness audit records Shareable Tool Reports timestamp/display string boundary');
+assertIncludes(changelog, 'Shareable Tool Reports timestamp/display-string payload boundary', 'Changelog records Shareable Tool Reports timestamp/display string boundary');
+assertIncludes(systemStrengtheningLedger, 'Shareable Tool Reports timestamp/display-string payload boundary', 'System-strengthening ledger records Shareable Tool Reports timestamp/display string boundary');
 assertIncludes(toolsReadmeDoc, '[shareable-tool-reports](./shareable-tool-reports/README.md)', 'MenuList Tools README');
 assertIncludes(familyReadmeDoc, '[Shareable Tool Reports](../shareable-tool-reports/README.md)', 'Public Truth Tools README');
 assertIncludes(familyReadmeDoc, '/tools/reports', 'Public Truth Tools routes');

@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { getAnswerlatticePublicCacheTags } from '@lib/actions/revalidateAnswerlatticePublicCache';
+import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import type { ChangelogEntry, ChangelogPage } from '@type/changelog';
 import { ANSWERLATTICE_FAQ_STATUS, type AnswerlatticeFaq } from '@type/answerlattice';
@@ -217,7 +218,7 @@ export const getCachedKnowledgeBaseArticle = async (
     scope: Scope,
     articleId: string,
 ): Promise<KnowledgeBaseArticleType | null> => {
-    const normalizedArticleId = String(articleId || '').trim();
+    const normalizedArticleId = normalizeAnswerlatticeKbArticleId(articleId);
     if (!normalizedArticleId) return null;
 
     const cached = unstable_cache(

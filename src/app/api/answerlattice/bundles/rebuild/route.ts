@@ -13,8 +13,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
 
+const BUNDLE_REBUILD_REASON_CODES = ['manual', 'activation_manual_rebuild'] as const;
 const RebuildRequestSchema = z.object({
-    reason: z.string().trim().min(1).max(80).optional().default('manual'),
+    reason: z.enum(BUNDLE_REBUILD_REASON_CODES).optional().default('manual'),
     force: z.boolean().optional().default(false),
 });
 const BUNDLE_REBUILD_MAX_BODY_BYTES = 2 * 1024;
@@ -55,12 +56,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        const parsed = RebuildRequestSchema.parse(bodyResult.data);
+        const parsedResult = RebuildRequestSchema.safeParse(bodyResult.data);
+        if (!parsedResult.success) {
+            return NextResponse.json({ error: 'Invalid rebuild request.' }, { status: 400 });
+        }
+        const parsed = parsedResult.data;
         const manifest = await buildAnswerlatticeContextBundleServer({
             tId: tenantId,
             sId: storeId,
             reason: parsed.reason,
-            requestedBy: session.user?.id || session.user?.email || 'owner',
+            requestedBy: 'owner',
             force: parsed.force,
         });
 

@@ -6,6 +6,7 @@ import {
   logAuthFailure,
 } from "@lib/auth/authDiagnostics";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -33,10 +34,22 @@ const UpdateProfileSchema = z.object({
 });
 
 const USER_PROFILE_UPDATE_MAX_BODY_BYTES = 4 * 1024;
+const USER_PROFILE_DOCUMENT_ID_MAX_LENGTH = 160;
+
+function normalizeProfileUserDocumentId(value: unknown): string | null {
+  const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+  const userId = raw.trim();
+  return userId === raw
+    && userId.length > 0
+    && userId.length <= USER_PROFILE_DOCUMENT_ID_MAX_LENGTH
+    && isValidFirestoreDocumentId(userId)
+    ? userId
+    : null;
+}
 
 export async function updateCurrentUserProfile(request: NextRequest, session: any) {
   try {
-    const userId = String(session?.uId || session?.user?.id || "");
+    const userId = normalizeProfileUserDocumentId(session?.uId || session?.user?.id);
     if (!userId) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }

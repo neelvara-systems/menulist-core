@@ -585,7 +585,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                         {t('CreateMenu.previewFailedTitle')}
                     </h2>
                     <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
-                        {draft.error || t('CreateMenu.previewFailedFallback')}
+                        {t('CreateMenu.previewFailedFallback')}
                     </p>
                     <button onClick={() => router.push(createMenuPath)} style={primaryBtnStyle}>
                         <LuUpload size={16} /> {t('CreateMenu.tryAgain')}

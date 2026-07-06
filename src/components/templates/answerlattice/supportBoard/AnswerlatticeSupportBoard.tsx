@@ -5,6 +5,7 @@ import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissio
 import { useSupportBoard } from '@hook/answerlattice/useSupportBoard';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
+import { normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import { useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
 import {
     ANSWERLATTICE_SUPPORT_BOARD_PRIORITY,
@@ -169,6 +170,7 @@ function SupportBoardCard({
     const { token } = theme.useToken();
     const sourceIdentity = getCardSourceIdentity(card);
     const hasSourceIdentity = hasCardSourceIdentity(card);
+    const cardEntityId = normalizeAnswerlatticeResolvedEntityId(card.relatedEntityId);
     const nextStatus = card.status === ANSWERLATTICE_SUPPORT_BOARD_STATUS.RESOLVED
         ? null
         : BOARD_COLUMNS[BOARD_COLUMNS.findIndex((column) => column.status === card.status) + 1]?.status || null;
@@ -200,7 +202,7 @@ function SupportBoardCard({
                 </Paragraph>
                 <Space size={[6, 6]} wrap>
                     <Tag>{SOURCE_LABELS[card.sourceType] || card.sourceType}</Tag>
-                    {card.relatedEntityId ? <Tag color="geekblue">Entity linked</Tag> : null}
+                    {cardEntityId ? <Tag color="geekblue">Entity linked</Tag> : null}
                     {card.relatedProposalId ? <Tag color="purple">Proposal linked</Tag> : null}
                     {card.notesCount ? <Tag color="default">{card.notesCount} note{card.notesCount === 1 ? '' : 's'}</Tag> : null}
                 </Space>
@@ -298,7 +300,8 @@ export default function AnswerlatticeSupportBoard() {
     const needsAnswerCount = groupedCards[ANSWERLATTICE_SUPPORT_BOARD_STATUS.NEEDS_ANSWER]?.length || 0;
     const openCount = cards.filter((card) => card.status !== ANSWERLATTICE_SUPPORT_BOARD_STATUS.RESOLVED).length;
     const proposalCount = cards.filter((card) => Boolean(card.relatedProposalId)).length;
-    const selectedCardHasEntity = Boolean(selectedCard?.relatedEntityId && selectedCard.relatedEntityId !== 'unresolved');
+    const selectedCardEntityId = normalizeAnswerlatticeResolvedEntityId(selectedCard?.relatedEntityId);
+    const selectedCardHasEntity = Boolean(selectedCardEntityId);
     const canCreateProposalForSelectedCard = Boolean(selectedCard)
         && canCreateGovernanceProposal
         && selectedCardHasEntity
@@ -320,7 +323,7 @@ export default function AnswerlatticeSupportBoard() {
             priority: card.priority,
             assigneeName: card.assigneeName || '',
             dueDate: card.dueDate || '',
-            relatedEntityId: card.relatedEntityId || '',
+            relatedEntityId: normalizeAnswerlatticeResolvedEntityId(card.relatedEntityId) || '',
             relatedSurfaceId: card.relatedSurfaceId || '',
             tags: (card.tags || []).join(', '),
         });

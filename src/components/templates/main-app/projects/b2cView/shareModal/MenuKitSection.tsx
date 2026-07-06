@@ -98,12 +98,7 @@ export default function MenuKitSection({
                 locale,
             });
 
-            const safeName = storeName
-                .replace(/[^a-zA-Z0-9\s]/g, '')
-                .trim()
-                .replace(/\s+/g, '_') || 'Menu';
-
-            downloadBlob(result.zipBlob, `${safeName}_MenuKit.zip`);
+            downloadBlob(result.zipBlob, result.zipFilename);
             trackMenuKitDownload('zip_download');
             message.success('Menu Kit downloaded');
         } catch (error) {

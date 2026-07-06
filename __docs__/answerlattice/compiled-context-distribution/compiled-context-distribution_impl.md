@@ -73,7 +73,9 @@ The builder:
 
 ## Owner Flow
 
-Activation summary includes bundle readiness. Owners can manually rebuild compiled context from Activation. The button calls `/api/answerlattice/bundles/rebuild`, which resolves Answerlattice session scope, applies the rebuild rate limit before permission/build work, and then requires `REBUILD_CONTEXT` before reading the bounded optional body or building bundles. Owner responses do not expose raw build exceptions, and route failures log the fixed `answerlattice_context_bundle_manual_rebuild_failed` code with bounded tenant/store metadata.
+Activation summary includes bundle readiness. Owners can manually rebuild compiled context from Activation. The button calls `/api/answerlattice/bundles/rebuild`, which resolves Answerlattice session scope, applies the rebuild rate limit before permission/build work, and then requires `REBUILD_CONTEXT` before reading the bounded optional body or building bundles. The route accepts only fixed rebuild reason codes (`manual` or `activation_manual_rebuild`), rejects invalid reason payloads with `400 Invalid rebuild request.`, and passes the fixed requester label `owner` into the builder. The builder normalizes fixed reason/requester metadata again before writing build locks or manifests, so raw owner ids/emails or arbitrary request reason text are not stored in `platformSummary`. Owner responses do not expose raw build exceptions, and route failures log the fixed `answerlattice_context_bundle_manual_rebuild_failed` code with bounded tenant/store metadata.
+
+Answerlattice Compiled Context Bundle Entity ID Boundary: manual/server bundle builds normalize relation endpoints and answer/article/FAQ/surface/release entity ID arrays through the shared resolved-entity boundary before public/private bundle JSON is assembled. Malformed or unresolved relation endpoints are dropped from bundle relation output, and malformed or unresolved array entries are skipped before route, entity, canonical-lite, docs-nav, and MCP/private bundle objects are uploaded.
 
 ## Backend Repair Flow
 
@@ -82,6 +84,8 @@ Source changes mark the manifest stale by updating `sourceVersions_*` and `bundl
 The repair builder keeps the same immutable Storage paths as the manual rebuild API, preserves the last ready bundle on failure, and records status/bytes/routes in the scheduler run log.
 
 Manual and Functions-side repair diagnostics use fixed context-bundle failure codes. Changelog-load fallback logs use source error name/code/status and scope booleans only. Best-effort Storage manifest copy failures now log bounded manifest-upload diagnostics while preserving the Firestore manifest write and active-version behavior. Failed repairs preserve the existing manifest `build_failed` status, write the fixed repair code plus source error metadata to the build lock, and return the fixed repair code to the scheduler so raw Storage/Admin exception text cannot enter run logs.
+
+The Functions repair builder enforces the same Answerlattice Compiled Context Bundle Entity ID Boundary with the Functions entity ID normalizer before it writes public/private bundle objects.
 
 ## Widget Flow
 

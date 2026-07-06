@@ -3,7 +3,7 @@
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline
 **Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`); controlled internal testing ready, not launch certification
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`
-**Last Updated:** July 2, 2026
+**Last Updated:** July 5, 2026
 
 **Launch boundary:** This internal dashboard is source-verified for the reviewed implementation, but enabling it in a release still requires target feature-flag review, platform-role access verification, current extraction data, and the External Certification Runbook evidence that applies to the release. A green source gate does not certify live Firebase deploys, provider behavior, browser/device QA, or production-host behavior.
 
@@ -149,6 +149,8 @@ Simple stat cards:
 - Most Expensive Job (24h)
 
 Data source: Query `MENULIST_AI_OPERATIONS` collection for today's documents.
+
+The main dashboard passes cost metrics from the deduped snapshot, so normal monitor loads do not trigger a second cost query. `CostMonitor.tsx` keeps its standalone compatibility path for direct reuse; if that direct `getExtractionCostMetrics()` call rejects, it logs bounded `extraction_cost_monitor_load_failed` diagnostics with refresh-trigger metadata only and renders fixed "Cost metrics unavailable" copy. It does not collapse the failure into the "No extraction calls today" empty state.
 
 ### 6. Quality Metrics (`QualityMetrics.tsx`)
 

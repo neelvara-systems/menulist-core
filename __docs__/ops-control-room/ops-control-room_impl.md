@@ -2,7 +2,7 @@
 
 **Status:** ✅ IMPLEMENTED — Platform-only access at /ops
 **Created:** February 20, 2026  
-**Last Updated:** June 30, 2026
+**Last Updated:** July 6, 2026
 **Audience:** Developers
 
 ---
@@ -37,24 +37,27 @@
 - The browser monitor now caps `/api/ops/messaging-onboarding` response JSON at 256KB and validates the dashboard snapshot shape before updating cards or tables.
 - Rejected, oversized, malformed, or invalid responses use fixed platform failure copy and bounded `messaging_onboarding_monitor_response_*` runtime diagnostics only.
 - July 1 follow-up: Source gate: `npm run verify:messaging-onboarding-monitor-boundary` locks the platform-only route, dashboard feature flag, DATA_READ limiter, control-doc health lookup, bounded Admin SDK read windows, masked event/session IDs, sanitized metadata, 256KB browser response parsing, desktop/mobile route mapping, and docs parity. The verifier does not run Firestore reads/writes, WhatsApp provider calls, browser smoke, Firebase deploy, or Vercel deploy.
+- July 6 follow-up: `systemHealth/messaging_onboarding_control.lastSnapshotId` now passes through the shared Firestore document-ID guard before the route reads the latest health snapshot. Malformed, reserved, empty, or path-shaped stored snapshot IDs return the existing unknown-health state instead of building `systemHealth/{lastSnapshotId}` refs.
 - This does not change the API route read pattern, DATA_READ limiter, Admin SDK collection reads, count queries, Cloud Functions, rules, indexes, routes, or platform permissions.
 
 ## June 29, 2026 Platform Notification Monitor Response Guard Notes
 
-- `/ops/platform-notifications` keeps the same platform-only route, manual refresh model, bounded action body, and hashed per-operator action limiter.
+- `/ops/platform-notifications` keeps the same platform-only route, manual refresh model, bounded action body, simple Firestore document ID event selectors, actions update only existing alert documents, and hashed per-operator action limiter.
 - The browser monitor now caps `/api/ops/platform-notifications` load and action response JSON at 256KB and validates the snapshot/action envelope before updating table/detail state or showing action success copy.
 - Rejected, oversized, malformed, or invalid responses use fixed platform failure copy and bounded `platform_notification_monitor_response_*` runtime diagnostics only.
 - June 30 follow-up: route-side query validation, rate-limit, and action-validation security logs use bounded route metadata instead of raw session/request context, and invalid attempted action text is summarized as presence/length metadata.
 - July 1 follow-up: Source gate: `npm run verify:platform-notifications-boundary` locks the platform-notification registry mirror, platform-only route/body/rate-limit boundaries, bounded monitor response parsing, safe stored-alert display summaries, table-level scroll/readability anchors, and docs parity. The verifier does not run Firestore reads/writes, provider calls, browser smoke, Firebase deploy, or Vercel deploy.
-- This does not change alert reads, selected-detail reads, acknowledge/manual-handoff/manual-alert writes, provider handoff behavior, Cloud Functions, rules, indexes, routes, or platform permissions.
+- July 5 follow-up: `/api/ops/platform-notifications` now accepts `eventId` only when it is a simple Firestore document ID, and acknowledge/manual-handoff actions return `404` instead of creating a partial alert when the selected alert document does not exist. Explicit manual alert creation still uses the registered `createManualAlert` action.
+- This does not change alert list reads, selected-detail reads, valid acknowledge/manual-handoff writes, valid manual-alert creation, provider handoff behavior, Cloud Functions, rules, indexes, routes, or platform permissions.
 
 ## June 29, 2026 Owner Notification Monitor Response Guard Notes
 
-- `/ops/owner-notifications` keeps the same platform-only route, product/feature gates, manual refresh model, bounded action body, and hashed per-operator action limiter.
+- `/ops/owner-notifications` keeps the same platform-only route, product/feature gates, manual refresh model, bounded action body, simple Firestore document ID event selectors, and hashed per-operator action limiter.
 - The browser monitor now caps `/api/ops/owner-notifications` load and recovery-action response JSON at 256KB and validates the snapshot/action envelope before updating table/detail state or showing action success copy.
 - Rejected, oversized, malformed, or invalid responses use fixed platform failure copy and bounded `owner_notification_monitor_response_*` runtime diagnostics only.
 - June 30 follow-up: route-side query validation, rate-limit, and action-validation security logs use bounded route metadata instead of raw session/request context, and invalid attempted action text is summarized as presence/length metadata.
-- This does not change owner-notification event reads, detail delivery reads, recipient resolution reads, retry/manual-send/manual-handoff writes, provider behavior, Cloud Functions, rules, indexes, routes, or platform permissions.
+- July 5 follow-up: `/api/ops/owner-notifications` now accepts selected/recovery `eventId` values only when they are simple Firestore document IDs before direct event reads, delivery detail queries, retry, manual send, or manual handoff actions.
+- This does not change owner-notification event reads, detail delivery reads, recipient resolution reads, valid retry/manual-send/manual-handoff writes, provider behavior, Cloud Functions, rules, indexes, routes, or platform permissions.
 
 ## June 29, 2026 Entity Block Response Guard Notes
 
@@ -62,6 +65,9 @@
 - The shared desktop/mobile browser DAL calls `/api/platform/entity-blocks` with no-store cache, same-origin credentials, and manual redirect handling, then caps response JSON at 64KB and requires `success: true`, a returned entity object, the requested entity ID, and the requested blocked state before local table state or success copy is updated.
 - Malformed, oversized, rejected, or invalid acknowledgements use fixed platform failure copy and bounded `platform_entity_block_response_*` runtime diagnostics only.
 - July 1 follow-up: Source gate: `npm run verify:platform-entity-blocks-boundary` locks the platform-only tenant/store/user block route, 64KB request/response caps, Firebase Auth disable/token-revoke handling, tenant-to-store block mirroring, public menu/OBP/screen/Business Health cache invalidation, desktop/mobile shared client, MobileShell route mapping, and docs parity. The verifier does not run Firestore reads/writes, Firebase Auth writes, browser smoke, Firebase deploy, or Vercel deploy.
+- July 5 follow-up: entity ID values now use the shared Firestore document-ID boundary before the platform route reads or writes `tenants`, `stores`, or `users` documents. Numeric IDs remain accepted when finite; string IDs reject path-shaped or reserved Firestore document IDs. This keeps valid platform block/unblock behavior unchanged and adds no Firestore reads/writes/deletes beyond existing valid block actions.
+- July 6 follow-up: entity-block target IDs now use strict platform entity-block document-ID normalization before `getEntityDocRef()`, tenant-to-store direct mirror writes, store-summary key fanout, or public-cache invalidation. Tenant/store targets require exact positive safe-integer document IDs; user targets keep strict simple Firestore document IDs without whitespace mutation. Malformed, reserved, empty, path-shaped, whitespace-mutated, decimal, zero, negative, unsafe, or nonnumeric tenant/store targets fail before entity-block Firestore refs. This keeps valid platform block/unblock behavior unchanged and adds no Firestore reads/writes/deletes beyond existing valid block actions.
+- July 6 follow-up: `/api/platform/entity-blocks` now applies the shared `PLATFORM_ENTITY_BLOCK_MUTATION` rate limit after the feature flag and before bounded body parsing, entity validation, Firestore reads/writes, Firebase Auth disable/token-revoke work, public cache invalidation, screen wakeups, or Business Health packet invalidation. The limiter uses HMAC-hashed platform-operator key material and a 20-per-hour ceiling, returns 429 with retry headers, and keeps valid platform block/unblock behavior unchanged.
 
 ## June 27, 2026 Diagnostics Notes
 

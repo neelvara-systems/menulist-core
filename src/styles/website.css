@@ -791,9 +791,16 @@ body[data-menulist-website="true"] {
 }
 
 .ws-hero-product-stage--image {
+  display: block;
   min-height: 0;
   padding: 0;
   background: var(--ws-bg-surface);
+}
+
+.ws-hero-product-stage__image {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .ws-draft-visual-frame {
@@ -1979,6 +1986,23 @@ body[data-menulist-website="true"] {
 .ws-owner-proof__desc {
   margin: 0;
   font-size: 0.95rem;
+}
+
+.ws-owner-proof__image {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--ws-brand-secondary) 10%, var(--ws-border-default));
+  border-radius: var(--ws-radius-lg);
+  background: var(--ws-bg-primary);
+  box-shadow: var(--ws-shadow-sm);
+  overflow: hidden;
+}
+
+.ws-owner-proof__image img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .ws-owner-proof__points {
@@ -3972,6 +3996,10 @@ body[data-menulist-website="true"] {
     min-height: auto;
     width: 100%;
     padding: var(--ws-space-3);
+  }
+
+  .ws-hero-product-stage.ws-hero-product-stage--image {
+    padding: 0;
   }
 
   .ws-hero-product-stage .ws-obp-frame {
@@ -9134,6 +9162,25 @@ body[data-menulist-website="true"] {
 
 .ws-business-health-feature-hero__visual {
   min-width: 0;
+}
+
+.ws-business-health-feature-product-frame,
+.ws-ai-menu-manager-product-frame {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  border: 1px solid var(--ws-border-default);
+  border-radius: var(--ws-radius-xl);
+  background: var(--ws-bg-surface);
+  box-shadow: var(--ws-shadow-lg);
+  overflow: hidden;
+}
+
+.ws-business-health-feature-product-frame img,
+.ws-ai-menu-manager-product-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .ws-business-health-feature-preview {

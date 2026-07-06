@@ -9,6 +9,8 @@ import {
 } from "@constant/user";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { formatStaffLoginId, getPhoneLookupCandidates, normalizeLoginDigits } from "@lib/auth/loginIdentifiers";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { normalizeStorePermissionScopeDocumentId } from "@lib/permissions/server";
 import { removeDangerousKeys } from "@lib/security/sanitizeObject";
 
 const USERS_COLLECTION = DB_COLLECTIONS.USERS;
@@ -128,6 +130,15 @@ export const addAuthPlatformUser = async (data: any) => {
 export const getAuthEntitySnapshot = async (collectionName: string, id?: string | number | null) => {
     if (id == null || id === '') return null;
 
-    const snapshot = await firestoreAdmin.collection(collectionName).doc(String(id)).get();
+    const rawDocumentId = typeof id === 'string' || typeof id === 'number' ? String(id) : '';
+    const documentId = rawDocumentId.trim();
+    if (documentId !== rawDocumentId || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const scopeDocumentId = collectionName === DB_COLLECTIONS.TENANTS || collectionName === DB_COLLECTIONS.STORES
+        ? normalizeStorePermissionScopeDocumentId(id)?.documentId
+        : documentId;
+    if (!scopeDocumentId) return null;
+
+    const snapshot = await firestoreAdmin.collection(collectionName).doc(scopeDocumentId).get();
     return snapshot.exists ? snapshot.data() : null;
 };

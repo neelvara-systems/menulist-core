@@ -13,12 +13,14 @@
  */
 
 import { getExtractionCostMetrics } from '@database/ops/extraction';
+import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type { ExtractionCostMetrics } from '@lib/ops/extractionTypes';
 import { formatInrPaise } from '@util/formatters';
 import { Card, Empty, Spin, Statistic, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 
 const { Text } = Typography;
+const EXTRACTION_COST_MONITOR_LOAD_FAILED = 'extraction_cost_monitor_load_failed';
 
 interface CostMonitorProps {
     cost?: ExtractionCostMetrics | null;
@@ -29,18 +31,33 @@ export default function CostMonitor({ cost: externalCost, refreshTrigger }: Cost
     const { token } = theme.useToken();
     const [loading, setLoading] = useState(true);
     const [cost, setCost] = useState<ExtractionCostMetrics | null>(null);
+    const [costLoadFailed, setCostLoadFailed] = useState(false);
 
     useEffect(() => {
         if (externalCost !== undefined) {
             setCost(externalCost);
+            setCostLoadFailed(false);
             setLoading(false);
             return;
         }
         let mounted = true;
         setLoading(true);
+        setCostLoadFailed(false);
         getExtractionCostMetrics()
-            .then(data => { if (mounted) setCost(data); })
-            .catch(() => { if (mounted) setCost(null); })
+            .then(data => {
+                if (!mounted) return;
+                setCost(data);
+                setCostLoadFailed(false);
+            })
+            .catch((error) => {
+                logOpsFailure(EXTRACTION_COST_MONITOR_LOAD_FAILED, error, {
+                    ...getBoundedOpsStringContext('refreshTrigger', refreshTrigger),
+                    externalCostProvided: false,
+                });
+                if (!mounted) return;
+                setCost(null);
+                setCostLoadFailed(true);
+            })
             .finally(() => { if (mounted) setLoading(false); });
         return () => { mounted = false; };
     }, [externalCost, refreshTrigger]);
@@ -49,6 +66,16 @@ export default function CostMonitor({ cost: externalCost, refreshTrigger }: Cost
         return (
             <Card size="small" title="Cost Monitor (Today)" style={{ marginBottom: 24 }}>
                 <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div>
+            </Card>
+        );
+    }
+
+    if (costLoadFailed) {
+        return (
+            <Card size="small" title="Cost Monitor (Today)" style={{ marginBottom: 24 }}>
+                <Empty description="Cost metrics unavailable" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+                    <Text type="secondary">Refresh the monitor.</Text>
+                </Empty>
             </Card>
         );
     }

@@ -161,7 +161,7 @@ Record of every AI Enhancement Pack purchase. Links Razorpay order/payment to th
 
 ### Idempotency and Tenant Checks
 
-`verify-topup` requires authenticated tenant/store access plus `canManageSubscription`, validates the Razorpay checkout signature, reads `topups/{orderId}` before changing the subscription, and writes the credit update plus paid top-up audit record in one Firestore transaction. If the top-up is already `paid`, the route returns success without adding credits again. If the order is not paid yet, the route fetches the Razorpay order and requires `order.notes.tenantId` and `order.notes.storeId` to match the authenticated session before updating `subscriptions.topUpCredits`.
+`verify-topup` requires authenticated tenant/store access plus `canManageSubscription`, validates the Razorpay checkout signature, normalizes the checkout order ID through `src/lib/billing/topupDocumentIdBoundary.ts`, reads `topups/{orderId}` before changing the subscription, and writes the credit update plus paid top-up audit record in one Firestore transaction. `create-topup-order` also normalizes the provider order ID before the pending top-up write. Both top-up routes validate the resolved billing tenant/store scope through `normalizeBillingTopupScopeDocumentId()` before top-up provider work, provider-note comparison, Firestore store refs, or top-up writes. If the top-up is already `paid`, the route returns success without adding credits again. If the order is not paid yet, the route fetches the Razorpay order and requires `order.notes.tenantId` and `order.notes.storeId` to match the normalized authenticated billing scope before updating `subscriptions.topUpCredits`.
 
 AI usage reset and consumption both write through Firestore transactions. Paid AI routes run `checkAICapacity()` before the provider call; if a billing-period reset is due, `checkAICapacity()` re-reads and resets the subscription inside a transaction. After the provider succeeds, the route calls `finalizeAiOperationAccounting()`, which records the operation and then calls `consumeAICapacity()`. Operation-log failure is monitored and does not skip credit consumption. Credit-consumption failure fails the paid response. Consumption deducts recurring `monthlyCredits` first and purchased `topUpCredits` second, leaving top-up balance untouched by billing-cycle resets.
 
@@ -205,6 +205,8 @@ July 1 batch image prompt-cache retention is bounded by the consolidated mainten
 | **Write (decrement credits)**        | After successful AI operation (`consumeAICapacity` transaction)              | Per user action   | 1     | 1      |
 | **Write (increment `topUpCredits`)** | Pack purchase verify-topup                                                   | Per purchase      | 0     | 1      |
 | **Write (reset `monthlyCredits`)**   | Subscription renewal or lazy reset transaction                               | Monthly per store | 0-1   | 1      |
+
+MenuList Billing Subscription Document ID Boundary: capacity-check lazy reset and consumption normalize subscription document IDs before `subscriptions/{subscriptionId}` refs. Valid Razorpay IDs keep the same 0-1 reset write and per-operation consume write; malformed IDs return before reset refs or fail paid credit consumption before debit refs.
 
 ### Cost Estimate
 

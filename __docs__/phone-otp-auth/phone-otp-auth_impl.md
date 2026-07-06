@@ -24,6 +24,10 @@ June 29 follow-up: `PhoneOtpAuthPanel` parses start and verify responses through
 
 July 1 acknowledgement follow-up: the start route now returns `action: "start"` and the accepted purpose, and the verify route returns `action: "verify"` with the verified challenge id. `PhoneOtpAuthPanel` requires those acknowledgements before showing code entry or using the login token. Challenge creation, OTP verification, token consumption, WhatsApp delivery, NextAuth credentials login, and Firebase Auth claim sync are unchanged.
 
+July 5 challenge ID boundary: the verify route and `verifyPhoneOtpChallenge()` now share `normalizePhoneOtpChallengeId()` from `src/lib/auth/phoneOtp.ts`. Valid challenge IDs keep the Firestore auto-ID shape created by `createPhoneOtpChallenge()`. Malformed, reserved, or path-shaped challenge IDs fail before challenge-specific throttling, `authPhoneOtpChallenges/{challengeId}` reads, OTP hash comparison, or login-token writes. Valid OTP challenge creation, verification, login-token consumption, WhatsApp delivery, NextAuth credentials login, and Firebase Auth claim sync are unchanged.
+
+Phone OTP User Document ID Boundary: `src/lib/auth/phoneOtp.ts` now validates existing and resolved user document IDs through `normalizePhoneOtpUserDocumentId()` before updating `users/{userId}`, writing the login-token `userId`, or comparing the consumed login token to the resolved auth user. Malformed, reserved, empty, whitespace-mutated, path-shaped, or oversized user IDs fail with the existing user-not-found path before user document refs or token handoff trust. Valid OTP user lookup, deterministic first-time phone user creation, login-token creation, token consumption, NextAuth credentials login, and Firebase Auth claim sync are unchanged.
+
 ## User Resolution
 
 Existing user lookup order:

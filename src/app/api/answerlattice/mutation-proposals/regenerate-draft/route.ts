@@ -9,6 +9,7 @@ import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { DRAFT_PROMPT_VERSION, DRAFT_SYSTEM_PROMPT, buildDraftUserPrompt, parseDraftResponse } from '@lib/answerlattice/draftPrompt';
+import { normalizeAnswerlatticeMutationProposalId, normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -25,7 +26,7 @@ import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
 
 const RequestSchema = z.object({
-    proposalId: z.string().trim().min(1).max(160),
+    proposalId: z.string().trim().refine((value) => normalizeAnswerlatticeMutationProposalId(value) === value),
     regeneratedBy: z.string().trim().max(160).optional(),
 });
 const DRAFT_REGENERATE_MAX_BODY_BYTES = 4 * 1024;
@@ -202,14 +203,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Draft generation only supports new answer proposals' }, { status: 422 });
         }
 
-        const entityId = Array.isArray(proposal.relatedEntityIds) ? proposal.relatedEntityIds[0] : null;
+        const entityId = Array.isArray(proposal.relatedEntityIds) ? normalizeAnswerlatticeResolvedEntityId(proposal.relatedEntityIds[0]) : null;
         if (!entityId) {
             return NextResponse.json({ error: 'No related entity is attached to this proposal' }, { status: 422 });
         }
 
         const entitySnap = await answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
-            .doc(String(entityId))
+            .doc(entityId)
             .get();
         if (!entitySnap.exists) {
             return NextResponse.json({ error: 'Related entity not found' }, { status: 404 });
@@ -221,8 +222,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const [signalExamples, existingAnswerSummaries] = await Promise.all([
-            gatherSignalExamples(tenantId, storeId, String(entityId)),
-            getExistingAnswerSummaries(tenantId, storeId, String(entityId)),
+            gatherSignalExamples(tenantId, storeId, entityId),
+            getExistingAnswerSummaries(tenantId, storeId, entityId),
         ]);
         const userPrompt = buildDraftUserPrompt({
             entityName: String(entity.name || 'Product entity'),

@@ -40,6 +40,8 @@ No MenuList-owned screen should become the long-term Answerlattice intake author
 | Platform intake monitor | `src/app/(main)/platform/answerlattice-intake/page.tsx` |
 | Platform intake monitor API | `src/app/api/platform/answerlattice-intake/route.ts` |
 
+Protected job routes use `src/lib/answerlattice/knowledgeIntakeIdBoundary.ts` before any job, source, review-item, media, analysis, or publish read/write. Job route params accept only Firestore auto-ID shaped job IDs, and review-item route params or publish `itemIds` accept only deterministic `kii_` review item IDs. Malformed route/body IDs return fixed invalid job or invalid review item responses before job/review reads, source additions, media extraction, analysis, or publish work starts.
+
 ### 1.2 Day-One Scope Boundary
 
 Implemented day one:
@@ -473,6 +475,8 @@ June 30 follow-up: selected-page URL discovery now fails closed when a fetch res
 
 June 30 follow-up: Knowledge Intake shared admission now logs rate-limit denials through `getAnswerlatticeSecurityLogContext()` with bounded route/session metadata and rate-limit key, tenant, and store presence-length fields. The platform intake monitor uses the same bounded security-log helper for manual-monitor rate limits. Valid intake permission checks, subscription checks, rate-limit windows, Retry-After headers, and owner-facing fixed copy are unchanged.
 
+July 5 follow-up: Knowledge Intake route ID admission now uses `src/lib/answerlattice/knowledgeIntakeIdBoundary.ts` for all protected job routes. Job params must match the Firestore auto-ID shaped job IDs created by the intake job writer, source refs must match deterministic `kis_` source IDs, review item params and publish `itemIds` must match deterministic `kii_` IDs, and malformed IDs return fixed invalid job/review item responses before protected Firestore document reads, provider work, or publish mutations. The core `src/lib/answerlattice/knowledgeIntake.ts` shared service ref helpers also normalize-or-throw job, source, and review item IDs before direct Firestore document refs, so future callers cannot bypass route ID admission accidentally.
+
 Implemented now: media extraction request-body and file-size preflight caps, support-credit reservation, ledger settlement, AI operation logging, and refund-on-failure for paid OCR/transcription. Still reserved for later: signed native uploads, raw artifact retention, source deletion, cancellation APIs, native connectors, and background import workers.
 
 ---
@@ -891,3 +895,4 @@ Expected outputs are defined in `knowledge-intake-command-center_test-cases.md`.
 | 2026-06-30 | 2.0.4 | Added bounded Knowledge Intake client response validation before local state or success copy advances. |
 | 2026-06-30 | 2.0.5 | Added shared Knowledge Intake browser request policy before bounded response validation. |
 | 2026-06-30 | 2.0.6 | Bounded Knowledge Intake and platform intake-monitor security-log metadata for shared rate-limit denials. |
+| 2026-07-05 | 2.0.7 | Added protected Knowledge Intake route ID admission for Firestore auto-ID job params and deterministic `kii_` review item IDs. |

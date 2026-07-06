@@ -2,6 +2,11 @@
 
 import { useEffect } from 'react';
 import { trackPlausibleEvent } from '@lib/website/plausible';
+import {
+    cleanAnswerlatticeAnalyticsString,
+    getAnswerlatticeAnalyticsPagePath,
+    getAnswerlatticeAnalyticsUrl,
+} from './answerlatticeAnalyticsUtils';
 
 type AnswerlatticeAnalyticsWindow = Window & {
     gtag?: (...args: unknown[]) => void;
@@ -33,7 +38,7 @@ function getReferrerHost(): string | undefined {
 }
 
 function getQueryParam(name: string): string | undefined {
-    return new URLSearchParams(window.location.search).get(name) || undefined;
+    return cleanAnswerlatticeAnalyticsString(new URLSearchParams(window.location.search).get(name), 80);
 }
 
 function getSessionValue(storageKey: string, nextValue: string): string {
@@ -51,7 +56,7 @@ function getSessionValue(storageKey: string, nextValue: string): string {
 function getEntryPage(): string {
     return getSessionValue(
         'answerlattice_resource_entry_page',
-        `${window.location.pathname}${window.location.search}`,
+        getAnswerlatticeAnalyticsPagePath(),
     );
 }
 
@@ -69,15 +74,15 @@ export default function AnswerlatticeResourceAnalytics({
             : undefined;
 
         const payload = {
-            category: cluster || 'answerlattice_resource',
-            cluster,
+            category: cleanAnswerlatticeAnalyticsString(cluster, 80) || 'answerlattice_resource',
+            cluster: cleanAnswerlatticeAnalyticsString(cluster, 80),
             entry_page: getEntryPage(),
-            page_path: window.location.pathname,
+            page_path: getAnswerlatticeAnalyticsPagePath(),
             page_type: pageType,
-            referrer: document.referrer || undefined,
+            referrer: getAnswerlatticeAnalyticsUrl(document.referrer),
             referrer_host: referrerHost,
-            slug,
-            target_url: window.location.href,
+            slug: cleanAnswerlatticeAnalyticsString(slug, 120),
+            target_url: getAnswerlatticeAnalyticsUrl(window.location.href),
             utm_medium: getQueryParam('utm_medium'),
             utm_source: getQueryParam('utm_source'),
         };

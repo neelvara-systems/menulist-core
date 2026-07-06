@@ -8,7 +8,7 @@ import { Button } from "@shadcncomponents/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@shadcncomponents/card";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { formatDateTime } from "@util/dateTime";
-import { getGracePeriodInfo, hasValidSubscriptionAccess } from "@util/razorpay";
+import { getGracePeriodDisplayInfo, hasValidSubscriptionAccess } from "@util/razorpay";
 import { useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
 import React from "react";
@@ -60,6 +60,16 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
         </div>
     }
 
+    const getPastDueGracePeriodDisplay = () => {
+        const gracePeriodDisplay = getGracePeriodDisplayInfo(activeSubscription.pastDueSinceAt);
+        return {
+            ...gracePeriodDisplay,
+            value: gracePeriodDisplay.hasKnownGracePeriod
+                ? formatDateTime(gracePeriodDisplay.graceEndsTimestamp, "date", formatter)
+                : 'Grace period unavailable',
+        };
+    };
+
     const renderAccessUntillDate = () => {
         if (activeSubscription.status === 'cancelled') {
             return <Statistic
@@ -68,10 +78,10 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
             />
         }
         if (activeSubscription.status === 'past_due') {
-            const { remainingDays, graceEndsTimestamp } = getGracePeriodInfo(activeSubscription.pastDueSinceAt);
+            const gracePeriodDisplay = getPastDueGracePeriodDisplay();
             return <Statistic
-                title={`Grace period (${remainingDays} day${remainingDays > 1 ? 's' : ''} left)`}
-                value={formatDateTime(graceEndsTimestamp, "date", formatter)}
+                title={gracePeriodDisplay.title}
+                value={gracePeriodDisplay.value}
             />
         }
         if (activeSubscription.status === 'active') {
@@ -90,9 +100,11 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
     }
 
     const renderGracePeriodInfo = () => {
-        const { remainingDays } = getGracePeriodInfo(activeSubscription.pastDueSinceAt);
+        const gracePeriodDisplay = getPastDueGracePeriodDisplay();
         return <div style={{ padding: '12px 16px', backgroundColor: 'var(--ws-bg-danger-soft)', border: '1px solid var(--ws-error)', borderRadius: '6px', color: 'var(--ws-error-text)', fontSize: '14px' }}>
-            <strong>⚠️ Payment failed.</strong> Your subscription is in a grace period. Please update your payment method within {remainingDays} day{remainingDays > 1 ? 's' : ''} to avoid service interruption. <a href="/billing" style={{ color: 'var(--ws-error-text)', textDecoration: 'underline' }}>Go to Billing</a>.
+            <strong>⚠️ Payment failed.</strong> {gracePeriodDisplay.hasKnownGracePeriod
+                ? `Complete the payment update within ${gracePeriodDisplay.dayLabel} to avoid service interruption.`
+                : 'Grace-period details are unavailable. Open Billing to recover the subscription.'} <a href="/billing" style={{ color: 'var(--ws-error-text)', textDecoration: 'underline' }}>Go to Billing</a>.
         </div>
     }
 

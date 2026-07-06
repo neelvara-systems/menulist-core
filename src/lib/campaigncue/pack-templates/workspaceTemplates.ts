@@ -3,6 +3,7 @@ import { deleteObject, ref, uploadString } from "firebase/storage";
 import { CAMPAIGNCUE_COLLECTIONS } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY } from "@constant/campaigncue/packTemplates";
 import { firebaseClient, firebaseStorage } from "@lib/firebase/firebaseClient";
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import {
     campaignCueWorkspacePackTemplateIndexSchema,
     campaignCueWorkspacePackTemplateSaveSchema,
@@ -12,6 +13,12 @@ import type {
     CampaignCueWorkspacePackTemplateIndex,
     CampaignCueWorkspacePackTemplateSaveInput,
 } from "@type/campaigncuePackTemplates";
+
+type CampaignCueWorkspaceTemplateStorageCleanupContext = {
+    cleanupTarget: "payload" | "editorDocument" | "preview";
+    templateId?: string;
+    workspaceId?: string;
+};
 
 const safeSegment = (value: string) => (
     String(value || "")
@@ -40,6 +47,39 @@ const parsePreviewContentType = (dataUrl?: string) => {
 };
 
 const sizeOf = (value: string) => new TextEncoder().encode(value).length;
+
+const isMissingStorageObjectError = (error: unknown): boolean => (
+    Boolean(error)
+    && typeof error === "object"
+    && (error as { code?: unknown }).code === "storage/object-not-found"
+);
+
+const getWorkspaceTemplateCleanupTarget = (
+    path: string | undefined,
+    root: string,
+): CampaignCueWorkspaceTemplateStorageCleanupContext["cleanupTarget"] => {
+    if (path === `${root}/pack-template.json`) return "payload";
+    if (path === `${root}/editor-document.json`) return "editorDocument";
+    return "preview";
+};
+
+async function deleteWorkspaceTemplateStoragePath(
+    path: string | undefined,
+    context: CampaignCueWorkspaceTemplateStorageCleanupContext,
+) {
+    if (!path) return;
+    try {
+        await deleteObject(ref(firebaseStorage, path));
+    } catch (error) {
+        if (isMissingStorageObjectError(error)) return;
+        logRuntimeFailure("campaigncue_workspace_template_storage_cleanup_failed", error, {
+            cleanupTarget: context.cleanupTarget,
+            ...getBoundedRuntimeStringContext("storagePath", path),
+            ...getBoundedRuntimeStringContext("templateId", context.templateId),
+            ...getBoundedRuntimeStringContext("workspaceId", context.workspaceId),
+        });
+    }
+}
 
 async function getExistingWorkspaceTemplates(workspaceId: string): Promise<CampaignCuePackTemplateSummary[]> {
     const indexDoc = await getDoc(getWorkspaceTemplateIndexRef(workspaceId));
@@ -134,7 +174,11 @@ export async function saveCampaignCueWorkspacePackTemplate(
         ].filter(Boolean));
         await Promise.all(uploadedPaths
             .filter((path) => !previousPaths.has(path))
-            .map((path) => deleteObject(ref(firebaseStorage, path)).catch(() => undefined)));
+            .map((path) => deleteWorkspaceTemplateStoragePath(path, {
+                cleanupTarget: getWorkspaceTemplateCleanupTarget(path, root),
+                templateId,
+                workspaceId: input.workspaceId,
+            })));
         throw error;
     }
 }
@@ -157,8 +201,20 @@ export async function deleteCampaignCueWorkspacePackTemplate(input: {
     await setDoc(getWorkspaceTemplateIndexRef(input.workspaceId), index);
 
     await Promise.all([
-        removed?.payloadPath ? deleteObject(ref(firebaseStorage, removed.payloadPath)) : Promise.resolve(),
-        removed?.editorDocumentPath ? deleteObject(ref(firebaseStorage, removed.editorDocumentPath)) : Promise.resolve(),
-        removed?.previewPath ? deleteObject(ref(firebaseStorage, removed.previewPath)) : Promise.resolve(),
-    ]).catch(() => undefined);
+        deleteWorkspaceTemplateStoragePath(removed?.payloadPath, {
+            cleanupTarget: "payload",
+            templateId,
+            workspaceId: input.workspaceId,
+        }),
+        deleteWorkspaceTemplateStoragePath(removed?.editorDocumentPath, {
+            cleanupTarget: "editorDocument",
+            templateId,
+            workspaceId: input.workspaceId,
+        }),
+        deleteWorkspaceTemplateStoragePath(removed?.previewPath, {
+            cleanupTarget: "preview",
+            templateId,
+            workspaceId: input.workspaceId,
+        }),
+    ]);
 }

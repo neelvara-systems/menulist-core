@@ -23,6 +23,7 @@
 - **Service-worker domain-resolution diagnostics:** Failed browser domain resolution in `src/components/ServiceWorkerRegister.tsx` logs bounded `service_worker_domain_resolution_failed` diagnostics once per browser session and registers no worker for the unknown origin. These diagnostics add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 - **Prompt-shown timestamp diagnostics:** Failed prompt-shown timestamp localStorage availability/write paths for iOS install inference log bounded `customer_app_prompt_shown_*` diagnostics once per operation. These diagnostics add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 - **Install de-dupe storage diagnostics:** Failed install-fired de-dupe localStorage availability/read/write paths log bounded `customer_app_install_dedupe_*` diagnostics once per operation. These diagnostics add no Firestore read/write/delete, analytics write beyond the existing accepted `CUSTOMER_APP_INSTALLED` event, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+- **Shortcut handoff URL guard:** Client shortcut handoff components re-check reservation/order HTTPS URLs, Google Maps HTTPS URLs, `https://wa.me/{digits}`, and `tel:+{digits}` before shortcut analytics and browser/OS handoff. Malformed serialized targets fail closed locally and add no Firestore read/write/delete, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
 ---
 
@@ -280,6 +281,8 @@ match /pwa-icons/{storeId}/{size} {
 
 ---
 
+**Public client store lookup scope document ID boundary:** Customer-app manifest/icon/splash/screenshot and public PWA entry points inherit `src/lib/firestore/clientStoreLookup.ts`, which validates direct store-ID lookups and legacy tenant-block fallback tenant IDs with the shared Firestore document ID guard plus exact positive numeric admission before public store refs. Malformed direct store IDs return no asset store, and malformed tenant IDs on returned store records fail closed as blocked output.
+
 ## API Routes & Their Firebase Impact
 
 | Route                                  | Method | Firebase Ops      | Rate Limited? | Notes                               |
@@ -288,6 +291,8 @@ match /pwa-icons/{storeId}/{size} {
 | `/api/app-icons/{id}/{size}`           | GET    | 0-1R `stores/{id}` + rare 0-1R tenant block check | Yes (`PUBLIC_DYNAMIC_ASSET`) | CDN cached; invalid/rate-limited/inactive/deleted/blocked stores fall back before branding renders; bounded runtime fallback logging |
 | `/api/app-splash/{id}/{size}`          | GET    | 0-1R `stores/{id}` + rare 0-1R tenant block check | Yes (`PUBLIC_DYNAMIC_ASSET`) | CDN cached; invalid/rate-limited/inactive/deleted/blocked stores fall back before branding renders; bounded runtime fallback logging |
 | `/api/app-screenshots/{id}/{formFactor}` | GET  | 0-1R `stores/{id}` + rare 0-1R tenant block check | Yes (`PUBLIC_DYNAMIC_ASSET`) | CDN cached; invalid/rate-limited/inactive/deleted/blocked stores fall back before branding renders; bounded runtime fallback logging |
+
+Dynamic asset store-ID fallback is cost-neutral: `/api/app-icons/{id}/{size}`, `/api/app-splash/{id}/{size}`, and `/api/app-screenshots/{id}/{formFactor}` validate the route store ID with the numeric 1-20 digit public-store rule and return generic generated assets before `getPublicStoreById()` when the store ID is malformed or the public dynamic asset limiter blocks the request. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action; it source-gates the existing 0-read fallback path.
 
 Customer App analytics events flow through the existing client-side `trackEvent()` and local analytics queue with `projectId='customerApp'`. Anonymous flushes use `POST /api/public/analytics/track`; the server validates the store/project target and writes with Firebase Admin SDK. The analytics source-chain contract in `npm run verify:customer-app-pwa` now checks event field mapping, reserved project routing, public analytics preference gating, daily write shape, summary aggregation, dashboard-summary generation, scheduler inclusion, the `useCustomerAppDashboard` hook, and desktop/mobile KPI cards. Live event-write, rollup, dashboard-value, real-device install, and production-host smoke still require the manual checklist and External Certification Runbook evidence.
 

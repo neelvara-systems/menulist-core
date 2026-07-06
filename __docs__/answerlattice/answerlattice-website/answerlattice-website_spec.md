@@ -413,9 +413,9 @@ Rules:
 
 ## Conversion Tracking
 
-The website may emit optional Plausible and GA/measurement events after analytics consent. Plausible loads only when `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN` is configured. GA4 loads only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` is configured. Tracking is client-only and does not write to Firestore.
+The website may emit optional Plausible and GA/measurement events after analytics consent. Plausible loads only when `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN` is configured. GA4 loads only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` is configured with the GA4 `G-...` measurement-id shape. Tracking is client-only and does not write to Firestore.
 
-Existing `data-answerlattice-event` CTA names are forwarded to Plausible as property-free custom events and to GA4 with website context when GA4 is configured. Resource/referrer events may include page, entry-page, referrer, UTM, slug, and target URL context in GA4, but they must not send a custom repo-generated session identifier to third-party website analytics. Public get-started completion analytics must not send API key material or token prefixes.
+Existing `data-answerlattice-event` CTA names are forwarded to Plausible as property-free custom events and to GA4 with website context when GA4 is configured. Answerlattice website analytics URL minimization boundary: GA4 page-location, click-link, resource target, referrer, and entry-page URL fields must strip query strings and hash fragments before emission. Resource/referrer events may include page, entry-page, referrer, UTM, slug, and target URL context in GA4, but they must not send raw full URLs, a custom repo-generated session identifier, API key material, or token prefixes to third-party website analytics.
 
 ## Agent-Readable Website Context
 
@@ -602,6 +602,7 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-05 | 1.2.96 | Required Answerlattice website analytics URL minimization for GA4 page-location, click-link, resource target, referrer, and entry-page fields while preserving consent-gated client-only analytics |
 | 2026-06-29 | 1.2.95 | Required a compact homepage support-suite switch cue that compares AnswerLattice by official answer source while keeping full category comparison detail on `/comparisons` and avoiding unsupported competitor claims |
 | 2026-06-27 | 1.2.94 | Required Prism-glass card hover glows to track the desktop pointer with a centered fallback while preserving existing AnswerLattice theme tokens, layouts, and product claims |
 | 2026-06-26 | 1.2.93 | Required the homepage Product Overview to use a priority bento and required AI-built founder fit plus category-boundary messaging to stay merged as one concise section |

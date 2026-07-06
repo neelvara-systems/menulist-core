@@ -539,15 +539,18 @@ Links a messaging-onboarded business to a real account. Three modes:
 
 Modes 1 and 2 also sync the claimed tenant/store email. Because store email is public business truth, the route revalidates public menu, Official Business Page, store, and client-store cache tags after those store email writes.
 
-The route applies the `AUTH_SENSITIVE` hashed-IP limiter before a 16KB bounded JSON body and claim-token lookup. Missing-token diagnostics record only claim-token presence and length, never token characters.
+The route applies the `AUTH_SENSITIVE` hashed-IP limiter before a 16KB bounded JSON body and claim-token lookup. Claim-token lookup boundary: `normalizeAuthClaimToken()` caps tokens to 20-256 base64url/hex-safe characters before the indexed `users.claimToken` query. Missing-token diagnostics record only claim-token presence and length, never token characters.
 
 Before any ownership write, each claim mode re-reads the messaging user document in a Firestore transaction and verifies the same claim token is still present, unexpired, and attached to tenant/store identity. This keeps the token single-use even under duplicate submit or parallel claim attempts.
+
+Claim-account tenant/store scope boundary: the claim route normalizes the messaging user's tenant/store IDs as exact positive numeric Firestore document IDs before Firebase Auth user mutation, tenant/store email writes, subscription relinking, public cache revalidation, custom-claim minting, or success acknowledgement. The final claim transaction re-runs the same scope guard after re-reading the messaging user, so a stale or malformed claim record fails with the normal claim failure copy before raw tenant/store IDs can reach document refs.
 
 ### `GET /api/auth/validate-claim?token=TOKEN`
 
 Validates a claim token from messaging onboarding. Returns business info for login page welcome. No authentication required.
 
 - **Rate limit:** `AUTH_SENSITIVE` by hashed IP before claim-token lookup
+- **Claim-token lookup boundary:** `normalizeAuthClaimToken()` caps and shape-checks the query token before the indexed `users.claimToken` query. Malformed or oversized values return the normal invalid-link response before Firestore reads.
 - **Success acknowledgement:** The browser only enters claim setup when the route returns `valid: true`, `status: "valid"`, `preview: "claim-token"`, and a non-empty business name. Phone values are displayed only when already masked.
 - **Diagnostics:** Unexpected failures use bounded auth diagnostics with claim-token and request metadata presence-length only; the token value is never logged.
 
@@ -556,7 +559,7 @@ Validates a claim token from messaging onboarding. Returns business info for log
 Updates logged-in user's profile fields (name, phone, countryCode, dialCode). Email changes not supported.
 
 - **Auth:** Requires active NextAuth session
-- **Admission:** `DATA_WRITE` limiter by HMAC-hashed session user ID, then 4KB bounded JSON body before validation or user-document reads
+- **Admission:** Session user ID must pass the shared Firestore document-ID guard, then `DATA_WRITE` limiter by HMAC-hashed normalized session user ID, then 4KB bounded JSON body before validation or user-document reads
 - **Client request/response boundary:** Desktop account modal and mobile More profile screen send the request with same-origin credentials, no browser cache, and manual redirect handling. They parse the response through `src/lib/auth/accountClientResponses.ts`, cap JSON at 16KB, and require `success: true`, `updated`, and `updates` before showing success.
 
 ### `POST /api/auth/change-password`
@@ -565,7 +568,7 @@ Changes logged-in user's password. Verifies current password via Firebase Auth R
 
 - **Body:** `{ currentPassword, newPassword }`
 - **Auth:** Requires active NextAuth session
-- **Body admission:** `AUTH_SENSITIVE` rate limit by authenticated user ID before a 2KB bounded JSON body and Firebase Auth verification
+- **Admission:** Session user ID must pass the shared Firestore document-ID guard, then `AUTH_SENSITIVE` rate limit by HMAC-hashed normalized session user ID before a 2KB bounded JSON body and Firebase Auth verification
 - **Client request/response boundary:** Desktop account modal and mobile More account access screen send the request with same-origin credentials, no browser cache, and manual redirect handling. They parse the response through `src/lib/auth/accountClientResponses.ts`, cap JSON at 16KB, and require `success: true` before showing success.
 - **Diagnostics:** Missing Firebase API key, current-password verification exceptions, and unexpected route failures use bounded auth diagnostics with session/request metadata presence-length only.
 - **Note:** Works for password/passcode accounts, including email/password, Staff ID/passcode, and WhatsApp-number/passcode accounts. OAuth-only users manage their password with the OAuth provider.

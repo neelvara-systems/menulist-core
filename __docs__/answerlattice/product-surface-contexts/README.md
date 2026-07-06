@@ -4,6 +4,8 @@ Answerlattice Product Surface Contexts connect a customer's product pages to the
 
 This is the owner-managed mapping layer between product routes, semantic context, knowledge base articles, FAQs, changelogs, tickets, and canonical answers. It keeps route-specific support relevant without making route strings the knowledge source of truth.
 
+Answerlattice App Product Surface ID Boundary: owner-edited and generated product surface IDs are normalized through the shared Firestore document-ID guard before product-surface document refs, archive refs, direct surface reads, or compiled-context source-version IDs. Malformed, reserved, empty, or path-shaped surface IDs are rejected before Firestore access while valid generated IDs keep the existing `{tId}_{sId}_{surfaceKey}` shape.
+
 ## Documents
 
 - [Spec](product-surface-contexts_spec.md)

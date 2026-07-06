@@ -1,11 +1,11 @@
 import { FEATURE_FLAGS } from '@config/features';
+import { normalizeOwnerBusinessAssistantProjectId } from '@lib/ownerBusinessAssistant/projectIdBoundary';
 import { BusinessHealthPage } from '@template/main-app/ownerBusinessAssistant/BusinessHealthPage';
 import { notFound } from 'next/navigation';
 
 const normalizeProjectId = (value?: string | string[]) => {
   const raw = Array.isArray(value) ? value[0] : value;
-  const trimmed = raw?.trim();
-  return trimmed && trimmed.length <= 160 ? trimmed : undefined;
+  return normalizeOwnerBusinessAssistantProjectId(raw) || undefined;
 };
 
 export default function Page({ searchParams }: { searchParams?: { projectId?: string | string[] } }) {

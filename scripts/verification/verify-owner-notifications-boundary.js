@@ -51,17 +51,38 @@ function verifyRegistryMirror(appRegistry, functionsRegistry) {
   ].forEach((token) => assertIncludes(appRegistry, token, 'Owner notification registry'));
 }
 
+function verifyFirestoreDocumentIdHelper(helper) {
+  [
+    'RESERVED_FIRESTORE_DOCUMENT_ID_PATTERN = /^__.*__$/',
+    'export function isValidFirestoreDocumentId(value: unknown): value is string',
+    "id !== '.'",
+    "id !== '..'",
+    "!id.includes('/')",
+    '!RESERVED_FIRESTORE_DOCUMENT_ID_PATTERN.test(id)',
+  ].forEach((token) => assertIncludes(helper, token, 'Firestore document ID helper'));
+}
+
 function verifyOpsRoute(route) {
   [
     "withAuth(async (request, session) =>",
     "requiredPlatformRole: 'PLATFORM'",
     '!FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS || !FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD',
     'const OWNER_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES = 8 * 1024;',
+    "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
     'const DELIVERY_DETAIL_LIMIT = 12;',
     'const STATUS_FILTERS: OwnerNotificationOpsStatusFilter[] =',
+    'const OwnerNotificationEventIdSchema = z.string()',
+    ".refine(isValidFirestoreDocumentId, 'Invalid event ID')",
+    'function normalizeOwnerNotificationEventId(value: unknown): string | null',
+    'function requireOwnerNotificationEventId(value: unknown): string',
+    'const eventId = requireOwnerNotificationEventId(params.eventId);',
+    'const normalizedEventId = requireOwnerNotificationEventId(eventId);',
+    'const eventId = requireOwnerNotificationEventId(validation.data.eventId);',
+    'eventId: OwnerNotificationEventIdSchema.optional()',
     'z.enum(PRODUCT_IDS_FOR_OPS',
     'limit: z.coerce.number().int().min(5).max(50).default(30)',
     "action: z.literal('retry')",
+    'eventId: OwnerNotificationEventIdSchema',
     "action: z.literal('manualSend')",
     "action: z.literal('manualHandoff')",
     'Math.min(Math.max(limit * 3, 40), 90)',
@@ -91,13 +112,27 @@ function verifyOpsRoute(route) {
   ], 'Owner notification ops POST admission order');
 
   assertOrder(route, [
+    'const eventId = requireOwnerNotificationEventId(params.eventId);',
+    'const eventSnap = await params.db',
+    '.doc(eventId)',
     'const deliveriesSnap = await params.db',
-    '.where(\'eventId\', \'==\', params.eventId)',
+    '.where(\'eventId\', \'==\', eventId)',
     '.limit(DELIVERY_DETAIL_LIMIT)',
   ], 'Owner notification detail delivery query boundary');
 
+  assertOrder(route, [
+    'const eventId = requireOwnerNotificationEventId(validation.data.eventId);',
+    'const result = await processOwnerNotificationEvent(validation.data.productId, eventId)',
+    'const event = await loadRawEvent(db, validation.data.productId, eventId);',
+  ], 'Owner notification action event ID normalization boundary');
+
   [
     'request.json()',
+    '.doc(params.eventId)',
+    ".where('eventId', '==', params.eventId)",
+    'processOwnerNotificationEvent(validation.data.productId, validation.data.eventId)',
+    'loadRawEvent(db, validation.data.productId, validation.data.eventId)',
+    "getBoundedOpsStringContext('eventId', validation.data.eventId)",
     "error: data.error || null",
     "subject: data.subject || null",
     "providerMessageId: data.providerMessageId || null",
@@ -130,7 +165,16 @@ function verifyCore(core, recipientResolver, whatsappChannel) {
   ].forEach((token) => assertIncludes(core, token, 'Owner notification app core'));
 
   [
-    'db.collection(DB_COLLECTIONS.STORES).doc(String(event.storeId)).get();',
+    "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
+    'function normalizeOwnerNotificationRecipientDocumentId(value: unknown): string | null',
+    'function normalizeMenuListOwnerNotificationScopeDocumentId(value: unknown): MenuListOwnerNotificationScopeDocumentId | null',
+    'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
+    'const workspaceDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.storeId);',
+    'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(workspaceDocumentId).get();',
+    'const tenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.tenantId);',
+    'const storeScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.storeId);',
+    'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();',
+    'Number(storeData?.tenantId) === tenantScope.numericId',
     'DB_COLLECTIONS.TENANTS',
     'manualRecipientOverride === true',
     'forceHintRecipient ? hintEmail || email : email',
@@ -139,10 +183,26 @@ function verifyCore(core, recipientResolver, whatsappChannel) {
   ].forEach((token) => assertIncludes(recipientResolver, token, 'Owner notification recipient resolver'));
 
   assertOrder(recipientResolver, [
-    'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(event.storeId)).get();',
+    'const tenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.tenantId);',
+    'const storeScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.storeId);',
+    'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();',
     'if (storeSnap.exists) {',
     'const legacyStoreSnap = await db',
+    '.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId)',
+    '        .collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId)',
   ], 'MenuList owner notification recipient lookup order');
+
+  assertOrder(recipientResolver, [
+    'const workspaceDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.storeId);',
+    'if (!db || !workspaceDocumentId) return {};',
+    'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(workspaceDocumentId).get();',
+  ], 'Answerlattice owner notification recipient workspace ID boundary');
+
+  [
+    'doc(String(event.storeId))',
+    'doc(String(event.tenantId))',
+    'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(event.storeId).get();',
+  ].forEach((token) => assertNotIncludes(recipientResolver, token, 'Owner notification recipient resolver'));
 
   [
     'encodeURIComponent(phoneNumberId)',
@@ -325,17 +385,35 @@ function verifyMonitor(monitor, responseHelper) {
   ].forEach((token) => assertNotIncludes(monitor + responseHelper, token, 'Owner notification monitor client boundary'));
 }
 
-function verifyTemplateOutputBoundaries(menuTemplate, appLifecycleTemplate, functionsLifecycleTemplate) {
+function verifyTemplateOutputBoundaries(menuTemplate, answerlatticeTemplate, appLifecycleTemplate, functionsLifecycleTemplate) {
   [
     'MAX_OWNER_NOTIFICATION_TEXT_LENGTH',
     'MAX_OWNER_NOTIFICATION_URL_LENGTH',
     'PUBLISH_FAILURE_OWNER_COPY',
     'DEFAULT_PUBLISH_FAILURE_OWNER_COPY',
+    'MENU_STALE_REASON_OWNER_COPY',
+    'DEFAULT_MENU_STALE_REASON_OWNER_COPY',
     'MENU_TARGET_REJECTED',
     'function urlValue(value: unknown): string',
     'function publishFailureReasonText(value: unknown): string',
+    'function menuStaleReasonText(value: unknown): string',
     'const publishFailureReason = publishFailureReasonText(metadata.failureReason);',
+    'const menuStaleReason = menuStaleReasonText(metadata.reason);',
   ].forEach((token) => assertIncludes(menuTemplate, token, 'MenuList owner notification template output boundary'));
+
+  [
+    'MAX_OWNER_NOTIFICATION_TEXT_LENGTH',
+    'MAX_OWNER_NOTIFICATION_URL_LENGTH',
+    'WIDGET_CONNECTION_FAILURE_OWNER_COPY',
+    'SOURCE_SYNC_FAILURE_OWNER_COPY',
+    'HIGH_PRIORITY_ESCALATION_OWNER_COPY',
+    'function urlValue(value: unknown): string',
+    'function ownerFailureReasonText(',
+    'const widgetFailureReason = ownerFailureReasonText(',
+    'const sourceSyncFailureReason = ownerFailureReasonText(',
+    'const highPriorityReason = ownerFailureReasonText(',
+    "url.protocol === 'http:' || url.protocol === 'https:'",
+  ].forEach((token) => assertIncludes(answerlatticeTemplate, token, 'Answerlattice owner notification template output boundary'));
 
   [
     'MAX_TEMPLATE_TEXT_LENGTH',
@@ -361,11 +439,19 @@ function verifyTemplateOutputBoundaries(menuTemplate, appLifecycleTemplate, func
     '<a href="${publicUrl}"',
     "const { storeName, failureReason } = meta;",
     "${storeName || 'your business'}",
+    "textValue(metadata.reason, 'Menu information may be older than expected.')",
   ].forEach((token) => {
     assertNotIncludes(menuTemplate, token, 'MenuList owner notification template raw output boundary');
     assertNotIncludes(appLifecycleTemplate, token, 'App lifecycle template raw output boundary');
     assertNotIncludes(functionsLifecycleTemplate, token, 'Functions lifecycle template raw output boundary');
   });
+
+  [
+    "textValue(metadata.failureReason, 'Connection check failed.')",
+    "textValue(metadata.failureReason, 'Sync failed.')",
+    "textValue(metadata.reason, 'A high priority escalation was created.')",
+    '<a href="${actionUrl}"',
+  ].forEach((token) => assertNotIncludes(answerlatticeTemplate, token, 'Answerlattice owner notification template raw output boundary'));
 }
 
 function verifyDocsAndPackage(
@@ -400,9 +486,15 @@ function verifyDocsAndPackage(
     'platformRole === \'PLATFORM\'',
     'no realtime listener',
     'reject bodies above 8KB before event reads',
+    'simple Firestore document ID',
     'Dashboard load/action responses are parsed by the shared owner-notification client response helper',
     'July 5 template-output follow-up',
-    'Arbitrary `metadata.failureReason` text is no longer printed',
+    'Arbitrary `metadata.failureReason` and `metadata.reason` text are no longer printed',
+    'July 5 Answerlattice template-output follow-up',
+    'Arbitrary `metadata.failureReason` and `metadata.reason` strings are no longer printed',
+    'July 6 recipient-scope document-ID follow-up',
+    '`normalizeOwnerNotificationRecipientDocumentId()`',
+    '`normalizeMenuListOwnerNotificationScopeDocumentId()`',
     'owner_notification_lifecycle_flag_check_failed',
     'trigger presence/length/type metadata only',
     'Source gate: `npm run verify:owner-notifications-boundary`',
@@ -411,6 +503,10 @@ function verifyDocsAndPackage(
   [
     'canonical top-level `stores/{storeId}` first',
     'The July 5 template output boundary update adds no Firestore reads/writes/deletes',
+    'The July 5 Answerlattice template output boundary update also adds no Firestore reads/writes/deletes',
+    'The July 6 recipient-scope document-ID boundary is Firebase-cost neutral',
+    '`normalizeMenuListOwnerNotificationScopeDocumentId()` rejects malformed',
+    'fixed owner copy instead of arbitrary `failureReason` or `reason` strings',
     'The July 5 Functions owner-notification flag/trigger diagnostics',
     'existing attempted `ops_config/system` read',
     'requires a scoped Firebase Functions deploy after validation',
@@ -422,6 +518,7 @@ function verifyDocsAndPackage(
     'No composite index was added',
     'The platform dashboard at `/ops/owner-notifications` is intentionally manual and bounded',
     'POST recovery actions keep the platform-role gate',
+    'simple Firestore document ID',
     'does not run Firestore reads/writes, SMTP, WhatsApp, browser smoke, Firebase deploy, or Vercel deploy',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Owner notification Firebase docs'));
   [
@@ -456,12 +553,16 @@ function verifyDocsAndPackage(
 
 			  [
 			    'Owner notification boundary source gate: `npm run verify:owner-notifications-boundary`',
+			    'Owner notification recipient scope document-ID boundary checkpoint',
+			    'Owner notification ops event-id boundary checkpoint',
 			    'source-only owner-notification registry/API/processor/monitor/docs gate',
 			    'Legacy lifecycle event/status diagnostics checkpoint',
 			    'Owner-notification flag and trigger diagnostics checkpoint',
 			    'functions:verifyMenuPublish,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler',
 			    'Cloud Resource Manager HTTP 403 caller permission',
-			    'Owner notification template output boundary checkpoint',
+    'Owner notification template output boundary checkpoint',
+        'MenuList stale menu notification reason boundary checkpoint',
+        'Answerlattice owner notification template output boundary checkpoint',
 		    'Owner Notifications doc-boundary checkpoint',
 		    'Owner Notifications deploy retry doc-boundary checkpoint',
 		    'Lifecycle messaging fail-closed checkpoint',
@@ -471,13 +572,16 @@ function verifyDocsAndPackage(
 
 			  [
 			    'Legacy Lifecycle Event/Status Diagnostics',
+			    'Owner Notification Recipient Scope Document ID Boundary',
 			    'raw event/status strings',
 			    'Owner Notification Flag and Trigger Diagnostics',
 			    'owner_notification_lifecycle_flag_check_failed',
 			    'raw trigger text',
 			    'Owner Notifications Doc Boundary',
 		    'Owner Notifications Deploy Retry Doc Boundary',
-		    'Owner Notification Template Output Boundary',
+			    'Owner Notification Template Output Boundary',
+          'MenuList Stale Menu Notification Reason Boundary',
+          'Answerlattice Owner Notification Template Output Boundary',
 		    'Lifecycle Messaging Fail Closed',
 		    'SMTP Port Configuration Fail Closed',
 		    'Staleness Lifecycle Delivery Diagnostics',
@@ -521,6 +625,7 @@ function verifyOwnerNotificationsBoundary() {
     packageJson: read('package.json'),
     appRegistry: read('src/data/shared/ownerNotificationRegistry.ts'),
     functionsRegistry: read('functions/src/sharedData/ownerNotificationRegistry.ts'),
+    firestoreDocumentId: read('src/lib/firebase/firestoreDocumentId.ts'),
     route: read('src/app/api/ops/owner-notifications/route.ts'),
     core: read('src/lib/owner-notifications/index.ts'),
     recipientResolver: read('src/lib/owner-notifications/recipientResolver.ts'),
@@ -533,6 +638,7 @@ function verifyOwnerNotificationsBoundary() {
     monitor: read('src/components/templates/main-app/platform/ownerNotificationMonitor/index.tsx'),
     responseHelper: read('src/lib/ops/ownerNotificationClientResponse.ts'),
     menuTemplate: read('src/lib/owner-notifications/templates/menulist.ts'),
+    answerlatticeTemplate: read('src/lib/owner-notifications/templates/answerlattice.ts'),
     appLifecycleTemplate: read('src/lib/messaging/templates.ts'),
     functionsLifecycleTemplate: read('functions/src/messaging/templates.ts'),
     specDoc: read('__docs__/owner-notifications/owner-notifications_spec.md'),
@@ -547,11 +653,17 @@ function verifyOwnerNotificationsBoundary() {
   };
 
   verifyRegistryMirror(files.appRegistry, files.functionsRegistry);
+  verifyFirestoreDocumentIdHelper(files.firestoreDocumentId);
   verifyOpsRoute(files.route);
   verifyCore(files.core, files.recipientResolver, files.whatsappChannel);
   verifyFunctionsProcessor(files.processor, files.scheduler, files.messagingEngine, files.smtpProvider, files.stalenessCheck);
   verifyMonitor(files.monitor, files.responseHelper);
-  verifyTemplateOutputBoundaries(files.menuTemplate, files.appLifecycleTemplate, files.functionsLifecycleTemplate);
+  verifyTemplateOutputBoundaries(
+    files.menuTemplate,
+    files.answerlatticeTemplate,
+    files.appLifecycleTemplate,
+    files.functionsLifecycleTemplate,
+  );
   verifyDocsAndPackage(
     files.packageJson,
     files.specDoc,

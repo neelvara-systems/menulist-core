@@ -16,6 +16,8 @@ import {
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import {
     recordFounderRevenueMovement,
     recordFounderSubscriptionMrrChange,
@@ -31,6 +33,7 @@ import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from "crypto";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
@@ -82,6 +85,39 @@ export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
 
     try {
+        const rateLimitConfig = getRateLimitForFeature('PAYMENT_VERIFICATION');
+        const userRateLimitHash = hashPublicRateLimitValue(userId);
+        const rateLimitResult = await checkRateLimit({
+            key: `payment-verify:subscription:${userRateLimitHash}`,
+            ...rateLimitConfig,
+        });
+
+        if (!rateLimitResult.allowed) {
+            const waitSeconds = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
+            logger.security('Payment Verification Rate Limit Exceeded', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-subscription',
+                error: 'Too many payment verification attempts',
+                feature: 'PAYMENT_VERIFICATION',
+                limit: rateLimitConfig.limit,
+                waitSeconds,
+                window: rateLimitConfig.window,
+            }, 'high');
+
+            return NextResponse.json(
+                { error: 'Too many payment verification attempts. Please try again later.', retryAfter: waitSeconds },
+                {
+                    status: 429,
+                    headers: {
+                        'Retry-After': String(waitSeconds),
+                        'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                        'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+                        'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+                    },
+                },
+            );
+        }
+
         // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
         const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid input',

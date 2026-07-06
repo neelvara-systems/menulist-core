@@ -7,6 +7,7 @@ import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { useDebounceValue } from '@hook/useDebounce';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { ChatSession, ConversationFilters } from '@type/chatSession';
+import { escapeCSVValue } from '@util/exportUtils';
 import { calculateQualityFlags } from '@util/qualityMetrics';
 import { Button, Card, Checkbox, Dropdown, Flex, Input, message, Popover, Skeleton, Splitter, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -219,7 +220,19 @@ function ConversationsList() {
         const csvRows: string[] = [];
 
         // Header
-        csvRows.push('ID,Conversation Title,Customer Name,Customer Email,Type,Messages,Helpful,Not Helpful,Satisfaction %,Started,Last Activity');
+        csvRows.push([
+            'ID',
+            'Conversation Title',
+            'Customer Name',
+            'Customer Email',
+            'Type',
+            'Messages',
+            'Helpful',
+            'Not Helpful',
+            'Satisfaction %',
+            'Started',
+            'Last Activity'
+        ].map(escapeCSVValue).join(','));
 
         // Data rows (with null safety)
         filteredSessions.forEach(session => {
@@ -230,14 +243,11 @@ function ConversationsList() {
             const totalFeedback = positiveFeedback + negativeFeedback;
             const satisfaction = totalFeedback > 0 ? Math.round((positiveFeedback / totalFeedback) * 100) : 0;
 
-            // Escape special characters for CSV
-            const escapeCSV = (value: string) => `"${value.replace(/"/g, '""').replace(/\n/g, ' ')}"`;
-
             const row = [
                 session.id || 'N/A',
-                escapeCSV(session.title || 'Untitled Chat'),
-                escapeCSV(requester.displayName),
-                escapeCSV(requester.email || 'N/A'),
+                session.title || 'Untitled Chat',
+                requester.displayName,
+                requester.email || 'N/A',
                 session.mode === 'qna' ? 'Quick Answer' : 'Chat',
                 messages.length,
                 positiveFeedback,
@@ -245,7 +255,7 @@ function ConversationsList() {
                 totalFeedback > 0 ? `${satisfaction}%` : 'N/A',
                 session.createdOn?.toDate().toLocaleString() || 'N/A',
                 session.modifiedOn?.toDate().toLocaleString() || 'N/A'
-            ];
+            ].map(escapeCSVValue);
 
             csvRows.push(row.join(','));
         });

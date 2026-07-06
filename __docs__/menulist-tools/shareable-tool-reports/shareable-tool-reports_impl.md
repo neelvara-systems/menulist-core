@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Implementation
 
 **Status:** Implemented V0
-**Last Updated:** July 4, 2026
+**Last Updated:** July 5, 2026
 **Audience:** Developers
 
 ---
@@ -53,11 +53,15 @@ The shared helper enforces:
 - max checks: `SHAREABLE_TOOL_REPORT_MAX_CHECKS`
 - max boundaries: `SHAREABLE_TOOL_REPORT_MAX_BOUNDARIES`
 - max setup jobs: `SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS`
+- strict ISO `generatedAt` timestamp guard using the source-tool `new Date().toISOString()` contract
+- control characters are stripped from decoded display strings before rendering
 - safe internal next-action href only
 
 If a shared report link is incomplete, too large, or not a valid schema, the viewer shows an invalid-link state.
 
 Decode failures use bounded diagnostics. `shareable_tool_report_payload_decode_failed` records only the failure stage (`payload_oversized`, `base64_decode`, `json_oversized`, `json_parse`, or `payload_invalid`), hash input length, encoded payload length, decoded payload length when available, hash/key shape booleans, max-length booleans, fixed `show_invalid_report_state` fallback policy, and normalized source error metadata. It must not log the hash payload, decoded JSON, business name, business context, evidence text, setup jobs, contact details, or exception text.
+
+July 5 follow-up: Shareable Tool Reports timestamp/display-string payload boundary. The public hash decoder now rejects report payloads whose `generatedAt` value is not the canonical ISO timestamp shape produced by source tools. It also strips control characters from decoded display strings before the viewer renders report titles, business context, status copy, evidence rows, setup jobs, boundaries, and next-action copy. Tampered report links with invalid timestamps keep the existing invalid-report state instead of rendering `Invalid Date` or arbitrary generated-time text.
 
 ---
 
@@ -108,10 +112,10 @@ Implementation rules:
 - use `cache: 'no-store'`, `credentials: 'same-origin'`, and `redirect: 'manual'`
 - expect `source: menulist_public_contact`, `status: accepted`, and `helpTopic: general`
 - submit a bounded report summary, not the full hash payload as a stored report
-- submit bounded `sourceContext` metadata: `sourceKind`, `toolId`, `reportStatus`, owner-entered business context, generated timestamp, summary counts, and `setupJobList`
+- submit bounded `sourceContext` metadata: `sourceKind`, `toolId`, `reportStatus`, owner-entered business context, canonical ISO generated timestamp or `null`, summary counts, and `setupJobList`
 - keep the report link public and ungated
 
-The accepted write is one existing public contact enquiry. The route stores queryable top-level metadata (`sourceKind`, `sourceToolId`, `sourceReportStatus`, `sourcePrimaryNumber`) plus the bounded nested `sourceContext`. The nested setup jobs are lead-routing context only; they are not canonical business truth, report storage, saved history, or email-delivery automation.
+The accepted write is one existing public contact enquiry. The route stores queryable top-level metadata (`sourceKind`, `sourceToolId`, `sourceReportStatus`, `sourcePrimaryNumber`) plus the bounded nested `sourceContext`. Nested `reportGeneratedAt` is stored only as the canonical ISO timestamp shape produced by source tools; malformed direct submissions become `null`. The nested setup jobs are lead-routing context only; they are not canonical business truth, report storage, saved history, or email-delivery automation.
 
 ---
 

@@ -24,6 +24,8 @@ Storage/Functions/provider cost:
 | Cloud Functions | 0 |
 | AI/provider calls | 0 |
 
+Public Truth Monitor project/scope-ID admission is cost-neutral: manual refresh request validation, summary project selection, and `readPublicTruthMonitorProjectDataServer()` now use the shared Firestore document-ID guard before selected project IDs can reach scoped or legacy project reads. The server DAL trims selected, persisted, and final project IDs into a normalized document ID before any project document ref is built, and validates session-derived store/tenant scope IDs before store reads, project-summary reads, monitor-summary reads/writes, or scoped project paths. This adds no Firestore reads/writes/deletes for valid requests, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action; malformed project or scope IDs stop on the existing request/server admission path before Firestore refs.
+
 ## Storage
 
 Use capped summary documents:

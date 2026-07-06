@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Test Cases
 
 **Status:** Active QA matrix
-**Last Updated:** July 4, 2026
+**Last Updated:** July 5, 2026
 
 ---
 
@@ -38,9 +38,10 @@ npm run verify:public-truth-tools
 | STR-011 | Public tool coverage | All current public tool report cards expose Copy public report link |
 | STR-012 | Report follow-up form | Viewer posts only to `/api/public/contact` with consent, Turnstile, no-store, same-origin, manual redirect, and accepted acknowledgement |
 | STR-013 | Report capture boundary | Accepted follow-up stores an existing contact enquiry only; no report API route or report collection exists |
-| STR-014 | Report lead metadata | Follow-up request includes bounded `sourceContext` with `setupJobList`, and the contact route stores queryable `sourceKind`, `sourceToolId`, `sourceReportStatus`, and nested source context on the existing enquiry |
+| STR-014 | Report lead metadata | Follow-up request includes bounded `sourceContext` with canonical ISO `reportGeneratedAt` or `null` plus `setupJobList`, and the contact route stores queryable `sourceKind`, `sourceToolId`, `sourceReportStatus`, and nested source context on the existing enquiry |
 | STR-015 | Report Lead Ops monitor | `/ops/report-leads` is platform-admin only, manual-refresh, reads recent existing enquiries, shows setup job lists, parses bounded responses, and performs no lead mutation or report storage |
 | STR-016 | Invalid, oversized, malformed, or wrong-shape hash payload | Decoder logs bounded `shareable_tool_report_payload_decode_failed` diagnostics with shape metadata only and keeps the invalid-report state |
+| STR-017 | Hash payload has non-ISO `generatedAt` or control characters in display strings | Decoder rejects the non-canonical timestamp, strips control characters from accepted display strings, and never renders `Invalid Date` as report generated time |
 
 ---
 
@@ -51,6 +52,7 @@ npm run verify:public-truth-tools
 - A tampered report link tries to route users to a non-MenuList URL.
 - A very large hash freezes the report viewer.
 - Decode diagnostics leak the report hash, decoded JSON, business context, evidence rows, setup jobs, or contact details.
+- Tampered report links render `Invalid Date` or control characters from decoded display text.
 - The setup job list drifts from visible report gaps or is treated as canonical truth before owner confirmation.
 - The follow-up form drifts into hidden capture, unbounded payloads, missing lead metadata, or claimed email delivery.
 - The internal lead monitor drifts into public access, realtime listeners, lead mutation, or saved report history.

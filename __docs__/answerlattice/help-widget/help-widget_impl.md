@@ -295,6 +295,7 @@ Implementation:
 - Uses `withAuth()` and `resolveAnswerlatticeSessionScope()` to read only the active Answerlattice tenant/store.
 - Reads recent `aiSearchHistory` rows where `mountContext === "widget"` and returns only safe dashboard fields: question, answer preview, canonical flag, confidence, reference count, feedback state, and timestamp.
 - Falls back to a bounded recent-history scan if the composite index is still building, while preserving tenant/store filtering before responding.
+- Normalizes stored activity timestamps through the widget activity timestamp boundary: Firestore Timestamp-like values and canonical ISO `...Z` strings are accepted, while malformed stored values become `null` or sort as oldest instead of using permissive `Date.parse()`.
 - Does not create a new collection and does not expose API keys, raw context payloads, or internal cache keys.
 
 ---

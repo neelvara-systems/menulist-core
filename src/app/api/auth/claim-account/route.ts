@@ -27,9 +27,16 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { getGeneratedEmail } from "@constant/urls";
 import { authOptions } from "@lib/auth";
+import {
+  AUTH_CLAIM_TOKEN_MAX_LENGTH,
+  AUTH_CLAIM_TOKEN_MIN_LENGTH,
+  AUTH_CLAIM_TOKEN_PATTERN,
+  normalizeAuthClaimToken,
+} from "@lib/auth/claimTokenBoundary";
 import { getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
 import { isInternalAuthEmail } from "@lib/auth/loginIdentifiers";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
 import { validateEmail } from "@lib/validation/emailDomainValidator";
@@ -43,15 +50,21 @@ import { z } from "zod";
 
 const db = admin.firestore();
 
+const AuthClaimTokenSchema = z
+  .string()
+  .min(AUTH_CLAIM_TOKEN_MIN_LENGTH)
+  .max(AUTH_CLAIM_TOKEN_MAX_LENGTH)
+  .regex(AUTH_CLAIM_TOKEN_PATTERN);
+
 const ClaimWithPasswordSchema = z.object({
-  claimToken: z.string().min(20).max(256),
+  claimToken: AuthClaimTokenSchema,
   email: z.string().email().max(180),
   password: z.string().min(6).max(128),
   name: z.string().max(100).optional(),
 });
 
 const ClaimWithWhatsappPhoneSchema = z.object({
-  claimToken: z.string().min(20).max(256),
+  claimToken: AuthClaimTokenSchema,
   password: z.string().min(6).max(128),
   name: z.string().max(100).optional(),
   useWhatsappPhone: z.literal(true),
@@ -156,10 +169,45 @@ const timestampLikeToMillis = (value: unknown): number | null => {
   return null;
 };
 
+type ClaimAccountScope = {
+  tenantDocumentId: string;
+  tenantId: number;
+  storeDocumentId: string;
+  storeId: number;
+};
+
+type ClaimedMessagingUser = FirebaseFirestore.DocumentData & {
+  claimAccountScope: ClaimAccountScope;
+};
+
+const normalizeClaimAccountScopeDocumentId = (value: unknown): string | null => {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const documentId = String(value);
+  if (documentId !== documentId.trim() || !isValidFirestoreDocumentId(documentId)) return null;
+
+  const numericId = Number(documentId);
+  return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+    ? documentId
+    : null;
+};
+
+const normalizeClaimAccountScope = (data: FirebaseFirestore.DocumentData | undefined): ClaimAccountScope | null => {
+  const tenantDocumentId = normalizeClaimAccountScopeDocumentId(data?.tenantId);
+  const storeDocumentId = normalizeClaimAccountScopeDocumentId(data?.storeId);
+  if (!tenantDocumentId || !storeDocumentId) return null;
+
+  return {
+    tenantDocumentId,
+    tenantId: Number(tenantDocumentId),
+    storeDocumentId,
+    storeId: Number(storeDocumentId),
+  };
+};
+
 const assertMessagingUserClaimIsAvailable = (
   data: FirebaseFirestore.DocumentData | undefined,
   claimToken: string,
-): FirebaseFirestore.DocumentData => {
+): ClaimedMessagingUser => {
   if (!data) {
     throw new ClaimTokenUnavailableError("Unable to complete account claim.", 404);
   }
@@ -173,21 +221,27 @@ const assertMessagingUserClaimIsAvailable = (
     throw new ClaimTokenUnavailableError("This claim link has expired.", 410);
   }
 
-  if (!data.tenantId || !data.storeId) {
+  const claimAccountScope = normalizeClaimAccountScope(data);
+  if (!claimAccountScope) {
     throw new ClaimTokenUnavailableError("Unable to complete account claim.", 400);
   }
 
-  return data;
+  return {
+    ...data,
+    claimAccountScope,
+    tenantId: claimAccountScope.tenantId,
+    storeId: claimAccountScope.storeId,
+  };
 };
 
 const runClaimAccountTransaction = async (params: {
   apply: (
     transaction: FirebaseFirestore.Transaction,
-    currentMessagingUser: FirebaseFirestore.DocumentData,
+    currentMessagingUser: ClaimedMessagingUser,
   ) => Promise<void> | void;
   claimToken: string;
   messagingUserRef: FirebaseFirestore.DocumentReference;
-}): Promise<FirebaseFirestore.DocumentData> => {
+}): Promise<ClaimedMessagingUser> => {
   return db.runTransaction(async (transaction) => {
     const latestMessagingUserDoc = await transaction.get(params.messagingUserRef);
     const currentMessagingUser = assertMessagingUserClaimIsAvailable(
@@ -221,9 +275,10 @@ export async function POST(request: NextRequest) {
     )
       ? bodyResult.data as Record<string, any>
       : {};
-    const { claimToken, email, password, useWhatsappPhone } = body;
+    const { email, password, useWhatsappPhone } = body;
+    const claimToken = normalizeAuthClaimToken(body.claimToken);
 
-    if (!claimToken || typeof claimToken !== "string" || claimToken.length < 20 || claimToken.length > 256) {
+    if (!claimToken) {
       logger.security("Input Validation Failed - Claim Account", {
         ...buildAnonymousSecurityContext(request),
         reason: "invalid_claim_token",
@@ -263,8 +318,9 @@ export async function POST(request: NextRequest) {
       return claimFailure("This claim link has expired.", 410);
     }
 
-    // Check the messaging user actually has a tenant/store
-    if (!messagingUser.tenantId || !messagingUser.storeId) {
+    // Check the messaging user actually has a safe tenant/store scope before
+    // any Firebase Auth or ownership mutation work.
+    if (!normalizeClaimAccountScope(messagingUser)) {
       return claimFailure("Unable to complete account claim.");
     }
 
@@ -332,31 +388,32 @@ export async function POST(request: NextRequest) {
           });
         },
       });
+      const claimScope = claimedMessagingUser.claimAccountScope;
 
       await linkClaimedSubscriptions({
         email: loginEmail,
         name: displayName,
         now,
-        storeId: Number(claimedMessagingUser.storeId),
-        tenantId: Number(claimedMessagingUser.tenantId),
+        storeId: claimScope.storeId,
+        tenantId: claimScope.tenantId,
         userDocId: messagingUserDoc.id,
       });
 
       await authAdmin.setCustomUserClaims(firebaseUid, {
         role: "owner",
         platformRole: "OWNER",
-        tenantId: String(claimedMessagingUser.tenantId),
-        storeId: String(claimedMessagingUser.storeId),
+        tenantId: String(claimScope.tenantId),
+        storeId: String(claimScope.storeId),
         uId: messagingUserDoc.id,
         admin: true,
-        storeIds: [String(claimedMessagingUser.storeId)],
+        storeIds: [String(claimScope.storeId)],
       });
 
       return NextResponse.json({
         success: true,
         mode: "whatsapp-phone",
-        tenantId: claimedMessagingUser.tenantId,
-        storeId: claimedMessagingUser.storeId,
+        tenantId: claimScope.tenantId,
+        storeId: claimScope.storeId,
         message: "Account created. You can now log in with your WhatsApp number and passcode.",
       });
     }
@@ -411,6 +468,7 @@ export async function POST(request: NextRequest) {
         claimToken,
         messagingUserRef: messagingUserDoc.ref,
         apply: (transaction, currentMessagingUser) => {
+          const claimScope = currentMessagingUser.claimAccountScope;
           transaction.update(messagingUserDoc.ref, {
             email: lowerEmail,
             name: name || currentMessagingUser.name,
@@ -430,21 +488,22 @@ export async function POST(request: NextRequest) {
             modifiedOn: now,
           });
 
-          const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(currentMessagingUser.tenantId));
+          const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(claimScope.tenantDocumentId);
           transaction.update(tenantRef, { email: lowerEmail, modifiedOn: now });
 
-          const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(currentMessagingUser.storeId));
+          const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(claimScope.storeDocumentId);
           transaction.update(storeRef, { email: lowerEmail, modifiedOn: now });
         },
       });
-      await revalidateMenuCache(claimedMessagingUser.storeId, { tId: claimedMessagingUser.tenantId });
+      const claimScope = claimedMessagingUser.claimAccountScope;
+      await revalidateMenuCache(claimScope.storeId, { tId: claimScope.tenantId });
 
       await linkClaimedSubscriptions({
         email: lowerEmail,
         name: name || claimedMessagingUser.name,
         now,
-        storeId: Number(claimedMessagingUser.storeId),
-        tenantId: Number(claimedMessagingUser.tenantId),
+        storeId: claimScope.storeId,
+        tenantId: claimScope.tenantId,
         userDocId: messagingUserDoc.id,
       });
 
@@ -452,18 +511,18 @@ export async function POST(request: NextRequest) {
       await authAdmin.setCustomUserClaims(firebaseUid, {
         role: "owner",
         platformRole: "OWNER",
-        tenantId: String(claimedMessagingUser.tenantId),
-        storeId: String(claimedMessagingUser.storeId),
+        tenantId: String(claimScope.tenantId),
+        storeId: String(claimScope.storeId),
         uId: messagingUserDoc.id,
         admin: true,
-        storeIds: [String(claimedMessagingUser.storeId)],
+        storeIds: [String(claimScope.storeId)],
       });
 
       return NextResponse.json({
         success: true,
         mode: "email-password",
-        tenantId: claimedMessagingUser.tenantId,
-        storeId: claimedMessagingUser.storeId,
+        tenantId: claimScope.tenantId,
+        storeId: claimScope.storeId,
         message: "Account created! You can now log in with your email and password.",
       });
     }
@@ -483,6 +542,7 @@ export async function POST(request: NextRequest) {
       claimToken,
       messagingUserRef: messagingUserDoc.ref,
       apply: async (transaction, currentMessagingUser) => {
+        const claimScope = currentMessagingUser.claimAccountScope;
         const googleUserDoc = await transaction.get(googleUserRef);
         if (googleUserDoc.exists && googleUserDoc.data()?.tenantId) {
           throw new ClaimTokenUnavailableError("Unable to complete account claim.", 409);
@@ -490,8 +550,8 @@ export async function POST(request: NextRequest) {
 
         if (googleUserDoc.exists) {
           transaction.update(googleUserRef, {
-            tenantId: currentMessagingUser.tenantId,
-            storeId: currentMessagingUser.storeId,
+            tenantId: claimScope.tenantId,
+            storeId: claimScope.storeId,
             stores: currentMessagingUser.stores,
             platformRole: currentMessagingUser.platformRole || "OWNER",
             phone: currentMessagingUser.phone,
@@ -507,8 +567,8 @@ export async function POST(request: NextRequest) {
             email: googleEmail,
             name: session.user.name || googleEmail.split("@")[0],
             image: (session.user as any).image || "",
-            tenantId: currentMessagingUser.tenantId,
-            storeId: currentMessagingUser.storeId,
+            tenantId: claimScope.tenantId,
+            storeId: claimScope.storeId,
             stores: currentMessagingUser.stores,
             platformRole: "OWNER",
             phone: currentMessagingUser.phone,
@@ -534,29 +594,30 @@ export async function POST(request: NextRequest) {
           modifiedOn: now,
         });
 
-        const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(currentMessagingUser.tenantId));
+        const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(claimScope.tenantDocumentId);
         transaction.update(tenantRef, { email: googleEmail, modifiedOn: now });
 
-        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(currentMessagingUser.storeId));
+        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(claimScope.storeDocumentId);
         transaction.update(storeRef, { email: googleEmail, modifiedOn: now });
       },
     });
-    await revalidateMenuCache(claimedMessagingUser.storeId, { tId: claimedMessagingUser.tenantId });
+    const claimScope = claimedMessagingUser.claimAccountScope;
+    await revalidateMenuCache(claimScope.storeId, { tId: claimScope.tenantId });
 
     await linkClaimedSubscriptions({
       email: googleEmail,
       name: session.user.name || googleEmail.split("@")[0],
       now,
-      storeId: Number(claimedMessagingUser.storeId),
-      tenantId: Number(claimedMessagingUser.tenantId),
+      storeId: claimScope.storeId,
+      tenantId: claimScope.tenantId,
       userDocId: googleUserId,
     });
 
     return NextResponse.json({
       success: true,
       mode: "google",
-      tenantId: claimedMessagingUser.tenantId,
-      storeId: claimedMessagingUser.storeId,
+      tenantId: claimScope.tenantId,
+      storeId: claimScope.storeId,
       message: "Account linked successfully! You can now manage your business.",
     });
   } catch (error) {

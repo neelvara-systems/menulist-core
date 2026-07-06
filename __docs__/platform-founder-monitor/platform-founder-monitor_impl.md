@@ -38,6 +38,8 @@ Revenue is not calculated by scanning subscriptions or payment transactions duri
 
 Those movements are stored in `founderRevenueMovements`. The same transaction increments `platformSummary/founderMonitorRevenue` and `platformSummary/founderMonitorRevenueDaily_YYYY-MM-DD`.
 
+Founder revenue movement document IDs and payment-to-live transition store IDs pass through `src/lib/firebase/firestoreDocumentId.ts` before Admin Firestore refs. Valid Razorpay-derived `cash:...`, `failed_payment:...`, `new_mrr:...`, `churn:...`, `refund:...`, `expansion_mrr:...`, and `downgrade_mrr:...` movement IDs keep the same deterministic write shape; malformed, reserved, empty, or path-shaped movement/store IDs return without creating invalid `founderRevenueMovements/{movementId}` or `founderOnboardingTransitions/{storeId}` refs.
+
 New MRR movement writes also seed `founderOnboardingTransitions/{storeId}` with `paymentAt`. The 30-minute scheduler completes `firstLiveAt` and `timeToLiveHours` once the store has a published menu. Historical data can be seeded with `scripts/backfill-founder-revenue-read-model.ts`, which is dry-run by default and uses Firestore billing/audit documents only.
 
 The 30-minute scheduler task `founder_monitor_snapshot` refreshes operational store/support/truth data from `platformSummary/storesSummary` plus bounded support, subscription, movement, and onboarding sources. It does not read every store document. Revenue fields are reconciled only when the bounded subscription read is complete. If a safety cap is hit, the scheduler records a data gap and leaves transaction-time revenue as the live source.

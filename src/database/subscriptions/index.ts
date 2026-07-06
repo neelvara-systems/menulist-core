@@ -2,6 +2,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { MinimalStoreDataType } from "@type/platform/store";
@@ -15,7 +16,11 @@ const activeSubscriptionRequests = new Map<string, Promise<FirestoreSubscription
 // Helper function to get subscription collection reference
 export const getCollectionRef = () => collection(firebaseClient, COLLECTION);
 
-const getDocRef = (docId: string) => doc(getCollectionRef(), docId);
+const getDocRef = (docId: string) => {
+    const normalizedDocId = normalizeBillingSubscriptionDocumentId(docId);
+    if (!normalizedDocId) throw new Error("Invalid billing subscription id.");
+    return doc(getCollectionRef(), normalizedDocId);
+};
 
 // ── Subscription Status Reference ──
 // active: The user is in good standing and is scheduled to be billed again.
@@ -230,10 +235,13 @@ export const updateSubscription = async (subscriptionId: string, data: Partial<F
 export const getSubscriptionById = async (id: string) => {
     return await apiCallComposer(
         async () => {
-            const collectionDocRef = await getDocRef(id);
+            const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(id);
+            if (!normalizedSubscriptionId) return null;
+
+            const collectionDocRef = doc(getCollectionRef(), normalizedSubscriptionId);
             const docSnap = await getDoc(collectionDocRef);
             if (docSnap.exists()) {
-                return { ...docSnap.data(), id };
+                return { ...docSnap.data(), id: docSnap.id };
             } else {
                 return null
             }

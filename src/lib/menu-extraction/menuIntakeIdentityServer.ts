@@ -23,7 +23,9 @@ import {
   logMenuProcessingDiagnostic,
   logMenuProcessingFailure,
 } from "@lib/firebase/menuProcessingDiagnostics";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { genAIClient } from "@lib/google/genAi";
+import { normalizeMenuExtractionProjectId } from "@lib/menu-extraction/projectIdBoundary";
 import { readResponseUint8ArrayWithLimit } from "@lib/security/boundedResponseBody";
 import { validateServerNetworkTargetUrl } from "@lib/security/serverNetworkTarget";
 
@@ -47,6 +49,25 @@ type MenuIntakeOperationContext = {
   tId?: string | number;
   uId?: string;
 };
+
+type MenuIntakeScopeDocumentId = {
+  documentId: string;
+  numericId: number;
+};
+
+export function normalizeMenuIntakeScopeDocumentId(value: unknown): MenuIntakeScopeDocumentId | null {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+
+  const raw = String(value);
+  if (raw !== raw.trim() || !isValidFirestoreDocumentId(raw)) return null;
+
+  const numericId = Number(raw);
+  if (!Number.isSafeInteger(numericId) || numericId <= 0 || String(numericId) !== raw) {
+    return null;
+  }
+
+  return { documentId: raw, numericId };
+}
 
 const getMenuIntakeOperationLogContext = (operation?: MenuIntakeOperationContext) => ({
   ...getMenuProcessingProjectLogContext(operation?.projectId),
@@ -82,6 +103,14 @@ export class MenuIntakeIdentityServerError extends Error {
     super(clientMessage);
     this.name = "MenuIntakeIdentityServerError";
   }
+}
+
+function requireMenuIntakeProjectId(value: unknown): string {
+  const projectId = normalizeMenuExtractionProjectId(value);
+  if (!projectId) {
+    throw new MenuIntakeIdentityServerError(400, "Invalid menu.");
+  }
+  return projectId;
 }
 
 export function isSupportedMenuIntakeMimeType(type: string): boolean {
@@ -418,10 +447,19 @@ export async function loadMenuIntakeContext(params: {
   sId: string;
   tId: string;
 }): Promise<{ context: MenuIntakeContext; projectData: any; storeData: any }> {
+  const projectId = requireMenuIntakeProjectId(params.projectId);
+  const tenantScope = normalizeMenuIntakeScopeDocumentId(params.tId);
+  const storeScope = normalizeMenuIntakeScopeDocumentId(params.sId);
+  if (!tenantScope || !storeScope) {
+    throw new MenuIntakeIdentityServerError(400, "Invalid menu.");
+  }
+
   const projectRef = firestoreAdmin
-    .collection(`${DB_COLLECTIONS.PROJECTS}/${params.tId}/${params.sId}`)
-    .doc(params.projectId);
-  const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(params.sId));
+    .collection(DB_COLLECTIONS.PROJECTS)
+    .doc(tenantScope.documentId)
+    .collection(storeScope.documentId)
+    .doc(projectId);
+  const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
   const [projectDoc, storeDoc] = await Promise.all([projectRef.get(), storeRef.get()]);
 
   if (!projectDoc.exists) {
@@ -540,21 +578,28 @@ export async function runMenuIntakeIdentityCheck(params: {
   sId: string;
   tId: string;
 }): Promise<MenuIntakeIdentityServerResult> {
+  const projectId = requireMenuIntakeProjectId(params.projectId);
+  const tenantScope = normalizeMenuIntakeScopeDocumentId(params.tId);
+  const storeScope = normalizeMenuIntakeScopeDocumentId(params.sId);
+  if (!tenantScope || !storeScope) {
+    throw new MenuIntakeIdentityServerError(400, "Invalid menu.");
+  }
+
   const { context } = await loadMenuIntakeContext({
-    projectId: params.projectId,
-    sId: params.sId,
-    tId: params.tId,
+    projectId,
+    sId: storeScope.documentId,
+    tId: tenantScope.documentId,
   });
 
   return analyzeMenuIntakeIdentity({
     context,
     files: params.files,
     operation: {
-      projectId: params.projectId,
+      projectId,
       session: params.session,
-      sId: params.sId,
+      sId: storeScope.documentId,
       source: "menu_intake_identity",
-      tId: params.tId,
+      tId: tenantScope.documentId,
       uId: String(params.session?.uId || params.session?.user?.id || ""),
     },
   });

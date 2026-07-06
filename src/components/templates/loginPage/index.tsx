@@ -294,16 +294,15 @@ function LoginPage() {
   const usesGenericProductArtwork = Boolean(hostProduct && hostProduct.id !== 'menulist')
     || isNonMenuListProductPath(callbackPathname);
 
-  const getPostLoginRedirect = () => {
-    const callbackUrl = searchParams?.get('callbackUrl');
-    if (!callbackUrl) return CLIENT_DASHBOARD_ROUTING;
+	  const getPostLoginRedirect = () => {
+	    const callbackUrl = searchParams?.get('callbackUrl');
+	    if (!callbackUrl) return CLIENT_DASHBOARD_ROUTING;
 
-    try {
-      if (callbackUrl.startsWith('/')) return callbackUrl;
-      const parsedUrl = new URL(callbackUrl, window.location.origin);
-      if (parsedUrl.origin === window.location.origin) {
-        return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
-      }
+	    try {
+	      const parsedUrl = new URL(callbackUrl, window.location.origin);
+	      if (parsedUrl.origin === window.location.origin) {
+	        return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+	      }
     } catch {
       return CLIENT_DASHBOARD_ROUTING;
     }

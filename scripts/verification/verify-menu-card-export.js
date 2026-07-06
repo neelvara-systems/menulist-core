@@ -91,6 +91,7 @@ const features = fs.readFileSync(path.join(root, 'src/config/features.ts'), 'utf
 });
 
 const printAssetCatalog = fs.readFileSync(path.join(root, 'src/lib/print-assets/printAssetCatalog.ts'), 'utf8');
+const printableAssetRenderer = fs.readFileSync(path.join(root, 'src/lib/printable-asset-templates/renderPrintableAsset.ts'), 'utf8');
 const menuCardExportCoreDocs = [
   {
     label: 'Menu Card Export README',
@@ -128,6 +129,11 @@ const menuCardExportTestCases = fs.readFileSync(path.join(root, '__docs__/menu-c
 const menuCardExportFirebase = fs.readFileSync(path.join(root, '__docs__/menu-card-export/menu-card-export_firebase.md'), 'utf8');
 const productionReadinessAudit = fs.readFileSync(path.join(root, '__docs__/audits/menulist-production-readiness-audit.md'), 'utf8');
 const changelog = fs.readFileSync(path.join(root, '__docs__/changelog.md'), 'utf8');
+const internalFeedbackImpl = fs.readFileSync(path.join(root, '__docs__/projects/internal-feedback-system/internal-feedback-system_impl.md'), 'utf8');
+const internalFeedbackFirebase = fs.readFileSync(path.join(root, '__docs__/projects/internal-feedback-system/internal-feedback-system_firebase.md'), 'utf8');
+const menuKitImpl = fs.readFileSync(path.join(root, '__docs__/menu-kit/menu-kit_impl.md'), 'utf8');
+const menuKitFirebase = fs.readFileSync(path.join(root, '__docs__/menu-kit/menu-kit_firebase.md'), 'utf8');
+const menuKitMobileSupport = fs.readFileSync(path.join(root, '__docs__/menu-kit/menu-kit_mobile-support.md'), 'utf8');
 const physicalSurfacesReadme = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/README.md'), 'utf8');
 const physicalSurfacesCodeReview = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_code-review.md'), 'utf8');
 const physicalSurfacesValidation = fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_validation.md'), 'utf8');
@@ -220,6 +226,71 @@ menuCardExportCoreDocs.forEach(({ label, content }) => {
     'return_layout_suggestion_failed',
   ].forEach((token) => {
     if (!content.includes(token)) failures.push(`${label} missing AI advisor provider-response parse diagnostic token: ${token}`);
+  });
+});
+[
+  {
+    label: 'MenuList production-readiness audit',
+    content: productionReadinessAudit,
+  },
+  {
+    label: 'MenuList changelog',
+    content: changelog,
+  },
+].forEach(({ label, content }) => {
+  [
+    'Feedback QR download filename boundary',
+    'getQrCodeFilename(data.storeName)',
+    'raw store-name whitespace replacement',
+  ].forEach((token) => {
+    if (!content.includes(token)) failures.push(`${label} missing Feedback QR filename boundary token: ${token}`);
+  });
+  [
+    'Menu Kit ZIP filename boundary',
+    'result.zipFilename',
+    'hand-rolled store-name filename derivation',
+  ].forEach((token) => {
+    if (!content.includes(token)) failures.push(`${label} missing Menu Kit ZIP filename boundary token: ${token}`);
+  });
+});
+[
+  {
+    label: 'Internal Feedback implementation',
+    content: internalFeedbackImpl,
+  },
+  {
+    label: 'Internal Feedback Firebase',
+    content: internalFeedbackFirebase,
+  },
+].forEach(({ label, content }) => {
+  [
+    'Feedback QR download filename boundary',
+    'getQrCodeFilename',
+    'raw store-name whitespace replacement',
+  ].forEach((token) => {
+    if (!content.includes(token)) failures.push(`${label} missing Feedback QR filename boundary token: ${token}`);
+  });
+});
+[
+  {
+    label: 'Menu Kit implementation',
+    content: menuKitImpl,
+  },
+  {
+    label: 'Menu Kit Firebase',
+    content: menuKitFirebase,
+  },
+  {
+    label: 'Menu Kit mobile support',
+    content: menuKitMobileSupport,
+  },
+].forEach(({ label, content }) => {
+  [
+    'Menu Kit ZIP filename boundary',
+    'result.zipFilename',
+    'hand-rolled store-name filename derivation',
+  ].forEach((token) => {
+    if (!content.includes(token)) failures.push(`${label} missing Menu Kit ZIP filename boundary token: ${token}`);
   });
 });
 [
@@ -601,6 +672,7 @@ const mobileShare = fs.readFileSync(path.join(root, 'src/components/mobile/scree
   'businessCategory: (storeDetails as any)?.businessCategory',
   'brandColor: storeBrandColor',
   'currencyCode: (storeDetails as any)?.currencyCode',
+  'downloadBlob(result.zipBlob, result.zipFilename)',
 ].forEach((token) => {
   if (!mobileShare.includes(token)) failures.push(`Mobile Share entry missing token: ${token}`);
 });
@@ -809,6 +881,7 @@ const useMenuListDiagnostics = fs.readFileSync(path.join(root, 'src/components/t
   'businessCategory: (storeDetails as any)?.businessCategory',
   'brandColor: storeBrandColor',
   'currencyCode: (storeDetails as any)?.currencyCode',
+  'downloadBlob(result.zipBlob, result.zipFilename)',
 ].forEach((token) => {
   if (!desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList print copy missing brand PDF context token: ${token}`);
 });
@@ -914,6 +987,7 @@ const projectShareModal = fs.readFileSync(path.join(root, 'src/components/templa
 const menuKitSection = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx'), 'utf8');
 [
   'generateMenuKitAsset',
+  'downloadBlob(result.zipBlob, result.zipFilename)',
   "handleShareAsset('instagram_story'",
   "handleShareAsset('whatsapp_status'",
   "handleShareAsset('google_maps'",
@@ -933,6 +1007,18 @@ const menuKitSection = fs.readFileSync(path.join(root, 'src/components/templates
 });
 if (menuKitSection.includes('result.assets[')) {
   failures.push('Project Share Menu Kit section must generate individual files by asset key, not result.assets[index]');
+}
+[
+  { label: 'Desktop Use MenuList', source: desktopUseMenuList },
+  { label: 'Mobile Share', source: mobileShare },
+  { label: 'Project Share Menu Kit section', source: menuKitSection },
+].forEach(({ label, source }) => {
+  if (source.includes('downloadBlob(result.zipBlob, `${safeName}_MenuKit.zip`)')) {
+    failures.push(`${label} complete Menu Kit ZIP downloads must use result.zipFilename instead of a hand-rolled store-name filename`);
+  }
+});
+if (printableAssetRenderer.includes('filename: `${safeName(input.storeName)}_MenuKit')) {
+  failures.push('Printable asset complete Menu Kit ZIP downloads must use result.zipFilename instead of a hand-rolled store-name filename');
 }
 [
   'secureError(',
@@ -1174,6 +1260,9 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   'MENU_KIT_ASSET_DEFINITIONS',
   'generateMenuKitAsset',
   'renderMenuKitAsset',
+  'buildMenuKitSafeName',
+  'buildMenuKitZipFilename',
+  'zipFilename: buildMenuKitZipFilename(input.storeName, input.templateFamilyId)',
   "key: 'table_tent'",
   "key: 'single_table_card'",
   'TableTent_A5_Fold.pdf',
@@ -1182,6 +1271,12 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   'Single Table / Counter Card (A6)',
 ].forEach((token) => {
   if (!menuKitGenerator.includes(token)) failures.push(`Menu Kit generator missing Print Menu Surfaces token: ${token}`);
+});
+[
+  "input.assetTypeId === 'complete_menu_kit'",
+  'filename: result.zipFilename',
+].forEach((token) => {
+  if (!printableAssetRenderer.includes(token)) failures.push(`Printable asset renderer missing Menu Kit ZIP filename token: ${token}`);
 });
 
 [
@@ -1270,12 +1365,12 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   {
     label: 'Desktop Use MenuList',
     source: desktopUseMenuList,
-    tokens: ['resolveStoreBrandColor', 'generateBrandedQrCodeDataUrl', 'generateBrandedFeedbackQrCode', 'brandColor: storeBrandColor', 'activePlanType: (storeDetails as any)?.activePlanType'],
+    tokens: ['resolveStoreBrandColor', 'generateBrandedQrCodeDataUrl', 'generateBrandedFeedbackQrCode', 'getQrCodeFilename', 'getQrCodeFilename(data.storeName)', 'brandColor: storeBrandColor', 'activePlanType: (storeDetails as any)?.activePlanType'],
   },
   {
     label: 'Mobile Share',
     source: mobileShare,
-    tokens: ['resolveStoreBrandColor', 'generateBrandedFeedbackQrCode', 'brandColor={storeBrandColor}', 'brandColor: storeBrandColor', 'activePlanType: (storeDetails as any)?.activePlanType'],
+    tokens: ['resolveStoreBrandColor', 'generateBrandedFeedbackQrCode', 'getQrCodeFilename', 'getQrCodeFilename(data.storeName)', 'brandColor={storeBrandColor}', 'brandColor: storeBrandColor', 'activePlanType: (storeDetails as any)?.activePlanType'],
   },
   {
     label: 'Project Share modal',
@@ -1286,6 +1381,14 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   tokens.forEach((token) => {
     if (!source.includes(token)) failures.push(`${label} missing branded downloadable output token: ${token}`);
   });
+});
+[
+  { label: 'Desktop Use MenuList', source: desktopUseMenuList },
+  { label: 'Mobile Share', source: mobileShare },
+].forEach(({ label, source }) => {
+  if (source.includes("data.storeName.replace(/\\s+/g, '-')")) {
+    failures.push(`${label} feedback QR filenames must use getQrCodeFilename instead of raw store-name whitespace replacement`);
+  }
 });
 
 const obpLinkCard = fs.readFileSync(path.join(root, 'src/components/templates/main-app/businessSettings/OBPLinkCard.tsx'), 'utf8');

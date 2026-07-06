@@ -1,8 +1,8 @@
 # Instant Response Infrastructure — Implementation Blueprint
 
-> **Version:** 1.0.0
+> **Version:** 1.0.1
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-06-30
+> **Last Updated:** 2026-07-05
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_INSTANT_CACHE`
 > **Dependencies:** Upstash Redis (already installed: `@upstash/redis`)
@@ -75,6 +75,8 @@ coreSearch() receives query + tId + sId + context
 | `src/database/queryEmbeddings/index.ts`  | Embedding cache unchanged. Only for RAG path.                |
 | `src/lib/rateLimit.ts`                   | Rate limiting unchanged. Different Upstash usage.            |
 | `src/types/answerlattice/index.ts`            | No type changes needed. Cache types in own file.             |
+
+Answerlattice cache freshness ID boundary: `src/lib/answerlattice/cacheFreshness.ts` validates cached canonical answer IDs through the governance document-ID boundary and cached KB article references through the KB article ID boundary before manifest freshness can accept the cache row or source-document fallback reads can build Firestore refs.
 
 ---
 

@@ -78,6 +78,8 @@ maximum 6 reports per store by default
 - Do not add a public V2 route.
 - Do not mutate canonical MenuList truth from monitor output.
 
+Public Truth Monitor project and scope ID boundary: manual refresh requests validate `selectedProjectId` with the shared Firestore document-ID guard before the requested project can be selected from the store's project summary. The server project picker also trims and normalizes the selected project ID and persisted summary project IDs, and `readPublicTruthMonitorProjectDataServer()` trims and normalizes the final project ID before scoped or legacy project reads. Server helpers now validate session-derived store/tenant scope IDs before `stores/{sId}`, `platformSummary/publicTruthMonitor_{sId}`, `platformSummary/projects_{sId}`, and `projects/{tId}/{sId}/{projectId}` refs. Malformed project or scope IDs return `null` or an empty list before Firestore access; invalid summary writes throw before building a Firestore ref.
+
 ## Remaining Runtime Boundary
 
 Background recurrence must use the existing MenuList maintenance scheduler with a per-task lease. It is not enabled while `PUBLIC_TRUTH_MONITOR_SCHEDULER_MODE` is `manual`.

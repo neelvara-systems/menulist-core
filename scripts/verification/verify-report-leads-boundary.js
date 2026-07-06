@@ -34,6 +34,7 @@ function assertOrder(source, tokens, label) {
 }
 
 const FILES = [
+  'src/app/api/public/contact/route.ts',
   'src/app/api/ops/report-leads/route.ts',
   'src/app/(main)/ops/report-leads/page.tsx',
   'src/components/templates/main-app/platform/reportLeadMonitor/index.tsx',
@@ -46,6 +47,7 @@ for (const file of FILES) {
   assert(exists(file), `Report Leads required file missing: ${file}`);
 }
 
+const contactRoute = read('src/app/api/public/contact/route.ts');
 const route = read('src/app/api/ops/report-leads/route.ts');
 const page = read('src/app/(main)/ops/report-leads/page.tsx');
 const monitor = read('src/components/templates/main-app/platform/reportLeadMonitor/index.tsx');
@@ -62,10 +64,27 @@ const playbookDoc = read('__docs__/menulist-tools/shareable-tool-reports/shareab
 const mobileDoc = read('__docs__/menulist-tools/shareable-tool-reports/shareable-tool-reports_mobile-support.md');
 const testCasesDoc = read('__docs__/menulist-tools/shareable-tool-reports/shareable-tool-reports_test-cases.md');
 const validationDoc = read('__docs__/menulist-tools/shareable-tool-reports/shareable-tool-reports_validation.md');
+const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+const changelog = read('__docs__/changelog.md');
 
 assertIncludes(features, 'ENABLE_PUBLIC_TRUTH_REPORT_LEAD_OPS_DASHBOARD: true', 'Report Leads feature flag');
 assertIncludes(packageJson, '"verify:report-leads-boundary": "node scripts/verification/verify-report-leads-boundary.js"', 'Report Leads package verifier');
 assertIncludes(aggregateVerifier, 'verify-report-leads-boundary.js', 'Report Leads aggregate verifier');
+
+[
+  'SHAREABLE_TOOL_REPORT_SOURCE_CONTEXT_ISO_TIMESTAMP_PATTERN',
+  'cleanShareableToolReportTimestamp',
+  'Date.parse(timestamp)',
+  'new Date(timestampMs).toISOString()',
+  'normalizedTimestamp === timestamp ? normalizedTimestamp : null',
+  'reportGeneratedAt: cleanShareableToolReportTimestamp(sourceContext.reportGeneratedAt)',
+].forEach((token) => assertIncludes(contactRoute, token, 'Report Leads public contact source timestamp boundary'));
+
+assertNotIncludes(
+  contactRoute,
+  'reportGeneratedAt: clean(sourceContext.reportGeneratedAt, 80)',
+  'Report Leads public contact source timestamp must not accept arbitrary strings',
+);
 
 [
   "withAuth(async (request, session) =>",
@@ -84,6 +103,12 @@ assertIncludes(aggregateVerifier, 'verify-report-leads-boundary.js', 'Report Lea
   '.limit(scanLimit)',
   "data.sourceKind === 'shareable_tool_report'",
   "sourceContext.sourceKind === 'shareable_tool_report'",
+  'REPORT_LEAD_ISO_TIMESTAMP_PATTERN',
+  'cleanReportLeadGeneratedAt',
+  'Date.parse(timestamp)',
+  'new Date(timestampMs).toISOString()',
+  'normalizedTimestamp === timestamp ? normalizedTimestamp : null',
+  'reportGeneratedAt: cleanReportLeadGeneratedAt(sourceContext.reportGeneratedAt)',
   'cleanSetupJobList(sourceContext.setupJobList)',
   'setupJobList,',
   'The report gaps become this setup job list:',
@@ -92,6 +117,12 @@ assertIncludes(aggregateVerifier, 'verify-report-leads-boundary.js', 'Report Lea
   'Manual refresh only. No realtime listener.',
   'filters report leads in memory to avoid new indexes',
 ].forEach((token) => assertIncludes(route, token, 'Report Leads ops API route'));
+
+assertNotIncludes(
+  route,
+  'reportGeneratedAt: cleanOpsText(sourceContext.reportGeneratedAt, 80) || null',
+  'Report Leads ops API must not return arbitrary generatedAt strings',
+);
 
 assertOrder(route, [
   'validateAPIInput(ReportLeadQuerySchema',
@@ -176,6 +207,7 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
 [
   '/ops/report-leads',
   'Report Leads',
+  'canonical ISO `reportGeneratedAt`',
 ].forEach((token) => assertIncludes(readmeDoc, token, 'Shareable Tool Reports README Report Leads coverage'));
 
 [
@@ -183,6 +215,7 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   '/api/ops/report-leads',
   'no lead mutation',
   'no report storage',
+  'canonical ISO generated timestamp or `null`',
   'where report gaps become the job list',
 ].forEach((token) => assertIncludes(implDoc, token, 'Shareable Tool Reports implementation Report Leads coverage'));
 
@@ -190,12 +223,14 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   'Report Lead Ops',
   'Reads recent `landingPageEnquiries`',
   '0 writes',
+  'canonical ISO `reportGeneratedAt` or `null`',
   'bounded `setupJobList`',
 ].forEach((token) => assertIncludes(firebaseDoc, token, 'Shareable Tool Reports Firebase Report Leads coverage'));
 
 [
   '`/ops/report-leads`',
   'manual-refresh',
+  'Canonical ISO source-tool timestamp',
   'report gaps become the setup job list',
 ].forEach((token) => assertIncludes(playbookDoc, token, 'Shareable Tool Reports playbook Report Leads coverage'));
 
@@ -205,8 +240,22 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
 ].forEach((token) => assertIncludes(mobileDoc, token, 'Shareable Tool Reports mobile Report Leads boundary'));
 
 assertIncludes(testCasesDoc, 'STR-015', 'Shareable Tool Reports Report Leads test coverage');
+assertIncludes(testCasesDoc, 'canonical ISO `reportGeneratedAt` or `null`', 'Shareable Tool Reports Report Leads timestamp test coverage');
 assertIncludes(testCasesDoc, 'shows setup job lists', 'Shareable Tool Reports Report Leads setup job test coverage');
 assertIncludes(validationDoc, 'npm run verify:report-leads-boundary', 'Shareable Tool Reports Report Leads validation gate');
+assertIncludes(validationDoc, 'follow-up source metadata stores canonical ISO `reportGeneratedAt` or `null`', 'Shareable Tool Reports Report Leads timestamp validation gate');
 assertIncludes(validationDoc, 'setup job list is derived from visible report gaps', 'Shareable Tool Reports Report Leads setup job validation gate');
+
+[
+  'Report Leads source timestamp metadata boundary checkpoint: fixed in source.',
+  'direct report follow-up submissions can no longer persist arbitrary `sourceContext.reportGeneratedAt`',
+  '`npm run verify:report-leads-boundary` source-gates',
+].forEach((token) => assertIncludes(productionAudit, token, 'Report Leads production audit source timestamp checkpoint'));
+
+[
+  'Report Leads Source Timestamp Metadata Boundary',
+  'Report lead `reportGeneratedAt` is ISO-only or null',
+  'canonical ISO timestamp normalization',
+].forEach((token) => assertIncludes(changelog, token, 'Report Leads changelog source timestamp checkpoint'));
 
 console.log('Report Leads boundary verification passed');

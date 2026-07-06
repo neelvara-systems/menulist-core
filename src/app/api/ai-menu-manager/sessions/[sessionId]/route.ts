@@ -8,6 +8,10 @@ import {
     buildAiMenuManagerInvalidRequestResponse,
     resolveAiMenuManagerSelectedStoreScope,
 } from '@lib/ai-menu-manager/apiGuards';
+import {
+    normalizeAiMenuManagerProjectId,
+    normalizeAiMenuManagerSessionId,
+} from '@lib/ai-menu-manager/routeIds';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
@@ -32,7 +36,7 @@ export const GET = withAuth(async (
         return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
     }
 
-    const sessionId = params?.sessionId;
+    const sessionId = normalizeAiMenuManagerSessionId(params?.sessionId);
     if (!sessionId) {
         return NextResponse.json({ error: 'Invalid session' }, { status: 400 });
     }
@@ -46,7 +50,7 @@ export const GET = withAuth(async (
     if (rateLimit) return rateLimit;
 
     const storeId = request.nextUrl.searchParams.get('storeId');
-    const projectId = request.nextUrl.searchParams.get('projectId')?.trim();
+    const projectId = normalizeAiMenuManagerProjectId(request.nextUrl.searchParams.get('projectId'));
     if (!projectId) {
         return buildAiMenuManagerInvalidRequestResponse(request, session, 'session');
     }

@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { FEATURE_FLAGS } from '@config/features';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type {
@@ -136,6 +137,11 @@ function cleanOpsText(value: unknown, max = 260): string {
     .slice(0, max);
 }
 
+function normalizeMessagingHealthSnapshotId(value: unknown): string | null {
+  const snapshotId = cleanOpsText(value, 160);
+  return isValidFirestoreDocumentId(snapshotId) ? snapshotId : null;
+}
+
 function buildMessagingOpsResponseId(prefix: string, value: unknown): string {
   const normalized = cleanOpsText(value, 1000) || 'missing';
   return `${prefix}-${createHash('sha256').update(normalized).digest('hex').slice(0, 12)}`;
@@ -224,8 +230,8 @@ function toIso(value: any): string | null {
 async function getLatestHealthSnapshot(): Promise<MessagingOnboardingOpsHealth> {
   const healthCollection = db.collection(DB_COLLECTIONS.SYSTEM_HEALTH);
   const control = await healthCollection.doc(HEALTH_CONTROL_DOC).get();
-  const lastSnapshotId = control.data()?.lastSnapshotId;
-  const latest = typeof lastSnapshotId === 'string' && lastSnapshotId.trim()
+  const lastSnapshotId = normalizeMessagingHealthSnapshotId(control.data()?.lastSnapshotId);
+  const latest = lastSnapshotId
     ? await healthCollection.doc(lastSnapshotId).get()
     : null;
 

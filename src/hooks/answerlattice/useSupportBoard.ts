@@ -14,6 +14,7 @@ import { getRecentSignalEvents } from '@database/answerlattice/signalEvents';
 import { getStoresTickets } from '@database/tickets';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import { normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import {
     ANSWERLATTICE_MUTATION_STATUS,
     ANSWERLATTICE_MUTATION_TYPE,
@@ -95,9 +96,10 @@ const mapTicketPriority = (priority?: string): AnswerlatticeSupportBoardPriority
 };
 
 const getTicketEntityId = (ticket: SupportTicketType) => (
-    ticket.escalationContext?.entityDebug?.resolvedEntityId
-    || ticket.escalationContext?.retrievalDebug?.canonicalResult?.matchedEntityIds?.[0]
-    || null
+    normalizeAnswerlatticeResolvedEntityId(
+        ticket.escalationContext?.entityDebug?.resolvedEntityId
+        || ticket.escalationContext?.retrievalDebug?.canonicalResult?.matchedEntityIds?.[0]
+    )
 );
 
 const getSignalText = (signal: AnswerlatticeSignalEvent) => {
@@ -221,7 +223,7 @@ const cardInputFromSignal = (signal: AnswerlatticeSignalEvent, tId: number, sId:
     const conversationId = typeof metadata.conversationId === 'string' ? metadata.conversationId : null;
     const contextKeys = getSignalContextKeys(metadata);
     const surfaceId = typeof metadata.surfaceId === 'string' ? metadata.surfaceId : null;
-    const entityId = signal.entityId && signal.entityId !== 'unresolved' ? signal.entityId : null;
+    const entityId = normalizeAnswerlatticeResolvedEntityId(signal.entityId);
 
     return {
         tId,
@@ -431,7 +433,8 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
 
     const createAnswerProposal = useCallback(async (card: AnswerlatticeSupportBoardCard) => {
         if (!tId || !sId) return;
-        if (!card.relatedEntityId || card.relatedEntityId === 'unresolved') {
+        const relatedEntityId = normalizeAnswerlatticeResolvedEntityId(card.relatedEntityId);
+        if (!relatedEntityId) {
             message.warning('Add a related entity before creating an answer proposal');
             return;
         }
@@ -442,7 +445,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 tId,
                 sId,
                 targetAnswerId: card.relatedAnswerId || '',
-                relatedEntityIds: [card.relatedEntityId],
+                relatedEntityIds: [relatedEntityId],
                 mutationType: ANSWERLATTICE_MUTATION_TYPE.NEW_ANSWER_REQUIRED,
                 signalSummary: {
                     ticketCount: card.relatedTicketId || card.sourceType === ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.TICKET ? 1 : 0,

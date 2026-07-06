@@ -113,10 +113,15 @@ function verifyApiBoundary() {
 
   assertIncludes(route, "export const dynamic = 'force-dynamic';", 'Compliance API route dynamic boundary');
   assertIncludes(route, "import { withAuth } from '../../../middleware/auth';", 'Compliance API auth guard');
+  assertIncludes(route, "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';", 'Compliance API Firestore document ID guard import');
   assertIncludes(route, 'getBoundedRuntimeStringContext, logRuntimeFailure', 'Compliance API bounded runtime diagnostics import');
   assertIncludes(route, 'export const GET = withAuth', 'Compliance API GET auth guard');
   assertIncludes(route, 'export const POST = withAuth', 'Compliance API POST auth guard');
   assertIncludes(route, 'FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES', 'Compliance API feature flag');
+  assertIncludes(route, 'function normalizeComplianceSessionDocumentId(value: unknown): string | null', 'Compliance API session document ID normalizer');
+  assertIncludes(route, 'function getComplianceSessionScope(session: any): { sId: string; tId: string } | null', 'Compliance API normalized session scope helper');
+  assertIncludes(route, 'const scope = getComplianceSessionScope(session);', 'Compliance API normalizes session scope before route work');
+  assertIncludes(route, 'const { sId, tId } = scope;', 'Compliance API uses normalized tenant/store ids');
   assertIncludes(route, "z.enum(['privacy', 'terms', 'refund'])", 'Compliance API supported page types');
   assertIncludes(route, "z.enum(['override', 'reset'])", 'Compliance API supported actions');
   assertIncludes(route, 'content: z.string().max(15000).optional()', 'Compliance API content cap');
@@ -146,14 +151,21 @@ function verifyApiBoundary() {
   assertIncludes(route, 'success: true', 'Compliance API success acknowledgement');
   assertIncludes(route, 'action,', 'Compliance API action acknowledgement');
   assertIncludes(route, 'type,', 'Compliance API type acknowledgement');
+  assertNotIncludes(route, 'const { sId, tId } = session', 'Compliance API must not use raw session tenant/store IDs');
   assertNotIncludes(route, 'async function getStoreData(sId: number): Promise<any | null>', 'Compliance API store lookup must not collapse read failures into null');
+  assertNotIncludes(route, '.doc(String(sId))', 'Compliance API store lookup must use normalized store document ID');
   assertNotIncludes(route, '} catch {\n        return null;', 'Compliance API store lookup must not silently return missing data on failures');
-  assertOrder(route, 'requireAnyStorePermission', "getRateLimitForFeature('DATA_WRITE')", 'Compliance API permission before write limiter');
+  assertOrder(route, 'const scope = getComplianceSessionScope(session);', 'const storeLookup = await getStoreData(sId, tId);', 'Compliance API GET normalizes session scope before store lookup');
+  assertOrder(route, 'const scope = getComplianceSessionScope(session);', 'const permissionError = await requireAnyStorePermission', 'Compliance API POST normalizes session scope before permission checks');
+  assertOrder(route, 'const permissionError = await requireAnyStorePermission', "getRateLimitForFeature('DATA_WRITE')", 'Compliance API permission before write limiter');
   assertOrder(route, "getRateLimitForFeature('DATA_WRITE')", 'readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES', 'Compliance API limiter before body parse');
   assertOrder(route, 'readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES', 'OverrideSchema.safeParse(body)', 'Compliance API bounded body before validation');
   assertOrder(route, 'sanitizeComplianceContent(content)', 'saveComplianceOverrideServer(sId, tId, type, sanitized)', 'Compliance API sanitize before write');
 
-  assertIncludes(serverDal, 'firestoreAdmin.collection(COLLECTION).doc(String(sId))', 'Compliance server DAL store-scoped doc id');
+  assertIncludes(serverDal, 'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";', 'Compliance server DAL Firestore document ID guard import');
+  assertIncludes(serverDal, 'function normalizeComplianceStoreDocumentId(value: unknown): string | null', 'Compliance server DAL store document ID normalizer');
+  assertIncludes(serverDal, 'firestoreAdmin.collection(COLLECTION).doc(documentId)', 'Compliance server DAL normalized store-scoped doc id');
+  assertNotIncludes(serverDal, 'firestoreAdmin.collection(COLLECTION).doc(String(sId))', 'Compliance server DAL must not build refs from raw String(sId)');
   assertIncludes(serverDal, 'admin.firestore.FieldValue.delete()', 'Compliance server DAL reset deletes override field');
   assertIncludes(clientDal, 'deleteField()', 'Compliance client DAL reset deletes override field');
 }
@@ -315,15 +327,19 @@ function verifyDocsBoundary() {
   assertIncludes(impl, 'sanitize executable/style blocks before tag stripping', 'Compliance impl sanitizer hardening note');
   assertIncludes(impl, 'public compliance override read failures log `public_compliance_override_read_failed`', 'Compliance impl public override-read diagnostics note');
   assertIncludes(impl, 'owner compliance store lookup failures log `compliance_store_lookup_failed`', 'Compliance impl owner store lookup diagnostics note');
+  assertIncludes(impl, '`/api/compliance` validates session tenant/store IDs', 'Compliance impl session document ID boundary note');
   assertIncludes(firebaseDoc, 'direct compliancePages doc read', 'Compliance Firebase current override read cost');
+  assertIncludes(firebaseDoc, 'July 6 session document-ID boundary', 'Compliance Firebase session document ID boundary note');
   assertIncludes(firebaseDoc, 'July 2 sanitizer/source-gate hardening', 'Compliance Firebase sanitizer/source-gate note');
   assertIncludes(firebaseDoc, 'July 5 public override-read diagnostics', 'Compliance Firebase public override-read diagnostics note');
   assertIncludes(firebaseDoc, 'July 5 owner store-lookup diagnostics', 'Compliance Firebase owner store lookup diagnostics note');
   assertIncludes(mobileDoc, 'npm run verify:compliance-pages-boundary', 'Compliance mobile source gate note');
   assertIncludes(audit, 'verify:compliance-pages-boundary', 'Production readiness audit compliance source gate evidence');
   assertIncludes(audit, 'Compliance Pages owner store-lookup diagnostics checkpoint', 'Production readiness audit Compliance owner store lookup checkpoint');
+  assertIncludes(audit, 'Compliance Pages session document-ID boundary checkpoint', 'Production readiness audit Compliance session document ID checkpoint');
   assertIncludes(audit, 'Compliance Pages public override-read diagnostics checkpoint', 'Production readiness audit Compliance public override-read checkpoint');
   assertIncludes(audit, 'Compliance Pages spec launch-boundary checkpoint', 'Production readiness audit Compliance spec checkpoint');
+  assertIncludes(changelog, 'Compliance Pages Session Document ID Boundary', 'Changelog Compliance session document ID boundary entry');
   assertIncludes(changelog, 'Compliance Pages Owner Store-Lookup Diagnostics', 'Changelog Compliance owner store lookup diagnostics entry');
   assertIncludes(changelog, 'Compliance Pages Public Override-Read Diagnostics', 'Changelog Compliance public override-read diagnostics entry');
   assertIncludes(changelog, 'Compliance Pages Spec Launch Boundary', 'Changelog Compliance spec boundary entry');

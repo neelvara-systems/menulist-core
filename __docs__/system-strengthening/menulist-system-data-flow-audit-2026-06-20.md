@@ -19,6 +19,61 @@ Current MenuList Functions retry evidence must start with `npm run verify:functi
 
 ## Fix Ledger
 
+### July 5 follow-up: Batch image result stored-error display boundary
+
+Status: Fixed.
+
+Batch image result stored-error display boundary. `BatchImageGenerationResultView` no longer renders stored `imageBatchProcessingJobs.error` or `activeJobData.error` text into the owner-facing failed-job message. Failed result screens use fixed recovery copy while preserving existing listener reads, result actions, batch job status updates, bounded diagnostics, worker writes, and legacy stored job fields.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-ai-accounting-hardening.js`.
+- Passed `npm run verify:ai-accounting`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Impact: this changes owner-visible failed batch result copy and source-gate coverage only. It adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth operation changes, Cloud Function logic changes, extra Cloud Function calls, provider calls, cache invalidations, rules, indexes, schema changes, tenant-shape changes, permission-model changes, public routes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+### July 5 follow-up: Extraction Cost Monitor load diagnostics
+
+Status: Fixed.
+
+The main Extraction Monitor dashboard already uses the deduped dashboard snapshot for cost metrics, but `CostMonitor.tsx` retained a standalone compatibility path for direct reuse. If that direct `getExtractionCostMetrics()` call rejected, the panel silently set cost to `null` and rendered the same "No extraction calls today" empty state used for a valid zero-cost day.
+
+`src/components/templates/main-app/platform/extractionMonitor/CostMonitor.tsx` now logs bounded `extraction_cost_monitor_load_failed` diagnostics when the standalone compatibility load rejects. The diagnostic keeps only refresh-trigger metadata, external-cost presence, and normalized source error metadata. The panel now shows fixed "Cost metrics unavailable" copy instead of reporting zero calls. The normal dashboard snapshot path, valid cost metric rendering, and paise-to-INR formatting remain unchanged. `scripts/verification/verify-menu-extraction-pipeline.js` now requires the diagnostic branch and rejects the old silent catch.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-menu-extraction-pipeline.js`.
+- Passed `npm run verify:menu-extraction-pipeline`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Impact: valid Extraction Monitor dashboard snapshot reads, cost metric rendering, Job Inspector behavior, extraction job documents, AI operation documents, Firestore rules/indexes, Storage operations, Cloud Functions, Firebase deploy requirement, provider calls, public route shape, and Vercel deploy execution remain unchanged. This is Extraction Monitor cost-panel diagnostic hardening only.
+
+### July 5 follow-up: Extraction review MOL diagnostics
+
+Status: Fixed.
+
+Extraction review apply already kept the owner flow non-blocking after the acknowledged menu/project write, linked-outlet save route, job completion update, and public cache invalidation. The remaining gap was observability: a failed fire-and-forget MOL `EXTRACTION_APPLIED` event could be swallowed by a comment-only catch, leaving support/debug without evidence that the audit signal failed.
+
+`src/lib/extraction/applyChanges.ts` now keeps the MOL event fire-and-forget but logs bounded `menu_review_apply_mol_event_log_failed` diagnostics when the event write rejects. Diagnostics include project/job presence-length context, actor/tenant/store presence-length context, applied-change count, review mode, MOL version, and normalized source error metadata only. Valid review apply writes, linked-outlet saves, job completion, owner success copy, and valid MOL writes remain unchanged. `scripts/verification/verify-menu-extraction-pipeline.js` now requires the diagnostic branch and rejects the old silent catch.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-menu-extraction-pipeline.js`.
+- Passed `npm run verify:menu-extraction-pipeline`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Impact: valid extraction review apply behavior, linked-outlet save behavior, job completion, MOL success writes, owner success copy, public cache invalidation, Firestore rules/indexes, Storage operations, Cloud Functions, Firebase deploy requirement, public route shape, and Vercel deploy execution remain unchanged. This is extraction review MOL diagnostic hardening only.
+
 ### July 5 follow-up: Public menu Decision Blocks timezone diagnostics
 
 Status: Fixed.
@@ -4130,7 +4185,7 @@ Status: Fixed during the June 28 continuation audit.
 
 The shared client DAL wrappers already logged failures through bounded secure diagnostics, but their owner-visible toast helper at `src/lib/errors/uiErrorMessages.ts` still returned any exception message that did not match a short technical denylist. That meant long provider messages, stack-like text, URLs, API paths, structured payload fragments, or code-like identifiers could still surface in owner toasts if a downstream helper threw them.
 
-`getSafeUiErrorMessage()` now keeps short plain messages only. It falls back to generic copy for long, multiline, structured, URL/API, provider, stack, session, authorization, and code-like exception text. The client DAL wrappers still call the same helper and keep their existing fallback message. `npm run verify:auth-security-failure-matrix` now guards the owner-toast helper for the length cap and technical-shape/provider-pattern filters.
+`getSafeUiErrorMessage()` now falls back to generic copy for long, multiline, structured, URL/API, provider, stack, session, authorization, and code-like exception text. July 5 follow-up: the helper also defaults generic DAL exceptions to fixed fallback copy even when they are short plain strings; only explicitly trusted local validation-copy callers can pass `{ allowTrustedPlainText: true }` after the same filters. The client DAL wrappers still call the same helper and keep their existing fallback message without opting into trusted plain text. `npm run verify:auth-security-failure-matrix` now guards the owner-toast helper for the length cap, technical-shape/provider-pattern filters, default fallback behavior, and trusted-copy opt-in boundary.
 
 Impact: client DAL authentication checks, loader behavior, secure diagnostics, fallback message, and return value behavior remain unchanged. This changes owner-visible failure copy selection only. It adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth operation changes, Cloud Function logic changes, extra Cloud Function calls, provider calls, API routes, cache invalidations, rules/indexes/schema/tenant-shape changes, permission-model changes, public routes, owner-facing settings, Firebase deploy requirement, or Vercel deploy execution.
 
@@ -5672,7 +5727,7 @@ Validation note: local `node --check scripts/verification/verify-menulist-api-te
 - The shared app secure logger now normalizes error objects before console output and returns generic client error copy; `npm run verify:auth-security-failure-matrix` guards the central helper against raw exception-message and raw-stack output.
 - Browser diagnostic report payloads, console snapshots, support-ticket log capture, and Sentry context metadata now serialize Error objects through the central bounded sanitizer; `npm run verify:auth-security-failure-matrix` guards the old raw message/stack patterns.
 - Shared payment error fallbacks now return fixed detail text in every environment instead of development-only raw Firestore/Razorpay exception messages; `npm run verify:menulist-api-tenant-safety` guards the helper response contract.
-- Shared client DAL owner toasts now reject technical-looking exception text before using fallback copy; `npm run verify:auth-security-failure-matrix` guards the helper filters.
+- Shared client DAL owner toasts now use fallback copy by default for generic exceptions; only explicitly trusted local validation-copy callers can display short plain text after the technical filters, and `npm run verify:auth-security-failure-matrix` guards the helper boundary.
 - Shared drag-and-drop upload toasts now sanitize custom validator text and no longer include raw local file names in type/size fallback messages; `npm run verify:auth-security-failure-matrix` guards the hook.
 - Phone OTP panel request and verify catch paths now show allowlisted local failure copy only; `npm run verify:auth-security-failure-matrix` guards against raw browser exception text in the auth UI.
 - Login and forgot-password pages now render only allowlisted local auth failure copy; `npm run verify:auth-security-failure-matrix` guards against direct raw `error.message` rendering in those forms.
@@ -8016,6 +8071,55 @@ git diff --check
 ```
 
 Cost/deploy boundary: this is MenuList profile update helper rate-limit key hardening only. It adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth operations, provider calls, cache invalidations, API routes, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Existing valid profile-update behavior and rate-limited cheap-fail behavior are unchanged except for limiter key privacy.
+
+## July 6 Follow-up: Auth Change-Password Strict User Document ID Boundary
+
+The change-password route already used `withAuth`, a hashed `AUTH_SENSITIVE` limiter, a 2KB bounded body, fixed Firebase Auth provider endpoint handling, bounded diagnostics, and a direct `users/{userId}` timestamp update after password change. It also called `isValidFirestoreDocumentId(userId)` before provider work, but that shared helper trims internally. A whitespace-mutated session user ID could pass the guard while the raw untrimmed value still fed limiter key material and the `users/{userId}` ref.
+
+Fixes:
+
+- `src/app/api/auth/change-password/route.ts` now uses `normalizeChangePasswordUserDocumentId()` before rate limiting, bounded body parsing, Firebase Auth provider work, or Firestore writes.
+- The normalizer requires the normalized value to equal the raw value, caps the ID at 160 characters, and still uses the shared Firestore document-ID guard for path-shaped and reserved IDs.
+- Malformed session user IDs still return the existing not-authenticated response and emit fixed `change_password_invalid_session_user_id` diagnostics with bounded auth context only.
+- Existing valid password/passcode changes, Firebase Auth password-provider checks, current-password verification, Firebase Auth password update, user timestamp write, desktop/mobile response parsing, and fixed owner copy remain unchanged.
+- `scripts/verification/verify-auth-security-failure-matrix.js` and `scripts/verification/verify-menulist-api-tenant-safety.js` now guard the strict normalizer, whitespace/length checks, normalized user ref ordering, raw session-user coercion exclusion, Auth docs, audit evidence, and changelog evidence.
+
+Validation:
+
+```bash
+node --check scripts/verification/verify-auth-security-failure-matrix.js
+node --check scripts/verification/verify-menulist-api-tenant-safety.js
+npm run verify:auth-security-failure-matrix
+npm run verify:menulist-api-tenant-safety
+npx tsc --noEmit --incremental false --pretty false
+npm run docs:check-links
+git diff --check
+```
+
+Cost/deploy boundary: this is MenuList change-password session user-ID admission hardening only. It adds no Firestore reads/writes/deletes for valid password changes, Storage operations, Firebase Auth operation count changes for valid requests, provider call count changes for valid requests, cache invalidations, API routes, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Existing valid password-change behavior is unchanged.
+
+## July 6 Follow-up: Profile Update User Document ID Boundary
+
+The profile update helper already used `withAuth`, hashed limiter key material, a 4KB bounded body, whitelisted fields, phone normalization, bounded diagnostics, and a single user-document read/update. The remaining document-ref boundary was the authenticated session user ID itself: `src/lib/userProfile/server.ts` coerced the session value to a string before composing `users/{userId}`.
+
+Fixes:
+
+- `src/lib/userProfile/server.ts` now validates the session user ID with the shared Firestore document-ID guard before the profile-update limiter, bounded body parser, or user-document read.
+- Empty, whitespace-mutated, oversized, path-shaped, or reserved session user IDs fail with the existing not-authenticated response before limiter key material or `users/{userId}` refs are composed.
+- Existing valid profile-update auth, rate limits/windows, body cap, validation, user-document read/update, normalized phone fields, response shape, desktop/mobile response parsing, and bounded success/failure diagnostics remain unchanged.
+- `scripts/verification/verify-menulist-api-tenant-safety.js` now guards the profile user-ID normalizer, normalized user ref, raw session-user coercion exclusion, Auth docs, audit evidence, and changelog evidence.
+
+Validation:
+
+```bash
+node --check scripts/verification/verify-menulist-api-tenant-safety.js
+npm run verify:menulist-api-tenant-safety
+npx tsc --noEmit --incremental false --pretty false
+npm run docs:check-links
+git diff --check
+```
+
+Cost/deploy boundary: this is MenuList profile update helper document-ID admission hardening only. It adds no Firestore reads/writes/deletes for valid profile updates, Storage operations, Firebase Auth operations, provider calls, cache invalidations, API routes, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action. Existing valid profile-update behavior is unchanged.
 
 ## June 29 Follow-up: Messaging Preview Handoff Hardening
 
@@ -12628,3 +12732,327 @@ Validation:
 - Passed scoped `git diff --check`.
 
 Cost/deploy boundary: this is Pricing Integrity PDF queue diagnostic hardening only. It adds no Firestore reads/writes/deletes beyond existing valid background-queue behavior when the flag is enabled; no Firebase Auth operation changes; no Storage operations; no Cloud Function logic changes; no provider calls; no new API routes; no public routes; no cache invalidations; no rules; no indexes; no schema changes; no tenant-shape changes; no owner-facing settings; no Firebase deploy requirement; and no Vercel deploy action. Existing background PDF regen flag behavior, debounce timing, job path, job writes, and on-demand PDF behavior remain unchanged.
+
+## July 5 Follow-up: Vercel Domain Provider Response Parse Diagnostics
+
+The shared Vercel domain provider sweep found that `src/lib/domains/vercelDomains.ts` already fixed the provider host, encoded dynamic project/domain path segments, forced manual redirect handling, bounded provider waits with `AbortController`, cleared the timeout, and capped provider JSON parsing at 64KB. The remaining gap was observability: if the bounded parser rejected a malformed or oversized provider response, the helper silently returned `{}` and left route-level add/status/remove handling to infer a generic provider failure without a stable parse-failure signal.
+
+Fixes:
+
+- `src/lib/domains/vercelDomains.ts` now routes provider response parsing through `readVercelDomainResponseData()`.
+- Bounded parser failures log fixed `vercel_domain_provider_response_parse_failed` diagnostics with method, path presence/length, query presence, response status, response OK state, max-byte cap, and source error type only.
+- The helper still returns `{}` after logging so `/api/domain` and `/api/answerlattice/hosted-help-settings` preserve their existing generic browser responses and route-level provider failure behavior.
+- `scripts/verification/verify-public-business-truth.js` and `scripts/verification/verify-answerlattice-runtime-truth.js` now guard the diagnostic code, bounded context fields, guarded parser helper, and old silent bounded-parser fallback exclusion.
+- URL-routing, Stores Management, Answerlattice hosted-help, production audit, system ledger, and changelog now document the provider response-parse diagnostic boundary.
+
+Validation:
+
+- Passed `npm run verify:public-business-truth`.
+- Passed `npm run verify:answerlattice-runtime-truth`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Cost/deploy boundary: this is shared Vercel provider-response observability hardening only. It adds no Firestore reads/writes/deletes beyond existing valid custom-domain and hosted-help domain flows; no Firebase Auth operation changes; no Storage operations; no Cloud Function logic changes; no extra Vercel provider calls; no new API routes; no public routes; no cache invalidations beyond existing valid custom-domain writes/removals and hosted-help registry behavior; no rules; no indexes; no schema changes; no tenant-shape changes; no owner-facing settings; no MenuList Firebase deploy requirement; no Answerlattice Firebase deploy requirement; and no Vercel deploy action. Existing `/api/domain` auth, permission checks, rate limits, store writes, public cache invalidation, and owner/mobile UI behavior remain unchanged. Existing Answerlattice hosted-help auth, permission checks, rate limits, hosted-help registry writes, revalidation, and Widget Management behavior remain unchanged.
+
+## July 5 Follow-up: Razorpay Past-Due Grace Display Fallback
+
+The billing status display sweep found the Razorpay state machine, webhook handling, and active-subscription DAL already understood `past_due`, and desktop/mobile Billing already exposed retry-payment recovery. The remaining gap was owner-visible fallback copy: if a legacy or malformed `past_due` subscription doc lacked `pastDueSinceAt`, the UI rendered a zero-day grace countdown or `N/A` date, which implied a known grace window when the timestamp was actually unavailable. `ActiveSubscriptionCard.tsx` also kept stale TODO comments for `past_due`, `cancelled`, and `expired` statuses even though those branches now exist.
+
+Fixes:
+
+- `src/utils/razorpay.ts` now exposes `getGracePeriodDisplayInfo()` on top of `getGracePeriodInfo()`.
+- Desktop Billing, Mobile Billing, and authenticated pricing subscription-management now use the shared helper for `past_due` display metadata.
+- Valid `pastDueSinceAt` records keep the normal countdown, warning, retry-payment, and cancellation/support recovery paths.
+- Missing or malformed legacy `past_due` timestamps render fixed "Grace period details unavailable." recovery copy instead of a misleading zero-day countdown.
+- Stale top-of-file billing TODO comments were removed from `ActiveSubscriptionCard.tsx`.
+- `scripts/verification/verify-billing-entitlement-boundary.js` now guards the shared helper, desktop/mobile/website usage, stale TODO removal, raw countdown exclusions, Razorpay docs, audit evidence, and changelog evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-billing-entitlement-boundary.js`.
+- Passed `npm run verify:billing-entitlement-boundary`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Cost/deploy boundary: this is owner-visible billing fallback-copy and verifier hardening only. It adds no Firestore reads/writes/deletes; no Firebase Auth operation changes; no Storage operations; no Cloud Function logic changes; no Razorpay provider calls; no billing route calls; no new API routes; no public routes; no cache invalidations; no rules; no indexes; no schema changes; no tenant-shape changes; no owner-facing settings; no MenuList Firebase deploy requirement; and no Vercel deploy action. Existing Razorpay webhook handling, subscription status writes, `getActiveSubscriptionForStore()` access behavior, reconciliation, retry-payment links, cancellation/support recovery, entitlement/cache sync, and valid countdown display remain unchanged.
+
+## July 5 Follow-up: MenuList Stale Menu Notification Reason Boundary
+
+The owner-notification template-output sweep found MenuList publish-health failures already mapped arbitrary failure metadata to fixed owner copy, but the `menulist.menu_stale` template still had a separate reason field. Stale-menu notifications can be triggered from system detection, so owner-visible email/text output must not print arbitrary `metadata.reason` strings from stored events or callers.
+
+Fixes:
+
+- `src/lib/owner-notifications/templates/menulist.ts` now defines `MENU_STALE_REASON_OWNER_COPY` and `DEFAULT_MENU_STALE_REASON_OWNER_COPY`.
+- `menuStaleReasonText()` maps stale-menu reason metadata to fixed owner copy before rendering.
+- `menulist.menu_stale` email HTML/text now renders the fixed `menuStaleReason` value instead of raw `metadata.reason`.
+- `scripts/verification/verify-owner-notifications-boundary.js` source-gates the mapper, raw reason rendering exclusion, Owner Notifications docs, audit evidence, and changelog evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-owner-notifications-boundary.js`.
+- Passed `npm run verify:owner-notifications-boundary`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Cost/deploy boundary: this is MenuList owner-notification template rendering hardening only. It adds no Firestore reads/writes/deletes; no Firebase Auth operation changes; no Storage operations; no Cloud Function logic changes; no provider calls; no new API routes; no public routes; no cache invalidations; no rules; no indexes; no schema changes; no tenant-shape changes; no owner-facing settings; no MenuList Firebase deploy requirement; and no Vercel deploy action. Existing stale detection, owner-notification enqueueing, delivery behavior, delivery rows, delivery logs, recipient resolution, dashboard recovery tools, and valid fixed-copy notifications remain unchanged.
+
+## July 5 Follow-up: Batch image result stored-error display boundary
+
+The batch image result sweep found `BatchImageGenerationResultView` still rendered `activeJobData.error` in the failed-job owner message. Worker and trigger paths already write owner-safe failure text for current jobs, but the result screen still depended on a stored job doc field, so legacy or unexpected raw stored job-error strings could become owner-visible.
+
+Fixes:
+
+- `src/components/templates/main-app/projects/editorView/AiImageGenerator/batchImageGeneration/BatchImageGenerationResultView.tsx` now defines fixed `IMAGE_BATCH_JOB_FAILED_OWNER_COPY`.
+- Failed job result copy uses the fixed source constant instead of `activeJobData.error`.
+- `scripts/verification/verify-ai-accounting-hardening.js` now guards the fixed failed-job copy, rejects direct stored-error rendering, and checks AI image docs, Firebase cost notes, production audit evidence, changelog evidence, and this ledger entry.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-ai-accounting-hardening.js`.
+- Passed `npm run verify:ai-accounting`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Cost/deploy boundary: this is MenuList batch image result rendering hardening only. It adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth operation changes, Cloud Function logic changes, provider calls, route calls, AI accounting writes, cache invalidations, rules, indexes, schema changes, tenant-shape changes, owner-facing settings, MenuList Firebase deploy requirement, or Vercel deploy action. Existing batch trigger behavior, worker behavior, job storage, listener reads, result actions, and diagnostics remain unchanged.
+
+## July 5 Follow-up: Public create-menu preview stored-error display boundary
+
+The public create-menu preview sweep found `/create-menu/preview/[draftId]` still rendered `draft.error` in the failed-preview state. Worker and route paths already return fixed client-safe failure copy for current drafts, but the preview screen still trusted a stored draft field, so legacy or unexpected raw stored draft-error strings could become visible on the public preview page.
+
+Fixes:
+
+- `src/app/(website)/create-menu/PreviewClient.tsx` now renders fixed localized `CreateMenu.previewFailedFallback` copy for failed drafts.
+- The failed-preview state no longer renders `draft.error`.
+- `scripts/verification/verify-menu-extraction-pipeline.js` now guards the fixed failed-preview copy, rejects stored draft-error rendering, and checks Menu Extraction Pipeline docs, Firebase cost notes, production audit evidence, changelog evidence, and this ledger entry.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-menu-extraction-pipeline.js`.
+- Passed `npm run verify:menu-extraction-pipeline`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Cost/deploy boundary: this is MenuList public create-menu preview rendering hardening only. It adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth operation changes, Cloud Function logic changes, provider calls, route calls, AI accounting writes, cache invalidations, rules, indexes, schema changes, tenant-shape changes, owner-facing settings, MenuList Firebase deploy requirement, or Vercel deploy action. Existing public upload/link import, status-only polling, full-draft fetch, claim/publish behavior, public draft storage, worker behavior, and diagnostics remain unchanged.
+
+## July 5 Follow-up: Public create-menu success business-name query display boundary
+
+The public create-menu success-page sweep found `/create-menu/success` normalized `menuUrl` and `officialPageUrl` query parameters before rendering, but still rendered the `name` query parameter directly as business-name text. React escaped that value, but unbounded public query text could still create a display-quality and diagnostics boundary drift on a public success page.
+
+Fixes:
+
+- `src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx` now normalizes the `name` query parameter before display.
+- The success page removes control characters, bounds rendered business-name text, and falls back to localized default business-name copy when no safe display text remains.
+- Invalid business-name query diagnostics record only invalid reason plus length metadata.
+- `scripts/verification/verify-menu-extraction-pipeline.js` now guards the business-name normalization helper, bounded invalid-name diagnostics, direct raw-query rendering exclusion, and Menu Extraction Pipeline docs, Firebase cost notes, production audit evidence, changelog evidence, and this ledger entry.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-menu-extraction-pipeline.js`.
+- Passed `npm run verify:menu-extraction-pipeline`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Cost/deploy boundary: this is MenuList public create-menu success-page display hardening only. It adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth operation changes, Cloud Function logic changes, provider calls, route calls, AI accounting writes, cache invalidations, rules, indexes, schema changes, tenant-shape changes, owner-facing settings, MenuList Firebase deploy requirement, or Vercel deploy action. Existing public upload/link import, status-only polling, full-draft fetch, claim/publish behavior, public draft storage, worker behavior, copy/share handoffs, starter activation signals, and diagnostics remain unchanged except for bounded business-name display normalization.
+
+## July 5 Follow-up: Shareable Tool Reports timestamp/display-string payload boundary
+
+The Shareable Tool Reports sweep found the public `/tools/reports` hash decoder bounded and shape-checked report payloads, but still accepted any bounded `generatedAt` string. The viewer formats that field with `new Date(report.generatedAt).toLocaleString()`, so a tampered report hash could render `Invalid Date` or arbitrary generated-time text. The same decoded hash payload also feeds public display strings, so control characters should be removed at the shared decoder before any source tool or report viewer renders the data.
+
+Fixes:
+
+- `src/lib/public-truth-tools/shareableToolReport.ts` now strips control characters from decoded report display strings.
+- Decoded shareable reports now require the canonical ISO `generatedAt` timestamp shape produced by source tools.
+- Tampered report hashes with invalid generated timestamps keep the existing invalid-report state.
+- `scripts/verification/verify-shareable-tool-reports.js` now guards the timestamp normalizer, control-character stripping, old loose `generatedAt` guard exclusion, Shareable Tool Reports docs, Firebase cost notes, production audit evidence, changelog evidence, and this ledger entry.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-shareable-tool-reports.js`.
+- Passed `node --check scripts/verification/verify-public-truth-tools.js`.
+- Passed `npm run verify:shareable-tool-reports`.
+- Passed `npm run verify:public-truth-tools`.
+- Passed `npm run verify:report-leads-boundary`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Cost/deploy boundary: this is MenuList public Shareable Tool Reports hash-decoder hardening only. It adds no Firestore reads/writes/deletes, Storage operations, Firebase Auth operation changes, Cloud Function logic changes, provider calls, external URL fetches, DNS lookups, route calls, AI accounting writes, cache invalidations, rules, indexes, schema changes, tenant-shape changes, owner-facing settings, MenuList Firebase deploy requirement, or Vercel deploy action. Existing valid report links, source-tool report generation, public viewer rendering for valid payloads, invalid-report fallback, copy/download actions, optional consented contact handoff, and Report Leads operations remain unchanged except for stricter decoded timestamp and display-string normalization.
+
+## July 6 Follow-up: Owner store strict session document-ID boundary
+
+The owner-store route sweep found `/api/store/temp-status` and `/api/store/public-api-key` already used the shared Firestore document-ID guard for session tenant/store scope, but the route-local normalizers did not enforce an explicit maximum length. Because the shared helper trims internally, these routes also needed their own exact raw-value and length gate before hashed limiter material, store refs, public cache tags, and diagnostics. The temp-status route also wrote `tempStatus.createdBy` from the raw session actor ID.
+
+Fixes:
+
+- `src/app/api/store/temp-status/route.ts` now caps session document IDs at 160 characters, rejects whitespace-mutated scope, normalizes the optional actor ID before limiter material, and writes `createdBy: null` when the actor ID is malformed.
+- `src/app/api/store/public-api-key/route.ts` now caps session tenant/store document IDs at 160 characters before key-management limiter material or `stores/{storeId}` refs.
+- `scripts/verification/verify-temporary-status-boundary.js`, `scripts/verification/verify-platform-pull-api-boundary.js`, and `scripts/verification/verify-menulist-api-tenant-safety.js` now guard the strict normalizers, length caps, raw actor limiter exclusion, docs, audit evidence, and changelog evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-temporary-status-boundary.js`.
+- Passed `npm run verify:temporary-status-boundary`.
+- Passed `node --check scripts/verification/verify-platform-pull-api-boundary.js`.
+- Passed `npm run verify:platform-pull-api-boundary`.
+- Passed `node --check scripts/verification/verify-menulist-api-tenant-safety.js`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Cost/deploy boundary: this is MenuList owner-store route admission hardening only. It adds no Firestore reads/writes/deletes for valid temp-status or API-key actions, no Storage operations, Firebase Auth operation changes, Cloud Function logic changes, provider calls, route calls, AI accounting writes, new cache invalidations, rules, indexes, schema changes, tenant-shape changes, owner-facing settings, MenuList Firebase deploy requirement, or Vercel deploy action. Existing valid temp-status set/clear behavior, public cache invalidation, screen invalidation, assistant-cache invalidation, API-key generate/revoke behavior, public pull API validation, and Business Settings UI behavior remain unchanged except malformed session IDs fail before route-local work.
+
+## July 6 Follow-up: Messaging Preview strict route-param boundary
+
+The messaging preview sweep found `src/lib/messaging-onboarding/previewRouteBoundary.ts` already restricted preview route params to the Firestore auto-ID shape before route-level limiter keys, session document reads, approve transactions, fix-request writes, and publish helper work. The remaining gap was that the normalizer trimmed first, so a whitespace-mutated route/helper input could be accepted as a different valid session ID instead of failing at the boundary.
+
+Fixes:
+
+- `src/lib/messaging-onboarding/previewRouteBoundary.ts` now preserves the raw route/helper value and rejects inputs where `sessionId !== raw`.
+- `/api/msg-preview/[sessionId]`, `/approve`, `/fix`, and `executeMessagingOnboardingPublish()` inherit the stricter boundary through the shared helper without changing valid 20-character preview links.
+- `scripts/verification/verify-menu-extraction-pipeline.js` and `scripts/verification/verify-menulist-api-tenant-safety.js` now guard the strict raw-param normalizer plus Messaging Onboarding docs, production audit evidence, and changelog evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-menu-extraction-pipeline.js`.
+- Passed `npm run verify:menu-extraction-pipeline`.
+- Passed `node --check scripts/verification/verify-menulist-api-tenant-safety.js`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Cost/deploy boundary: this is MenuList messaging-preview route/helper admission hardening only. It adds no Firestore reads/writes/deletes for valid preview links, no Storage operations, Firebase Auth operation changes, Cloud Function logic changes, provider calls, route calls, AI accounting writes, cache invalidations, rules, indexes, schema changes, tenant-shape changes, owner-facing settings, MenuList Firebase deploy requirement, or Vercel deploy action. Existing valid preview load, approve, publish, fix request, token comparison, correction-limit, bounded response parsing, and fixed owner copy behavior remain unchanged except whitespace-mutated session IDs fail before route/helper Firestore work.
+
+## July 6 Follow-up: Menu Extraction strict project/retry ID boundary
+
+The Menu Extraction sweep found the owner upload, menu-link import, menu-intake identity, review apply/discard, and retry paths already routed project and job IDs through shared helpers and route schemas. The remaining helper-level gap was that `src/lib/menu-extraction/projectIdBoundary.ts` and `src/lib/menu-extraction/jobIdBoundary.ts` trimmed first, so future helper callers could accept whitespace-mutated project or retry job IDs as different valid Firestore document IDs.
+
+Fixes:
+
+- `normalizeMenuExtractionProjectId()` now preserves the raw helper input and rejects values where `documentId !== value` before applying the bounded Menu Extraction project-ID shape and shared Firestore document-ID guard.
+- `normalizeMenuExtractionJobId()` now preserves the raw helper input and rejects values where `documentId !== value` before applying the 20-character Firestore auto-ID shape and shared Firestore document-ID guard.
+- Existing route schemas, review schemas, menu-intake identity helpers, and retry loaders inherit the stricter helper boundary without changing valid project IDs or valid Firestore auto-ID retry job IDs.
+- `scripts/verification/verify-menu-extraction-pipeline.js` and `scripts/verification/verify-menulist-api-tenant-safety.js` now guard the strict helper boundary plus Menu Extraction docs, production audit evidence, and changelog evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-menu-extraction-pipeline.js`.
+- Passed `node --check scripts/verification/verify-menulist-api-tenant-safety.js`.
+- Passed `npm run verify:menu-extraction-pipeline`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+
+Cost/deploy boundary: this is MenuList Menu Extraction project/retry ID admission hardening only. It adds no Firestore reads/writes/deletes for valid owner uploads, menu-link imports, identity preflights, extraction review apply/discard actions, or retry jobs; no Storage operations; Firebase Auth operation changes; Cloud Function logic changes; provider calls; route calls; AI accounting writes; cache invalidations; rules; indexes; schema changes; tenant-shape changes; owner-facing settings; MenuList Firebase deploy requirement; or Vercel deploy action. Existing valid project IDs, retry IDs, owner upload extraction, menu-link import, identity preflight, review apply/discard behavior, public create-menu jobs, messaging onboarding jobs, and fixed owner copy remain unchanged except whitespace-mutated project/retry IDs fail before route/helper Firestore or Storage-path work.
+
+## July 6 Follow-up: Onboarding strict user ID helper boundary
+
+The onboarding helper sweep found the website onboarding, reseller onboarding, and provider-failure compensation paths already routed user document refs through `src/lib/onboarding/onboardingUserId.ts`. The remaining helper-level gap was that `normalizeOnboardingUserId()` trimmed first, so a future helper caller could accept a whitespace-mutated user ID as a different valid `users/{userId}` document ID. The helper also needed the same practical 160-character cap already used by adjacent auth user-ID boundaries.
+
+Fixes:
+
+- `normalizeOnboardingUserId()` now preserves the raw helper input and rejects values where `userId !== raw`.
+- Onboarding user IDs now require non-empty input, a 160-character cap, and the shared Firestore document-ID guard before `requireOnboardingUserId()` returns a value.
+- `updateUserWithTenantStore()`, `compensateFailedTenantStoreOnboarding()`, and reseller onboarding inherit the stricter helper boundary without changing valid Firebase Auth UID behavior.
+- `scripts/verification/verify-agent-readiness.js` and `scripts/verification/verify-menulist-api-tenant-safety.js` now guard the strict helper boundary plus Auth Onboarding docs, Onboarding Centralization docs, production audit evidence, and changelog evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-agent-readiness.js`.
+- Passed `node --check scripts/verification/verify-menulist-api-tenant-safety.js`.
+- Passed `npm run verify:agent-readiness`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+
+Cost/deploy boundary: this is MenuList onboarding user-document ID admission hardening only. It adds no Firestore reads/writes/deletes for valid website onboarding, reseller onboarding, or provider-failure compensation; no Storage operations; Firebase Auth operation changes; Cloud Function logic changes; provider calls; route calls; AI accounting writes; cache invalidations; rules; indexes; schema changes; tenant-shape changes; owner-facing settings; MenuList Firebase deploy requirement; or Vercel deploy action. Existing valid onboarding, reseller-created owner docs, provider-failure cleanup, public cache revalidation, and fixed owner copy remain unchanged except whitespace-mutated, empty, path-shaped, reserved, or oversized user IDs fail before shared helper Firestore work.
+
+## July 6 Follow-up: Guest Feedback strict project ID boundary
+
+The Guest Feedback sweep found the public feedback page and submit route already routed project IDs through `src/lib/feedback/guestFeedbackProjectIdBoundary.ts`, and the submit route re-normalized `data.projectId` before project refs, write payloads, MOL events, and diagnostics. The remaining gap was that `normalizeGuestFeedbackProjectId()` trimmed first, while `guestFeedbackSubmitSchema` also trimmed `projectId` before the helper refine, so whitespace-mutated public feedback project IDs could be accepted before page lookup, validation success, honeypot checks, Turnstile, project reads, writes, MOL event logging, or bounded diagnostics.
+
+Fixes:
+
+- `normalizeGuestFeedbackProjectId()` now preserves the raw helper input and rejects values where `documentId !== value`.
+- `guestFeedbackSubmitSchema` no longer trims `projectId` before `normalizeGuestFeedbackProjectId(value) === value`.
+- The public feedback page, submit schema, and submit route keep the same valid supported project-ID shape while rejecting whitespace-mutated, path-shaped, reserved, empty, or malformed project IDs before Firestore work.
+- `scripts/verification/verify-guest-feedback-boundary.js` and `scripts/verification/verify-menulist-api-tenant-safety.js` now guard the strict helper boundary, raw submit schema boundary, route re-normalization, Guest Feedback docs, production audit evidence, and changelog evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-guest-feedback-boundary.js`.
+- Passed `node --check scripts/verification/verify-menulist-api-tenant-safety.js`.
+- Passed `npm run verify:guest-feedback-boundary`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+
+Cost/deploy boundary: this is MenuList public Guest Feedback project-ID admission hardening only. It adds no Firestore reads/writes/deletes for valid feedback pages or submissions; no Storage operations; Firebase Auth operation changes; Cloud Function logic changes; provider calls; route calls; AI accounting writes; cache invalidations; rules; indexes; schema changes; tenant-shape changes; owner-facing settings; MenuList Firebase deploy requirement; or Vercel deploy action. Existing valid feedback links, valid submissions, feedback writes, review URL behavior, owner inbox behavior, and fixed guest copy remain unchanged except whitespace-mutated project IDs fail before page/schema/route Firestore work.
+
+## July 6 Follow-up: Staff mutation strict user-ID boundary
+
+The Staff/Roles sweep found update, remove, reset-passcode, and force-sign-out already routed target user IDs through `StaffUserIdSchema`, re-normalized `input.userId` into local `targetUserId`, and excluded `.doc(input.userId)` plus `sanitizeStaffUserForAuthority(input.userId, ...)`. The remaining gap was that `normalizeStaffUserId()` trimmed first, while `StaffUserIdSchema` also trimmed `userId` before the helper refine, so whitespace-mutated staff target IDs could be accepted before request validation, `users/{userId}` reads, owner-safety checks, mutation writes, session revocation, Firebase Auth disabled-state sync, bounded diagnostics, or mutation response IDs.
+
+Fixes:
+
+- `normalizeStaffUserId()` now preserves the raw helper input and rejects values where `userId !== value`.
+- `StaffUserIdSchema` no longer trims `userId` before `normalizeStaffUserId(value) === value`.
+- Staff update, remove, reset-passcode, and force-sign-out keep the same valid Firebase Auth UID/document-ID behavior while rejecting whitespace-mutated, empty, oversized, path-shaped, or reserved target user IDs before Firestore work.
+- `scripts/verification/verify-menulist-api-tenant-safety.js` and `scripts/verification/verify-auth-security-failure-matrix.js` now guard the strict helper boundary, raw schema boundary, normalized mutation refs, raw-ref exclusions, Roles/Permissions docs, production audit evidence, and changelog evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-menulist-api-tenant-safety.js`.
+- Passed `node --check scripts/verification/verify-auth-security-failure-matrix.js`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npm run verify:auth-security-failure-matrix`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+
+Cost/deploy boundary: this is MenuList Staff/Roles target-user ID admission hardening only. It adds no Firestore reads/writes/deletes for valid staff update, remove, reset-passcode, or force-sign-out requests; no Storage operations; Firebase Auth operation changes for valid requests; Cloud Function logic changes; provider calls; route calls; AI accounting writes; cache invalidations; rules; indexes; schema changes; tenant-shape changes; owner-facing settings; MenuList Firebase deploy requirement; or Vercel deploy action. Existing valid staff create/update/remove/reset/sign-out behavior, last-owner protection, session revocation, Firebase Auth disabled-state sync, permission semantics, mutation acknowledgements, and fixed owner copy remain unchanged except whitespace-mutated target user IDs fail before schema/helper/route Firestore work.
+
+## July 6 Follow-up: Owner Business Assistant strict document-ID boundary
+
+The Owner Business Assistant sweep found Business Health project, thread, feedback answer, and answer-event IDs already routed through shared boundary helpers or `isValidFirestoreDocumentId()` before scoped read models, thread reads/writes, feedback writes, answer-event writes, context-packet cache keys, and owner-facing cache keys. The remaining gap was that `normalizeOwnerBusinessAssistantProjectId()`, `normalizeOwnerBusinessAssistantThreadId()`, `OwnerBusinessAssistantProjectIdSchema`, `OwnerBusinessAssistantThreadIdSchema`, `OwnerBusinessAssistantAnswerIdSchema`, and `normalizeAnswerEventDocumentId()` trimmed before validation, so whitespace-mutated IDs could be accepted as different valid Firestore document IDs before OBA route/helper Firestore or provider work.
+
+Fixes:
+
+- `normalizeOwnerBusinessAssistantProjectId()` now preserves the raw helper input and rejects values where `projectId !== value`.
+- `normalizeOwnerBusinessAssistantThreadId()` now preserves the raw helper input and rejects values where `threadId !== value`.
+- `OwnerBusinessAssistantProjectIdSchema`, `OwnerBusinessAssistantThreadIdSchema`, and `OwnerBusinessAssistantAnswerIdSchema` no longer trim IDs before boundary validation.
+- `normalizeAnswerEventDocumentId()` now rejects whitespace-mutated answer IDs before optional `ownerBusinessAssistantAnswerEvents/{answerId}` writes.
+- `scripts/verification/verify-owner-business-assistant-hardening.ts`, `scripts/verification/verify-owner-business-health-boundary.js`, and `scripts/verification/verify-menulist-api-tenant-safety.js` now guard the strict helper boundaries, raw schema boundaries, route/helper ordering, Owner Business Assistant docs, production audit evidence, and changelog evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-owner-business-health-boundary.js`.
+- Passed `node --check scripts/verification/verify-menulist-api-tenant-safety.js`.
+- Passed `npm run verify:owner-business-health-boundary`.
+- Passed `npm run verify:owner-business-assistant`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+
+Cost/deploy boundary: this is MenuList Owner Business Assistant document-ID admission hardening only. It adds no Firestore reads/writes/deletes for valid Business Health current, analytics, locations, answer, thread, feedback, or platform monitor requests; no Storage operations; Firebase Auth operation changes; Cloud Function logic changes; provider calls for valid answer requests; route calls; AI accounting writes beyond existing valid answer behavior; cache invalidations; rules; indexes; schema-field changes; tenant-shape changes; permission model changes; owner-facing settings; MenuList Firebase deploy requirement; or Vercel deploy action. Existing valid Business Health read models, owner answer behavior, context-packet cache behavior, thread persistence, feedback writes, answer-event writes, platform monitor behavior, and fixed owner copy remain unchanged except whitespace-mutated OBA document IDs fail before schema/helper/route Firestore work.

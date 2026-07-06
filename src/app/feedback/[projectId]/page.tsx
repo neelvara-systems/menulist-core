@@ -17,6 +17,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import MenuBreadcrumb from '@/app/client/[[...slug]]/MenuBreadcrumb';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getBrandStoreLabel } from '@lib/businessIdentity/names';
+import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { getBoundedPublicFeedbackStringContext, logPublicFeedbackPageFailure } from '@lib/feedback/publicFeedbackDiagnostics';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveOBPAccentColor } from '@lib/obp/accentColor';
@@ -63,8 +64,13 @@ interface PageProps {
  */
 async function getProjectData(projectId: string) {
     try {
+        const normalizedProjectId = normalizeGuestFeedbackProjectId(projectId);
+        if (!normalizedProjectId) {
+            return null;
+        }
+
         // Parse tId and sId from projectId
-        const parsed = parseProjectId(projectId);
+        const parsed = parseProjectId(normalizedProjectId);
         if (!parsed) {
             return null;
         }
@@ -76,7 +82,7 @@ async function getProjectData(projectId: string) {
             .collection(DB_COLLECTIONS.PROJECTS)
             .doc(String(tId))
             .collection(String(sId))
-            .doc(projectId)
+            .doc(normalizedProjectId)
             .get();
 
         if (!projectDoc.exists) {

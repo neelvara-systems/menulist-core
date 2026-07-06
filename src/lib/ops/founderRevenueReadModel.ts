@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 
@@ -54,6 +55,16 @@ function normalizeMovementId(value: string): string {
     .replace(/[^a-zA-Z0-9_.:-]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 220);
+}
+
+function normalizeFounderRevenueMovementDocumentId(value: string): string | null {
+  const movementId = normalizeMovementId(value);
+  return isValidFirestoreDocumentId(movementId) ? movementId : null;
+}
+
+function normalizeFounderRevenueStoreDocumentId(value: unknown): string | null {
+  const storeId = cleanText(value, 80);
+  return isValidFirestoreDocumentId(storeId) ? storeId : null;
 }
 
 function toDate(value: FounderRevenueMovementInput['occurredAt']): Date {
@@ -197,7 +208,7 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
     return { recorded: false, movementId: null };
   }
 
-  const movementId = normalizeMovementId(input.id);
+  const movementId = normalizeFounderRevenueMovementDocumentId(input.id);
   if (!movementId) {
     return { recorded: false, movementId: null };
   }
@@ -209,7 +220,7 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
   const mrrDeltaPaise = getMrrDelta(input.kind, amountPaise);
   const productId = PRODUCT_IDS.MENULIST;
   const tenantId = cleanText(input.tenantId, 80) || null;
-  const storeId = cleanText(input.storeId, 80) || null;
+  const storeId = normalizeFounderRevenueStoreDocumentId(input.storeId);
   const FieldValue = admin.firestore.FieldValue;
   const dailyCounterUpdates = getDailyCounterUpdates(input.kind, amountPaise);
   if (input.kind === 'new_mrr') {
@@ -368,7 +379,7 @@ export async function recordFounderSubscriptionMrrChange(params: {
   subscription: Partial<FirestoreSubscriptionDoc> & { id?: string };
 }) {
   const subscriptionId = cleanText(params.subscription.id || params.subscription.providerSubscriptionId, 160);
-  const eventKey = normalizeMovementId(params.eventKey || 'change');
+  const eventKey = normalizeFounderRevenueMovementDocumentId(params.eventKey || 'change');
   if (!subscriptionId || !eventKey) return { recorded: false, movementId: null };
 
   const previousMrrPaise = Math.max(

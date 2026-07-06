@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { hashApiKey } from "@lib/publicApi/auth";
@@ -31,13 +32,27 @@ const RequestSchema = z.object({
     action: z.enum(['generate', 'revoke']),
 });
 const PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES = 1024;
+const PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;
+
+function normalizeSessionDocumentId(value: unknown): string | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    return documentId === raw
+        && documentId.length > 0
+        && documentId.length <= PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH
+        && isValidFirestoreDocumentId(documentId)
+        ? documentId
+        : null;
+}
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_API) {
         return NextResponse.json({ error: "Feature disabled" }, { status: 403 });
     }
 
-    const { tId: tenantId, sId: storeId } = session;
+    const { tId: rawTenantId, sId: rawStoreId } = session;
+    const tenantId = normalizeSessionDocumentId(rawTenantId);
+    const storeId = normalizeSessionDocumentId(rawStoreId);
     if (!tenantId || !storeId) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
@@ -67,7 +82,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const db = admin.firestore();
-    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
+    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);
     const action = validation.data.action;
     const diagnosticContext = {
         action,

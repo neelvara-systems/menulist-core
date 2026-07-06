@@ -7,17 +7,17 @@ import { verifyTenantAccess } from '@/middleware/auth';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
+import { normalizeAiMenuManagerScopeDocumentId } from './routeIds';
 
 export const getAiMenuManagerSessionScope = (session: any) => {
-    const tId = session?.tId || session?.user?.tenantId;
-    const sId = session?.sId || session?.user?.storeId;
+    const tenantScope = normalizeAiMenuManagerScopeDocumentId(session?.tId || session?.user?.tenantId);
+    const storeScope = normalizeAiMenuManagerScopeDocumentId(session?.sId || session?.user?.storeId);
     const userId = session?.uId || session?.user?.id;
-    return { tId, sId, userId };
-};
-
-const normalizeStoreId = (value: unknown) => {
-    const parsed = Number(value);
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+    return {
+        tId: tenantScope?.documentId || null,
+        sId: storeScope?.documentId || null,
+        userId,
+    };
 };
 
 const buildSessionUserForStoreAccess = (session: any, fallbackStoreId: string | number) => ({
@@ -40,13 +40,23 @@ export const resolveAiMenuManagerSelectedStoreScope = (
         };
     }
 
-    const selectedStoreId = normalizeStoreId(requestedStoreId);
-    if (!selectedStoreId || String(selectedStoreId) === String(sId)) {
+    const hasRequestedStoreId = requestedStoreId !== undefined && requestedStoreId !== null && String(requestedStoreId) !== '';
+    const selectedStoreScope = hasRequestedStoreId
+        ? normalizeAiMenuManagerScopeDocumentId(requestedStoreId)
+        : null;
+    if (hasRequestedStoreId && !selectedStoreScope) {
+        return {
+            error: buildAiMenuManagerInvalidRequestResponse(request, session, 'selected-store'),
+        };
+    }
+
+    const selectedStoreId = selectedStoreScope?.documentId || null;
+    if (!selectedStoreId || selectedStoreId === sId) {
         return { tId, sId, userId };
     }
 
     const sessionUser = buildSessionUserForStoreAccess(session, sId);
-    if (!canUserAccessStore({ sessionUser, storeId: selectedStoreId })) {
+    if (!canUserAccessStore({ sessionUser, storeId: selectedStoreScope.numericId })) {
         logger.security('Tenant Access Violation - AI Menu Manager Store Scope', {
             ...getBoundedSecurityRouteContext(session, request),
             endpoint: request.nextUrl.pathname,
@@ -68,11 +78,13 @@ export const ensureAiMenuManagerTenantAccess = (
     tId: string | number,
     sId: string | number,
 ) => {
-    if (!tId || !sId) {
+    const tenantScope = normalizeAiMenuManagerScopeDocumentId(tId);
+    const storeScope = normalizeAiMenuManagerScopeDocumentId(sId);
+    if (!tenantScope || !storeScope) {
         return NextResponse.json({ error: 'User not onboarded' }, { status: 400 });
     }
 
-    if (!verifyTenantAccess(session, tId, sId, request)) {
+    if (!verifyTenantAccess(session, tenantScope.documentId, storeScope.documentId, request)) {
         logger.security('Tenant Access Violation - AI Menu Manager', {
             ...getBoundedSecurityRouteContext(session, request),
             endpoint: request.nextUrl.pathname,

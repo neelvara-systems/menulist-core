@@ -11,6 +11,7 @@ import {
     getBoundedRazorpayStringContext,
     getRazorpayFailureLogData,
 } from "@lib/billing/razorpayDiagnostics";
+import { normalizeBillingTopupDocumentId, normalizeBillingTopupScopeDocumentId } from "@lib/billing/topupDocumentIdBoundary";
 import { getCreditPacksForProduct, isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
@@ -79,7 +80,26 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
-        const { tenantId, storeId } = scope;
+        const tenantScope = normalizeBillingTopupScopeDocumentId(scope.tenantId);
+        const storeScope = normalizeBillingTopupScopeDocumentId(scope.storeId);
+        if (!tenantScope || !storeScope) {
+            logger.security('Invalid Billing Scope - Create Topup Order', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/create-topup-order',
+                error: 'Resolved billing scope failed document ID admission',
+                productId,
+                ...getBoundedRazorpayStringContext('tenantId', scope.tenantId),
+                ...getBoundedRazorpayStringContext('storeId', scope.storeId),
+            }, 'high');
+
+            return NextResponse.json(
+                { error: 'User not onboarded. Complete onboarding first.' },
+                { status: 400 }
+            );
+        }
+
+        const tenantId = tenantScope.numericId;
+        const storeId = storeScope.numericId;
         logTenantId = tenantId;
         logStoreId = storeId;
         // 🔒 CRITICAL: Verify user owns this tenant/store
@@ -123,8 +143,8 @@ export const POST = withAuth(async (request, session) => {
 
         const activeSubscription = await getActiveProductSubscriptionForStore(
             productId,
-            Number(tenantId),
-            Number(storeId),
+            tenantId,
+            storeId,
         );
         if (!activeSubscription) {
             return NextResponse.json(
@@ -169,9 +189,14 @@ export const POST = withAuth(async (request, session) => {
             },
         });
 
-        await getBillingFirestoreAdminForProduct(productId).collection(DB_COLLECTIONS.TOPUPS).doc(razorpayOrder.id).set({
+        const topupDocumentId = normalizeBillingTopupDocumentId(razorpayOrder.id);
+        if (!topupDocumentId) {
+            throw new Error('razorpay_topup_order_id_invalid');
+        }
+
+        await getBillingFirestoreAdminForProduct(productId).collection(DB_COLLECTIONS.TOPUPS).doc(topupDocumentId).set({
             paymentProvider: 'razorpay',
-            providerOrderId: razorpayOrder.id,
+            providerOrderId: topupDocumentId,
             creditsAdded: selectedPack.creditAmount,
             amount: price,
             currency,

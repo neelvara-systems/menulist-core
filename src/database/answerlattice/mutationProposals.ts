@@ -17,6 +17,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, Timestamp, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { normalizeAnswerlatticeMutationProposalId, normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -139,7 +140,9 @@ export const getPendingMutationProposals = async (tId: number, sId: number) => {
 export const getMutationProposalById = async (proposalId: string) => {
     return await apiCallComposer(
         async () => {
-            const docSnap = await getDoc(getDocRef(proposalId));
+            const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
+            if (!normalizedProposalId) return null;
+            const docSnap = await getDoc(getDocRef(normalizedProposalId));
             if (docSnap.exists()) {
                 return { ...docSnap.data(), id: docSnap.id } as AnswerlatticeMutationProposal;
             }
@@ -152,16 +155,20 @@ export const getMutationProposalById = async (proposalId: string) => {
 export const regenerateMutationProposalDraft = async (proposalId: string, regeneratedBy?: string) => {
     return apiCallComposer(
         async () => {
+            const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
+            if (!normalizedProposalId) {
+                throw new Error(ANSWERLATTICE_DRAFT_REGENERATION_FAILED);
+            }
             const response = await fetch('/api/answerlattice/mutation-proposals/regenerate-draft', {
                 ...ANSWERLATTICE_DRAFT_REGENERATION_REQUEST_POLICY,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ proposalId, regeneratedBy }),
+                body: JSON.stringify({ proposalId: normalizedProposalId, regeneratedBy }),
             });
 
-            return readDraftRegenerationResponse(response, proposalId);
+            return readDraftRegenerationResponse(response, normalizedProposalId);
         },
         { proposalId },
         'regenerateMutationProposalDraft',
@@ -191,21 +198,26 @@ export const addMutationProposal = async (data: Omit<AnswerlatticeMutationPropos
  * Guard: Only pending_review proposals can be approved.
  */
 export const approveMutationProposal = async (proposalId: string) => {
+    const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedProposalId) {
+                throw new Error('Invalid proposal ID');
+            }
             const composedData = await answerlatticeRequestBodyComposer({ status: 'approved' });
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
-                const docSnap = await transaction.get(getDocRef(proposalId));
-                if (!docSnap.exists()) throw new Error(`Proposal ${proposalId} not found`);
+                const proposalRef = getDocRef(normalizedProposalId);
+                const docSnap = await transaction.get(proposalRef);
+                if (!docSnap.exists()) throw new Error(`Proposal ${normalizedProposalId} not found`);
                 const current = docSnap.data() as AnswerlatticeMutationProposal;
                 if (current.status !== 'pending_review') {
                     throw new Error(`Cannot approve proposal in '${current.status}' state — must be 'pending_review'`);
                 }
-                transaction.set(getDocRef(proposalId), composedData, { merge: true });
+                transaction.set(proposalRef, composedData, { merge: true });
             });
             return composedData;
         },
-        { proposalId },
+        { proposalId: normalizedProposalId },
         "approveMutationProposal"
     );
 };
@@ -215,21 +227,26 @@ export const approveMutationProposal = async (proposalId: string) => {
  * Guard: Only pending_review proposals can be rejected.
  */
 export const rejectMutationProposal = async (proposalId: string) => {
+    const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedProposalId) {
+                throw new Error('Invalid proposal ID');
+            }
             const composedData = await answerlatticeRequestBodyComposer({ status: 'rejected' });
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
-                const docSnap = await transaction.get(getDocRef(proposalId));
-                if (!docSnap.exists()) throw new Error(`Proposal ${proposalId} not found`);
+                const proposalRef = getDocRef(normalizedProposalId);
+                const docSnap = await transaction.get(proposalRef);
+                if (!docSnap.exists()) throw new Error(`Proposal ${normalizedProposalId} not found`);
                 const current = docSnap.data() as AnswerlatticeMutationProposal;
                 if (current.status !== 'pending_review') {
                     throw new Error(`Cannot reject proposal in '${current.status}' state — must be 'pending_review'`);
                 }
-                transaction.set(getDocRef(proposalId), composedData, { merge: true });
+                transaction.set(proposalRef, composedData, { merge: true });
             });
             return composedData;
         },
-        { proposalId },
+        { proposalId: normalizedProposalId },
         "rejectMutationProposal"
     );
 };
@@ -239,21 +256,26 @@ export const rejectMutationProposal = async (proposalId: string) => {
  * Guard: Only approved proposals can be marked implemented.
  */
 export const markMutationImplemented = async (proposalId: string) => {
+    const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedProposalId) {
+                throw new Error('Invalid proposal ID');
+            }
             const composedData = await answerlatticeRequestBodyComposer({ status: 'implemented' });
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
-                const docSnap = await transaction.get(getDocRef(proposalId));
-                if (!docSnap.exists()) throw new Error(`Proposal ${proposalId} not found`);
+                const proposalRef = getDocRef(normalizedProposalId);
+                const docSnap = await transaction.get(proposalRef);
+                if (!docSnap.exists()) throw new Error(`Proposal ${normalizedProposalId} not found`);
                 const current = docSnap.data() as AnswerlatticeMutationProposal;
                 if (current.status !== 'approved') {
                     throw new Error(`Cannot implement proposal in '${current.status}' state — must be 'approved'`);
                 }
-                transaction.set(getDocRef(proposalId), composedData, { merge: true });
+                transaction.set(proposalRef, composedData, { merge: true });
             });
             return composedData;
         },
-        { proposalId },
+        { proposalId: normalizedProposalId },
         "markMutationImplemented"
     );
 };
@@ -296,10 +318,15 @@ export const approveDraftAsCanonicalAnswer = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
+            if (!normalizedProposalId) {
+                throw new Error('Invalid proposal ID');
+            }
+
             // 1. Fetch and validate proposal
-            const proposalSnap = await getDoc(getDocRef(proposalId));
+            const proposalSnap = await getDoc(getDocRef(normalizedProposalId));
             if (!proposalSnap.exists()) {
-                throw new Error(`Proposal ${proposalId} not found`);
+                throw new Error(`Proposal ${normalizedProposalId} not found`);
             }
             const proposal = { ...proposalSnap.data(), id: proposalSnap.id } as AnswerlatticeMutationProposal;
 
@@ -320,7 +347,7 @@ export const approveDraftAsCanonicalAnswer = async (
             }
 
             // 2. Resolve entity for binding
-            const entityId = proposal.relatedEntityIds?.[0];
+            const entityId = normalizeAnswerlatticeResolvedEntityId(proposal.relatedEntityIds?.[0]);
             if (!entityId) {
                 throw new Error('Proposal has no related entity ID');
             }
@@ -361,7 +388,7 @@ export const approveDraftAsCanonicalAnswer = async (
                 status: 'active',
                 answerType: draft.procedure ? 'procedure' : 'explanation',
                 scope: {
-                    entityIds: proposal.relatedEntityIds,
+                    entityIds: [entityId],
                 },
                 productBinding: {
                     introducedInVersion: currentVersion,
@@ -415,7 +442,7 @@ export const approveDraftAsCanonicalAnswer = async (
 
             // 6. Mark proposal as implemented
             const implementData = await answerlatticeRequestBodyComposer({ status: 'implemented' });
-            await setDoc(getDocRef(proposalId), implementData, { merge: true });
+            await setDoc(getDocRef(normalizedProposalId), implementData, { merge: true });
 
             // 7. Audit log
             const { addAuditLog } = await import('@database/answerlattice/auditLogs');
@@ -426,14 +453,14 @@ export const approveDraftAsCanonicalAnswer = async (
                 entityType: 'canonicalAnswer',
                 entityId: canonicalAnswer.id,
                 previousState: {
-                    proposalId,
+                    proposalId: normalizedProposalId,
                     draftTitle: draft.draftTitle,
                     draftSource: draft.draftSource,
                 },
                 newState: {
                     answerId: canonicalAnswer.id,
                     title,
-                    entityIds: proposal.relatedEntityIds,
+                    entityIds: [entityId],
                     approvedBy,
                     wasEdited: !!editedContent,
                 },
@@ -443,7 +470,7 @@ export const approveDraftAsCanonicalAnswer = async (
 
             return {
                 canonicalAnswer,
-                proposalId,
+                proposalId: normalizedProposalId,
                 entityId,
                 approved: true,
             };

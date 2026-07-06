@@ -81,6 +81,10 @@ June 29 response diagnostics: `src/lib/auth/firebaseAuthSync.ts` parses `/api/au
 
 June 30 request boundary: `src/lib/auth/firebaseAuthSync.ts` now spreads `AUTH_BROWSER_REQUEST_POLICY` before both `/api/auth/set-claims` sync and refresh calls, so Firebase claim handoffs stay uncached, same-origin, and manual-redirect before bounded response parsing. This does not change custom-token creation, claim refresh, Firestore reads/writes, Firebase Auth operations, route contracts, or deploy requirements.
 
+Set-claims workspace scope boundary: `/api/auth/set-claims` validates the selected tenant and store scope through `normalizeStorePermissionScopeDocumentId()` before minting Firebase custom claims or reading Answerlattice store-role permissions. Malformed, reserved, whitespace-mutated, path-shaped, decimal, zero, negative, unsafe, or nonnumeric tenant/store IDs in an auth profile fail with `set_claims_invalid_workspace_scope_rejected` before custom-token creation. Valid Google login, credential login, phone OTP login, MenuList Firebase sync, and Answerlattice custom-token sync behavior are unchanged.
+
+Set-claims rate-limit boundary: `/api/auth/set-claims` applies the shared `AUTH_CLAIM_SYNC` limiter with HMAC-hashed session user/email key material before optional body parsing, product-user lookup, Firebase Auth user lookup/create, custom-claim writes, or custom-token creation. The 30-per-15-minute actor ceiling is intentionally higher than account-mutation limits because valid login handoff, session bootstrap, store switching, and multi-tab refreshes can legitimately make several set-claims calls. Rate-limited sync attempts return 429 with retry headers and bounded security diagnostics only. Valid Google login, credential login, phone OTP login, MenuList Firebase sync, Answerlattice custom-token sync, and store-switch claim refresh behavior are unchanged.
+
 ---
 
 ## 🔧 **Implementation**

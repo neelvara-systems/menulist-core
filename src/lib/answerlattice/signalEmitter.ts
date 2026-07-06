@@ -24,6 +24,7 @@ import {
     logAnswerlatticeDiagnostic,
     logAnswerlatticeFailure,
 } from '@lib/answerlattice/diagnostics';
+import { normalizeAnswerlatticeEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { AnswerlatticeSignalType } from '@type/answerlattice';
 import { TicketMessage } from '@type/supportTicket';
@@ -43,6 +44,11 @@ interface EmitSignalParams {
 const emittedSignals = new Set<string>();
 
 const createTraceId = () => createRuntimeId('al');
+const SIGNAL_UNRESOLVED_ENTITY_ID = 'unresolved';
+
+const normalizeSignalEntityId = (value: unknown): string => (
+    normalizeAnswerlatticeEntityId(value) || SIGNAL_UNRESOLVED_ENTITY_ID
+);
 
 const cleanSignalText = (value: unknown, maxLength = 500): string => (
     String(value || '')
@@ -120,7 +126,7 @@ const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; s
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: params.tId,
         sId: params.sId,
-        entityId: params.entityId || 'unresolved',
+        entityId: normalizeSignalEntityId(params.entityId),
         type: params.type,
         timestamp: now,
         metadata: sanitizeSignalMetadata(params.metadata),
@@ -231,7 +237,7 @@ export const emitTicketResolutionSignal = async (params: {
 
     await emitAnswerlatticeSignal({
         type: 'ticket',
-        entityId: params.entityId || 'unresolved',
+        entityId: params.entityId,
         tId: params.tId,
         sId: params.sId,
         metadata: {
@@ -267,7 +273,7 @@ export const emitSuggestionSignal = async (params: {
 
     await emitAnswerlatticeSignal({
         type: params.type,
-        entityId: params.entityId || 'unresolved',
+        entityId: params.entityId,
         tId: params.tId,
         sId: params.sId,
         metadata: {
@@ -281,12 +287,13 @@ export const emitSuggestionSignal = async (params: {
 export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise<void> => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) return;
 
+    const normalizedEntityId = normalizeSignalEntityId(params.entityId);
     const tId = Number(params.tId);
     const sId = Number(params.sId);
     if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
         logAnswerlatticeDiagnostic('answerlattice_signal_invalid_scope_skipped', {
             ...getAnswerlatticeScopeLogContext({
-                entityId: params.entityId,
+                entityId: normalizedEntityId,
                 sId: params.sId,
                 signalType: params.type,
                 tId: params.tId,
@@ -315,7 +322,7 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
         await addSignalEvent({
             tId,
             sId,
-            entityId: params.entityId || 'unresolved',
+            entityId: normalizedEntityId,
             type: params.type,
             timestamp: Timestamp.now(),
             metadata: sanitizeSignalMetadata(params.metadata),
@@ -324,7 +331,7 @@ export const emitAnswerlatticeSignal = async (params: EmitSignalParams): Promise
         // Fire-and-forget: log but never throw
         logAnswerlatticeFailure('answerlattice_signal_emit_failed', error, {
             ...getAnswerlatticeScopeLogContext({
-                entityId: params.entityId,
+                entityId: normalizedEntityId,
                 sId,
                 signalType: params.type,
                 tId,

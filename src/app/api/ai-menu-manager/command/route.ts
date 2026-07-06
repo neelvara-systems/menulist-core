@@ -99,7 +99,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         || (!sessionStore.businessType && !sessionStore.businessCategory)
         || (!sessionStore.businessName && !sessionStore.name && !sessionStore.storeName);
     const store = needsStoreRead
-        ? await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(scope.sId)).get()
+        ? await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(scope.sId).get()
             .then((storeSnap) => (storeSnap.exists ? storeSnap.data() as Record<string, any> : null))
         : sessionStore;
     const storeName = getStoreName(store, scope.sId);

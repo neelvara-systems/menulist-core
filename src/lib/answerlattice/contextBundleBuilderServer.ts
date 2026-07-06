@@ -30,6 +30,7 @@ import {
     normalizeCompiledSourceVersions,
 } from './compiledContext';
 import { getAnswerlatticeCompiledSourceVersionsAdmin } from './compiledSourceVersionsAdmin';
+import { normalizeAnswerlatticeResolvedEntityId } from './governanceIdBoundary';
 import { getContextContentSummaryDocId } from './productSurfaceContent';
 import { rebuildProductSurfaceContentSummaryServer } from './productSurfaceContentServer';
 
@@ -48,8 +49,11 @@ const PRIVATE_BUNDLE_CACHE_CONTROL = 'private, max-age=300';
 const ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED = 'answerlattice_context_bundle_manifest_upload_failed';
 const ANSWERLATTICE_CONTEXT_BUNDLE_OBJECT_OVERSIZED = 'answerlattice_context_bundle_object_oversized';
 const CONTEXT_BUNDLE_OBJECT_DOWNLOAD_MAX_BYTES = ANSWERLATTICE_CONTEXT_BUNDLE_LIMITS.maxPrivateObjectBytes;
+const ANSWERLATTICE_CONTEXT_BUNDLE_BUILD_REASONS = ['manual', 'activation_manual_rebuild', 'onboarding', 'nightly_repair', 'source_change'] as const;
+const ANSWERLATTICE_CONTEXT_BUNDLE_REQUESTERS = ['owner', 'system'] as const;
 
-type BuildReason = 'manual' | 'onboarding' | 'nightly_repair' | 'source_change' | string;
+type BuildReason = typeof ANSWERLATTICE_CONTEXT_BUNDLE_BUILD_REASONS[number];
+type BuildRequester = typeof ANSWERLATTICE_CONTEXT_BUNDLE_REQUESTERS[number];
 
 type BundleCacheEntry = {
     expiresAt: number;
@@ -82,6 +86,20 @@ const assertScope = (tId: number, sId: number) => {
     return { tenantId, storeId };
 };
 
+const normalizeAnswerlatticeContextBundleBuildReason = (reason: unknown): BuildReason => {
+    const normalized = typeof reason === 'string' ? reason.trim() : '';
+    return ANSWERLATTICE_CONTEXT_BUNDLE_BUILD_REASONS.includes(normalized as BuildReason)
+        ? normalized as BuildReason
+        : 'manual';
+};
+
+const normalizeAnswerlatticeContextBundleRequester = (requestedBy: unknown): BuildRequester => {
+    const normalized = typeof requestedBy === 'string' ? requestedBy.trim() : '';
+    return ANSWERLATTICE_CONTEXT_BUNDLE_REQUESTERS.includes(normalized as BuildRequester)
+        ? normalized as BuildRequester
+        : 'system';
+};
+
 const stableStringify = (value: any): string => {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
     if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
@@ -109,6 +127,20 @@ const toIso = (value: any): string | null => {
     if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
+const normalizeContextBundleEntityIds = (values: unknown, limit?: number): string[] => {
+    const source = Array.isArray(values) ? values : [];
+    const normalizedIds: string[] = [];
+    const seen = new Set<string>();
+    for (const value of source) {
+        const entityId = normalizeAnswerlatticeResolvedEntityId(value);
+        if (!entityId || seen.has(entityId)) continue;
+        seen.add(entityId);
+        normalizedIds.push(entityId);
+        if (typeof limit === 'number' && normalizedIds.length >= limit) break;
+    }
+    return normalizedIds;
 };
 
 const sanitizeSegment = (value: unknown, fallback: string): string => {
@@ -145,19 +177,24 @@ const compactEntity = (entity: AnswerlatticeEntity) => ({
     modifiedOn: toIso(entity.modifiedOn),
 });
 
-const compactRelation = (relation: AnswerlatticeEntityRelation) => ({
-    id: relation.id,
-    fromEntityId: relation.fromEntityId,
-    toEntityId: relation.toEntityId,
-    relationType: relation.relationType,
-});
+const compactRelation = (relation: AnswerlatticeEntityRelation) => {
+    const fromEntityId = normalizeAnswerlatticeResolvedEntityId(relation.fromEntityId);
+    const toEntityId = normalizeAnswerlatticeResolvedEntityId(relation.toEntityId);
+    if (!fromEntityId || !toEntityId) return null;
+    return {
+        id: relation.id,
+        fromEntityId,
+        toEntityId,
+        relationType: relation.relationType,
+    };
+};
 
 const compactAnswerLite = (answer: AnswerlatticeCanonicalAnswer) => ({
     id: answer.id,
     title: answer.title,
     slug: answer.slug,
     answerType: answer.answerType || 'explanation',
-    entityIds: answer.scope?.entityIds || [],
+    entityIds: normalizeContextBundleEntityIds(answer.scope?.entityIds),
     planIds: answer.scope?.planIds || [],
     roleIds: answer.scope?.roleIds || [],
     shortAnswer: answer.content?.structuredSummary || '',
@@ -192,7 +229,7 @@ const compactArticle = (article: KnowledgeBaseArticleType) => ({
     sectionId: article.sectionId || null,
     sectionTitle: article.sectionTitle || null,
     tags: Array.isArray(article.tags) ? article.tags.slice(0, 12) : [],
-    entityIds: Array.isArray(article.entityIds) ? article.entityIds.slice(0, 20) : [],
+    entityIds: normalizeContextBundleEntityIds(article.entityIds, 20),
     contextKeys: Array.isArray(article.contextKeys) ? article.contextKeys.slice(0, 20) : [],
     modifiedOn: toIso(article.modifiedOn),
 });
@@ -203,7 +240,7 @@ const compactFaq = (faq: AnswerlatticeFaq) => ({
     answer: faq.answer,
     articleId: faq.articleId || null,
     articleTitle: faq.articleTitle || null,
-    entityIds: Array.isArray(faq.entityIds) ? faq.entityIds.slice(0, 20) : [],
+    entityIds: normalizeContextBundleEntityIds(faq.entityIds, 20),
     contextKeys: Array.isArray(faq.contextKeys) ? faq.contextKeys.slice(0, 20) : [],
     tags: Array.isArray(faq.tags) ? faq.tags.slice(0, 12) : [],
     sortOrder: Number(faq.sortOrder || 0),
@@ -215,7 +252,7 @@ const compactRelease = (release: any) => ({
     versionLabel: release.versionLabel || release.title || '',
     versionNormalized: release.versionNormalized ?? null,
     releasedAt: toIso(release.releasedAt || release.createdOn),
-    entityChanges: Array.isArray(release.entityChanges) ? release.entityChanges.slice(0, 50) : [],
+    entityChanges: normalizeContextBundleEntityIds(release.entityChanges, 50),
     status: release.status,
 });
 
@@ -238,7 +275,7 @@ const safeSurface = (surface: any) => ({
     page: surface.page || '',
     workflow: surface.workflow || '',
     entityHints: Array.isArray(surface.entityHints) ? surface.entityHints.slice(0, 12) : [],
-    entityIds: Array.isArray(surface.entityIds) ? surface.entityIds.slice(0, 25) : [],
+    entityIds: normalizeContextBundleEntityIds(surface.entityIds, 25),
     tags: Array.isArray(surface.tags) ? surface.tags.slice(0, 25) : [],
     visibility: surface.visibility || {},
     articles: Array.isArray(surface.articles) ? surface.articles.slice(0, 8) : [],
@@ -387,7 +424,9 @@ const buildBundleObjects = (params: {
         businessDayEndTime: store.businessDayEndTime || '00:00',
     };
     const entityIndex = source.entities.map(compactEntity);
-    const relationIndex = source.relations.map(compactRelation);
+    const relationIndex = source.relations
+        .map(compactRelation)
+        .filter((relation): relation is NonNullable<ReturnType<typeof compactRelation>> => Boolean(relation));
     const canonicalIndex = source.answers.map(compactAnswerPrivate);
     const canonicalLite = source.answers.map(compactAnswerLite);
     const articleIndex = source.articles.map(compactArticle);
@@ -703,6 +742,8 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
     const existingManifest = existingManifestSnap.exists ? existingManifestSnap.data() : null;
     const sourceVersionsAtStart = await getAnswerlatticeCompiledSourceVersionsAdmin(tenantId, storeId);
     const normalizedStartVersions = normalizeCompiledSourceVersions(sourceVersionsAtStart);
+    const buildReason = normalizeAnswerlatticeContextBundleBuildReason(params.reason);
+    const buildRequester = normalizeAnswerlatticeContextBundleRequester(params.requestedBy);
 
     if (
         !params.force
@@ -722,8 +763,8 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
         startedAt,
         expiresAt: Timestamp.fromMillis(startedAt.toMillis() + 10 * 60 * 1000),
         sourceVersionsAtStart: normalizedStartVersions,
-        requestedBy: params.requestedBy || 'system',
-        reason: params.reason || 'manual',
+        requestedBy: buildRequester,
+        reason: buildReason,
     }, { merge: true });
 
     await manifestRef.set({
@@ -831,8 +872,8 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
         await manifestRef.set({
             ...manifest,
             updatedAt: FieldValue.serverTimestamp(),
-            reason: params.reason || 'manual',
-            requestedBy: params.requestedBy || 'system',
+            reason: buildReason,
+            requestedBy: buildRequester,
         }, { merge: true });
         bundleManifestCache.set(`${tenantId}_${storeId}`, {
             value: { ...manifest, id: manifestRef.id },

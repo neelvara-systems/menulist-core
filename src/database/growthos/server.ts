@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { GROWTHOS_SUMMARY_DOC_PREFIX } from "@constant/growthos";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import type {
     GrowthOSExportMethod,
     GrowthOSKit,
@@ -9,7 +10,31 @@ import type {
     GrowthOSSummaryDocument,
 } from "@type/growthos";
 
-const summaryDocId = (storeId: string | number) => `${GROWTHOS_SUMMARY_DOC_PREFIX}_${storeId}`;
+const summaryDocId = (storeDocumentId: string) => `${GROWTHOS_SUMMARY_DOC_PREFIX}_${storeDocumentId}`;
+
+function normalizeGrowthOSDocumentId(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    const documentId = value.trim();
+    return isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+function normalizeGrowthOSScopeDocumentId(value: unknown): string | null {
+    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const documentId = raw.trim();
+    return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+function requireGrowthOSDocumentId(value: unknown, label: string): string {
+    const documentId = normalizeGrowthOSDocumentId(value);
+    if (!documentId) throw new Error(`Invalid GrowthOS ${label} ID`);
+    return documentId;
+}
+
+function requireGrowthOSScopeDocumentId(value: unknown, label: string): string {
+    const documentId = normalizeGrowthOSScopeDocumentId(value);
+    if (!documentId) throw new Error(`Invalid GrowthOS ${label} ID`);
+    return documentId;
+}
 
 const sanitizeForAdminFirestore = (value: any): any => {
     if (value === undefined) return null;
@@ -28,7 +53,10 @@ const sanitizeForAdminFirestore = (value: any): any => {
 export const toGrowthOSAdminTimestamp = (date: Date) => admin.firestore.Timestamp.fromDate(date);
 
 export async function readGrowthOSStoreDataServer(storeId: string | number): Promise<any | null> {
-    const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
+    const storeDocumentId = normalizeGrowthOSScopeDocumentId(storeId);
+    if (!storeDocumentId) return null;
+
+    const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId).get();
     if (!snap.exists) return null;
     return snap.data();
 }
@@ -58,27 +86,36 @@ export async function readGrowthOSProjectDataServer(params: {
     tId: string | number;
     sId: string | number;
 }): Promise<any | null> {
+    const projectId = normalizeGrowthOSDocumentId(params.projectId);
+    if (!projectId) return null;
+    const tenantDocumentId = normalizeGrowthOSScopeDocumentId(params.tId);
+    const storeDocumentId = normalizeGrowthOSScopeDocumentId(params.sId);
+    if (!tenantDocumentId || !storeDocumentId) return null;
+
     const scopedSnap = await firestoreAdmin
-        .collection(`${DB_COLLECTIONS.PROJECTS}/${params.tId}/${params.sId}`)
-        .doc(params.projectId)
+        .collection(`${DB_COLLECTIONS.PROJECTS}/${tenantDocumentId}/${storeDocumentId}`)
+        .doc(projectId)
         .get();
     if (scopedSnap.exists) return scopedSnap.data();
 
-    const legacySnap = await firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(params.projectId).get();
+    const legacySnap = await firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(projectId).get();
     if (!legacySnap.exists) return null;
     const projectData = legacySnap.data();
     return legacyProjectBelongsToSession({
         projectData,
-        projectId: params.projectId,
-        sId: params.sId,
-        tId: params.tId,
+        projectId,
+        sId: storeDocumentId,
+        tId: tenantDocumentId,
     }) ? projectData : null;
 }
 
 export async function readGrowthOSSummaryServer(storeId: string | number): Promise<GrowthOSSummaryDocument | null> {
+    const storeDocumentId = normalizeGrowthOSScopeDocumentId(storeId);
+    if (!storeDocumentId) return null;
+
     const snap = await firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(summaryDocId(storeId))
+        .doc(summaryDocId(storeDocumentId))
         .get();
     return snap.exists ? snap.data() as GrowthOSSummaryDocument : null;
 }
@@ -87,9 +124,11 @@ export async function writeGrowthOSSummaryServer(
     storeId: string | number,
     summary: GrowthOSSummaryDocument,
 ): Promise<void> {
+    const storeDocumentId = requireGrowthOSScopeDocumentId(storeId, "store");
+
     await firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(summaryDocId(storeId))
+        .doc(summaryDocId(storeDocumentId))
         .set(sanitizeForAdminFirestore({
             ...summary,
             lastUpdated: admin.firestore.Timestamp.now(),
@@ -97,10 +136,13 @@ export async function writeGrowthOSSummaryServer(
 }
 
 export async function writeGrowthOSKitServer(kit: GrowthOSKit): Promise<void> {
+    const kitId = requireGrowthOSDocumentId(kit.id, "kit");
+    const tenantDocumentId = requireGrowthOSScopeDocumentId(kit.tId, "tenant");
+    const storeDocumentId = requireGrowthOSScopeDocumentId(kit.sId, "store");
     await firestoreAdmin
-        .collection(`${DB_COLLECTIONS.GROWTHOS_KITS}/${kit.tId}/${kit.sId}`)
-        .doc(kit.id)
-        .set(sanitizeForAdminFirestore(kit));
+        .collection(`${DB_COLLECTIONS.GROWTHOS_KITS}/${tenantDocumentId}/${storeDocumentId}`)
+        .doc(kitId)
+        .set(sanitizeForAdminFirestore({ ...kit, id: kitId }));
 }
 
 export async function readGrowthOSKitServer(params: {
@@ -108,9 +150,15 @@ export async function readGrowthOSKitServer(params: {
     tId: string | number;
     sId: string | number;
 }): Promise<GrowthOSKit | null> {
+    const kitId = normalizeGrowthOSDocumentId(params.kitId);
+    if (!kitId) return null;
+    const tenantDocumentId = normalizeGrowthOSScopeDocumentId(params.tId);
+    const storeDocumentId = normalizeGrowthOSScopeDocumentId(params.sId);
+    if (!tenantDocumentId || !storeDocumentId) return null;
+
     const snap = await firestoreAdmin
-        .collection(`${DB_COLLECTIONS.GROWTHOS_KITS}/${params.tId}/${params.sId}`)
-        .doc(params.kitId)
+        .collection(`${DB_COLLECTIONS.GROWTHOS_KITS}/${tenantDocumentId}/${storeDocumentId}`)
+        .doc(kitId)
         .get();
     return snap.exists ? snap.data() as GrowthOSKit : null;
 }
@@ -131,15 +179,18 @@ export async function recordGrowthOSExportServer(params: {
     outputId?: string;
     session: any;
 }): Promise<{ exportId: string; status?: GrowthOSKitStatus | null }> {
+    const kitId = requireGrowthOSDocumentId(params.kit.id, "kit");
+    const tenantDocumentId = requireGrowthOSScopeDocumentId(params.kit.tId, "tenant");
+    const storeDocumentId = requireGrowthOSScopeDocumentId(params.kit.sId, "store");
     const exportRef = firestoreAdmin
-        .collection(`${DB_COLLECTIONS.GROWTHOS_EXPORTS}/${params.kit.tId}/${params.kit.sId}`)
+        .collection(`${DB_COLLECTIONS.GROWTHOS_EXPORTS}/${tenantDocumentId}/${storeDocumentId}`)
         .doc();
     const exportedAt = admin.firestore.Timestamp.now();
     const exportData = sanitizeForAdminFirestore({
         id: exportRef.id,
         tId: params.kit.tId,
         sId: params.kit.sId,
-        kitId: params.kit.id,
+        kitId,
         destination: params.destination,
         method: params.method,
         outputId: params.outputId,
@@ -148,8 +199,8 @@ export async function recordGrowthOSExportServer(params: {
     });
     const nextStatus = statusForExportMethod(params.method);
     const kitRef = firestoreAdmin
-        .collection(`${DB_COLLECTIONS.GROWTHOS_KITS}/${params.kit.tId}/${params.kit.sId}`)
-        .doc(params.kit.id);
+        .collection(`${DB_COLLECTIONS.GROWTHOS_KITS}/${tenantDocumentId}/${storeDocumentId}`)
+        .doc(kitId);
 
     const batch = firestoreAdmin.batch();
     batch.set(exportRef, exportData);
@@ -180,5 +231,5 @@ export function buildGrowthOSKitId(tId: string | number, sId: string | number): 
 }
 
 export function buildGrowthOSSummaryDocId(storeId: string | number): string {
-    return summaryDocId(storeId);
+    return summaryDocId(requireGrowthOSScopeDocumentId(storeId, "store"));
 }

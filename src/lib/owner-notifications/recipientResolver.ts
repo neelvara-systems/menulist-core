@@ -2,6 +2,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import type { Firestore } from 'firebase-admin/firestore';
 import type {
@@ -35,6 +36,27 @@ function cleanPhone(value?: unknown, context?: Record<string, any> | null): stri
     return phone.length >= 10 && phone.length <= 15 ? phone : undefined;
 }
 
+type MenuListOwnerNotificationScopeDocumentId = {
+    numericId: number;
+    documentId: string;
+};
+
+function normalizeOwnerNotificationRecipientDocumentId(value: unknown): string | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+function normalizeMenuListOwnerNotificationScopeDocumentId(value: unknown): MenuListOwnerNotificationScopeDocumentId | null {
+    const documentId = normalizeOwnerNotificationRecipientDocumentId(value);
+    if (!documentId) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { numericId, documentId }
+        : null;
+}
+
 function resolveFirstPhone(context: Record<string, any> | null | undefined, ...values: unknown[]): string | undefined {
     for (const value of values) {
         const phone = cleanPhone(value, context);
@@ -63,22 +85,26 @@ export async function resolveOwnerNotificationScope(
 ): Promise<OwnerNotificationScope> {
     if (event.productId === PRODUCT_IDS.ANSWERLATTICE) {
         const db = getAnswerlatticeDb();
-        if (!db || !event.storeId) return {};
-        const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(event.storeId)).get();
+        const workspaceDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.storeId);
+        if (!db || !workspaceDocumentId) return {};
+        const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(workspaceDocumentId).get();
         return { workspaceData: storeSnap.exists ? storeSnap.data() || null : null };
     }
 
-    if (!event.tenantId || !event.storeId) return {};
+    const tenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.tenantId);
+    const storeScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.storeId);
+    if (!tenantScope || !storeScope) return {};
 
     const db = admin.firestore();
-    const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(event.storeId)).get();
+    const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();
     if (storeSnap.exists) {
-        return { storeData: storeSnap.data() || null };
+        const storeData = storeSnap.data() || null;
+        return Number(storeData?.tenantId) === tenantScope.numericId ? { storeData } : {};
     }
 
     const legacyStoreSnap = await db
-        .collection(DB_COLLECTIONS.TENANTS).doc(String(event.tenantId))
-        .collection(DB_COLLECTIONS.STORES).doc(String(event.storeId))
+        .collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId)
+        .collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId)
         .get();
 
     return { storeData: legacyStoreSnap.exists ? legacyStoreSnap.data() || null : null };

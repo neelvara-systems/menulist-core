@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Firebase Cost Tracking
 
 **Status:** Implemented V0
-**Last Updated:** July 4, 2026
+**Last Updated:** July 5, 2026
 
 ---
 
@@ -23,6 +23,8 @@ The V0 shareable report link adds no Firebase report-storage cost. The optional 
 The report payload is encoded into the URL hash fragment and decoded in the browser. All current public MenuList Tools use this same no-storage report-link path.
 
 Decode diagnostics are cost-neutral. Invalid, oversized, malformed, or wrong-shape report hashes log bounded `shareable_tool_report_payload_decode_failed` diagnostics with failure stage and payload shape metadata only. They add no Firestore reads/writes/deletes, Storage operations, Cloud Functions, external URL fetches, DNS lookups, provider calls, saved reports, report API routes, or report-history records.
+
+Strict `generatedAt` timestamp and control-character display-string hardening is cost-neutral. The public hash decoder rejects non-canonical generated timestamps and strips control characters from decoded display text before rendering. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, external URL fetches, DNS lookups, provider calls, saved reports, report API routes, report-history records, Firebase deploy requirement, or Vercel deploy action.
 
 ---
 
@@ -47,9 +49,9 @@ The accepted enquiry also stores bounded lead-routing metadata:
 - `sourceToolId`
 - `sourceReportStatus`
 - `sourcePrimaryNumber`
-- nested `sourceContext` with owner-entered business context, summary counts, and bounded `setupJobList`
+- nested `sourceContext` with owner-entered business context, canonical ISO `reportGeneratedAt` or `null`, summary counts, and bounded `setupJobList`
 
-These fields are operational lead metadata on the existing enquiry write. Setup jobs are derived from the visible report gaps so the team can triage paid setup work. They are not canonical MenuList truth and must not be copied into store/project truth without owner confirmation.
+These fields are operational lead metadata on the existing enquiry write. Direct submissions with malformed `sourceContext.reportGeneratedAt` store `null`, and Report Leads also returns `null` for legacy malformed values. Setup jobs are derived from the visible report gaps so the team can triage paid setup work. They are not canonical MenuList truth and must not be copied into store/project truth without owner confirmation.
 
 Source tools can keep their existing optional consented handoff through `/api/public/contact`. These are contact enquiries, not report storage.
 

@@ -4,7 +4,7 @@
 **Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`)  
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation  
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`  
-**Last Updated:** June 30, 2026
+**Last Updated:** July 5, 2026
 
 ---
 
@@ -57,7 +57,7 @@ No separate `aiUsageLog` collection is read by this dashboard. Current extractio
 2. **Quality Metrics** — Avg quality score, confidence distribution, HCR trend
 3. **Job Feed** — Recent jobs with status, scores, timing
 4. **Job Inspector** — Drill into any job: normalized extraction output, stored raw provider responses, file results, token usage, owner units, retry status, and acknowledged raw-data copy actions with bounded failure diagnostics
-5. **Cost Monitor** — Gemini calls/day, actual INR cost/extraction, daily spend, and highest job cost. Values are stored as paise and rendered as INR. Platform rows include `jobId`, tenant/store/user context, destination, source, token counts, failure status/error code, retry-after seconds when present, and Firestore `createdAt` timestamps.
+5. **Cost Monitor** — Gemini calls/day, actual INR cost/extraction, daily spend, and highest job cost. Values are stored as paise and rendered as INR. Platform rows include `jobId`, tenant/store/user context, destination, source, token counts, failure status/error code, retry-after seconds when present, and Firestore `createdAt` timestamps. If the standalone cost-panel compatibility load fails, the panel logs bounded `extraction_cost_monitor_load_failed` diagnostics and shows fixed "Cost metrics unavailable" copy instead of reporting zero extraction calls.
 6. **Ops Alerts** — Scheduler-driven alerts for stuck jobs, failure spikes, and quality drops
 
 ---
@@ -85,4 +85,4 @@ No separate `aiUsageLog` collection is read by this dashboard. Current extractio
 
 ---
 
-_Last Updated: June 2, 2026_
+_Last Updated: July 5, 2026_

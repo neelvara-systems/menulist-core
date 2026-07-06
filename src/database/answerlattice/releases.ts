@@ -19,6 +19,7 @@ import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattice/compiledSourceVersionsClient';
+import { normalizeAnswerlatticeReleaseId } from '@lib/answerlattice/releaseIdBoundary';
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { AnswerlatticeRelease } from "@type/answerlattice";
@@ -67,7 +68,11 @@ const getReleaseActivationAuditState = (error: unknown) => {
 };
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
-const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
+const getDocRef = (docId: string) => {
+    const normalizedDocId = normalizeAnswerlatticeReleaseId(docId);
+    if (!normalizedDocId) throw new Error('Invalid Answerlattice release id');
+    return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);
+};
 
 /**
  * Get all releases for a tenant+store, ordered by version descending
@@ -122,7 +127,10 @@ export const getLatestRelease = async (tId: number, sId: number) => {
 export const getReleaseById = async (releaseId: string) => {
     return await apiCallComposer(
         async () => {
-            const docSnap = await getDoc(getDocRef(releaseId));
+            const normalizedReleaseId = normalizeAnswerlatticeReleaseId(releaseId);
+            if (!normalizedReleaseId) return null;
+
+            const docSnap = await getDoc(getDocRef(normalizedReleaseId));
             if (docSnap.exists()) {
                 return { ...docSnap.data(), id: docSnap.id } as AnswerlatticeRelease;
             }
@@ -170,17 +178,20 @@ export const addRelease = async (data: Omit<AnswerlatticeRelease, 'id'>) => {
  * Drift evaluation is advisory — it flags answers but does not block activation.
  */
 export const activateRelease = async (releaseId: string) => {
+    const normalizedReleaseId = normalizeAnswerlatticeReleaseId(releaseId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedReleaseId) throw new Error('Invalid Answerlattice release id');
+
             // 1. Fetch release to get entityChanges + version context
-            const releaseSnap = await getDoc(getDocRef(releaseId));
+            const releaseSnap = await getDoc(getDocRef(normalizedReleaseId));
             if (!releaseSnap.exists()) {
-                throw new Error(`Release ${releaseId} not found`);
+                throw new Error(`Release ${normalizedReleaseId} not found`);
             }
             const release = { ...releaseSnap.data(), id: releaseSnap.id } as AnswerlatticeRelease;
 
             // 2. Mark as processing
-            await setDoc(getDocRef(releaseId), await answerlatticeRequestBodyComposer({ status: 'processing' }), { merge: true });
+            await setDoc(getDocRef(normalizedReleaseId), await answerlatticeRequestBodyComposer({ status: 'processing' }), { merge: true });
 
             // 3. Run drift evaluation with release context (Class A: version drift)
             //    Advisory — flags drifted answers but does not block activation
@@ -201,7 +212,7 @@ export const activateRelease = async (releaseId: string) => {
                         sId: release.sId,
                         action: 'drift_evaluation_failed',
                         entityType: 'release',
-                        entityId: releaseId,
+                        entityId: normalizedReleaseId,
                         previousState: null,
                         newState: getReleaseActivationAuditState(error),
                         performedBy: 'system:release_activation',
@@ -209,7 +220,7 @@ export const activateRelease = async (releaseId: string) => {
                     });
                 } catch (auditLogError) {
                     logRuntimeFailure('answerlattice_release_drift_evaluation_audit_log_failed', auditLogError, {
-                        ...getBoundedRuntimeStringContext('releaseId', releaseId),
+                        ...getBoundedRuntimeStringContext('releaseId', normalizedReleaseId),
                         ...getBoundedRuntimeStringContext('tenantId', release.tId),
                         ...getBoundedRuntimeStringContext('storeId', release.sId),
                     });
@@ -218,15 +229,15 @@ export const activateRelease = async (releaseId: string) => {
 
             // 4. Activate
             const composedData = await answerlatticeRequestBodyComposer({ status: 'active' });
-            await setDoc(getDocRef(releaseId), composedData, { merge: true });
+            await setDoc(getDocRef(normalizedReleaseId), composedData, { merge: true });
             await markAnswerlatticeCompiledContextSourceChanged('releases', release.tId, release.sId, {
                 reason: 'release_activate',
-                sourceId: releaseId,
+                sourceId: normalizedReleaseId,
                 sourceType: COLLECTION,
             });
             return composedData;
         },
-        { releaseId },
+        { releaseId: normalizedReleaseId },
         "activateRelease"
     );
 };
@@ -235,13 +246,16 @@ export const activateRelease = async (releaseId: string) => {
  * Mark release as processing (drift engine is evaluating)
  */
 export const markReleaseProcessing = async (releaseId: string) => {
+    const normalizedReleaseId = normalizeAnswerlatticeReleaseId(releaseId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedReleaseId) throw new Error('Invalid Answerlattice release id');
+
             const composedData = await answerlatticeRequestBodyComposer({ status: 'processing' });
-            await setDoc(getDocRef(releaseId), composedData, { merge: true });
+            await setDoc(getDocRef(normalizedReleaseId), composedData, { merge: true });
             return composedData;
         },
-        { releaseId },
+        { releaseId: normalizedReleaseId },
         "markReleaseProcessing"
     );
 };

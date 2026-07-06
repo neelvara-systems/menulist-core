@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { type CSSProperties, type MouseEvent, useEffect, useRef, useState } from 'react';
 import {
@@ -98,43 +99,6 @@ function getDesktopStoryBounds(section: HTMLElement) {
     start: pinNormalTop - stickyTop,
     end: sectionBottom - window.innerHeight,
   };
-}
-
-function BusinessHealthPreview() {
-  const t = useTranslations('Website.BusinessHealthFeature');
-
-  return (
-    <div className="ws-business-health-feature-preview" aria-label={t('previewLabel')} role="group">
-      <div className="ws-business-health-feature-preview__bar">
-        <span>{t('previewMeta')}</span>
-        <span>{t('previewDate')}</span>
-      </div>
-      <div className="ws-business-health-feature-preview__status">
-        <div>
-          <span>{t('previewStatusLabel')}</span>
-          <strong>{t('previewStatus')}</strong>
-        </div>
-        <span className="ws-business-health-feature-preview__badge">
-          <LuCheckCircle2 size={15} />
-          {t('previewBadge')}
-        </span>
-      </div>
-      <p>{t('previewBody')}</p>
-      <div className="ws-business-health-feature-preview__metrics">
-        {[0, 1, 2].map((index) => (
-          <div key={index}>
-            <span>{t(`previewMetric${index}Label`)}</span>
-            <strong>{t(`previewMetric${index}Value`)}</strong>
-          </div>
-        ))}
-      </div>
-      <div className="ws-business-health-feature-preview__answer">
-        <span>{t('previewQuestionLabel')}</span>
-        <p>{t('previewQuestion')}</p>
-        <strong>{t('previewAnswer')}</strong>
-      </div>
-    </div>
-  );
 }
 
 type BusinessHealthStoryNavProps = {
@@ -407,7 +371,17 @@ export default function BusinessHealthFeaturePage() {
             </div>
           </AnimateOnScroll>
           <AnimateOnScroll preset="media" delay={0.1} className="ws-business-health-feature-hero__visual">
-            <BusinessHealthPreview />
+            <figure className="ws-business-health-feature-product-frame">
+              <Image
+                src="/images/website/product-proof/business-health-stable-check.webp"
+                alt={t('heroImageAlt')}
+                width={1280}
+                height={900}
+                sizes="(min-width: 1180px) 620px, (min-width: 768px) 52vw, 100vw"
+                priority
+                unoptimized
+              />
+            </figure>
           </AnimateOnScroll>
         </div>
       </section>

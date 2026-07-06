@@ -399,6 +399,14 @@ function verifyPublicMenuApiSourceOfTruth() {
   assertIncludes(route, 'projectData.menuVersion', 'Public menu API menu version');
   assertIncludes(route, 'generatedAt', 'Public menu API response contract');
   assertIncludes(route, 'validatePublicApiKey(apiKey)', 'Public menu API live API-key validation');
+  assertIncludes(route, 'const tenantDocumentId = normalizePublicApiDocumentId(tenantId);', 'Public menu API tenant document-ID normalization');
+  assertIncludes(route, 'const storeDocumentId = normalizePublicApiDocumentId(storeId);', 'Public menu API store document-ID normalization');
+  assertIncludes(route, 'const tenantNumericId = normalizeMenuListPublicApiNumericId(tenantDocumentId);', 'Public menu API tenant numeric response guard');
+  assertIncludes(route, 'const storeNumericId = normalizeMenuListPublicApiNumericId(storeDocumentId);', 'Public menu API store numeric response guard');
+  assertIncludes(route, '.doc(tenantDocumentId)', 'Public menu API normalized tenant project ref');
+  assertIncludes(route, '.collection(storeDocumentId)', 'Public menu API normalized store project ref');
+  assertIncludes(route, '.doc(`projects_${storeDocumentId}`)', 'Public menu API normalized projects summary ref');
+  assertIncludes(route, 'const projectDocumentId = normalizePublicApiDocumentId(projectId);', 'Public menu API project document-ID normalization');
   assertNotIncludes(route, 'cacheTtlMs', 'Public menu API validation cache');
   assertIncludes(route, "logSecurityFailure('public_api_menu_route_failed'", 'Public menu API bounded route diagnostics');
   assertIncludes(route, 'const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);', 'Public menu API hashed rate-limit key segment');
@@ -412,17 +420,24 @@ function verifyPublicMenuApiSourceOfTruth() {
   assertNotIncludes(route, ".where('isDefault', '==', true)", 'Public menu API project lookup');
 
   assertIncludes(businessRoute, 'validatePublicApiKey(apiKey)', 'Public business API live API-key validation');
+  assertIncludes(businessRoute, 'const storeNumericId = normalizeMenuListPublicApiNumericId(storeId);', 'Public business API store numeric response guard');
+  assertIncludes(businessRoute, 'const storeDocumentId = String(storeNumericId);', 'Public business API normalized store diagnostic/logging ID');
   assertNotIncludes(businessRoute, 'cacheTtlMs', 'Public business API validation cache');
   assertIncludes(businessRoute, "logSecurityFailure('public_api_business_route_failed'", 'Public business API bounded route diagnostics');
   assertIncludes(businessRoute, 'const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);', 'Public business API hashed rate-limit key segment');
   assertIncludes(businessRoute, 'key: `public-api:${apiKeyRateLimitId}`', 'Public business API rate-limit key does not include raw API key');
   assertIncludes(businessRoute, 'buildPullApiResponseHeaders(etag)', 'Public business API private cache headers');
   assertIncludes(businessRoute, "getBoundedSecurityStringContext('apiKey', apiKey)", 'Public business API bounded API-key context');
-  assertIncludes(businessRoute, "getBoundedSecurityStringContext('storeId', storeId)", 'Public business API bounded store context');
+  assertIncludes(businessRoute, "getBoundedSecurityStringContext('storeId', storeDocumentId)", 'Public business API bounded store context');
   assertNotIncludes(businessRoute, "secureError('[Public API] Business endpoint error'", 'Public business API raw route diagnostics');
   assertNotIncludes(businessRoute, 'key: `public-api:${apiKey}`', 'Public business API raw API-key rate-limit key');
+  assertNotIncludes(businessRoute, 'Number(storeId)', 'Public business API raw store ID numeric coercion');
   assertNotIncludes(businessRoute, "'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300'", 'Public business API shared cache headers');
 
+  assertIncludes(publicApiAuth, 'export function normalizePublicApiDocumentId(value: unknown): string | null', 'Public pull API document-ID normalizer');
+  assertIncludes(publicApiAuth, 'export function normalizeMenuListPublicApiNumericId(value: unknown): number | null', 'Public pull API numeric ID normalizer');
+  assertIncludes(publicApiAuth, 'const tenantNumericId = normalizeMenuListPublicApiNumericId(tenantId);', 'Public pull API tenant numeric guard');
+  assertIncludes(publicApiAuth, 'const tenantDocumentId = String(tenantNumericId);', 'Public pull API tenant ref from numeric guard');
   assertIncludes(publicApiAuth, 'PULL_API_RESPONSE_CACHE_CONTROL = "private, max-age=60, stale-while-revalidate=300"', 'Public pull API private response cache control');
   assertIncludes(publicApiAuth, 'PULL_API_RESPONSE_VARY = "X-API-Key"', 'Public pull API API-key vary header');
   assertIncludes(publicApiAuth, 'buildPullApiResponseHeaders', 'Public pull API shared response header helper');
@@ -433,6 +448,7 @@ function verifyPublicMenuApiSourceOfTruth() {
   assertNotIncludes(publicApiAuth, 'secureLog(`[Public API] ${endpoint}`', 'Public pull API request logging raw dynamic event');
   assertNotIncludes(publicApiAuth, 'userAgent: userAgent.slice', 'Public pull API request logging raw user-agent');
   assertNotIncludes(publicApiAuth, '        storeId,\n        ip,', 'Public pull API request logging raw store/IP context');
+  assertNotIncludes(publicApiAuth, '.doc(String(tenantId))', 'Public pull API raw tenant document ref');
 }
 
 function verifyPublicCreateMenuRoutePrivacy() {
@@ -453,7 +469,16 @@ function verifyPublicCreateMenuRoutePrivacy() {
 
   assertIncludes(claimRoute, 'const userRateLimitHash = hashPublicRateLimitValue(userId);', 'Public create-menu claim hashed user rate-limit segment');
   assertIncludes(claimRoute, 'key: `public-menu-claim:${userRateLimitHash}`', 'Public create-menu claim hashed rate-limit key');
+  assertIncludes(claimRoute, 'function normalizePublicMenuClaimNumericDocumentId(', 'Public create-menu claim target document-ID normalizer');
+  assertIncludes(claimRoute, 'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId', 'Public create-menu claim positive numeric target ID guard');
+  assertIncludes(claimRoute, 'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantDocumentId);', 'Public create-menu claim normalized tenant ref');
+  assertIncludes(claimRoute, 'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);', 'Public create-menu claim normalized store ref');
+  assertIncludes(claimRoute, '.doc(tenantDocumentId)', 'Public create-menu claim normalized project tenant ref');
+  assertIncludes(claimRoute, '.collection(storeDocumentId)', 'Public create-menu claim normalized project store ref');
   assertNotIncludes(claimRoute, 'key: `public-menu-claim:${userId}`', 'Public create-menu claim raw user rate-limit key');
+  assertNotIncludes(claimRoute, 'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(tenantId));', 'Public create-menu claim raw tenant document ref');
+  assertNotIncludes(claimRoute, 'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));', 'Public create-menu claim raw store document ref');
+  assertNotIncludes(claimRoute, 'const projectCollectionPath = `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`;', 'Public create-menu claim raw project collection path');
 }
 
 function verifyHoursDoNotInventOpenState() {
@@ -551,6 +576,10 @@ function verifyDomainOwnershipComparisonIsTypeSafe() {
 
 function verifyVercelDomainPathSegmentsAreEncoded() {
   const helper = read('src/lib/domains/vercelDomains.ts');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+  const storesFirebase = read('__docs__/stores-management/stores-management_firebase.md');
+  const urlRoutingFirebase = read('__docs__/url-routing-architecture/url-routing-architecture_firebase.md');
 
   assertIncludes(helper, 'function encodeVercelPathSegment', 'Vercel domain helper path-segment encoder');
   assertIncludes(helper, 'return encodeURIComponent(normalized);', 'Vercel domain helper URL-encodes path segments');
@@ -561,13 +590,31 @@ function verifyVercelDomainPathSegmentsAreEncoded() {
   assertIncludes(helper, 'signal: controller.signal', 'Vercel domain helper timeout signal');
   assertIncludes(helper, 'clearTimeout(timeout)', 'Vercel domain helper timeout cleanup');
   assertIncludes(helper, 'readJsonResponseWithLimit<T>(response, VERCEL_DOMAIN_RESPONSE_JSON_MAX_BYTES)', 'Vercel domain helper bounded JSON parsing');
+  assertIncludes(helper, 'VERCEL_DOMAIN_PROVIDER_RESPONSE_PARSE_FAILED', 'Vercel domain helper fixed response-parse diagnostic code');
+  assertIncludes(helper, 'readVercelDomainResponseData<T>(response, path, options)', 'Vercel domain helper uses guarded response parser');
+  assertIncludes(helper, "secureError(\n            '[Vercel Domain] Provider response parse failed'", 'Vercel domain helper logs bounded provider response parse failures');
+  assertIncludes(helper, 'getVercelProviderPathContext(path, options, response)', 'Vercel domain helper bounded provider response parse context');
+  assertIncludes(helper, 'pathLength: path.length', 'Vercel domain helper records path length only');
+  assertIncludes(helper, 'pathPresent: path.trim().length > 0', 'Vercel domain helper records path presence only');
+  assertIncludes(helper, 'responseStatus: response.status', 'Vercel domain helper records provider response status');
   assertIncludes(helper, "redirect: 'manual',", 'Vercel domain helper manual redirect boundary');
   assertIncludes(helper, '`/v10/projects/${encodeVercelPathSegment(getVercelDomainProjectId())}/domains`', 'Vercel add-domain project path encoding');
   assertIncludes(helper, '`/v6/domains/${encodeVercelPathSegment(domain)}/config`', 'Vercel domain config path encoding');
   assertIncludes(helper, '`/v9/projects/${encodeVercelPathSegment(getVercelDomainProjectId())}/domains/${encodeVercelPathSegment(domain)}`', 'Vercel remove-domain path encoding');
   assertNotIncludes(helper, 'response.json().catch(() => ({} as T))', 'Vercel domain helper raw JSON parsing');
+  assertNotIncludes(helper, 'readJsonResponseWithLimit<T>(response, VERCEL_DOMAIN_RESPONSE_JSON_MAX_BYTES).catch(() => ({} as T))', 'Vercel domain helper silent bounded parser fallback');
   assertNotIncludes(helper, '`/v6/domains/${domain}/config`', 'Vercel domain config raw path interpolation');
   assertNotIncludes(helper, '`/v9/projects/${getVercelDomainProjectId()}/domains/${domain}`', 'Vercel remove-domain raw path interpolation');
+  [
+    [productionAudit, 'production audit'],
+    [changelog, 'changelog'],
+    [storesFirebase, 'Stores Management Firebase docs'],
+    [urlRoutingFirebase, 'URL routing Firebase docs'],
+  ].forEach(([content, label]) => {
+    assertIncludes(content, 'Vercel domain provider response', `${label} documents Vercel provider response parse boundary`);
+    assertIncludes(content, 'vercel_domain_provider_response_parse_failed', `${label} documents Vercel provider response parse diagnostic`);
+    assertIncludes(content, 'path presence/length', `${label} documents bounded provider path metadata`);
+  });
 }
 
 function verifyCustomDomainDocsMatchVerificationBoundary() {
@@ -624,7 +671,7 @@ function verifyClaimAccountStoreEmailInvalidatesPublicCache() {
   assertIncludes(route, 'transaction.update(storeRef, { email: lowerEmail, modifiedOn: now });', 'Claim account email-password store email write');
   assertIncludes(route, 'transaction.update(storeRef, { email: googleEmail, modifiedOn: now });', 'Claim account Google store email write');
 
-  const invalidationCalls = route.match(/await revalidateMenuCache\(claimedMessagingUser\.storeId,\s*\{\s*tId: claimedMessagingUser\.tenantId\s*\}\);/g) || [];
+  const invalidationCalls = route.match(/await revalidateMenuCache\(claimScope\.storeId,\s*\{\s*tId: claimScope\.tenantId\s*\}\);/g) || [];
   assert(invalidationCalls.length >= 2, 'Claim account store email writes must invalidate public menu and OBP cache');
 }
 
@@ -673,12 +720,30 @@ function verifyPublicStoreLookupUsesDenormalizedTenantBlockState() {
 
   assertIncludes(helper, 'if (isPlatformEntityBlocked(store)) return true;', 'Public store lookup direct block guard');
   assertIncludes(helper, 'if (store?.tenantBlocked === false) return false;', 'Public store lookup denormalized tenant-block guard');
-  assertIncludes(helper, 'const tenantSnap = await buildTenantDocRef(tenantId).get();', 'Public store lookup legacy tenant-block fallback');
+  assertIncludes(helper, "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';", 'Public store lookup shared Firestore document ID guard');
+  assertIncludes(helper, 'const normalizeClientStoreLookupScopeDocumentId = (value: unknown): ClientStoreLookupScopeDocumentId | null => {', 'Public store lookup scope document ID normalizer');
+  assertIncludes(helper, 'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId', 'Public store lookup exact positive numeric scope guard');
+  assertIncludes(helper, 'const tenantScope = normalizeClientStoreLookupScopeDocumentId(tenantId);', 'Public store lookup normalizes tenant-block fallback scope');
+  assertIncludes(helper, 'if (!tenantScope) return true;', 'Public store lookup fails closed for malformed tenant-block fallback scope');
+  assertIncludes(helper, 'const tenantSnap = await buildTenantDocRef(tenantScope.documentId).get();', 'Public store lookup legacy tenant-block fallback uses normalized scope');
+  assertIncludes(helper, 'const storeScope = normalizeClientStoreLookupScopeDocumentId(storeId);', 'Public store-id lookup normalizes store document ID');
+  assertIncludes(helper, 'const snap = await buildStoreCollection().doc(storeScope.documentId).get();', 'Public store-id lookup reads normalized store document ID');
+  assertNotIncludes(helper, '.doc(String(tenantId))', 'Public store lookup must not read tenant-block fallback through raw tenant IDs');
+  assertNotIncludes(helper, "const normalizedStoreId = String(storeId || '').trim();", 'Public store-id lookup must not use loose numeric string normalization');
+  assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'Public client store lookup scope document ID boundary checkpoint', 'Production audit documents public client store lookup scope boundary');
+  assertIncludes(read('__docs__/CHANGELOG.md'), 'Public Client Store Lookup Scope Document ID Boundary', 'Changelog documents public client store lookup scope boundary');
+  assertIncludes(read('__docs__/changelog.md'), 'Public Client Store Lookup Scope Document ID Boundary', 'Lowercase changelog documents public client store lookup scope boundary');
+  assertIncludes(read('__docs__/official-business-page/official-business-page_firebase.md'), 'Public client store lookup scope document ID boundary', 'OBP Firebase docs document public client store lookup scope boundary');
+  assertIncludes(read('__docs__/client-menu/client-menu_firebase.md'), 'Public client store lookup scope document ID boundary', 'Client menu Firebase docs document public client store lookup scope boundary');
+  assertIncludes(read('__docs__/customer-app/customer-app_firebase.md'), 'Public client store lookup scope document ID boundary', 'Customer app Firebase docs document public client store lookup scope boundary');
   assertIncludes(route, 'TENANT_STORE_BLOCK_BATCH_LIMIT = 450', 'Platform tenant-block store sync batch limit');
   assertIncludes(route, "const TENANT_STORE_SCOPE_FIELDS = ['tenantId', 'tId'] as const;", 'Platform tenant-block sync checks both tenant scope fields');
   assertIncludes(route, 'TENANT_STORE_SCOPE_FIELDS.map((field) => db', 'Platform tenant-block direct store query covers tenantId and tId fields');
-  assertIncludes(route, "String(store?.tId ?? store?.tenantId ?? '') === String(tenantId)", 'Platform tenant-block summary lookup accepts tId and tenantId');
-  assertIncludes(route, 'batch.update(db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)), {', 'Platform tenant-block sync updates existing stores only');
+  assertIncludes(route, "String(store?.tId ?? store?.tenantId ?? '') === tenantScope.documentId", 'Platform tenant-block summary lookup accepts normalized tId and tenantId');
+  assertIncludes(route, "normalizePlatformEntityBlockTargetDocumentId('store', doc.id)", 'Platform tenant-block direct store query normalizes store document IDs');
+  assertIncludes(route, "normalizePlatformEntityBlockTargetDocumentId('store', storeId)", 'Platform tenant-block sync normalizes store IDs before mirror writes');
+  assertIncludes(route, 'batch.update(db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId), {', 'Platform tenant-block sync updates normalized existing stores only');
+  assertNotIncludes(route, 'batch.update(db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)), {', 'Platform tenant-block sync must not write through raw store IDs');
   assertIncludes(route, 'tenantBlockedSyncedAt: admin.firestore.FieldValue.serverTimestamp()', 'Platform tenant-block sync timestamp');
   assertIncludes(backfill, "const TENANT_STORE_SCOPE_FIELDS = ['tenantId', 'tId'] as const;", 'Tenant-block backfill checks both tenant scope fields');
   assertIncludes(backfill, 'for (const field of TENANT_STORE_SCOPE_FIELDS)', 'Tenant-block backfill direct store query covers tenantId and tId fields');
@@ -770,6 +835,7 @@ function verifyFunctionsPublicCacheRevalidationLoggingIsBounded() {
 
 function verifyMenuRevalidationRouteLoggingIsBounded() {
   const route = read('src/app/api/revalidate/menu/route.ts');
+  const rateLimitConfigs = read('src/lib/rateLimit/configs.ts');
   const clientMenuFirebase = read('__docs__/client-menu/client-menu_firebase.md');
 
   assertIncludes(route, 'logRuntimeFailure', 'Menu revalidation route bounded runtime failure logging');
@@ -782,10 +848,27 @@ function verifyMenuRevalidationRouteLoggingIsBounded() {
   assertIncludes(route, 'function getStoreIdFromCacheTag', 'Menu revalidation route explicit tag store-id parser');
   assertIncludes(route, 'function deriveSingleStoreIdFromTags', 'Menu revalidation route single-store explicit tag derivation');
   assertIncludes(route, 'requestedStoreId = deriveSingleStoreIdFromTags(tags);', 'Menu revalidation route must clear assistant packet cache for single-store explicit tag arrays');
+  assertIncludes(rateLimitConfigs, 'MENU_CACHE_REVALIDATION', 'Menu revalidation route-specific rate-limit profile');
+  assertIncludes(route, "const MENU_REVALIDATE_RATE_LIMIT_KEY = 'menu-cache-revalidate';", 'Menu revalidation route stable limiter namespace');
+  assertIncludes(route, 'function getMenuRevalidationRateLimitIdentity', 'Menu revalidation route bounded limiter identity helper');
+  assertIncludes(route, 'async function applyMenuRevalidationRateLimit', 'Menu revalidation route limiter helper');
+  assertIncludes(route, "getRateLimitForFeature('MENU_CACHE_REVALIDATION')", 'Menu revalidation route limiter profile use');
+  assertIncludes(route, 'hashPublicRateLimitValue(', 'Menu revalidation route hashed limiter key material');
+  assertIncludes(route, 'key: `${MENU_REVALIDATE_RATE_LIMIT_KEY}:${authMode}:${sourceRateLimitHash}`', 'Menu revalidation route hashed limiter key');
+  assertIncludes(route, "logger.security('Rate Limit Exceeded - Menu Cache Revalidation'", 'Menu revalidation route bounded rate-limit security log');
+  assertOrder(
+    route,
+    'const rateLimitResponse = await applyMenuRevalidationRateLimit(request, session, authMode);',
+    'const bodyResult = await readBoundedJsonBody(request, MENU_REVALIDATE_MAX_BODY_BYTES',
+    'Menu revalidation route rate limit before body parsing',
+  );
   assertIncludes(clientMenuFirebase, 'Explicit single-store tag arrays derive the same store id before clearing the Owner Business Assistant packet cache.', 'Client Menu Firebase explicit tag assistant-cache boundary');
   assertIncludes(clientMenuFirebase, 'Live Digital Screens content-version touches stay in the caller helpers after public-truth writes.', 'Client Menu Firebase live screen-touch boundary');
+  assertIncludes(clientMenuFirebase, 'Menu cache revalidation rate-limit boundary', 'Client Menu Firebase revalidation rate-limit boundary');
   assertNotIncludes(route, "secureError('[Menu Cache] Revalidation failed'", 'Menu revalidation route raw secure error');
   assertNotIncludes(route, 'secureError(', 'Menu revalidation route must not pass raw exceptions to secureError');
+  assertNotIncludes(route, 'key: `menu-cache-revalidate:${session', 'Menu revalidation route raw session limiter key');
+  assertNotIncludes(route, 'key: `menu-cache-revalidate:${request', 'Menu revalidation route raw request limiter key');
 }
 
 function verifyPublicTruthWritesInvalidateScreenData() {
@@ -811,10 +894,10 @@ function verifyPublicTruthWritesInvalidateScreenData() {
     ['src/lib/billing/subscriptionEntitlementSync.ts', "revalidateTag('screen-data')", 'touchDigitalScreenContentVersionForStoreServer(storeId, \'subscriptionEntitlementSync\')'],
     ['src/app/api/store/temp-status/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(storeId, 'storeTempStatus')"],
     ['src/app/api/admin/subdomains/rename/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(storeIdStr, 'adminSubdomainRename')"],
-    ['src/app/api/outlets/policy/route.ts', 'revalidateTag("screen-data")', 'touchDigitalScreenContentVersionForStoreServer(storeId, "outletPolicy")'],
+    ['src/app/api/outlets/policy/route.ts', 'revalidateTag("screen-data")', 'touchDigitalScreenContentVersionForStoreServer(storeDocumentId, "outletPolicy")'],
     ['src/app/api/outlets/create/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(result.newStoreId, 'outletCreate')"],
     ['src/app/api/outlets/rename/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(outletStoreIdStr, 'outletRename')"],
-    ['src/app/api/outlets/deactivate/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(outletStoreId, 'outletDeactivate')"],
+    ['src/app/api/outlets/deactivate/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(outletStoreDocumentId, 'outletDeactivate')"],
     ['src/app/api/projects/outlet-save/route.ts', 'revalidateTag("screen-data")', 'touchDigitalScreenContentVersionForStoreServer(outletStoreId, "linkedOutletSave")'],
     ['src/app/api/public/create-menu/claim/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim')"],
     ['src/app/api/platform/entity-blocks/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(storeId, 'platformEntityBlocks')"],
@@ -1333,18 +1416,92 @@ function verifyPublicFaqSchemaFreshnessCopyIsBounded() {
 
 function verifyPublicMenuAnalyticsLoggingIsBounded() {
   const component = read('src/components/templates/website/clientWebsite/AnalyticsContext.tsx');
+  const googleAnalytics = read('src/components/templates/website/clientWebsite/GoogleAnalytics.tsx');
+  const facebookPixel = read('src/components/templates/website/clientWebsite/FacebookPixel.tsx');
   const menuPage = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
+  const analyticsUnified = read('src/lib/analytics/unified.ts');
   const diagnostics = read('src/lib/analytics/analyticsDiagnostics.ts');
   const sourceAttribution = read('src/lib/analytics/sourceAttribution.ts');
   const trackBeforeNavigate = read('src/lib/analytics/trackBeforeNavigate.ts');
   const obpMenuCta = read('src/app/client/obp/OBPMenuCTA.tsx');
   const pdpModal = read('src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx');
+  const obpAnalyticsAggregation = read('functions/src/analytics/obpAnalyticsAggregation.ts');
   const analyticsImplDoc = read('__docs__/client-menu/analytics-tracking/_impl.md');
   const analyticsFirebaseDoc = read('__docs__/client-menu/analytics-tracking/analytics-tracking_firebase.md');
   const obpImplDoc = read('__docs__/official-business-page/official-business-page_impl.md');
   const obpFirebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/CHANGELOG.md');
+
+  [
+    'GA4_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/',
+    'getSafeGoogleAnalyticsId',
+    'String(value || \'\').trim().toUpperCase()',
+    'const gaId = getSafeGoogleAnalyticsId(storeDetails?.analytics?.googleAnalyticsId)',
+  ].forEach((token) => assertIncludes(googleAnalytics, token, 'Customer menu Google Analytics ID boundary'));
+  assertNotIncludes(googleAnalytics, 'const gaId = storeDetails?.analytics?.googleAnalyticsId', 'Customer menu Google Analytics must not interpolate raw owner ID');
+
+  [
+    'META_PIXEL_ID_PATTERN = /^\\d{5,32}$/',
+    'getSafeMetaPixelId',
+    'String(value || \'\').trim()',
+    'const pixelId = getSafeMetaPixelId(storeDetails?.analytics?.facebookPixelId)',
+  ].forEach((token) => assertIncludes(facebookPixel, token, 'Customer menu Meta Pixel ID boundary'));
+  assertNotIncludes(facebookPixel, 'const pixelId = storeDetails?.analytics?.facebookPixelId', 'Customer menu Meta Pixel must not interpolate raw owner ID');
+
+  assertIncludes(analyticsImplDoc, 'Customer menu third-party analytics ID boundary', 'Analytics implementation third-party ID boundary');
+  assertIncludes(analyticsFirebaseDoc, 'External pixel ID validation rule', 'Analytics Firebase third-party ID boundary');
+  assertIncludes(audit, 'Customer menu third-party analytics ID boundary checkpoint', 'Production audit customer menu third-party analytics ID checkpoint');
+  assertIncludes(changelog, 'Customer Menu Third-Party Analytics ID Boundary', 'Changelog customer menu third-party analytics ID checkpoint');
+
+  [
+    'const utmSource = normalizeAnalyticsMapKey(data.utm_source);',
+    'if (utmSource) updateData[`viewsBySource.${utmSource}`] = 1;',
+    'const utmMedium = normalizeAnalyticsMapKey(data.utm_medium);',
+    'if (utmMedium) updateData[`viewsByMedium.${utmMedium}`] = 1;',
+    'const utmCampaign = normalizeAnalyticsMapKey(data.utm_campaign);',
+    'if (utmCampaign) updateData[`viewsByCampaign.${utmCampaign}`] = 1;',
+    'const obpUtmSource = normalizeAnalyticsMapKey(data.utm_source);',
+    'if (obpUtmSource) updateData[`viewsBySource.${obpUtmSource}`] = 1;',
+    'const obpUtmMedium = normalizeAnalyticsMapKey(data.utm_medium);',
+    'if (obpUtmMedium) updateData[`viewsByMedium.${obpUtmMedium}`] = 1;',
+    'const obpUtmCampaign = normalizeAnalyticsMapKey(data.utm_campaign);',
+    'if (obpUtmCampaign) updateData[`viewsByCampaign.${obpUtmCampaign}`] = 1;',
+  ].forEach((token) => assertIncludes(analyticsUnified, token, 'Customer menu UTM map-key boundary'));
+  [
+    'updateData[`viewsBySource.${data.utm_source}`] = 1',
+    'updateData[`viewsByMedium.${data.utm_medium}`] = 1',
+    'updateData[`viewsByCampaign.${data.utm_campaign}`] = 1',
+  ].forEach((token) => assertNotIncludes(analyticsUnified, token, 'Customer menu UTM values must not become raw Firestore map-key suffixes'));
+  assertIncludes(analyticsImplDoc, 'Customer menu UTM map-key boundary', 'Analytics implementation UTM map-key boundary');
+  assertIncludes(analyticsFirebaseDoc, 'UTM map-key rule', 'Analytics Firebase UTM map-key boundary');
+  assertIncludes(obpImplDoc, 'normalized through the analytics map-key guard before becoming Firestore map-key suffixes', 'OBP implementation UTM map-key boundary');
+  assertIncludes(obpFirebaseDoc, 'each UTM value is normalized through the analytics map-key guard before it becomes a Firestore map-key suffix', 'OBP Firebase UTM map-key boundary');
+  assertIncludes(audit, 'Customer menu UTM map-key boundary checkpoint', 'Production audit customer menu UTM map-key checkpoint');
+  assertIncludes(changelog, 'Customer Menu UTM Map-Key Boundary', 'Changelog customer menu UTM map-key checkpoint');
+
+  [
+    'function normalizeOBPAnalyticsMapKey(value: string): string | null {',
+    ".replace(/[^a-z0-9_-]+/g, '_')",
+    'function assignOBPNumericMapValue(target: Record<string, number>, key: string, value: unknown): void {',
+    'target[normalizedKey] = (target[normalizedKey] || 0) + numeric;',
+    'assignOBPNumericMapValue(result, key, value);',
+    'assignOBPNumericMapValue(result, key.slice(prefix.length), value);',
+    'const currentMap = readAnalyticsMap(currentDaily as Record<string, any>, field);',
+    'const previousMap = readAnalyticsMap(previousRow as Record<string, any>, field);',
+    'assignNestedPathUpdate(updates, `${target}.${normalizedKey}`, FieldValue.increment(delta));',
+    'assignNestedPathUpdate(updates, `lifetime.obpLanguageNames.${normalizedLanguage}`, name);',
+  ].forEach((token) => assertIncludes(obpAnalyticsAggregation, token, 'OBP aggregation map-key boundary'));
+  [
+    'result[key.slice(prefix.length)] = numeric;',
+    'assignNestedPathUpdate(updates, `${target}.${key}`, FieldValue.increment(delta));',
+    'assignNestedPathUpdate(updates, `lifetime.obpLanguageNames.${language}`, name);',
+  ].forEach((token) => assertNotIncludes(obpAnalyticsAggregation, token, 'OBP aggregation must not use raw recovered map keys as dotted field suffixes'));
+  assertIncludes(analyticsImplDoc, 'OBP aggregation map-key boundary', 'Analytics implementation OBP aggregation map-key boundary');
+  assertIncludes(obpImplDoc, 'OBP aggregation map-key boundary', 'OBP implementation aggregation map-key boundary');
+  assertIncludes(obpFirebaseDoc, 'OBP aggregation map-key guard', 'OBP Firebase aggregation map-key boundary');
+  assertIncludes(audit, 'OBP aggregation map-key boundary checkpoint', 'Production audit OBP aggregation map-key checkpoint');
+  assertIncludes(changelog, 'OBP Aggregation Map-Key Boundary', 'Changelog OBP aggregation map-key checkpoint');
 
   assertIncludes(diagnostics, 'logAnalyticsFailure', 'Public menu analytics diagnostics helper');
   assertIncludes(sourceAttribution, 'analytics_source_attribution_url_parse_failed', 'Analytics source attribution URL parse diagnostics');
@@ -1918,7 +2075,7 @@ function verifyMenuEditorDiagnosticsAreBounded() {
   assertIncludes(editor, 'menu_editor_project_public_content_metadata_update_rejected', 'Menu editor project public-content metadata rejected acknowledgement code');
   assertIncludes(editor, "import { getSafeUiErrorMessage } from \"@lib/errors/uiErrorMessages\";", 'Menu editor publish gate must sanitize owner-visible MCE messages');
   assertIncludes(editor, 'PUBLISH_GATE_FALLBACK_ERROR', 'Menu editor publish gate must define fixed fallback copy');
-  assertIncludes(editor, 'getSafeUiErrorMessage(error.message, PUBLISH_GATE_FALLBACK_ERROR)', 'Menu editor publish gate must not append raw MCE error messages');
+  assertIncludes(editor, 'getSafeUiErrorMessage(error.message, PUBLISH_GATE_FALLBACK_ERROR, { allowTrustedPlainText: true })', 'Menu editor publish gate must explicitly trust local MCE validation copy');
   assertIncludes(editItemModal, 'menu_editor_item_content_generation_failed', 'Menu editor item content generation diagnostics');
   assertIncludes(editCategoryModal, 'menu_editor_time_slot_preset_create_failed', 'Menu editor time-slot preset diagnostics');
   assertIncludes(editCategoryModal, 'assertTimeSlotPresetUpdateSucceeded(writeResult);', 'Menu editor time-slot preset creation must require explicit store-write acknowledgement');
@@ -2499,10 +2656,15 @@ function verifyProjectDefaultHandoffIsAtomic() {
 function verifyMenuChangeLogDiagnosticsAreBounded() {
   const menuChangeLogDal = read('src/database/menuChangeLog/index.ts');
   const diagnostics = read('src/database/menuChangeLog/menuChangeLogDiagnostics.ts');
+  const dataEditorFirebase = read('__docs__/projects/data-editor/data-editor_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assertIncludes(diagnostics, 'secureError', 'Menu change log diagnostics secure logging');
+  assertIncludes(diagnostics, 'secureLog', 'Menu change log bounded diagnostic logging');
   assertIncludes(diagnostics, 'getBoundedMenuChangeLogStringContext', 'Menu change log diagnostics bounded string context');
   assertIncludes(diagnostics, 'getMenuChangeLogEntryContext', 'Menu change log diagnostics bounded entry context');
+  assertIncludes(diagnostics, 'logMenuChangeLogDiagnostic', 'Menu change log normalized diagnostic logger');
   assertIncludes(diagnostics, 'logMenuChangeLogFailure', 'Menu change log diagnostics normalized failure logger');
   assertIncludes(diagnostics, 'oldValuePresent', 'Menu change log diagnostics old value presence only');
   assertIncludes(diagnostics, 'newValuePresent', 'Menu change log diagnostics new value presence only');
@@ -2511,13 +2673,21 @@ function verifyMenuChangeLogDiagnosticsAreBounded() {
   assertIncludes(diagnostics, 'sourceErrorCode: getMenuChangeLogErrorCode(error)', 'Menu change log diagnostics source error code');
   assertIncludes(diagnostics, 'sourceStatusCode: getMenuChangeLogErrorStatus(error)', 'Menu change log diagnostics source error status');
   assertIncludes(menuChangeLogDal, 'menu_change_log_tracking_failed', 'Menu change log tracking diagnostics');
+  assertIncludes(menuChangeLogDal, 'menu_change_log_session_missing', 'Menu change log no-session diagnostics');
   assertIncludes(menuChangeLogDal, 'menu_change_log_scoped_tracking_failed', 'Menu change log scoped tracking diagnostics');
+  assertIncludes(menuChangeLogDal, 'menu_change_log_scope_missing', 'Menu change log missing-scope diagnostics');
   assertIncludes(menuChangeLogDal, 'menu_change_log_write_failed', 'Menu change log write diagnostics');
   assertIncludes(menuChangeLogDal, 'menu_change_log_flush_session_failed', 'Menu change log flush session diagnostics');
+  assertIncludes(menuChangeLogDal, 'menu_change_log_flush_session_missing', 'Menu change log flush missing-session diagnostics');
   assertIncludes(menuChangeLogDal, 'getMenuChangeLogEntryContext(entry)', 'Menu change log bounded entry context usage');
   assertIncludes(menuChangeLogDal, 'void executeLogWrite(scope.tId, scope.sId, pending.entry);', 'Menu change log debounced write intentional non-blocking marker');
   assertIncludes(menuChangeLogDal, 'void getActiveSession().then(session => {', 'Menu change log flush session lookup intentional non-blocking marker');
+  assertIncludes(dataEditorFirebase, 'MOL no-session diagnostics update', 'Data Editor Firebase docs MOL no-session diagnostics note');
+  assertIncludes(productionAudit, 'MOL no-session diagnostics checkpoint', 'Production audit MOL no-session diagnostics checkpoint');
+  assertIncludes(changelog, 'MOL No-Session Diagnostics', 'Changelog MOL no-session diagnostics entry');
   assertNotIncludes(menuChangeLogDal, '\n            getActiveSession().then(session => {', 'Menu change log flush bare session promise');
+  assertNotIncludes(menuChangeLogDal, 'return; // Silent return - no session', 'Menu change log no-session silent return');
+  assertNotIncludes(menuChangeLogDal, 'return; // Silent return - no logging to avoid console spam', 'Menu change log feature-disabled stale silent comment');
   assertNotIncludes(menuChangeLogDal, 'console.error(', 'Menu change log direct error logging');
   assertNotIncludes(menuChangeLogDal, 'console.warn(', 'Menu change log direct warn logging');
   assertNotIncludes(menuChangeLogDal, 'console.log(', 'Menu change log direct log logging');
@@ -2878,7 +3048,7 @@ function verifyMultiOutletDiagnosticsAreBounded() {
   assertIncludes(projectsDal, 'return result.project;', 'Linked outlet publish must use guarded returned project');
   assertIncludes(outletPolicyRoute, 'outlet_policy_update_route_failed', 'Outlet policy route diagnostics');
   assertIncludes(outletRenameRoute, 'outlet_rename_route_failed', 'Outlet rename route diagnostics');
-  assertIncludes(outletRenameRoute, "getBoundedMultiOutletStringContext('outletStoreId', outletStoreId)", 'Outlet rename bounded outlet context');
+  assertIncludes(outletRenameRoute, "getBoundedMultiOutletStringContext('outletStoreId', outletStoreIdStr)", 'Outlet rename bounded outlet context');
   assertNotIncludes(awarenessHook, 'console.error(', 'Master update awareness direct error logging');
   assertNotIncludes(multiOutletDal, 'console.warn(', 'Multi-outlet DAL direct warn logging');
   assertNotIncludes(multiOutletDal, 'Silent fail', 'Multi-outlet DAL stale silent-failure comments');

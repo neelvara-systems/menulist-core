@@ -36,6 +36,7 @@ import {
     parseTicketResolutionResponse,
     TICKET_KNOWLEDGE_SYSTEM_PROMPT,
 } from './ticketKnowledgePrompt';
+import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -147,11 +148,11 @@ async function gatherTicketResolutionClusters(
 
     for (const doc of signalsSnap.docs) {
         const data = doc.data();
-        const entityId = data.entityId;
+        const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
         const meta = data.metadata || {};
 
         // Skip unresolved entity signals and signals without resolution content
-        if (!entityId || entityId === 'unresolved') continue;
+        if (!entityId) continue;
         if (!meta.resolutionMessages || !Array.isArray(meta.resolutionMessages)) continue;
 
         // Check resolution is substantive
@@ -253,7 +254,9 @@ async function callGeminiForExtraction(userPrompt: string): Promise<Answerlattic
 
 async function getEntityInfo(entityId: string): Promise<{ name: string; description: string; type: string } | null> {
     try {
-        const doc = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId).get();
+        const normalizedEntityId = normalizeAnswerlatticeResolvedFunctionEntityId(entityId);
+        if (!normalizedEntityId) return null;
+        const doc = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(normalizedEntityId).get();
         if (!doc.exists) return null;
         const data = doc.data();
         return {

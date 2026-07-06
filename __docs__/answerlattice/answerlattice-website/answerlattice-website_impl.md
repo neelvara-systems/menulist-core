@@ -459,9 +459,10 @@ Use-cases, install, resources, updates, and the homepage product/widget preview 
 
 Conversion analytics is client-side only:
 
-- `AnswerlatticeAnalytics.tsx` shows the shared public cookie banner first. It loads Plausible only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN` exists. It loads Google Analytics only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` exists.
+- `AnswerlatticeAnalytics.tsx` shows the shared public cookie banner first. It loads Plausible only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN` exists. It loads Google Analytics only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` exists and matches the GA4 `G-...` measurement-id shape.
+- Answerlattice website analytics URL minimization boundary: `answerlatticeAnalyticsUtils.ts` strips query strings and hash fragments from GA4 page-location, click-link, resource target, referrer, and entry-page URL fields before emission while bounding analytics text fields.
 - CTA/demo/pricing/onboarding events are emitted to Plausible as property-free custom events and to `window.gtag` when GA4 is configured.
-- Resource page/referrer events keep page, entry-page, referrer, UTM, slug, and target URL context for GA4 compatibility, but do not send a custom repo-generated `session_id` parameter to third-party website analytics.
+- Resource page/referrer events keep page, entry-page, referrer, UTM, slug, and target URL context for GA4 compatibility, but do not send raw full URLs or a custom repo-generated `session_id` parameter to third-party website analytics.
 - Public get-started completion analytics do not send API key material or token prefixes.
 - No event is written to Firestore, no API route is called, and no AnswerLattice Firebase cost is introduced by normal tracking.
 - `src/config/csp-allowlist.ts` allows Plausible and Google Analytics destinations so optional website analytics can report when enabled.
@@ -595,4 +596,5 @@ Conversion analytics is client-side only:
 | 2026-06-02 | 1.2.59 | Completed a launch-readiness wording audit across homepage, Get Started, FAQ, About, Pricing, ROI, metadata, and AI-built SaaS use-case copy so beta and near-launch founders are not excluded by existing-volume-only phrasing |
 | 2026-06-02 | 1.2.60 | Added the public brand/domain decision registry, claim guardrails, resource/comparison/developer content registries, comparison pages, developer docs, LLM/sitemap coverage, Canonica legacy public-host redirect, internal homepage rewrite wrapper, and public discovery verification checks while preserving the existing AnswerLattice runtime routes |
 | 2026-06-30 | 1.2.61 | Hardened the AnswerLattice public contact browser submission with same-origin credentials, no-store cache, manual redirect handling, an 8KB bounded response parser, accepted-shape validation, and bounded diagnostics without changing the contact API or Firebase write path |
+| 2026-07-05 | 1.2.63 | Added the Answerlattice onboarding user ID boundary on `/api/answerlattice/onboard` so `/get-started` cannot pass malformed session user IDs into user document refs while preserving the valid onboarding browser flow |
 | 2026-06-30 | 1.2.62 | Hardened the `/get-started` onboarding browser response boundary with same-origin credentials, no-store cache, manual redirect handling, a 16KB bounded response parser, onboarding-result shape validation, and bounded diagnostics before success state |

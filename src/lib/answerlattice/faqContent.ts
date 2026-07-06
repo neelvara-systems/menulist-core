@@ -8,6 +8,9 @@ import {
     type AnswerlatticeGeneratedFaq,
 } from '@type/answerlattice';
 import { z } from 'zod';
+import { normalizeAnswerlatticeFaqId } from './faqIdBoundary';
+import { normalizeAnswerlatticeCanonicalAnswerId, normalizeAnswerlatticeResolvedEntityIds } from './governanceIdBoundary';
+import { normalizeAnswerlatticeKbArticleId } from './kbArticleIdBoundary';
 import { normalizeContextKeys, normalizeSurfaceList } from './productSurfaceContent';
 
 export const ANSWERLATTICE_FAQ_PUBLIC_LIMIT = 80;
@@ -79,9 +82,18 @@ export function parseAnswerlatticeFaqSaveInput(
 ): Omit<AnswerlatticeFaq, 'id'> & { id?: string } {
     const parsed = FaqSaveSchema.parse(value);
     const status = normalizeFaqStatus(parsed.status);
+    const faqId = parsed.id ? normalizeAnswerlatticeFaqId(parsed.id) : null;
+    const articleId = parsed.articleId ? normalizeAnswerlatticeKbArticleId(parsed.articleId) : null;
+    const canonicalAnswerId = parsed.canonicalAnswerId ? normalizeAnswerlatticeCanonicalAnswerId(parsed.canonicalAnswerId) : null;
+    const generatedFromArticleId = parsed.generatedFromArticleId ? normalizeAnswerlatticeKbArticleId(parsed.generatedFromArticleId) : null;
+
+    if (parsed.id && !faqId) throw new Error('Invalid FAQ id');
+    if (parsed.articleId && !articleId) throw new Error('Invalid linked article id');
+    if (parsed.canonicalAnswerId && !canonicalAnswerId) throw new Error('Invalid canonical answer id');
+    if (parsed.generatedFromArticleId && !generatedFromArticleId) throw new Error('Invalid generated-from article id');
 
     return {
-        ...(parsed.id ? { id: parsed.id } : {}),
+        ...(faqId ? { id: faqId } : {}),
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: Number(scope.tId),
         sId: Number(scope.sId),
@@ -90,15 +102,15 @@ export function parseAnswerlatticeFaqSaveInput(
         status,
         source: normalizeFaqSource(parsed.source),
         active: parsed.active ?? status !== ANSWERLATTICE_FAQ_STATUS.ARCHIVED,
-        articleId: parsed.articleId ? normalizeFaqText(parsed.articleId, 180) : null,
+        articleId,
         articleTitle: parsed.articleTitle ? normalizeFaqText(parsed.articleTitle, 240) : null,
-        canonicalAnswerId: parsed.canonicalAnswerId ? normalizeFaqText(parsed.canonicalAnswerId, 180) : null,
-        entityIds: Array.from(new Set(parsed.entityIds.map(value => value.trim()).filter(Boolean))).slice(0, MAX_ENTITY_IDS),
+        canonicalAnswerId,
+        entityIds: normalizeAnswerlatticeResolvedEntityIds(parsed.entityIds, MAX_ENTITY_IDS),
         contextKeys: normalizeContextKeys(parsed.contextKeys),
         tags: normalizeSurfaceList(parsed.tags, MAX_TAGS, 64),
         sortOrder: parsed.sortOrder ?? 100,
         jobId: parsed.jobId ? normalizeFaqText(parsed.jobId, 180) : null,
-        generatedFromArticleId: parsed.generatedFromArticleId ? normalizeFaqText(parsed.generatedFromArticleId, 180) : null,
+        generatedFromArticleId,
     };
 }
 
@@ -111,17 +123,16 @@ export function normalizeGeneratedFaqs(values: unknown): AnswerlatticeGeneratedF
             const record = item as Record<string, unknown>;
             const question = normalizeFaqText(record.question, MAX_QUESTION_LENGTH);
             const answer = normalizeFaqText(record.answer, MAX_ANSWER_LENGTH);
+            const faqId = normalizeAnswerlatticeFaqId(record.id);
             if (!question || !answer) return null;
 
             return {
-                ...(typeof record.id === 'string' && record.id.trim() ? { id: normalizeFaqText(record.id, 180) } : {}),
+                ...(faqId ? { id: faqId } : {}),
                 question,
                 answer,
                 tags: normalizeSurfaceList(record.tags, MAX_TAGS, 64),
                 contextKeys: normalizeContextKeys(record.contextKeys),
-                entityIds: Array.isArray(record.entityIds)
-                    ? Array.from(new Set(record.entityIds.map(String).map(value => value.trim()).filter(Boolean))).slice(0, MAX_ENTITY_IDS)
-                    : [],
+                entityIds: normalizeAnswerlatticeResolvedEntityIds(record.entityIds, MAX_ENTITY_IDS),
                 sortOrder: Number.isFinite(Number(record.sortOrder)) ? Number(record.sortOrder) : index,
             };
         })

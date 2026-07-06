@@ -13,8 +13,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
 
+const PRODUCT_SURFACE_SUMMARY_REBUILD_REASON_CODES = ['manual'] as const;
 const RebuildRequestSchema = z.object({
-    reason: z.string().trim().max(80).optional().default('manual'),
+    reason: z.enum(PRODUCT_SURFACE_SUMMARY_REBUILD_REASON_CODES).optional().default('manual'),
 });
 const PRODUCT_SURFACE_SUMMARY_REBUILD_MAX_BODY_BYTES = 2 * 1024;
 
@@ -54,7 +55,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        const parsed = RebuildRequestSchema.parse(bodyResult.data);
+        const parsedResult = RebuildRequestSchema.safeParse(bodyResult.data);
+        if (!parsedResult.success) {
+            return NextResponse.json({ error: 'Invalid rebuild request.' }, { status: 400 });
+        }
+        const parsed = parsedResult.data;
         const summary = await rebuildProductSurfaceContentSummaryServer({
             tId: tenantId,
             sId: storeId,

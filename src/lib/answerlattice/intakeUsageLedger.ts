@@ -2,6 +2,10 @@ import { getUnitCost } from '@constant/AI/unitCosts';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import {
+    normalizeAnswerlatticeIntakeUsageLedgerId,
+    normalizeAnswerlatticeSubscriptionId,
+} from '@lib/answerlattice/billingDocumentIdBoundary';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -125,7 +129,7 @@ async function resolveSubscriptionRef(scope: AnswerlatticeScope) {
     }
 
     const summary = storeData.answerlatticeSubscription || {};
-    const summaryId = cleanText(summary.id || summary.providerSubscriptionId, 180);
+    const summaryId = normalizeAnswerlatticeSubscriptionId(cleanText(summary.id || summary.providerSubscriptionId, 180));
     if (summaryId) {
         return {
             storeRef,
@@ -275,8 +279,9 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
 }
 
 export async function finalizeAnswerlatticeIntakeUsage(_scope: AnswerlatticeScope, ledgerId: string, input: FinalizeUsageInput = {}) {
-    if (!ledgerId) return;
-    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER).doc(ledgerId).set({
+    const normalizedLedgerId = normalizeAnswerlatticeIntakeUsageLedgerId(ledgerId);
+    if (!normalizedLedgerId) return;
+    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER).doc(normalizedLedgerId).set({
         status: 'succeeded',
         unitsCharged: Number(input.unitsCharged || 0),
         aiOperationId: input.aiOperationId || null,
@@ -291,9 +296,10 @@ export async function finalizeAnswerlatticeIntakeUsage(_scope: AnswerlatticeScop
 }
 
 export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, ledgerId: string, reason: string) {
-    if (!ledgerId) return;
+    const normalizedLedgerId = normalizeAnswerlatticeIntakeUsageLedgerId(ledgerId);
+    if (!normalizedLedgerId) return;
     const { storeRef, subscriptionRef } = await resolveSubscriptionRef(scope);
-    const ledgerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER).doc(ledgerId);
+    const ledgerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER).doc(normalizedLedgerId);
     const timestamp = now();
 
     await db.runTransaction(async (transaction) => {

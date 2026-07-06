@@ -24,6 +24,7 @@ import { Timestamp } from 'firebase/firestore';
 import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from './diagnostics';
 import { buildDraftUserPrompt, DRAFT_PROMPT_VERSION, DRAFT_SYSTEM_PROMPT, parseDraftResponse } from './draftPrompt';
 import type { DraftPromptInput } from './draftPrompt';
+import { normalizeAnswerlatticeMutationProposalId, normalizeAnswerlatticeResolvedEntityId } from './governanceIdBoundary';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -97,9 +98,14 @@ export async function regenerateDraftForProposal(
         return { success: false, error: 'Automatic Knowledge Creation is disabled' };
     }
 
+    const normalizedProposalId = normalizeAnswerlatticeMutationProposalId(proposalId);
+    if (!normalizedProposalId) {
+        return { success: false, error: 'Invalid proposal ID' };
+    }
+
     try {
         // 1. Fetch proposal
-        const proposal = await getMutationProposalById(proposalId);
+        const proposal = await getMutationProposalById(normalizedProposalId);
         if (!proposal) {
             return { success: false, error: 'Proposal not found' };
         }
@@ -109,7 +115,7 @@ export async function regenerateDraftForProposal(
         }
 
         // 2. Get entity context
-        const entityId = proposal.relatedEntityIds?.[0];
+        const entityId = normalizeAnswerlatticeResolvedEntityId(proposal.relatedEntityIds?.[0]);
         if (!entityId) {
             return { success: false, error: 'No entity ID on proposal' };
         }
@@ -159,7 +165,7 @@ export async function regenerateDraftForProposal(
                 },
             });
             await setDoc(
-                doc(answerlatticeFirebaseClient, DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS, proposalId),
+                doc(answerlatticeFirebaseClient, DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS, normalizedProposalId),
                 updateData,
                 { merge: true }
             );
@@ -192,7 +198,7 @@ export async function regenerateDraftForProposal(
         });
 
         await setDoc(
-            doc(answerlatticeFirebaseClient, DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS, proposalId),
+            doc(answerlatticeFirebaseClient, DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS, normalizedProposalId),
             updateData,
             { merge: true }
         );
@@ -204,7 +210,7 @@ export async function regenerateDraftForProposal(
             sId,
             action: 'draft_regenerated',
             entityType: 'mutationProposal',
-            entityId: proposalId,
+            entityId: normalizedProposalId,
             previousState: { draftStatus: proposal.suggestedChange?.draftStatus || 'none' },
             newState: {
                 draftTitle: parsed.title,
@@ -219,7 +225,7 @@ export async function regenerateDraftForProposal(
     } catch (error) {
         logAnswerlatticeFailure('answerlattice_draft_regeneration_failed', error, {
             ...getAnswerlatticeScopeLogContext({
-                proposalId,
+                proposalId: normalizedProposalId,
                 sId,
                 tId,
             }),

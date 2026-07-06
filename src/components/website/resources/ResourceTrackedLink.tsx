@@ -2,11 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Link from '../shared/WebsiteLink';
-import { trackPlausibleEvent } from '@lib/website/plausible';
-
-type WebsiteGtagWindow = Window & {
-    gtag?: (...args: unknown[]) => void;
-};
+import { trackGoogleMarketingEvent, trackPlausibleEvent } from '@lib/website/plausible';
 
 function getReferrerHost(): string | undefined {
     if (!document.referrer) return undefined;
@@ -80,25 +76,16 @@ export default function ResourceTrackedLink({
                     ...eventProps,
                 };
 
-                const analyticsWindow = window as WebsiteGtagWindow;
-                if (typeof analyticsWindow.gtag === 'function') {
-                    analyticsWindow.gtag('event', eventName, payload);
-                }
+                trackGoogleMarketingEvent(eventName, payload);
 
                 if (shouldTrackPath(href, '/create-menu')) {
                     trackPlausibleEvent('create_customer_link_clicked');
-
-                    if (typeof analyticsWindow.gtag === 'function') {
-                        analyticsWindow.gtag('event', 'upload_menu_click_from_resource', payload);
-                    }
+                    trackGoogleMarketingEvent('upload_menu_click_from_resource', payload);
                 }
 
                 if (shouldTrackPath(href, '/pricing')) {
                     trackPlausibleEvent('pricing_clicked');
-
-                    if (typeof analyticsWindow.gtag === 'function') {
-                        analyticsWindow.gtag('event', 'pricing_click_from_resource', payload);
-                    }
+                    trackGoogleMarketingEvent('pricing_click_from_resource', payload);
                 }
             }}
         >

@@ -8,6 +8,7 @@ import {
 } from "@database/reseller/server";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
 import { getEmailValidationError, validateEmail } from "@lib/validation/emailDomainValidator";
 import { NextResponse } from "next/server";
@@ -66,7 +67,7 @@ const CreateResellerSchema = z.object({
 });
 
 const UpdateResellerSchema = z.object({
-    profileId: z.string().trim().min(1).max(128).refine((value) => !value.includes('/')),
+    profileId: z.string().trim().min(1).max(128).refine(isValidFirestoreDocumentId, 'Invalid profile ID'),
     name: z.string().min(2).max(100).optional(),
     phone: z.string().min(10).max(15).optional(),
     email: z.string().email().optional(),

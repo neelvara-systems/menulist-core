@@ -7,6 +7,8 @@
  */
 
 import { z } from 'zod';
+import { normalizeMenuExtractionJobId } from '@lib/menu-extraction/jobIdBoundary';
+import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMMON SCHEMAS
@@ -94,11 +96,19 @@ export const NewCategorySchema = z.object({
 // APPLY CHANGES SCHEMAS
 // ═══════════════════════════════════════════════════════════════════════════
 
+const MenuExtractionProjectIdSchema = z.string()
+    .trim()
+    .refine((value) => normalizeMenuExtractionProjectId(value) === value, 'Invalid project ID');
+
+const MenuExtractionJobIdSchema = z.string()
+    .trim()
+    .refine((value) => normalizeMenuExtractionJobId(value) === value, 'Invalid job ID');
+
 /**
  * Schema for applying item override (outlet projects)
  */
 export const ApplyItemOverrideSchema = z.object({
-    projectId: z.string().min(1),
+    projectId: MenuExtractionProjectIdSchema,
     masterItemId: z.string().min(1),
     override: ItemOverrideSchema,
 });
@@ -107,8 +117,8 @@ export const ApplyItemOverrideSchema = z.object({
  * Schema for saving extraction review
  */
 export const SaveExtractionReviewSchema = z.object({
-    projectId: z.string().min(1),
-    jobId: z.string().min(1),
+    projectId: MenuExtractionProjectIdSchema,
+    jobId: MenuExtractionJobIdSchema,
     mode: z.enum(['SINGLE_STORE', 'MASTER_PROJECT', 'OUTLET_LINKED']),
 
     // For SINGLE_STORE / MASTER_PROJECT

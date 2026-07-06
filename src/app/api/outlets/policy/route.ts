@@ -16,6 +16,7 @@ import {
     logMultiOutletFailure,
     type MultiOutletLogContext,
 } from "@lib/multiOutlet/diagnostics";
+import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -59,22 +60,23 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ error: "Multi-outlet disabled" }, { status: 403 });
     }
 
-    const { tId: tenantId, sId: storeId } = session;
-    if (!tenantId || !storeId) {
+    const scope = getOutletSessionScope(session);
+    if (!scope) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
+    const { tenantId, storeId, tenantDocumentId, storeDocumentId } = scope;
     if (!verifyTenantAccess(session, tenantId, storeId, request)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const failureContext: MultiOutletLogContext = {
         endpoint: "/api/outlets/policy",
-        ...getBoundedMultiOutletStringContext("tenantId", tenantId),
-        ...getBoundedMultiOutletStringContext("storeId", storeId),
+        ...getBoundedMultiOutletStringContext("tenantId", tenantDocumentId),
+        ...getBoundedMultiOutletStringContext("storeId", storeDocumentId),
         ...getBoundedMultiOutletStringContext("userId", session.uId || session.user?.id),
     };
 
-    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantDocumentId);
     const rlResult = await checkRateLimit({ key: `outlet-policy:${tenantRateLimitHash}`, limit: 30, window: 3600 });
     if (!rlResult.allowed) {
         return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -92,8 +94,8 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const db = admin.firestore();
-        const storeRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeId}`);
-        const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`);
+        const storeRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`);
+        const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`);
         const [storeSnap, tenantSnap] = await Promise.all([
             storeRef.get(),
             tenantRef.get(),
@@ -154,7 +156,7 @@ export const POST = withAuth(async (request, session) => {
                 tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), {
                     lastUpdated: now,
                     stores: {
-                        [storeId]: {
+                        [storeDocumentId]: {
                             isMaster: true,
                             modifiedOn: now,
                         },
@@ -163,14 +165,14 @@ export const POST = withAuth(async (request, session) => {
             }
         });
 
-        revalidateTag(`menu-store-${storeId}`);
-        revalidateTag(`store-${storeId}`);
+        revalidateTag(`menu-store-${storeDocumentId}`);
+        revalidateTag(`store-${storeDocumentId}`);
         revalidateTag("client-stores");
         revalidateTag("screen-data");
-        await touchDigitalScreenContentVersionForStoreServer(storeId, "outletPolicy");
+        await touchDigitalScreenContentVersionForStoreServer(storeDocumentId, "outletPolicy");
         await invalidateOwnerBusinessAssistantPacketCache({
-            tId: tenantId,
-            sId: storeId,
+            tId: tenantDocumentId,
+            sId: storeDocumentId,
         });
 
         return NextResponse.json({

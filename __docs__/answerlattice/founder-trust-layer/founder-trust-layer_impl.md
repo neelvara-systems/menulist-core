@@ -329,6 +329,8 @@ async function aggregateTrustMetrics(
 
 **Implementation Note:** The trust step performs its own queries for answers, entities, signals, and search history rather than sharing data from steps 1/4. This avoids invasive refactoring of self-contained drift detection and coverage functions. The additional reads (~5-6 per tenant per night) are negligible cost ($0.001/month at 100 tenants) and keep the architecture clean — each step is independently testable.
 
+**Answerlattice Nightly Scheduler Stored Entity ID Boundary:** `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` normalizes stored signal entity IDs, search-history `matchedEntityIds`, canonical-answer `scope.entityIds`, search-index candidate entity IDs, and graph relation endpoints through the Functions entity ID boundary before drift, signal mutation, coverage/trust, recurring fallback, graph summary keys, or signal-resolution writes. Malformed or unresolved entity IDs are skipped before derived trust/graph summaries.
+
 **Future Optimization:** If Firestore read costs become a concern at 1000+ tenants, refactor `runDriftDetection` and `aggregateCoverageKPI` to return loaded snapshots for downstream steps to reuse.
 
 ---

@@ -35,6 +35,7 @@ export interface MenuKitResult {
     assets: MenuKitAsset[];
     staffScript: string;       // Text only, not a file
     zipBlob: Blob;
+    zipFilename: string;
 }
 
 export const STAFF_SCRIPT = 'Menu? Please scan the QR on the table or at the counter.';

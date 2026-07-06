@@ -2,7 +2,7 @@
 
 > **Purpose:** Complete tracking of every user journey and flow in the subscription system. Each scenario documents the exact path through the codebase, what triggers it, what happens at each step, and the current status. Use this as a reference when revisiting, debugging, or extending the subscription flow.
 >
-> **Last Updated:** June 29, 2026
+> **Last Updated:** July 5, 2026
 > **Verification Method:** Code dry-run tracing (every file, every branch)
 
 ---
@@ -133,7 +133,8 @@ lastWebhook: { event, timestamp }
 
 **UI display for past_due:**
 - Tag: 🟡 "Payment Failed"
-- Date: "Grace period (X days left)" with end date
+- Date: "Grace period (X days left)" with end date when `pastDueSinceAt` exists
+- Fallback: fixed "Grace period details unavailable." recovery copy when a legacy or malformed `past_due` doc has no `pastDueSinceAt`
 - Warning text: "Your last payment attempt failed..."
 - Buttons: "Cancel Subscription" + "Retry Payment" (via shortUrl)
 

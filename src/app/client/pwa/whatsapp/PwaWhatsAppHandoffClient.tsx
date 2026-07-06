@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { detectAndTrackShortcutLaunch } from '@lib/pwa/shortcutSourceDetector';
+import { getSafePwaWhatsAppUrl } from '../shortcutHandoffUrl';
 
 interface Props {
     storeId: string | number;
@@ -21,17 +22,23 @@ export default function PwaWhatsAppHandoffClient({
     locationTrackingEnabled = true,
 }: Props) {
     const [ready, setReady] = useState(false);
+    const safeWaUrl = getSafePwaWhatsAppUrl(waUrl);
 
     useEffect(() => {
+        if (!safeWaUrl) {
+            setReady(true);
+            return;
+        }
+
         void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         const t = window.setTimeout(() => {
-            window.location.replace(waUrl);
+            window.location.replace(safeWaUrl);
         }, 80);
 
         setReady(true);
         return () => window.clearTimeout(t);
-    }, [storeId, tenantId, waUrl, trackingEnabled, locationTrackingEnabled]);
+    }, [storeId, tenantId, safeWaUrl, trackingEnabled, locationTrackingEnabled]);
 
     return (
         <div
@@ -52,13 +59,15 @@ export default function PwaWhatsAppHandoffClient({
                 Message {storeName}
             </h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-                {ready ? 'Opening WhatsApp…' : 'Preparing…'}
+                {ready ? (safeWaUrl ? 'Opening WhatsApp…' : 'This shortcut is unavailable.') : 'Preparing…'}
             </p>
-            <noscript>
-                <p style={{ marginTop: 16 }}>
-                    <a href={waUrl}>Open in WhatsApp</a>
-                </p>
-            </noscript>
+            {safeWaUrl ? (
+                <noscript>
+                    <p style={{ marginTop: 16 }}>
+                        <a href={safeWaUrl}>Open in WhatsApp</a>
+                    </p>
+                </noscript>
+            ) : null}
         </div>
     );
 }

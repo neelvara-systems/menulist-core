@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
+import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -10,7 +11,11 @@ const subscriptionRequests = new Map<string, Promise<FirestoreSubscriptionDoc | 
 const getSubscriptionCollectionRef = () => collection(answerlatticeFirebaseClient, DB_COLLECTIONS.SUBSCRIPTIONS);
 const getPaymentTransactionCollectionRef = () => collection(answerlatticeFirebaseClient, DB_COLLECTIONS.PAYMENT_TRANSACTIONS);
 const getStoreDocumentRef = (storeId: number) => doc(answerlatticeFirebaseClient, DB_COLLECTIONS.STORES, String(storeId));
-const getSubscriptionDocumentRef = (subscriptionId: string) => doc(answerlatticeFirebaseClient, DB_COLLECTIONS.SUBSCRIPTIONS, subscriptionId);
+const getSubscriptionDocumentRef = (subscriptionId: string) => {
+    const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscriptionId);
+    if (!normalizedSubscriptionId) throw new Error('Invalid Answerlattice subscription id');
+    return doc(answerlatticeFirebaseClient, DB_COLLECTIONS.SUBSCRIPTIONS, normalizedSubscriptionId);
+};
 
 const toMillis = (value: any): number => {
     if (!value) return 0;
@@ -73,8 +78,9 @@ const fetchSubscriptionFromStoreSummary = async (
     const summary = storeSnapshot.exists() ? storeSnapshot.data()?.answerlatticeSubscription : null;
     if (!summary || typeof summary !== 'object') return null;
 
-    const subscriptionId = String(summary.id || summary.providerSubscriptionId || '').trim();
-    if (!subscriptionId) {
+    const rawSubscriptionId = String(summary.id || summary.providerSubscriptionId || '').trim();
+    const subscriptionId = normalizeAnswerlatticeSubscriptionId(rawSubscriptionId);
+    if (!rawSubscriptionId || !subscriptionId) {
         return normalizeSubscription(summary, `answerlattice_summary_${tenantId}_${storeId}`, tenantId, storeId);
     }
 

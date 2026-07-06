@@ -3,6 +3,7 @@ import { ANSWERLATTICE_FAQ_STATUS, type AnswerlatticeFaq, type AnswerlatticeRela
 import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { ANSWERLATTICE_FAQ_PUBLIC_LIMIT } from './faqContent';
+import { normalizeAnswerlatticeKbArticleId } from './kbArticleIdBoundary';
 import { normalizeContextKeys, normalizeSurfaceList } from './productSurfaceContent';
 import { answerlatticeTokenize } from './tokenizer';
 
@@ -270,11 +271,12 @@ const loadLinkedArticleReference = async (
     faq: AnswerlatticeFaq,
     includeFullArticleReference: boolean,
 ): Promise<any[]> => {
-    if (!faq.articleId) return [];
+    const articleId = normalizeAnswerlatticeKbArticleId(faq.articleId);
+    if (!articleId) return [];
 
     if (!includeFullArticleReference) {
         return [{
-            id: faq.articleId,
+            id: articleId,
             title: faq.articleTitle || 'Related article',
             url: undefined,
             sourceType: 'faq',
@@ -285,11 +287,11 @@ const loadLinkedArticleReference = async (
     try {
         const snap = await answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.KB_ARTICLES)
-            .doc(faq.articleId)
+            .doc(articleId)
             .get();
         if (!snap.exists) {
             return [{
-                id: faq.articleId,
+                id: articleId,
                 title: faq.articleTitle || 'Related article',
                 sourceType: 'faq',
                 similarityScore: 1,
@@ -305,7 +307,7 @@ const loadLinkedArticleReference = async (
             || article.active === false
         ) {
             return [{
-                id: faq.articleId,
+                id: articleId,
                 title: faq.articleTitle || 'Related article',
                 sourceType: 'faq',
                 similarityScore: 1,
@@ -321,7 +323,7 @@ const loadLinkedArticleReference = async (
         return [reference];
     } catch {
         return [{
-            id: faq.articleId,
+            id: articleId,
             title: faq.articleTitle || 'Related article',
             sourceType: 'faq',
             similarityScore: 1,

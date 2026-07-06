@@ -13,28 +13,37 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { buildMenuSnapshot } from "@lib/posSync/payloadFormatter";
-import { apiError, buildPullApiResponseHeaders, generateETag, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
+import { apiError, buildPullApiResponseHeaders, generateETag, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, normalizeMenuListPublicApiNumericId, normalizePublicApiDocumentId, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getBoundedSecurityStringContext, logSecurityFailure } from "@lib/security/securityDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
 
 async function getDefaultPublicMenuProject(
     db: ReturnType<typeof admin.firestore>,
-    tenantId: string | number,
+    tenantDocumentId: string,
     storeId: string,
 ): Promise<Record<string, any> | null> {
+    const storeDocumentId = normalizePublicApiDocumentId(storeId);
+    if (!storeDocumentId) return null;
+
     const summarySnap = await db
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(`projects_${storeId}`)
+        .doc(`projects_${storeDocumentId}`)
         .get();
 
     if (!summarySnap.exists) return null;
 
     const projects = Object.entries(parseSummaryProjects(summarySnap.data()))
-        .map(([projectId, data]: [string, any]) => ({
-            projectId,
-            ...data,
-        }))
+        .map(([projectId, data]: [string, any]) => {
+            const projectDocumentId = normalizePublicApiDocumentId(projectId);
+            return projectDocumentId
+                ? {
+                    projectId: projectDocumentId,
+                    ...data,
+                }
+                : null;
+        })
+        .filter((project): project is Record<string, any> => Boolean(project))
         .filter((project) => (
             project.active !== false
             && project.deleted !== true
@@ -46,8 +55,8 @@ async function getDefaultPublicMenuProject(
 
     const projectDoc = await db
         .collection(DB_COLLECTIONS.PROJECTS)
-        .doc(String(tenantId))
-        .collection(String(storeId))
+        .doc(tenantDocumentId)
+        .collection(storeDocumentId)
         .doc(selectedProject.projectId)
         .get();
 
@@ -99,24 +108,31 @@ export async function GET(request: NextRequest) {
         }
 
         const { storeData, storeId } = result;
+        const tenantId = storeData.tenantId ?? storeData.tId;
+        const tenantDocumentId = normalizePublicApiDocumentId(tenantId);
+        const storeDocumentId = normalizePublicApiDocumentId(storeId);
+        const tenantNumericId = normalizeMenuListPublicApiNumericId(tenantDocumentId);
+        const storeNumericId = normalizeMenuListPublicApiNumericId(storeDocumentId);
+        if (!tenantDocumentId || !storeDocumentId || tenantNumericId == null || storeNumericId == null) {
+            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+        }
         if (!(await isMenuListPublicApiTargetAllowed(storeData))) {
             return apiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
-        const tenantId = storeData.tenantId ?? storeData.tId;
         failureContext = {
             ...failureContext,
-            ...getBoundedSecurityStringContext('tenantId', tenantId),
-            ...getBoundedSecurityStringContext('storeId', storeId),
+            ...getBoundedSecurityStringContext('tenantId', tenantDocumentId),
+            ...getBoundedSecurityStringContext('storeId', storeDocumentId),
         };
 
         // Abuse logging
-        logApiRequest(request, storeId, 'GET /menu');
+        logApiRequest(request, storeDocumentId, 'GET /menu');
 
         // Find the default public project through the same summary source used
         // by the customer renderer. `isDefault` is summary truth, not a
         // guaranteed field on the full project document.
         const db = admin.firestore();
-        const projectData = await getDefaultPublicMenuProject(db, tenantId, String(storeId));
+        const projectData = await getDefaultPublicMenuProject(db, tenantDocumentId, storeDocumentId);
         if (!projectData) {
             return apiError('NO_MENU', 'No published menu found', 404);
         }
@@ -131,8 +147,8 @@ export async function GET(request: NextRequest) {
 
         const payload = buildMenuSnapshot(
             projectData as any,
-            Number(storeId),
-            tenantId,
+            storeNumericId,
+            tenantNumericId,
             menuVersion,
             currency,
         );

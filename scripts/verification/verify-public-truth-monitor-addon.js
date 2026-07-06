@@ -23,6 +23,25 @@ function assertNotIncludes(content, needle, label) {
   assert(!content.includes(needle), `${label} must not include ${needle}`);
 }
 
+function assertOrder(content, orderedNeedles, label) {
+  let cursor = -1;
+  const missingOrOutOfOrder = [];
+
+  for (const needle of orderedNeedles) {
+    const nextIndex = content.indexOf(needle, cursor + 1);
+    if (nextIndex === -1) {
+      missingOrOutOfOrder.push(needle);
+      continue;
+    }
+    cursor = nextIndex;
+  }
+
+  assert(
+    missingOrOutOfOrder.length === 0,
+    `${label} missing or out of order: ${missingOrOutOfOrder.join(', ')}`,
+  );
+}
+
 const REQUIRED_FILES = [
   'src/constants/publicTruthMonitor.ts',
   'src/types/publicTruthMonitor.ts',
@@ -71,6 +90,8 @@ const mobileCard = read('src/components/mobile/components/MobilePublicTruthMonit
 const implDoc = read('__docs__/menulist-tools/public-truth-monitor-addon/public-truth-monitor-addon_impl.md');
 const firebaseDoc = read('__docs__/menulist-tools/public-truth-monitor-addon/public-truth-monitor-addon_firebase.md');
 const testsDoc = read('__docs__/menulist-tools/public-truth-monitor-addon/public-truth-monitor-addon_test-cases.md');
+const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+const changelog = read('__docs__/CHANGELOG.md');
 const aggregateVerifier = read('scripts/verification/verify-public-truth-tools.js');
 
 assert(
@@ -101,11 +122,32 @@ assertIncludes(report, 'No external websites, social profiles, Google profiles, 
 
 assertIncludes(validation, 'readBoundedJsonBody', 'bounded request body parser');
 assertIncludes(validation, 'PUBLIC_TRUTH_MONITOR_API_MAX_BODY_BYTES', 'request body size cap');
+assertIncludes(validation, 'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";', 'refresh request schema document-ID guard import');
+assertIncludes(validation, 'const publicTruthMonitorProjectIdSchema = z.string()', 'refresh request project ID schema');
+assertIncludes(validation, '.refine(isValidFirestoreDocumentId, "Invalid project ID")', 'refresh request project ID document-ID guard');
+assertIncludes(validation, 'selectedProjectId: publicTruthMonitorProjectIdSchema.optional()', 'refresh request selected project ID schema usage');
+assertNotIncludes(validation, 'selectedProjectId: z.string().min(1).max(140).optional()', 'refresh request must not keep max-only selected project validation');
 
 assertIncludes(serverDal, 'DB_COLLECTIONS.PLATFORM_SUMMARY', 'platform summary storage through DB collection constant');
 assertIncludes(serverDal, 'buildPublicTruthMonitorSummaryDocId', 'summary doc id helper');
 assertIncludes(serverDal, 'parseSummaryProjects', 'summary project parser');
 assertIncludes(serverDal, 'sanitizeForAdminFirestore', 'admin write sanitizer');
+assertIncludes(serverDal, 'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";', 'server DAL document-ID guard import');
+assertIncludes(serverDal, 'function normalizePublicTruthMonitorDocumentId(value: unknown): string | null', 'server DAL document-ID normalizer');
+assertIncludes(serverDal, 'const documentId = typeof value === "string" ? value.trim() : "";', 'server DAL document-ID trim');
+assertIncludes(serverDal, 'const projectId = normalizePublicTruthMonitorDocumentId(project.projectId);', 'project picker normalizes persisted summary project IDs');
+assertIncludes(serverDal, 'const selectedProjectIdDocumentId = normalizePublicTruthMonitorDocumentId(selectedProjectId);', 'project picker normalizes selected project ID');
+assertIncludes(serverDal, 'const projectId = normalizePublicTruthMonitorDocumentId(params.projectId);', 'project reader normalizes project IDs before Firestore reads');
+assertIncludes(serverDal, 'if (!projectId) return null;', 'project reader rejects malformed project IDs before Firestore reads');
+assertNotIncludes(serverDal, '.doc(params.projectId)', 'project reader must not use raw request project ID in document refs');
+assertOrder(
+  serverDal,
+  [
+    'const projectId = normalizePublicTruthMonitorDocumentId(params.projectId);',
+    '.doc(projectId)',
+  ],
+  'project reader document-ID normalizer must run before project document reads',
+);
 
 assertIncludes(summaryRoute, 'withAuth', 'summary route auth');
 assertIncludes(summaryRoute, 'checkAIRateLimit("DATA_READ"', 'summary route read rate limit');
@@ -139,10 +181,18 @@ assertIncludes(mobileCard, 'Public truth history', 'mobile owner copy');
 assertIncludes(mobileCard, 'minHeight: 44', 'mobile touch target');
 
 assertIncludes(implDoc, 'Status:** Runtime implemented', 'implementation doc status');
+assertIncludes(implDoc, 'Public Truth Monitor project and scope ID boundary', 'implementation doc project and scope ID boundary');
+assertIncludes(implDoc, 'trims and normalizes', 'implementation doc server DAL project ID normalization');
 assertIncludes(firebaseDoc, 'platformSummary/publicTruthMonitor_{storeId}', 'Firebase doc summary path');
 assertIncludes(firebaseDoc, 'maximum 6 reports', 'Firebase doc retention cap');
+assertIncludes(firebaseDoc, 'Public Truth Monitor project/scope-ID admission is cost-neutral', 'Firebase doc project and scope ID boundary');
+assertIncludes(firebaseDoc, 'normalized document ID', 'Firebase doc normalized document ID boundary');
 assertIncludes(testsDoc, 'PTM-API-001', 'API acceptance test');
 assertIncludes(testsDoc, 'PTM-MOB-001', 'mobile acceptance test');
+assertIncludes(productionAudit, 'Public Truth Monitor project and scope ID boundary checkpoint', 'production audit project and scope ID boundary');
+assertIncludes(productionAudit, 'Public Truth Monitor server DAL ID normalization checkpoint', 'production audit server DAL ID normalization');
+assertIncludes(changelog, 'Public Truth Monitor Project ID Boundary', 'changelog project ID boundary');
+assertIncludes(changelog, 'Public Truth Monitor Server DAL ID Normalization', 'changelog server DAL ID normalization');
 assertIncludes(aggregateVerifier, 'verify-public-truth-monitor-addon.js', 'aggregate verifier includes monitor verifier');
 
 [

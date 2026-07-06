@@ -14,7 +14,7 @@ import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess'
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatDateTime, toDate } from '@util/dateTime';
 import { formatCurrency } from '@util/formatters';
-import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
+import { getGracePeriodDisplayInfo, hasValidSubscriptionAccess } from '@util/razorpay';
 import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
@@ -167,6 +167,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         if (status === 'expired') return t('statusExpired');
         return status;
     };
+
+    const getPastDueGracePeriodDisplay = () => getGracePeriodDisplayInfo(sub?.pastDueSinceAt);
 
     const handleUpgrade = async (plan: Plan) => {
         if (isManualBilling && sub?.status === 'active') {
@@ -502,10 +504,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                     <Flex gap={6} vertical>
                                         <Text>{`${t('paymentFailed')}`}</Text>
                                         <Text type="secondary">
-                                            {(() => {
-                                                const { remainingDays } = getGracePeriodInfo(sub.pastDueSinceAt);
-                                                return `${remainingDays} days grace period remaining.`;
-                                            })()}
+                                            {getPastDueGracePeriodDisplay().summary}
                                         </Text>
                                         {sub.shortUrl ? (
                                             <Button color="warning" onClick={() => handleOpenExternalBillingLink(sub.shortUrl, 'retry_payment')} size="small">

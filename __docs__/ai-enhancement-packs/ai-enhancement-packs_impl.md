@@ -261,6 +261,8 @@ June 29 response-parsing note: frontend AI services now call `syncBalanceFromRes
 
 **Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current billing period (YYYYMM key based on subscription anchor day, NOT calendar month). If different, it re-reads the subscription in a Firestore transaction, resets credits, and writes to Firestore (1 read + 1 write, first AI call of the billing month only). Anchor day is capped to days-in-month for month-end edge cases (e.g., anchor=31 in Feb→28). Race-safe — concurrent calls cannot overwrite a usage deduction during a reset.
 
+Subscription document refs use `src/lib/billing/subscriptionDocumentIdBoundary.ts` before lazy reset and consumption. Malformed subscription IDs cannot reach Firestore refs; paid consumption fails closed through the shared AI accounting finalizer.
+
 **New field:** `creditsLastResetMonth?: number` on `FirestoreSubscriptionDoc`. Set by all subscription creation routes, webhook, and lazy reset. Old subscriptions without the field get reset on first AI call.
 
 ---
@@ -1311,12 +1313,13 @@ POST /api/razorpay/create-topup-order
     -> withAuth + tenant access + canManageSubscription + PAYMENT_TOPUP rate limit
     -> Zod validates packId + currency
     -> Razorpay order is created with tenantId, storeId, packId, creditAmount
-    -> topups/{orderId} is written as status="pending"
+    -> topups/{orderId} is written as status="pending" after topupDocumentIdBoundary validation
 
 POST /api/razorpay/verify-topup
     -> withAuth + tenant access + canManageSubscription
     -> Zod validates razorpay_payment_id + razorpay_order_id + razorpay_signature
     -> Razorpay checkout signature is verified server-side
+    -> normalize checkout order ID through topupDocumentIdBoundary
     -> if topups/{orderId} is already paid, return without adding credits again
     -> payment is captured/verified with Razorpay
     -> Razorpay order tenant/store notes must match the session tenant/store

@@ -31,6 +31,7 @@ import {
     logMultiOutletFailure,
     type MultiOutletLogContext,
 } from '@lib/multiOutlet/diagnostics';
+import { getOutletSessionScope, normalizeOutletDocumentId } from '@lib/multiOutlet/outletSessionScope';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -60,20 +61,21 @@ export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
         return NextResponse.json({ error: 'Multi-outlet disabled' }, { status: 403 });
     }
-    const { tId: tenantId, sId: storeId } = session;
-    if (!tenantId || !storeId) {
+    const scope = getOutletSessionScope(session);
+    if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
+    const { tenantId, storeId, tenantDocumentId, storeDocumentId } = scope;
     if (!verifyTenantAccess(session, tenantId, storeId, request)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     let failureContext: MultiOutletLogContext = {
         endpoint: '/api/outlets/rename',
-        ...getBoundedMultiOutletStringContext('tenantId', tenantId),
-        ...getBoundedMultiOutletStringContext('storeId', storeId),
+        ...getBoundedMultiOutletStringContext('tenantId', tenantDocumentId),
+        ...getBoundedMultiOutletStringContext('storeId', storeDocumentId),
         ...getBoundedMultiOutletStringContext('userId', session.uId || session.user?.id),
     };
-    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantDocumentId);
     const rl = await checkRateLimit({ key: `outlet-rename:${tenantRateLimitHash}`, limit: 10, window: 3600 });
     if (!rl.allowed) {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
@@ -90,9 +92,13 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
         }
         const { outletStoreId, newOutletName, newOutletSlug } = v.data;
+        const outletStoreIdStr = normalizeOutletDocumentId(outletStoreId);
+        if (!outletStoreIdStr) {
+            return NextResponse.json({ error: 'Invalid outlet' }, { status: 400 });
+        }
         failureContext = {
             ...failureContext,
-            ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
+            ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreIdStr),
             ...getBoundedMultiOutletStringContext('newOutletName', newOutletName),
             ...getBoundedMultiOutletStringContext('newOutletSlug', newOutletSlug),
         };
@@ -100,7 +106,7 @@ export const POST = withAuth(async (request, session) => {
         const db = admin.firestore();
 
         // Caller must be the master store of this tenant.
-        const masterSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${storeId}`).get();
+        const masterSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`).get();
         const masterStore = masterSnap.data();
         const permissionError = requireAnyStorePermissionForStoreData(
             request,
@@ -116,7 +122,6 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Only master store can rename outlets' }, { status: 403 });
         }
 
-        const outletStoreIdStr = String(outletStoreId);
         const outletRef = db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreIdStr}`);
         const outletSnap = await outletRef.get();
         if (!outletSnap.exists) {
@@ -202,7 +207,7 @@ export const POST = withAuth(async (request, session) => {
             updatePayload.name = newOutletName;
         }
 
-        const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`);
+        const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`);
         await db.runTransaction(async (tx) => {
             const tenantDoc = await tx.get(tenantRef);
             const storesList = tenantDoc.data()?.storesList || [];
@@ -240,7 +245,7 @@ export const POST = withAuth(async (request, session) => {
         revalidateTag('screen-data');
         await touchDigitalScreenContentVersionForStoreServer(outletStoreIdStr, 'outletRename');
         await invalidateOwnerBusinessAssistantPacketCache({
-            tId: tenantId,
+            tId: tenantDocumentId,
             sId: outletStoreIdStr,
         });
 

@@ -12,6 +12,9 @@ const INDIA_TZ = "Asia/Kolkata";
 const INDIA_UTC_OFFSET_HOURS = -5;
 const INDIA_UTC_OFFSET_MINUTES = -30;
 const MONTHLY_TRANSACTION_LIMIT = 2000;
+const MONTH_PARAM_PATTERN = /^(\d{4})-(\d{2})$/;
+const MIN_REPORT_YEAR = 2020;
+const MAX_REPORT_YEAR = 2100;
 
 type ResellerMonthlyRow = {
     resellerEmail: string;
@@ -38,8 +41,24 @@ function getCurrentIndiaMonth() {
 }
 
 function parseMonth(value: string | null) {
-    const month = value && /^\d{4}-\d{2}$/.test(value) ? value : getCurrentIndiaMonth();
-    const [year, monthNumber] = month.split("-").map(Number);
+    const requestedMonth = String(value || "").trim();
+    const month = requestedMonth || getCurrentIndiaMonth();
+    const match = month.match(MONTH_PARAM_PATTERN);
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const monthNumber = Number(match[2]);
+    if (
+        !Number.isInteger(year)
+        || !Number.isInteger(monthNumber)
+        || year < MIN_REPORT_YEAR
+        || year > MAX_REPORT_YEAR
+        || monthNumber < 1
+        || monthNumber > 12
+    ) {
+        return null;
+    }
+
     const monthIndex = monthNumber - 1;
     const start = new Date(Date.UTC(year, monthIndex, 1, INDIA_UTC_OFFSET_HOURS, INDIA_UTC_OFFSET_MINUTES));
     const end = new Date(Date.UTC(year, monthIndex + 1, 1, INDIA_UTC_OFFSET_HOURS, INDIA_UTC_OFFSET_MINUTES));
@@ -93,7 +112,12 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         const isPlatform = session.user.platformRole === "PLATFORM" || session.platformRole === "PLATFORM";
         const sessionResellerId = session.user.id;
-        const { month, start, end } = parseMonth(request.nextUrl.searchParams.get("month"));
+        const parsedMonth = parseMonth(request.nextUrl.searchParams.get("month"));
+        if (!parsedMonth) {
+            return NextResponse.json({ error: "Invalid month filter." }, { status: 400 });
+        }
+
+        const { month, start, end } = parsedMonth;
         reportMonth = month;
         const db = admin.firestore();
         let transactionQuery = db.collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS)

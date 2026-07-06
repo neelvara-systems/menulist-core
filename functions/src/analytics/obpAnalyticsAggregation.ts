@@ -174,18 +174,33 @@ function readOBPCounter(data: Record<string, any>, mapName: string, key: string)
     return Number(data?.[mapName]?.[key] || data?.[`${mapName}.${key}`] || 0);
 }
 
+function normalizeOBPAnalyticsMapKey(value: string): string | null {
+    const normalized = String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 80);
+    return normalized || null;
+}
+
+function assignOBPNumericMapValue(target: Record<string, number>, key: string, value: unknown): void {
+    const normalizedKey = normalizeOBPAnalyticsMapKey(key);
+    const numeric = Number(value || 0);
+    if (!normalizedKey || numeric <= 0) return;
+    target[normalizedKey] = (target[normalizedKey] || 0) + numeric;
+}
+
 function readAnalyticsMap(data: Record<string, any> = {}, field: string): Record<string, number> {
     const result: Record<string, number> = {};
     Object.entries(data?.[field] || {}).forEach(([key, value]) => {
-        const numeric = Number(value || 0);
-        if (numeric > 0) result[key] = numeric;
+        assignOBPNumericMapValue(result, key, value);
     });
 
     const prefix = `${field}.`;
     Object.entries(data || {}).forEach(([key, value]) => {
         if (!key.startsWith(prefix)) return;
-        const numeric = Number(value || 0);
-        if (numeric > 0) result[key.slice(prefix.length)] = numeric;
+        assignOBPNumericMapValue(result, key.slice(prefix.length), value);
     });
 
     return result;
@@ -195,13 +210,15 @@ function readStringMap(data: Record<string, any> = {}, field: string): Record<st
     const result: Record<string, string> = {};
     Object.entries(data?.[field] || {}).forEach(([key, value]) => {
         if (typeof value !== 'string' || !value.trim()) return;
-        result[key] = value.trim();
+        const normalizedKey = normalizeOBPAnalyticsMapKey(key);
+        if (normalizedKey) result[normalizedKey] = value.trim();
     });
 
     const prefix = `${field}.`;
     Object.entries(data || {}).forEach(([key, value]) => {
         if (!key.startsWith(prefix) || typeof value !== 'string' || !value.trim()) return;
-        result[key.slice(prefix.length)] = value.trim();
+        const normalizedKey = normalizeOBPAnalyticsMapKey(key.slice(prefix.length));
+        if (normalizedKey) result[normalizedKey] = value.trim();
     });
 
     return result;
@@ -574,13 +591,15 @@ async function applyLateOBPCorrection(
         }
     };
     const addMapDelta = (field: string, target: string) => {
-        const currentMap = (currentDaily as any)[field] || {};
-        const previousMap = previousRow[field] || {};
+        const currentMap = readAnalyticsMap(currentDaily as Record<string, any>, field);
+        const previousMap = readAnalyticsMap(previousRow as Record<string, any>, field);
         for (const [key, value] of Object.entries(currentMap)) {
             if (typeof value !== 'number') continue;
-            const delta = Math.max(0, value - (previousMap[key] || 0));
+            const normalizedKey = normalizeOBPAnalyticsMapKey(key);
+            if (!normalizedKey) continue;
+            const delta = Math.max(0, value - (previousMap[normalizedKey] || 0));
             if (delta > 0) {
-                assignNestedPathUpdate(updates, `${target}.${key}`, FieldValue.increment(delta));
+                assignNestedPathUpdate(updates, `${target}.${normalizedKey}`, FieldValue.increment(delta));
                 hasDelta = true;
             }
         }
@@ -608,7 +627,9 @@ async function applyLateOBPCorrection(
     if (currentDaily.obpLanguageTrackingEnabled) {
         assignNestedPathUpdate(updates, 'lifetime.obpLanguageTrackingEnabled', true);
         Object.entries(currentDaily.obpLanguageNames || {}).forEach(([language, name]) => {
-            assignNestedPathUpdate(updates, `lifetime.obpLanguageNames.${language}`, name);
+            const normalizedLanguage = normalizeOBPAnalyticsMapKey(language);
+            if (!normalizedLanguage) return;
+            assignNestedPathUpdate(updates, `lifetime.obpLanguageNames.${normalizedLanguage}`, name);
         });
         hasDelta = true;
     }

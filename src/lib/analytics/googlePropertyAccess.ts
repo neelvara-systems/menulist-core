@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { logger } from '@lib/monitoring/logger';
 import {
     getBoundedSecurityRouteContext,
@@ -8,6 +9,13 @@ import {
 } from '@lib/security/securityDiagnostics';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+
+const GOOGLE_ANALYTICS_PROPERTY_ID_PATTERN = /^\d{1,32}$/;
+
+export type GoogleAnalyticsScopeDocumentId = {
+    numericId: number;
+    documentId: string;
+};
 
 function isPlatformSession(session: any): boolean {
     return session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
@@ -17,12 +25,24 @@ function isPlatformSession(session: any): boolean {
 export function normalizeGoogleAnalyticsPropertyId(rawPropertyId: string | null | undefined): string | null {
     const trimmed = String(rawPropertyId || '').trim();
     if (!trimmed) return null;
-    return trimmed.startsWith('properties/') ? trimmed.slice('properties/'.length).trim() : trimmed;
+    const normalized = trimmed.startsWith('properties/') ? trimmed.slice('properties/'.length).trim() : trimmed;
+    return GOOGLE_ANALYTICS_PROPERTY_ID_PATTERN.test(normalized) ? normalized : null;
 }
 
 export function toGoogleAnalyticsPropertyResource(rawPropertyId: string | null | undefined): string | null {
     const normalized = normalizeGoogleAnalyticsPropertyId(rawPropertyId);
     return normalized ? `properties/${normalized}` : null;
+}
+
+export function normalizeGoogleAnalyticsScopeDocumentId(value: unknown): GoogleAnalyticsScopeDocumentId | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { numericId, documentId }
+        : null;
 }
 
 export async function requireConfiguredGoogleAnalyticsProperty(
@@ -37,15 +57,17 @@ export async function requireConfiguredGoogleAnalyticsProperty(
 
     if (isPlatformSession(session)) return null;
 
-    const tenantId = Number(session?.tId ?? session?.user?.tenantId);
-    const storeId = Number(session?.sId ?? session?.user?.storeId);
-    if (!tenantId || !storeId) {
+    const tenantScope = normalizeGoogleAnalyticsScopeDocumentId(session?.tId ?? session?.user?.tenantId);
+    const storeScope = normalizeGoogleAnalyticsScopeDocumentId(session?.sId ?? session?.user?.storeId);
+    if (!tenantScope || !storeScope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
+    const tenantId = tenantScope.numericId;
+    const storeId = storeScope.numericId;
 
     const storeDoc = await admin.firestore()
         .collection(DB_COLLECTIONS.STORES)
-        .doc(String(storeId))
+        .doc(storeScope.documentId)
         .get();
     const storeData = storeDoc.data();
     const analytics = storeData?.analytics || {};

@@ -23,6 +23,28 @@ export const getGracePeriodInfo = (pastDueTimestamp: Timestamp | null | undefine
     };
 };
 
+export const getGracePeriodDisplayInfo = (pastDueTimestamp: Timestamp | null | undefined, graceDays: number = 7) => {
+    const gracePeriodInfo = getGracePeriodInfo(pastDueTimestamp, graceDays);
+    if (!pastDueTimestamp || !gracePeriodInfo.graceEndsTimestamp) {
+        return {
+            ...gracePeriodInfo,
+            hasKnownGracePeriod: false,
+            dayLabel: '',
+            title: 'Payment recovery',
+            summary: 'Grace period details unavailable.',
+        };
+    }
+
+    const dayLabel = `${gracePeriodInfo.remainingDays} day${gracePeriodInfo.remainingDays === 1 ? '' : 's'}`;
+    return {
+        ...gracePeriodInfo,
+        hasKnownGracePeriod: true,
+        dayLabel,
+        title: `Grace period (${dayLabel} left)`,
+        summary: `${dayLabel} grace period remaining.`,
+    };
+};
+
 /**
  * Determines if the user has valid paid access to the application.
  * Used by Dashboard/Projects gates to decide whether to allow access.

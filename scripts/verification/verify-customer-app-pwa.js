@@ -28,6 +28,16 @@ function assertIncludes(content, needle, label) {
   assert(content.includes(needle), `${label} must include ${needle}`);
 }
 
+function assertOrder(content, orderedTokens, label) {
+  let previousIndex = -1;
+  for (const token of orderedTokens) {
+    const index = content.indexOf(token);
+    assert(index !== -1, `${label} missing token ${token}`);
+    assert(index > previousIndex, `${label} must keep token order at ${token}`);
+    previousIndex = index;
+  }
+}
+
 function assertNoDirectConsole(content, label) {
   const executableContent = stripJsComments(content);
   assert(
@@ -106,6 +116,65 @@ function verifyManifestRoute() {
   assertIncludes(customerAppFirebase, 'Manifest start-url lookup diagnostics', 'Customer App Firebase manifest start-url diagnostics');
   assertIncludes(productionAudit, 'Customer App manifest start-url diagnostics checkpoint', 'production audit manifest start-url checkpoint');
   assertIncludes(changelog, 'Customer App Manifest Start-URL Diagnostics', 'changelog manifest start-url checkpoint');
+}
+
+function verifyCustomerAppShortcutHandoffBoundary() {
+  const shortcutHandoffUrl = read('src/app/client/pwa/shortcutHandoffUrl.ts');
+  const externalRedirectClient = read('src/app/client/pwa/PwaExternalRedirectClient.tsx');
+  const callClient = read('src/app/client/pwa/call/PwaCallHandoffClient.tsx');
+  const directionsClient = read('src/app/client/pwa/directions/PwaDirectionsHandoffClient.tsx');
+  const whatsappClient = read('src/app/client/pwa/whatsapp/PwaWhatsAppHandoffClient.tsx');
+  const reservationPage = read('src/app/client/pwa/reservation/page.tsx');
+  const orderPage = read('src/app/client/pwa/order/page.tsx');
+  const directionsPage = read('src/app/client/pwa/directions/page.tsx');
+  const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
+  const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+
+  assertIncludes(shortcutHandoffUrl, 'const TEL_URL_PATTERN = /^tel:\\+[0-9]+$/;', 'Customer App shortcut tel URL shape guard');
+  assertIncludes(shortcutHandoffUrl, "const WHATSAPP_HOST = 'wa.me';", 'Customer App shortcut WhatsApp host guard');
+  assertIncludes(shortcutHandoffUrl, 'const WHATSAPP_PATH_PATTERN = /^\\/[0-9]+$/;', 'Customer App shortcut WhatsApp path guard');
+  assertIncludes(shortcutHandoffUrl, 'return normalizeOBPExternalHttpsUrl(value);', 'Customer App shortcut HTTPS URL guard');
+  assertIncludes(shortcutHandoffUrl, 'return normalizeOBPGoogleMapsUrl(value);', 'Customer App shortcut Google Maps URL guard');
+  assertIncludes(shortcutHandoffUrl, 'parsed.hostname.toLowerCase() !== WHATSAPP_HOST', 'Customer App shortcut WhatsApp host enforcement');
+
+  assertIncludes(externalRedirectClient, 'const safeTargetUrl = getSafePwaExternalHttpsUrl(targetUrl);', 'Customer App reservation/order client safe URL');
+  assertIncludes(externalRedirectClient, 'if (!safeTargetUrl) {', 'Customer App reservation/order client fail-closed guard');
+  assertIncludes(externalRedirectClient, 'window.location.replace(safeTargetUrl);', 'Customer App reservation/order client safe redirect');
+  assertIncludes(externalRedirectClient, '<a href={safeTargetUrl}>Continue</a>', 'Customer App reservation/order client safe noscript link');
+  assertNotIncludes(externalRedirectClient, 'window.location.replace(targetUrl);', 'Customer App reservation/order client raw redirect');
+  assertNotIncludes(externalRedirectClient, '<a href={targetUrl}>Continue</a>', 'Customer App reservation/order client raw noscript link');
+
+  assertIncludes(callClient, 'const safeTelUrl = getSafePwaTelUrl(telUrl);', 'Customer App call client safe URL');
+  assertIncludes(callClient, 'if (!safeTelUrl) {', 'Customer App call client fail-closed guard');
+  assertIncludes(callClient, 'window.location.replace(safeTelUrl);', 'Customer App call client safe redirect');
+  assertIncludes(callClient, '<a href={safeTelUrl}>Tap to call</a>', 'Customer App call client safe noscript link');
+  assertNotIncludes(callClient, 'window.location.replace(telUrl);', 'Customer App call client raw redirect');
+  assertNotIncludes(callClient, '<a href={telUrl}>Tap to call</a>', 'Customer App call client raw noscript link');
+
+  assertIncludes(directionsClient, 'const safeMapsUrl = getSafePwaGoogleMapsUrl(mapsUrl);', 'Customer App directions client safe URL');
+  assertIncludes(directionsClient, 'if (!safeMapsUrl) {', 'Customer App directions client fail-closed guard');
+  assertIncludes(directionsClient, 'window.location.replace(safeMapsUrl);', 'Customer App directions client safe redirect');
+  assertIncludes(directionsClient, '<a href={safeMapsUrl}>Open in Maps</a>', 'Customer App directions client safe noscript link');
+  assertNotIncludes(directionsClient, 'window.location.replace(mapsUrl);', 'Customer App directions client raw redirect');
+  assertNotIncludes(directionsClient, '<a href={mapsUrl}>Open in Maps</a>', 'Customer App directions client raw noscript link');
+
+  assertIncludes(whatsappClient, 'const safeWaUrl = getSafePwaWhatsAppUrl(waUrl);', 'Customer App WhatsApp client safe URL');
+  assertIncludes(whatsappClient, 'if (!safeWaUrl) {', 'Customer App WhatsApp client fail-closed guard');
+  assertIncludes(whatsappClient, 'window.location.replace(safeWaUrl);', 'Customer App WhatsApp client safe redirect');
+  assertIncludes(whatsappClient, '<a href={safeWaUrl}>Open in WhatsApp</a>', 'Customer App WhatsApp client safe noscript link');
+  assertNotIncludes(whatsappClient, 'window.location.replace(waUrl);', 'Customer App WhatsApp client raw redirect');
+  assertNotIncludes(whatsappClient, '<a href={waUrl}>Open in WhatsApp</a>', 'Customer App WhatsApp client raw noscript link');
+
+  assertIncludes(reservationPage, 'const reservationUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.reservationUrl);', 'Customer App reservation server URL normalization');
+  assertIncludes(orderPage, 'const orderUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.orderUrl);', 'Customer App order server URL normalization');
+  assertIncludes(directionsPage, 'const direct = normalizeOBPGoogleMapsUrl(store?.publicPresence?.googleMapsUrl);', 'Customer App directions server URL normalization');
+
+  assertIncludes(customerAppImpl, 'Shortcut handoff URL boundary', 'Customer App implementation shortcut handoff boundary docs');
+  assertIncludes(customerAppFirebase, 'Shortcut handoff URL guard', 'Customer App Firebase shortcut handoff boundary docs');
+  assertIncludes(productionAudit, 'Customer App shortcut handoff URL boundary checkpoint', 'Production audit Customer App shortcut handoff boundary');
+  assertIncludes(changelog, 'Customer App Shortcut Handoff URL Boundary', 'Changelog Customer App shortcut handoff boundary');
 }
 
 function verifyCustomerServiceWorkerPolicy() {
@@ -481,6 +550,10 @@ function verifyCustomerAppAssets() {
   const desktopSettings = read('src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx');
   const pwaDal = read('src/database/pwa/index.ts');
   const publicStoreLookup = read('src/lib/firestore/clientStoreLookup.ts');
+  const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
+  const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
   const executableIconRoute = stripJsComments(appIconRoute);
   const executableSplashRoute = stripJsComments(appSplashRoute);
   const executableScreenshotRoute = stripJsComments(appScreenshotRoute);
@@ -497,6 +570,16 @@ function verifyCustomerAppAssets() {
   assertIncludes(appIconRoute, "getBoundedRuntimeStringContext('storeId', storeId)", 'customer app icon route bounded store context');
   assertIncludes(appIconRoute, 'const ipHash = hashPublicRateLimitValue(getClientIp(request));', 'customer app icon route hashed rate-limit IP key');
   assertIncludes(appIconRoute, 'key: `public-dynamic-asset:icon:${ipHash}`', 'customer app icon route must not store raw IP rate-limit keys');
+  assertIncludes(appIconRoute, 'const STORE_ID_PATTERN = /^\\d{1,20}$/;', 'customer app icon route store-id shape guard');
+  assertIncludes(appIconRoute, 'if (!STORE_ID_PATTERN.test(storeId)) return true;', 'customer app icon route invalid store fallback');
+  assertOrder(
+    appIconRoute,
+    [
+      'if (await shouldUseFallbackAsset(request, storeId)) {',
+      'const store = await getPublicStoreById(storeId);',
+    ],
+    'customer app icon route fallback before store lookup',
+  );
   assertNotIncludes(appIconRoute, "secureError('[app-icons] generation failed'", 'customer app icon route raw fallback logging');
   assertNotIncludes(appIconRoute, 'key: `public-dynamic-asset:icon:${getClientIp(request)}`', 'customer app icon route raw rate-limit IP key');
   assertNotIncludes(appIconRoute, 'firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get()', 'customer app icon route direct store read');
@@ -512,6 +595,16 @@ function verifyCustomerAppAssets() {
   assertIncludes(appSplashRoute, "getBoundedRuntimeStringContext('storeId', storeId)", 'customer app splash route bounded store context');
   assertIncludes(appSplashRoute, 'const ipHash = hashPublicRateLimitValue(getClientIp(request));', 'customer app splash route hashed rate-limit IP key');
   assertIncludes(appSplashRoute, 'key: `public-dynamic-asset:splash:${ipHash}`', 'customer app splash route must not store raw IP rate-limit keys');
+  assertIncludes(appSplashRoute, 'const STORE_ID_PATTERN = /^\\d{1,20}$/;', 'customer app splash route store-id shape guard');
+  assertIncludes(appSplashRoute, 'if (!STORE_ID_PATTERN.test(storeId)) return true;', 'customer app splash route invalid store fallback');
+  assertOrder(
+    appSplashRoute,
+    [
+      'if (await shouldUseFallbackAsset(request, storeId)) {',
+      'const store = await getPublicStoreById(storeId);',
+    ],
+    'customer app splash route fallback before store lookup',
+  );
   assertNotIncludes(appSplashRoute, "secureError('[app-splash] generation failed'", 'customer app splash route raw fallback logging');
   assertNotIncludes(appSplashRoute, 'key: `public-dynamic-asset:splash:${getClientIp(request)}`', 'customer app splash route raw rate-limit IP key');
   assertNotIncludes(appSplashRoute, 'firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get()', 'customer app splash route direct store read');
@@ -523,6 +616,16 @@ function verifyCustomerAppAssets() {
   assertIncludes(appScreenshotRoute, "getBoundedRuntimeStringContext('storeId', storeId)", 'customer app screenshot route bounded store context');
   assertIncludes(appScreenshotRoute, 'const ipHash = hashPublicRateLimitValue(getClientIp(request));', 'customer app screenshot route hashed rate-limit IP key');
   assertIncludes(appScreenshotRoute, 'key: `public-dynamic-asset:screenshot:${ipHash}`', 'customer app screenshot route must not store raw IP rate-limit keys');
+  assertIncludes(appScreenshotRoute, 'const STORE_ID_PATTERN = /^\\d{1,20}$/;', 'customer app screenshot route store-id shape guard');
+  assertIncludes(appScreenshotRoute, 'if (!STORE_ID_PATTERN.test(storeId)) return true;', 'customer app screenshot route invalid store fallback');
+  assertOrder(
+    appScreenshotRoute,
+    [
+      'if (await shouldUseFallbackAsset(request, storeId)) {',
+      'const store = await getPublicStoreById(storeId);',
+    ],
+    'customer app screenshot route fallback before store lookup',
+  );
   assertNotIncludes(appScreenshotRoute, "secureError('[app-screenshots] generation failed'", 'customer app screenshot route raw fallback logging');
   assertNotIncludes(appScreenshotRoute, 'key: `public-dynamic-asset:screenshot:${getClientIp(request)}`', 'customer app screenshot route raw rate-limit IP key');
   assertNotIncludes(appScreenshotRoute, 'firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get()', 'customer app screenshot route direct store read');
@@ -552,6 +655,10 @@ function verifyCustomerAppAssets() {
   assertIncludes(mobileSettings, 'assertPWASettingsUpdateSucceeded(settingsResult);', 'mobile customer app settings acknowledgement guard');
   assertIncludes(mobileSettings, 'assertPWAIconOverrideUpdateSucceeded(iconResult);', 'mobile customer app icon acknowledgement guard');
   assertIncludes(mobileSettings, "customer_app_business_copy_meta_update_rejected", 'mobile customer app metadata acknowledgement guard');
+  assertIncludes(customerAppImpl, 'Dynamic asset store ID fallback boundary', 'Customer App implementation dynamic asset fallback boundary');
+  assertIncludes(customerAppFirebase, 'Dynamic asset store-ID fallback is cost-neutral', 'Customer App Firebase dynamic asset fallback boundary');
+  assertIncludes(productionAudit, 'Customer App dynamic asset store ID fallback checkpoint', 'Production audit Customer App dynamic asset fallback boundary');
+  assertIncludes(changelog, 'Customer App Dynamic Asset Store ID Fallback Boundary', 'Changelog Customer App dynamic asset fallback boundary');
 }
 
 function verifyAnalyticsCoverage() {
@@ -623,11 +730,13 @@ function verifyAnalyticsCoverage() {
   assertIncludes(publicAnalyticsRoute, "logAnalyticsFailure('public_analytics_track_failed'", 'public analytics bounded failure logging');
   assertNotIncludes(publicAnalyticsRoute, 'req.json()', 'public analytics route must not parse unbounded JSON');
 
+  assertIncludes(clientAnalyticsWrite, "projectId === 'customerApp'", 'client analytics writer Customer App surface routing');
+  assertIncludes(serverAnalyticsWrite, "analyticsProjectId === 'customerApp'", 'server analytics writer Customer App surface routing');
+
   for (const [label, content] of [
     ['client analytics writer', clientAnalyticsWrite],
     ['server analytics writer', serverAnalyticsWrite],
   ]) {
-    assertIncludes(content, "projectId === 'customerApp'", `${label} Customer App surface routing`);
     assertIncludes(content, "? 'customerApp'", `${label} Customer App surface value`);
     assertIncludes(content, 'filterAnalyticsUpdateData(updateData)', `${label} analytics write policy`);
     assertIncludes(content, 'assignProcessedAnalyticsField', `${label} dotted field preservation`);
@@ -1143,6 +1252,7 @@ const checks = [
   ['manifest identity', verifyManifestIdentity],
   ['manifest link', verifyManifestLink],
   ['manifest route', verifyManifestRoute],
+  ['customer app shortcut handoff boundary', verifyCustomerAppShortcutHandoffBoundary],
   ['customer service worker policy', verifyCustomerServiceWorkerPolicy],
   ['client menu offline docs', verifyClientMenuOfflineDocsMatchServiceWorkerPolicy],
   ['customer app public copy freshness boundary', verifyCustomerAppPublicCopyFreshnessBoundary],

@@ -1,6 +1,6 @@
 # Razorpay Payment System — Mobile Support
 
-**Last Updated:** June 29, 2026
+**Last Updated:** July 5, 2026
 **Decision:** ✅ FULL MOBILE SUPPORT — Zero desktop dependency for billing
 
 ---
@@ -40,7 +40,8 @@
 - Mobile billing actions use the same bounded server routes as desktop; Razorpay action bodies are capped before validation, provider calls, or subscription/top-up writes.
 - Mobile uses the same bounded payment diagnostics as desktop. The shared hook does not log raw checkout verification responses, payment IDs, subscription IDs, order IDs, signatures, or provider exception payloads.
 - Mobile billing catches plan update, paid-location, credit-pack, pause, resume, cancel, retry-payment link, pending-payment link, and invoice link failures with bounded payment diagnostics and generic owner-facing toast text; it does not display raw payment exception messages or raw Razorpay URLs.
+- Mobile billing uses the shared past-due grace-period display fallback. Valid `pastDueSinceAt` values keep the normal countdown, while missing legacy/malformed `past_due` timestamps show fixed "Grace period details unavailable." copy instead of a false zero-day countdown.
 - Same `getActiveSubscriptionForStore`, `getBillingHistoryForStore` DAL functions
 - Billing history uses the shared 50-row successful-payment limit.
 - Same `getB2CPlansList`, `aiEnhancementPacksList` data
-- Same `calculateRemainingCredits`, `getGracePeriodInfo`, `hasValidSubscriptionAccess` utilities
+- Same `calculateRemainingCredits`, `getGracePeriodInfo`, `getGracePeriodDisplayInfo`, `hasValidSubscriptionAccess` utilities

@@ -391,6 +391,9 @@ Security:
 - `verifyTenantAccess()`
 - `DATA_WRITE` rate limit before body parsing or provider calls; shared AMM limiter keys hash owner, tenant, and store segments before storage in Upstash
 - bounded guard security metadata for selected-store, tenant-access, rate-limit, and invalid-request events; guard logs must not spread raw `buildSecurityContext()` output
+- supplied `sessionId` values must match deterministic `amm_` session IDs and selected `projectId` values must be simple bounded Firestore document IDs before fallback session/project reads
+- AMM server DAL ID boundary: `src/database/aiMenuManager/server.ts` must apply the same session, proposal, and selected-project normalizers before any AMM session, proposal, scoped project, or legacy project document ref; stored proposal summaries with malformed proposal IDs are ignored during inbox hydration
+- AMM scope document-ID boundary: `src/lib/ai-menu-manager/apiGuards.ts`, `src/lib/ai-menu-manager/routeIds.ts`, and `src/database/aiMenuManager/server.ts` validate tenant/store scope with `normalizeAiMenuManagerScopeDocumentId()` before selected-store authorization, tenant access fallback checks, limiter scope material, scoped `projects/{tId}/{sId}/{projectId}` reads, session/proposal scope comparisons, or AMM proposal/session writes. Tenant/store scope must be exact positive safe-integer MenuList document IDs; malformed, whitespace-mutated, path-shaped, reserved, decimal, zero, negative, unsafe, or nonnumeric scope values fail before those downstream refs or writes.
 - 64KB bounded JSON body before Zod input validation
 - SAFE_MODE before expensive AI path
 - generic owner errors
@@ -417,6 +420,27 @@ Reads:
 - one current session/day summary doc when possible.
 - proposal detail docs only when a compact summary explicitly points to server-backed durable detail.
 - session/project mismatch returns an empty inbox instead of showing cards from another selected menu.
+
+### `GET /api/ai-menu-manager/sessions/{sessionId}`
+
+Purpose: return compact pending cards and recent receipts for an already known AMM session.
+
+Input:
+
+```ts
+{
+  storeId: string; // selected store context
+  projectId: string; // selected project context; required
+}
+```
+
+Security:
+
+- `withAuth()`
+- route `sessionId` must match the deterministic `amm_` session ID shape.
+- selected `projectId` must be a simple bounded Firestore document ID.
+- malformed route/query IDs return fixed invalid request responses before `getAiMenuManagerInbox()` can read session/proposal documents.
+- selected store permission and session tenant/store/project checks still apply before cards are returned.
 
 ### `POST /api/ai-menu-manager/proposals/{proposalId}/actions`
 
@@ -451,6 +475,7 @@ Response returns:
 Security:
 
 - `withAuth()`
+- route `proposalId` must match the deterministic `amm_prop_` proposal ID shape before proposal reads.
 - `DATA_WRITE` rate limit before body parsing.
 - 16KB bounded JSON body before Zod input validation.
 - selected store permission and proposal tenant/store/project/action checks before approval, status updates, or execution directives.
@@ -477,6 +502,7 @@ Input:
 Security:
 
 - `withAuth()`
+- route `proposalId` must match the deterministic `amm_prop_` proposal ID shape before proposal reads.
 - `DATA_WRITE` rate limit before body parsing.
 - 16KB bounded JSON body before Zod input validation.
 - selected store permission and proposal tenant/store/project/action checks before completion writes.

@@ -3,6 +3,11 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { collection, getDoc, increment, limit, query, runTransaction, setDoc, Timestamp, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import {
+    normalizeImageBatchJobId,
+    normalizeImageBatchProjectId,
+    normalizeImageBatchScopeDocumentId,
+} from "@lib/ai/imageBatchIdBoundary";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { BatchImageGenerationJobType } from "@template/main-app/projects/types";
@@ -69,24 +74,44 @@ export function assertImageBatchJobUpdateSucceeded(
 
 const getCollectionRef = async () => {
     const session = await getActiveSession();
-    return collection(firebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`)
+    const tenantScope = normalizeImageBatchScopeDocumentId(String(session.tId));
+    const storeScope = normalizeImageBatchScopeDocumentId(String(session.sId));
+    if (!tenantScope || !storeScope) {
+        throw new Error("Invalid image batch tenant/store scope.");
+    }
+
+    return collection(firebaseClient, `${COLLECTION}/${tenantScope.documentId}/${storeScope.documentId}`)
 }
 
 export const getBatchImageJobCollectionRef = (session: any, projectId: string) => {
-    const collectionRef = collection(firebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`);
+    const projectScope = normalizeImageBatchProjectId(projectId);
+    const tenantScope = normalizeImageBatchScopeDocumentId(String(session.tId));
+    const storeScope = normalizeImageBatchScopeDocumentId(String(session.sId));
+    if (!projectScope || !tenantScope || !storeScope) {
+        throw new Error("Invalid image batch project or session scope.");
+    }
+
+    const collectionRef = collection(firebaseClient, `${COLLECTION}/${tenantScope.documentId}/${storeScope.documentId}`);
 
     // Keep this listener bounded. The hook selects the newest visible job client-side
     // to avoid a new composite index for this tenant/store subcollection path.
     return query(
         collectionRef,
-        where("projectId", "==", projectId),
+        where("projectId", "==", projectScope.projectId),
         where("status", "in", [BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED, BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING, BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED, BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED]),
         limit(ACTIVE_BATCH_JOB_QUERY_LIMIT)
     );
 }
 
 const getDocRef = async (docId: any, session: any) => {
-    return doc(firebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`, docId)
+    const jobId = normalizeImageBatchJobId(docId);
+    const tenantScope = normalizeImageBatchScopeDocumentId(String(session.tId));
+    const storeScope = normalizeImageBatchScopeDocumentId(String(session.sId));
+    if (!jobId || !tenantScope || !storeScope) {
+        throw new Error("Invalid image batch job or tenant/store scope.");
+    }
+
+    return doc(firebaseClient, `${COLLECTION}/${tenantScope.documentId}/${storeScope.documentId}`, jobId)
 }
 
 function getImageBatchRetentionFields(status?: BatchImageGenerationJobStatusType) {
@@ -133,8 +158,14 @@ export const addImageBatchProcessingJob = async (data: BatchImageGenerationJobTy
 export const updateImageBatchProcessingJob = async (data: any, projectId: string) => {
     return await apiCallComposer(
         async () => {
+            const projectScope = normalizeImageBatchProjectId(projectId);
+            const jobId = normalizeImageBatchJobId(data.id);
+            if (!projectScope || !jobId) {
+                throw new Error("Invalid image batch project or job ID.");
+            }
+
             // Create a copy of the data to work with
-            let processedData = { ...data, ...getImageBatchRetentionFields(data.status) };
+            let processedData = { ...data, id: jobId, ...getImageBatchRetentionFields(data.status) };
             let specialFields: any = {};
 
             // Handle statusHistory specially if it exists in the data
@@ -164,8 +195,7 @@ export const updateImageBatchProcessingJob = async (data: any, projectId: string
             // Merge in the special fields that use Firestore field operations
             const finalUpdateData = { ...updateData, ...specialFields };
 
-            const [tId, _, sId] = projectId.split("-");
-            const docRef = await getDocRef(data.id, { tId, sId });
+            const docRef = await getDocRef(jobId, { tId: projectScope.tId, sId: projectScope.sId });
             if (latestStatusEntry) {
                 await runTransaction(firebaseClient, async (transaction) => {
                     const snap = await transaction.get(docRef);

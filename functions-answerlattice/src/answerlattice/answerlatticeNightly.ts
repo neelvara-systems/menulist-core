@@ -44,6 +44,7 @@ import {
     cleanupAnswerlatticeOperationalRetention,
     getAnswerlatticeRetentionFields,
 } from './dataRetention';
+import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 import { generateDraftsForNewProposals } from './draftGenerator';
 import { aggregateFrictionStats, cleanupExpiredFrictionStats } from './frictionAggregation';
 import { generateFrictionInsight } from './frictionInsight';
@@ -211,6 +212,19 @@ function getSchedulerScopeContext(tId?: number, sId?: number): Record<string, bo
         hasTenantScope: Number.isFinite(Number(tId)) && Number(tId) > 0,
         hasStoreScope: Number.isFinite(Number(sId)) && Number(sId) > 0,
     };
+}
+
+function normalizeAnswerlatticeFunctionEntityIds(values: unknown): string[] {
+    const source = Array.isArray(values) ? values : [];
+    const normalizedIds: string[] = [];
+    const seen = new Set<string>();
+    for (const value of source) {
+        const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(value);
+        if (!entityId || seen.has(entityId)) continue;
+        seen.add(entityId);
+        normalizedIds.push(entityId);
+    }
+    return normalizedIds;
 }
 
 function getBoundedSchedulerDetails(details?: Record<string, any>): Record<string, any> | undefined {
@@ -406,7 +420,7 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
     const signalsByEntity = new Map<string, { ticket: number; chat_negative: number; escalation: number; total: number }>();
     for (const doc of signalsSnap.docs) {
         const data = doc.data();
-        const entityId = data.entityId;
+        const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
         if (!entityId) continue;
 
         const counts = signalsByEntity.get(entityId) || { ticket: 0, chat_negative: 0, escalation: 0, total: 0 };
@@ -423,9 +437,10 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
         result.answersEvaluated++;
         const driftReasons: string[] = [];
         const previousDriftFlag = answer.governance?.driftFlag || false;
+        const answerEntityIds = normalizeAnswerlatticeFunctionEntityIds(answer.scope?.entityIds);
 
         // Class B: Signal Drift
-        const primaryEntityId = answer.scope?.entityIds?.[0];
+        const primaryEntityId = answerEntityIds[0];
         if (primaryEntityId) {
             const signals = signalsByEntity.get(primaryEntityId);
             if (signals && signals.total >= SIGNAL_DRIFT_THRESHOLDS.minSignalCount) {
@@ -444,7 +459,8 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
         // Class C: Scope Conflict
         for (const other of allAnswers) {
             if (other.id === answer.id || other.status !== 'active') continue;
-            const entityOverlap = answer.scope?.entityIds?.some((id: string) => other.scope?.entityIds?.includes(id));
+            const otherEntityIds = normalizeAnswerlatticeFunctionEntityIds(other.scope?.entityIds);
+            const entityOverlap = answerEntityIds.some((id: string) => otherEntityIds.includes(id));
             if (!entityOverlap) continue;
 
             const aFrom = answer.productBinding?.applicableVersions?.from || 0;
@@ -459,7 +475,7 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
         }
 
         // Class D: Orphan Drift
-        for (const entityId of (answer.scope?.entityIds || [])) {
+        for (const entityId of answerEntityIds) {
             const entity = entityMap.get(entityId);
             if (entity && entity.status === 'deprecated') {
                 driftReasons.push(`[deprecated_entity] Entity "${entity.name}" (${entityId}) is deprecated`);
@@ -541,8 +557,8 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
     const clusters = new Map<string, { ticket: number; chat_negative: number; escalation: number; total: number; refs: string[] }>();
     for (const doc of signalsSnap.docs) {
         const data = doc.data();
-        const entityId = data.entityId;
-        if (!entityId || entityId === 'unresolved') continue;
+        const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
+        if (!entityId) continue;
 
         const c = clusters.get(entityId) || { ticket: 0, chat_negative: 0, escalation: 0, total: 0, refs: [] };
         if (data.type === 'ticket') c.ticket++;
@@ -746,6 +762,8 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
         let bestScore = 0;
 
         for (const entry of searchIndex) {
+            const candidateEntityId = normalizeAnswerlatticeResolvedFunctionEntityId(entry.entityId);
+            if (!candidateEntityId) continue;
             let score = 0;
             for (const token of tokens) {
                 if (entry.canonicalName?.toLowerCase().includes(token)) score += 2;
@@ -758,7 +776,7 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
             }
             if (score > bestScore) {
                 bestScore = score;
-                bestEntityId = entry.entityId;
+                bestEntityId = candidateEntityId;
             }
         }
 
@@ -813,7 +831,7 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageK
             result.historyRows.push({
                 canonical: data.canonical === true,
                 canonicalAnswerId: typeof data.canonicalAnswerId === 'string' ? data.canonicalAnswerId : undefined,
-                matchedEntityIds: Array.isArray(data.matchedEntityIds) ? data.matchedEntityIds.filter((id: unknown) => typeof id === 'string') : [],
+                matchedEntityIds: normalizeAnswerlatticeFunctionEntityIds(data.matchedEntityIds),
                 confidence: typeof data.confidence === 'string' ? data.confidence : undefined,
             });
             if (data.canonical === true) {
@@ -956,8 +974,8 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
         const signalsByEntity = new Map<string, { total: number; ticket: number; chatNegative: number; escalation: number }>();
         for (const signalDoc of signalsSnap.docs) {
             const signal = signalDoc.data();
-            const entityId = typeof signal.entityId === 'string' ? signal.entityId : '';
-            if (!entityId || entityId === 'unresolved') continue;
+            const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(signal.entityId);
+            if (!entityId) continue;
 
             const counts = signalsByEntity.get(entityId) || { total: 0, ticket: 0, chatNegative: 0, escalation: 0 };
             counts.total++;
@@ -984,7 +1002,7 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
 
         const answerCountsByEntity = new Map<string, { active: number; drifted: number }>();
         for (const answer of activeAnswers) {
-            const entityIds: string[] = Array.isArray(answer.scope?.entityIds) ? answer.scope.entityIds : [];
+            const entityIds = normalizeAnswerlatticeFunctionEntityIds(answer.scope?.entityIds);
             for (const entityId of entityIds) {
                 const counts = answerCountsByEntity.get(entityId) || { active: 0, drifted: 0 };
                 counts.active++;
@@ -1135,11 +1153,9 @@ async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ pro
         const entityMissCounts = new Map<string, number>();
         for (const doc of historySnap.docs) {
             const data = doc.data();
-            const entityIds = data.matchedEntityIds || [];
+            const entityIds = normalizeAnswerlatticeFunctionEntityIds(data.matchedEntityIds);
             for (const entityId of entityIds) {
-                if (entityId && entityId !== 'unresolved') {
-                    entityMissCounts.set(entityId, (entityMissCounts.get(entityId) || 0) + 1);
-                }
+                entityMissCounts.set(entityId, (entityMissCounts.get(entityId) || 0) + 1);
             }
         }
 
@@ -1245,7 +1261,7 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
             if (!implementedAt || implementedAt.toMillis() > fourteenDaysAgo.toMillis()) continue;
 
             // Count post-implementation signals for related entity
-            const entityId = proposal.relatedEntityIds?.[0];
+            const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(proposal.relatedEntityIds?.[0]);
             if (!entityId) continue;
 
             const postSignalsSnap = await db
@@ -1470,7 +1486,7 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
     const answerCountByEntity = new Map<string, number>();
     for (const doc of answersSnap.docs) {
         const data = doc.data();
-        const entityIds: string[] = data.scope?.entityIds || [];
+        const entityIds = normalizeAnswerlatticeFunctionEntityIds(data.scope?.entityIds);
         for (const entityId of entityIds) {
             answerCountByEntity.set(entityId, (answerCountByEntity.get(entityId) || 0) + 1);
         }
@@ -1499,12 +1515,12 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
     // Process relations (bidirectional — both from and to get the related reference)
     for (const doc of relationsSnap.docs) {
         const rel = doc.data();
-        const fromId: string = rel.fromEntityId;
-        const toId: string = rel.toEntityId;
+        const fromId = normalizeAnswerlatticeResolvedFunctionEntityId(rel.fromEntityId);
+        const toId = normalizeAnswerlatticeResolvedFunctionEntityId(rel.toEntityId);
         const relType: string = rel.relationType;
 
         // Check for orphan relations (entity deprecated or missing)
-        if (!entityMap.has(fromId) || !entityMap.has(toId)) {
+        if (!fromId || !toId || !entityMap.has(fromId) || !entityMap.has(toId)) {
             result.orphanRelations++;
             continue;
         }

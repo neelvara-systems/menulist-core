@@ -4,6 +4,7 @@ import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { normalizeAnswerlatticeProductSurfaceId } from '@lib/answerlattice/productSurfaceIdBoundary';
 import {
     ANSWERLATTICE_PRODUCT_SURFACE_LIMIT,
     getContextContentSummaryDocId,
@@ -26,7 +27,11 @@ const ANSWERLATTICE_PRODUCT_SURFACE_SUMMARY_REBUILD_REQUEST_POLICY: RequestInit 
 };
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
-const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
+const getDocRef = (docId: string) => {
+    const normalizedDocId = normalizeAnswerlatticeProductSurfaceId(docId);
+    if (!normalizedDocId) throw new Error('Invalid Answerlattice product surface id');
+    return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);
+};
 const getSummaryDocRef = (tId: number, sId: number) =>
     doc(answerlatticeFirebaseClient, SUMMARY_COLLECTION, getContextContentSummaryDocId(tId, sId));
 
@@ -195,7 +200,10 @@ export const saveProductSurface = async (input: unknown) => {
         async () => {
             const scope = await requireScope();
             const parsed = parseProductSurfaceSaveInput(input, scope);
-            const docId = parsed.id || buildProductSurfaceDocId(scope.tId, scope.sId, parsed.key);
+            const docId = normalizeAnswerlatticeProductSurfaceId(
+                parsed.id || buildProductSurfaceDocId(scope.tId, scope.sId, parsed.key),
+            );
+            if (!docId) throw new Error('Invalid Answerlattice product surface id');
             const composedData = await answerlatticeRequestBodyComposer(parsed);
             await setDoc(getDocRef(docId), composedData, { merge: true });
             await markAnswerlatticeCompiledContextSourceChanged('surfaces', scope.tId, scope.sId, {
@@ -219,17 +227,18 @@ export const saveProductSurface = async (input: unknown) => {
 export const archiveProductSurface = async (surface: Pick<AnswerlatticeProductSurface, 'id' | 'key'>) => {
     return await apiCallComposer(
         async () => {
-            if (!surface.id) throw new Error('Surface ID is required.');
+            const surfaceId = normalizeAnswerlatticeProductSurfaceId(surface.id);
+            if (!surfaceId) throw new Error('Surface ID is required.');
             const scope = await requireScope();
             const composedData = await answerlatticeRequestBodyComposer({ active: false });
-            await setDoc(getDocRef(surface.id), composedData, { merge: true });
+            await setDoc(getDocRef(surfaceId), composedData, { merge: true });
             await markAnswerlatticeCompiledContextSourceChanged('surfaces', scope.tId, scope.sId, {
                 reason: 'product_surface_archive',
-                sourceId: surface.id,
+                sourceId: surfaceId,
                 sourceType: COLLECTION,
             });
             return {
-                id: surface.id,
+                id: surfaceId,
                 ...composedData,
                 success: true,
                 operation: 'archive',
@@ -245,7 +254,9 @@ export const archiveProductSurface = async (surface: Pick<AnswerlatticeProductSu
 export const getProductSurfaceById = async (surfaceId: string) => {
     return await apiCallComposer(
         async () => {
-            const snap = await getDoc(getDocRef(surfaceId));
+            const normalizedSurfaceId = normalizeAnswerlatticeProductSurfaceId(surfaceId);
+            if (!normalizedSurfaceId) return null;
+            const snap = await getDoc(getDocRef(normalizedSurfaceId));
             return snap.exists() ? ({ ...snap.data(), id: snap.id } as AnswerlatticeProductSurface) : null;
         },
         surfaceId,

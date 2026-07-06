@@ -63,7 +63,7 @@ Business Health must not duplicate that action registry.
 
 ## Firebase Cost Confirmation
 
-Action workflow collections are removed from the active model. The remaining Business Health writes are bounded to existing summary, thread, feedback, and answer-event behavior controlled by Business Health flags. The feedback route now uses shared bounded JSON admission before selected-store scope checks, permission checks, or the feedback write.
+Action workflow collections are removed from the active model. The remaining Business Health writes are bounded to existing summary, thread, feedback, and answer-event behavior controlled by Business Health flags. Thread writes and reads now require browser-generated `oba_` runtime thread IDs before `ownerBusinessAssistantThreads` document access, and whitespace-mutated thread IDs fail before document reads/writes. The feedback route now uses shared bounded JSON admission before selected-store scope checks, permission checks, or the feedback write, and whitespace-mutated answer IDs fail before feedback or answer-event document writes.
 
 No Business Health path should write:
 
@@ -77,7 +77,7 @@ No Business Health path should write:
 
 The active Business Health APIs remain protected read/answer routes with auth, tenant/store/project validation, request validation, rate limiting where provider-backed answering is possible, and generic owner-safe errors.
 
-Browser read-model hooks now send current, analytics, locations, and thread requests with same-origin credentials, no browser cache, and manual redirect handling, then parse responses through a shared bounded reader before SWR cache/state updates. Non-OK, malformed, oversized, or invalid successful read-model envelopes fail closed with bounded diagnostics instead of direct `response.json()` parsing. The answer hook and platform monitor use the same request policy before their bounded response readers.
+Browser read-model hooks now send current, analytics, locations, and thread requests with same-origin credentials, no browser cache, and manual redirect handling, then parse responses through a shared bounded reader before SWR cache/state updates. Non-OK, malformed, oversized, or invalid successful read-model envelopes fail closed with bounded diagnostics instead of direct `response.json()` parsing. The answer hook also discards malformed stored thread IDs and replaces them with a fresh `oba_` ID before sending a new answer request. The answer hook and platform monitor use the same request policy before their bounded response readers.
 
 Removing owner operation handling reduces mutation risk because Business Health no longer exposes a write route for owner operations.
 

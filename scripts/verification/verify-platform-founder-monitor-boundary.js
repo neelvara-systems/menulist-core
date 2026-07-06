@@ -148,12 +148,19 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
     "'refund'",
     "'expansion_mrr'",
     "'downgrade_mrr'",
+    "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
     "const SUMMARY_DOC_ID = 'founderMonitorRevenue';",
     "const DAILY_DOC_PREFIX = 'founderMonitorRevenueDaily_';",
     "const ONBOARDING_TRANSITION_SOURCE = 'founderRevenueReadModel:new_mrr';",
+    'function normalizeFounderRevenueMovementDocumentId(value: string): string | null',
+    'return isValidFirestoreDocumentId(movementId) ? movementId : null;',
+    'function normalizeFounderRevenueStoreDocumentId(value: unknown): string | null',
+    'return isValidFirestoreDocumentId(storeId) ? storeId : null;',
     'function shouldTrackProduct(productId: unknown): boolean',
     'return normalizedProductId(productId) === PRODUCT_IDS.MENULIST;',
     'function buildTransitionPaymentPayload',
+    'const movementId = normalizeFounderRevenueMovementDocumentId(input.id);',
+    'const storeId = normalizeFounderRevenueStoreDocumentId(input.storeId);',
     'firestoreAdmin.runTransaction(async (transaction) => {',
     'const movementSnap = await transaction.get(movementRef);',
     'if (movementSnap.exists) return;',
@@ -173,14 +180,31 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
     "id: `churn:${subscriptionId}`",
     "kind: 'churn'",
     'export async function recordFounderSubscriptionMrrChange',
+    "const eventKey = normalizeFounderRevenueMovementDocumentId(params.eventKey || 'change');",
     "deltaPaise > 0 ? 'expansion_mrr' : 'downgrade_mrr'",
     "logRuntimeFailure('founder_revenue_movement_record_failed'",
   ].forEach((token) => assertIncludes(source, token, 'Founder revenue read model'));
+
+  assertOrder(source, [
+    'const movementId = normalizeFounderRevenueMovementDocumentId(input.id);',
+    'firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(movementId)',
+  ], 'Founder revenue movement ID guard order');
+  assertOrder(source, [
+    'const storeId = normalizeFounderRevenueStoreDocumentId(input.storeId);',
+    'firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_ONBOARDING_TRANSITIONS).doc(storeId)',
+  ], 'Founder onboarding transition store ID guard order');
+  assertOrder(source, [
+    "const eventKey = normalizeFounderRevenueMovementDocumentId(params.eventKey || 'change');",
+    'id: `${kind}:${subscriptionId}:${eventKey}`',
+  ], 'Founder MRR change event-key ID guard order');
 
   [
     '.add(',
     'console.error',
     'error.message',
+    'const movementId = normalizeMovementId(input.id);',
+    'const storeId = cleanText(input.storeId, 80) || null;',
+    "const eventKey = normalizeMovementId(params.eventKey || 'change');",
   ].forEach((token) => assertNotIncludes(source, token, 'Founder revenue read model boundary'));
 }
 
@@ -428,6 +452,8 @@ function verifyDocsAndPage() {
   const implDoc = read('__docs__/platform-founder-monitor/platform-founder-monitor_impl.md');
   const firebaseDoc = read('__docs__/platform-founder-monitor/platform-founder-monitor_firebase.md');
   const validationDoc = read('__docs__/platform-founder-monitor/platform-founder-monitor_validation.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
   [
     'precomputed',
     'founderRevenueMovements',
@@ -440,6 +466,30 @@ function verifyDocsAndPage() {
     assertIncludes(implDoc, token, 'Founder Monitor implementation docs');
     assertIncludes(firebaseDoc, token, 'Founder Monitor Firebase docs');
   });
+  [
+    'Founder revenue movement document IDs and payment-to-live transition store IDs pass through `src/lib/firebase/firestoreDocumentId.ts`',
+    'malformed, reserved, empty, or path-shaped movement/store IDs return without creating invalid',
+  ].forEach((token) => assertIncludes(implDoc, token, 'Founder Monitor implementation document-ID boundary docs'));
+  [
+    'Founder Monitor revenue document-ID admission is Firebase-cost neutral',
+    'validates movement IDs and transition store IDs with `src/lib/firebase/firestoreDocumentId.ts`',
+    'malformed, reserved, empty, or path-shaped IDs return before invalid refs',
+  ].forEach((token) => assertIncludes(firebaseDoc, token, 'Founder Monitor Firebase document-ID boundary docs'));
+  [
+    'Founder revenue movement IDs pass through `src/lib/firebase/firestoreDocumentId.ts`',
+    'Payment-to-live transition store IDs pass through the same document-ID guard',
+    'Valid Razorpay-driven cash, failed-payment, new-MRR, churn, refund, expansion, and downgrade movements keep the same deterministic summary-write behavior.',
+  ].forEach((token) => assertIncludes(validationDoc, token, 'Founder Monitor validation document-ID boundary docs'));
+  [
+    'Platform Founder Monitor Revenue Document ID Boundary checkpoint',
+    'malformed, reserved, empty, or path-shaped movement IDs and transition store IDs can no longer reach',
+    '`npm run verify:platform-founder-monitor-boundary`',
+  ].forEach((token) => assertIncludes(productionAudit, token, 'Production audit Founder Monitor document-ID boundary evidence'));
+  [
+    'Platform Founder Monitor Revenue Document ID Boundary',
+    'Founder revenue movement refs now validate document IDs',
+    'Payment-to-live transition refs now validate store IDs',
+  ].forEach((token) => assertIncludes(changelog, token, 'Changelog Founder Monitor document-ID boundary evidence'));
   [
     [firebaseDoc, 'Founder Monitor Firebase docs'],
     [validationDoc, 'Founder Monitor validation docs'],

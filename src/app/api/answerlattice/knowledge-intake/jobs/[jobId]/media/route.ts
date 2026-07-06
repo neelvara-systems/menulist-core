@@ -5,6 +5,7 @@ import {
     processKnowledgeIntakeMediaSource,
     serializeIntakeValue,
 } from '@lib/answerlattice/knowledgeIntake';
+import { normalizeAnswerlatticeKnowledgeIntakeJobId } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import {
     getAnswerlatticeKnowledgeIntakeLogContext,
     logAnswerlatticeKnowledgeIntakeFailure,
@@ -75,6 +76,11 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
         return NextResponse.json({ error: 'Screenshot and media extraction is not enabled.' }, { status: 404 });
     }
 
+    const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
+    if (!jobId) {
+        return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
+    }
+
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
         rateLimitKey: 'answerlattice-intake:media-source',
         rateLimit: 8,
@@ -112,7 +118,7 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
 
         const mimeType = inferMimeType(file.name, file.type);
         const buffer = Buffer.from(await file.arrayBuffer());
-        const result = await processKnowledgeIntakeMediaSource(access.context.scope, params.jobId, {
+        const result = await processKnowledgeIntakeMediaSource(access.context.scope, jobId, {
             buffer,
             fileName: file.name,
             mimeType,
@@ -127,7 +133,7 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
         }, access.context.actor);
 
         secureLog('[Answerlattice Intake] Media source extracted', getAnswerlatticeKnowledgeIntakeLogContext({
-            jobId: params.jobId,
+            jobId,
             scope: access.context.scope,
             sourceId: result.source.id,
             sourceType: result.source.type,

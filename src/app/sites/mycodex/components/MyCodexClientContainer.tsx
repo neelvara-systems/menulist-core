@@ -1004,7 +1004,9 @@ export default function MyCodexClientContainer({
 
     // Build standard URL based on current routing prefix
     const buildUrl = useCallback((targetPath: string) => {
-        const cleanPath = targetPath.startsWith('/') ? targetPath : '/' + targetPath;
+        const normalizedTargetPath = String(targetPath || '').trim();
+        const safeTargetPath = !normalizedTargetPath || normalizedTargetPath.startsWith('//') ? '/' : normalizedTargetPath;
+        const cleanPath = safeTargetPath.startsWith('/') ? safeTargetPath : '/' + safeTargetPath;
         return isLocalDev ? `/__mycodex${cleanPath === '/' ? '' : cleanPath}` : cleanPath;
     }, [isLocalDev]);
 

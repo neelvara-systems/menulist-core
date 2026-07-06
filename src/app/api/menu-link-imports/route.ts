@@ -22,6 +22,7 @@ import {
     getMenuLinkImportClientMessage,
     MenuLinkImportError,
 } from '@lib/menu-link-import/sourceAcquisition';
+import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
 import { checkSafeMode } from '@lib/ops/safeMode';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -34,8 +35,12 @@ import { verifyTenantAccess, withAuth } from 'src/middleware/auth';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 
+const MenuExtractionProjectIdSchema = z.string()
+    .trim()
+    .refine((value) => normalizeMenuExtractionProjectId(value) === value);
+
 const RequestSchema = z.object({
-    projectId: z.string().min(3).max(160),
+    projectId: MenuExtractionProjectIdSchema,
     url: z.string().min(8).max(4000),
     permissionConfirmed: z.literal(true),
 });

@@ -101,6 +101,8 @@ function verifyManageRoute(route) {
     'readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES',
     'validateAPIInput(UpdateResellerSchema, body)',
     'validateAPIInput(CreateResellerSchema, body)',
+    'isValidFirestoreDocumentId',
+    "profileId: z.string().trim().min(1).max(128).refine(isValidFirestoreDocumentId, 'Invalid profile ID')",
     'assertResellerUniqueness(',
     'await authAdmin.createUser({',
     'await authAdmin.updateUser(uid, updatePayload);',
@@ -136,6 +138,7 @@ function verifyManageRoute(route) {
     'console.error',
     'error.message',
     'key: `reseller-manage:${session.user.id}`',
+    "profileId: z.string().trim().min(1).max(128).refine((value) => !value.includes('/'))",
   ].forEach((token) => assertNotIncludes(route, token, 'Reseller management API boundary'));
 }
 
@@ -261,7 +264,12 @@ function verifyReadRoutes(clientsRoute, monthlyRoute, profileRoute) {
 
   [
     'const MONTHLY_TRANSACTION_LIMIT = 2000;',
+    'const MONTH_PARAM_PATTERN = /^(\\d{4})-(\\d{2})$/;',
+    'const MIN_REPORT_YEAR = 2020;',
+    'const MAX_REPORT_YEAR = 2100;',
     'applyResellerReadRateLimit(session, "monthly-summary")',
+    'const parsedMonth = parseMonth(request.nextUrl.searchParams.get("month"));',
+    'return NextResponse.json({ error: "Invalid month filter." }, { status: 400 });',
     'db.collection(DB_COLLECTIONS.RESELLER_PROFILES).limit(50).get()',
     'db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(resellerId).get()',
     '.where("email", "==", normalizedEmail)',
@@ -271,6 +279,14 @@ function verifyReadRoutes(clientsRoute, monthlyRoute, profileRoute) {
     "logResellerApiFailure(\"reseller_monthly_summary_route_failed\"",
     "requiredPlatformRole: \"RESELLER\"",
   ].forEach((token) => assertIncludes(monthlyRoute, token, 'Reseller monthly-summary API'));
+
+  [
+    'if (!match) return null;',
+    'monthNumber < 1',
+    'monthNumber > 12',
+    'year < MIN_REPORT_YEAR',
+    'year > MAX_REPORT_YEAR',
+  ].forEach((token) => assertIncludes(monthlyRoute, token, 'Reseller monthly-summary month boundary'));
 
   [
     'applyResellerReadRateLimit(session, "profile")',
@@ -457,7 +473,7 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
   });
 }
 
-function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, firebaseDoc, mobileDoc, auditDoc) {
+function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, firebaseDoc, mobileDoc, auditDoc, changelog) {
   [
     'verify:reseller-dashboard-boundary',
     'This is NOT:',
@@ -490,6 +506,8 @@ function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, fireb
     '## 13. Implementation Checklist',
     'Active reseller onboarding creates the tenant/store account, owner access, subscription state, dashboard link, and public customer link handoff.',
     'It does not upload menu files or run menu extraction inside `/api/reseller/onboard`',
+    'July 5, 2026 profile-id boundary:',
+    'Platform reseller management validates update `profileId` through the shared Firestore document-ID boundary',
     'compatibility field; active route does not upload/extract menu files',
   ].forEach((token) => assertIncludes(impl, token, 'Reseller implementation docs'));
 
@@ -552,9 +570,29 @@ function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, fireb
   [
     'verify:reseller-dashboard-boundary',
     'All reseller write routes apply `DATA_WRITE` throttling and a bounded 16KB JSON body cap',
+    'July 5 monthly-summary month filter boundary is Firebase-cost neutral',
+    'invalid explicit `month` filters return `400` before Firestore reads',
     'June 29 mutation limiter-key hardening is Firebase-cost neutral',
+    'July 5 platform reseller management profile-id boundary is Firebase-cost neutral',
+    'validates update `profileId` through the shared Firestore document-ID boundary before reseller profile lookup',
     'Browser Handoff Diagnostics',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Reseller Firebase docs'));
+
+  [
+    'July 5, 2026 monthly-summary query boundary:',
+    'Malformed or impossible explicit `month` query values now return `400` before monthly transaction/profile reads',
+    'Missing `month` still uses the current India month',
+  ].forEach((token) => assertIncludes(impl, token, 'Reseller implementation monthly-summary query boundary'));
+
+  [
+    'Reseller Management Profile ID Boundary',
+    'Reseller profile IDs are validated before updates',
+    'old slash-only guard removal',
+    'Reseller Monthly Summary Query Boundary',
+    'Explicit reseller monthly-summary months are calendar-validated',
+    'Invalid explicit months fail before Firestore reads',
+    'verify:reseller-dashboard-boundary',
+  ].forEach((token) => assertIncludes(changelog, token, 'Reseller changelog monthly-summary query boundary'));
 
   [
     'verify:reseller-dashboard-boundary',
@@ -566,6 +604,8 @@ function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, fireb
   ].forEach((token) => assertIncludes(mobileDoc, token, 'Reseller mobile docs'));
 
   [
+    'Reseller Management Profile ID Boundary checkpoint',
+    'old slash-only guard removal',
     'verify:reseller-dashboard-boundary',
     'reseller dashboard',
     'No Firebase deploy, Vercel deploy, production build',
@@ -602,6 +642,7 @@ const files = {
   firebaseDoc: read('__docs__/reseller-dashboard/reseller-dashboard_firebase.md'),
   mobileDoc: read('__docs__/reseller-dashboard/reseller-dashboard_mobile-support.md'),
   auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
+  changelog: read('__docs__/CHANGELOG.md'),
 };
 
 verifyPackageScript(files.packageJson);
@@ -621,6 +662,6 @@ verifyMobileSurfaces(
   files.mobileShell,
   files.mobileMore,
 );
-verifyDocs(files.readme, files.spec, files.impl, files.marketingDoc, files.websiteDoc, files.helpDoc, files.firebaseDoc, files.mobileDoc, files.auditDoc);
+verifyDocs(files.readme, files.spec, files.impl, files.marketingDoc, files.websiteDoc, files.helpDoc, files.firebaseDoc, files.mobileDoc, files.auditDoc, files.changelog);
 
 console.log('Reseller dashboard boundary verification passed');

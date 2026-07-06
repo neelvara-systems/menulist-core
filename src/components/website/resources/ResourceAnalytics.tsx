@@ -1,12 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { trackPlausibleEvent } from '@lib/website/plausible';
-
-type WebsiteGtagWindow = Window & {
-    gaId?: string;
-    gtag?: (...args: unknown[]) => void;
-};
+import { trackGoogleMarketingEvent, trackPlausibleEvent } from '@lib/website/plausible';
 
 const trackedReferrers = [
     { group: 'chatgpt', hosts: ['chatgpt.com', 'chat.openai.com'] },
@@ -78,7 +73,6 @@ export default function ResourceAnalytics({
 
         trackPlausibleEvent('resource_page_viewed');
 
-        const analyticsWindow = window as WebsiteGtagWindow;
         const payload = {
             category: cluster,
             cluster,
@@ -93,19 +87,14 @@ export default function ResourceAnalytics({
             utm_source: getUtmSource(),
         };
 
-        if (typeof analyticsWindow.gtag === 'function') {
-            analyticsWindow.gtag('event', 'resource_page_view', payload);
-        }
+        trackGoogleMarketingEvent('resource_page_view', payload);
 
         if (referrerMatch) {
             trackPlausibleEvent('ai_referral_detected');
-
-            if (typeof analyticsWindow.gtag === 'function') {
-                analyticsWindow.gtag('event', 'ai_crawler_referral_detected', {
-                    ...payload,
-                    referrer_group: referrerMatch.group,
-                });
-            }
+            trackGoogleMarketingEvent('ai_crawler_referral_detected', {
+                ...payload,
+                referrer_group: referrerMatch.group,
+            });
         }
     }, [cluster, locale, pageType, slug]);
 

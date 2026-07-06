@@ -208,7 +208,7 @@ The public menu resolver at `src/app/client/[[...slug]]/page.tsx` follows the sa
 | Vercel `unstable_cache` | Cross-request Data Cache                  | 60 seconds  |
 | `revalidateTag()`       | Instant invalidation on store/menu update | On-demand   |
 
-Admin subdomain renames also apply platform-only auth, reject bodies above 8KB before validation or store/collision reads, update `platformSummary/storesSummary`, and revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores` after the transaction. This keeps old-subdomain redirect lookup, current-subdomain lookup, OBP/menu rendering, and internal store selectors aligned without owner-facing rename controls.
+Admin subdomain rename rate-limit and scope boundary: admin subdomain renames apply platform-only auth, the shared `ADMIN_SUBDOMAIN_RENAME_MUTATION` rate limit, strict tenant/store document-ID normalization, and an 8KB body cap before validation, store reads, collision reads, or public-routing writes. Successful renames update `platformSummary/storesSummary`, then revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores` after the transaction. This keeps old-subdomain redirect lookup, current-subdomain lookup, OBP/menu rendering, and internal store selectors aligned without owner-facing rename controls.
 
 Owner subdomain availability checks (`GET /api/subdomain/check`) use session-scoped `MANAGE_PUBLIC_PRESENCE`, apply the cheap `DATA_READ` limiter before permission and store availability reads, and store only HMAC-hashed owner/tenant/store key material in the limiter key.
 

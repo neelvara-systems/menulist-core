@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { detectAndTrackShortcutLaunch } from '@lib/pwa/shortcutSourceDetector';
+import { getSafePwaGoogleMapsUrl } from '../shortcutHandoffUrl';
 
 interface Props {
     storeId: string | number;
@@ -21,17 +22,23 @@ export default function PwaDirectionsHandoffClient({
     locationTrackingEnabled = true,
 }: Props) {
     const [ready, setReady] = useState(false);
+    const safeMapsUrl = getSafePwaGoogleMapsUrl(mapsUrl);
 
     useEffect(() => {
+        if (!safeMapsUrl) {
+            setReady(true);
+            return;
+        }
+
         void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         const t = window.setTimeout(() => {
-            window.location.replace(mapsUrl);
+            window.location.replace(safeMapsUrl);
         }, 80);
 
         setReady(true);
         return () => window.clearTimeout(t);
-    }, [storeId, tenantId, mapsUrl, trackingEnabled, locationTrackingEnabled]);
+    }, [storeId, tenantId, safeMapsUrl, trackingEnabled, locationTrackingEnabled]);
 
     return (
         <div
@@ -52,13 +59,15 @@ export default function PwaDirectionsHandoffClient({
                 Directions to {storeName}
             </h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-                {ready ? 'Opening maps…' : 'Preparing…'}
+                {ready ? (safeMapsUrl ? 'Opening maps…' : 'This shortcut is unavailable.') : 'Preparing…'}
             </p>
-            <noscript>
-                <p style={{ marginTop: 16 }}>
-                    <a href={mapsUrl}>Open in Maps</a>
-                </p>
-            </noscript>
+            {safeMapsUrl ? (
+                <noscript>
+                    <p style={{ marginTop: 16 }}>
+                        <a href={safeMapsUrl}>Open in Maps</a>
+                    </p>
+                </noscript>
+            ) : null}
         </div>
     );
 }

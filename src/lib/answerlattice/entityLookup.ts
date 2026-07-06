@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { normalizeAnswerlatticeResolvedEntityId } from './governanceIdBoundary';
 import { answerlatticeTokenize } from './tokenizer';
 import type { AnswerlatticeEntity, AnswerlatticeEntitySearchIndex } from '@type/answerlattice';
 
@@ -72,8 +73,15 @@ const getEntityDocsById = async (
     entityIds: string[],
 ): Promise<Map<string, AnswerlatticeEntity>> => {
     const db = getAnswerlatticeAdminDb();
+    const normalizedEntityIds = Array.from(new Set(
+        entityIds
+            .map(entityId => normalizeAnswerlatticeResolvedEntityId(entityId))
+            .filter((entityId): entityId is string => Boolean(entityId)),
+    ));
+    if (!normalizedEntityIds.length) return new Map();
+
     const docs = await Promise.all(
-        entityIds.map(entityId => db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId).get()),
+        normalizedEntityIds.map(entityId => db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId).get()),
     );
     const entities = new Map<string, AnswerlatticeEntity>();
 
@@ -131,7 +139,8 @@ export async function searchAnswerlatticeEntityLookupOptions(
 
     return ranked
         .map((item): AnswerlatticeEntityLookupOption | null => {
-            const entity = entitiesById.get(item.entry.entityId);
+            const entityId = normalizeAnswerlatticeResolvedEntityId(item.entry.entityId);
+            const entity = entityId ? entitiesById.get(entityId) : null;
             if (!entity) return null;
             if (Number(entity.tId) !== Number(scope.tId) || Number(entity.sId) !== Number(scope.sId)) return null;
             if (!isReturnableEntityStatus(entity.status)) return null;

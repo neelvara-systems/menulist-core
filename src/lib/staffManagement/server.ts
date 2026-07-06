@@ -5,6 +5,7 @@ import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
 import { createDefaultRoles, DEFAULT_ROLE_IDS, DEFAULT_ROLE_METADATA, generateCustomRoleId } from "@data/shared/defaultRoles";
 import { formatStaffLoginId, getDisplayEmail, isInternalAuthEmail, normalizeStaffLoginUsername } from "@lib/auth/loginIdentifiers";
 import { authAdmin, firestoreAdmin, admin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { hasPermission, normalizeRolePermissions } from "@lib/permissions/hasPermission";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
@@ -62,6 +63,35 @@ const optionalTrimmedStringSchema = (max: number) => z.preprocess((value) => {
     return String(value);
 }, z.string().trim().max(max).optional());
 
+function normalizeStaffUserId(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    const userId = value.trim();
+    return userId === value && userId.length > 0 && userId.length <= 160 && isValidFirestoreDocumentId(userId)
+        ? userId
+        : null;
+}
+
+type StaffStoreScopeDocumentId = {
+    numericId: number;
+    documentId: string;
+};
+
+function normalizeStaffStoreScopeDocumentId(value: unknown): StaffStoreScopeDocumentId | null {
+    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const documentId = raw.trim();
+    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { numericId, documentId }
+        : null;
+}
+
+const StaffUserIdSchema = z.string()
+    .min(1)
+    .max(160)
+    .refine((value) => normalizeStaffUserId(value) === value, "Invalid user ID");
+
 const StoreMappingSchema = z.object({
     storeId: z.number().int().positive(),
     name: z.string().trim().max(160).optional(),
@@ -81,7 +111,7 @@ export const CreateStaffSchema = z.object({
 });
 
 export const UpdateStaffSchema = z.object({
-    userId: z.string().trim().min(1).max(160),
+    userId: StaffUserIdSchema,
     tenantId: z.number().int().positive(),
     name: optionalTrimmedStringSchema(160),
     active: z.boolean().optional(),
@@ -98,13 +128,13 @@ export const UpdateStaffSchema = z.object({
 });
 
 export const RemoveStaffSchema = z.object({
-    userId: z.string().trim().min(1).max(160),
+    userId: StaffUserIdSchema,
     tenantId: z.number().int().positive(),
     storeId: z.number().int().positive(),
 });
 
 export const ResetStaffPasswordSchema = z.object({
-    userId: z.string().trim().min(1).max(160),
+    userId: StaffUserIdSchema,
     tenantId: z.number().int().positive(),
     storeId: z.number().int().positive(),
 });
@@ -459,7 +489,10 @@ const sanitizeStoreOption = (store: StoreDataType): StaffStoreOption => ({
 });
 
 const fetchStoreById = async (storeId: number): Promise<StoreDataType | null> => {
-    const snapshot = await firestoreAdmin.collection(STORES_COLLECTION).doc(String(storeId)).get();
+    const storeScope = normalizeStaffStoreScopeDocumentId(storeId);
+    if (!storeScope) return null;
+
+    const snapshot = await firestoreAdmin.collection(STORES_COLLECTION).doc(storeScope.documentId).get();
     return snapshot.exists ? snapshot.data() as StoreDataType : null;
 };
 
@@ -498,6 +531,9 @@ const ensureDefaultRolesForStore = async (
     store: StoreDataType,
     actorEmail?: string,
 ) => {
+    const storeScope = normalizeStaffStoreScopeDocumentId(store?.storeId);
+    if (!storeScope) return store;
+
     const currentRoles = Array.isArray(store?.roles) ? store.roles : [];
     let changed = false;
     const normalizedCurrentRoles = currentRoles.map((role) => {
@@ -524,7 +560,7 @@ const ensureDefaultRolesForStore = async (
         .filter((role) => missingDefaults.includes(role.id as typeof DEFAULT_ROLE_ID_VALUES[number]));
     const nextRoles = [...normalizedCurrentRoles, ...defaultRoles];
 
-    await firestoreAdmin.collection(STORES_COLLECTION).doc(String(store.storeId)).update(sanitizeFirestoreValue({
+    await firestoreAdmin.collection(STORES_COLLECTION).doc(storeScope.documentId).update(sanitizeFirestoreValue({
         modifiedBy: actorEmail || "system",
         modifiedOn: admin.firestore.Timestamp.now(),
         roles: nextRoles,
@@ -1140,8 +1176,12 @@ export const updateStaffUser = async (
     }
 
     const input = validation.data as UpdateStaffInput;
+    const targetUserId = normalizeStaffUserId(input.userId);
+    if (!targetUserId) {
+        return jsonError("Invalid input", 400, "INVALID_INPUT");
+    }
 
-    let targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(input.userId).get();
+    let targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(targetUserId).get();
     if (!targetDoc.exists) {
         return jsonError("Staff member not found", 404, "USER_NOT_FOUND");
     }
@@ -1151,7 +1191,7 @@ export const updateStaffUser = async (
         logSecurity("Authorization Failed - Staff Tenant Mismatch", session, request, {
             targetTenantId: existingData.tenantId,
             requestedTenantId: input.tenantId,
-            userId: input.userId,
+            userId: targetUserId,
         }, "critical");
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
@@ -1167,7 +1207,7 @@ export const updateStaffUser = async (
         logSecurity('Input Validation Failed - Staff Store Mapping', session, request, {
             code,
             tenantId: input.tenantId,
-            userId: input.userId,
+            userId: targetUserId,
         }, 'medium');
         return jsonError("Invalid store or role", 400, code);
     }
@@ -1186,7 +1226,7 @@ export const updateStaffUser = async (
     if (!authority?.canManageUsers) {
         logSecurity("Authorization Failed - Staff Update", session, request, {
             tenantId: input.tenantId,
-            userId: input.userId,
+            userId: targetUserId,
         }, "high");
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
@@ -1195,14 +1235,14 @@ export const updateStaffUser = async (
     if (mappingsChanged && !authority.canAssignRoles) {
         logSecurity("Authorization Failed - Staff Mapping Update", session, request, {
             tenantId: input.tenantId,
-            userId: input.userId,
+            userId: targetUserId,
         }, "high");
         return jsonError("You do not have permission to change store or role assignments", 403, "ROLE_ASSIGNMENT_FORBIDDEN");
     }
 
     try {
         if (input.active === false || mappingsChanged) {
-            ensureNotSelfDestructive(session, input.userId);
+            ensureNotSelfDestructive(session, targetUserId);
         }
 
         if (input.active === false || mappingsChanged) {
@@ -1217,7 +1257,7 @@ export const updateStaffUser = async (
 
             for (const storeId of currentOwnerStoreIds) {
                 if (input.active === false || !nextOwnerStoreIds.includes(storeId)) {
-                    await ensureAnotherActiveOwner(input.tenantId, storeId, input.userId);
+                    await ensureAnotherActiveOwner(input.tenantId, storeId, targetUserId);
                 }
             }
         }
@@ -1241,7 +1281,7 @@ export const updateStaffUser = async (
         ? await revokeStaffSessions(existingData, session, now, "staff_deactivated", {
             action: "staff-active-toggle",
             tenantId: input.tenantId,
-            userId: input.userId,
+            userId: targetUserId,
         })
         : {};
     const shouldNormalizePhone = input.phoneNumber !== undefined || input.dialCode !== undefined || input.countryCode !== undefined;
@@ -1274,18 +1314,18 @@ export const updateStaffUser = async (
         await syncStaffFirebaseAuthDisabledState(existingData, input.active === false || isPlatformEntityBlocked(existingData), {
             action: "staff-active-toggle",
             tenantId: input.tenantId,
-            userId: input.userId,
+            userId: targetUserId,
         });
     }
 
     await targetDoc.ref.update(updateData);
 
-    targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(input.userId).get();
+    targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(targetUserId).get();
     const response: StaffMutationResponse = {
         success: true,
         mode: "user_updated",
-        user: sanitizeStaffUserForAuthority(input.userId, targetDoc.data(), authority),
-        userId: input.userId,
+        user: sanitizeStaffUserForAuthority(targetUserId, targetDoc.data(), authority),
+        userId: targetUserId,
     };
 
     return NextResponse.json(response);
@@ -1311,14 +1351,23 @@ export const removeStaffFromStore = async (
     }
 
     const input = validation.data as RemoveStaffInput;
+    const targetUserId = normalizeStaffUserId(input.userId);
+    if (!targetUserId) {
+        return jsonError("Invalid input", 400, "INVALID_INPUT");
+    }
+
     const authority = await getAuthority(session, input.tenantId, [input.storeId]);
     if (!authority?.canManageUsers) {
-        logSecurity("Authorization Failed - Staff Remove", session, request, input, "high");
+        logSecurity("Authorization Failed - Staff Remove", session, request, {
+            tenantId: input.tenantId,
+            storeId: input.storeId,
+            userId: targetUserId,
+        }, "high");
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
 
     try {
-        ensureNotSelfDestructive(session, input.userId);
+        ensureNotSelfDestructive(session, targetUserId);
     } catch (error: any) {
         if (error?.message === "SELF_UPDATE_BLOCKED") {
             return jsonError("You cannot remove your own access.", 409, "SELF_UPDATE_BLOCKED");
@@ -1326,7 +1375,7 @@ export const removeStaffFromStore = async (
         throw error;
     }
 
-    const targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(input.userId).get();
+    const targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(targetUserId).get();
     if (!targetDoc.exists) {
         return jsonError("Staff member not found", 404, "USER_NOT_FOUND");
     }
@@ -1336,7 +1385,7 @@ export const removeStaffFromStore = async (
         logSecurity("Authorization Failed - Staff Remove Tenant Mismatch", session, request, {
             requestedTenantId: input.tenantId,
             targetTenantId: existingData.tenantId,
-            userId: input.userId,
+            userId: targetUserId,
         }, "critical");
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
@@ -1349,7 +1398,7 @@ export const removeStaffFromStore = async (
 
     if (currentMapping.role === DEFAULT_ROLE_IDS.OWNER) {
         try {
-            await ensureAnotherActiveOwner(input.tenantId, input.storeId, input.userId);
+            await ensureAnotherActiveOwner(input.tenantId, input.storeId, targetUserId);
         } catch (error: any) {
             if (error?.message === "LAST_OWNER") {
                 return jsonError("Add another Owner before removing this access.", 409, "LAST_OWNER");
@@ -1367,7 +1416,7 @@ export const removeStaffFromStore = async (
             action: "staff-remove-last-store",
             tenantId: input.tenantId,
             storeId: input.storeId,
-            userId: input.userId,
+            userId: targetUserId,
         })
         : {};
 
@@ -1389,18 +1438,18 @@ export const removeStaffFromStore = async (
             action: "staff-remove-last-store",
             tenantId: input.tenantId,
             storeId: input.storeId,
-            userId: input.userId,
+            userId: targetUserId,
         });
     }
 
     await targetDoc.ref.update(updateData);
 
-    const updatedSnapshot = await firestoreAdmin.collection(USERS_COLLECTION).doc(input.userId).get();
+    const updatedSnapshot = await firestoreAdmin.collection(USERS_COLLECTION).doc(targetUserId).get();
     const response: StaffMutationResponse = {
         success: true,
         mode: shouldDeactivate ? "user_deactivated" : "store_mapping_removed",
-        user: sanitizeStaffUserForAuthority(input.userId, updatedSnapshot.data(), authority),
-        userId: input.userId,
+        user: sanitizeStaffUserForAuthority(targetUserId, updatedSnapshot.data(), authority),
+        userId: targetUserId,
     };
 
     return NextResponse.json(response);
@@ -1424,13 +1473,22 @@ export const requestStaffPasswordReset = async (
     }
 
     const input = validation.data as ResetStaffPasswordInput;
+    const targetUserId = normalizeStaffUserId(input.userId);
+    if (!targetUserId) {
+        return jsonError("Invalid input", 400, "INVALID_INPUT");
+    }
+
     const authority = await getAuthority(session, input.tenantId, [input.storeId]);
     if (!authority?.canManageUsers) {
-        logSecurity("Authorization Failed - Staff Password Reset", session, request, input, "high");
+        logSecurity("Authorization Failed - Staff Password Reset", session, request, {
+            tenantId: input.tenantId,
+            storeId: input.storeId,
+            userId: targetUserId,
+        }, "high");
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
 
-    const targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(input.userId).get();
+    const targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(targetUserId).get();
     if (!targetDoc.exists) {
         return jsonError("Staff member not found", 404, "USER_NOT_FOUND");
     }
@@ -1440,7 +1498,7 @@ export const requestStaffPasswordReset = async (
         logSecurity("Authorization Failed - Staff Password Reset Tenant Mismatch", session, request, {
             requestedTenantId: input.tenantId,
             targetTenantId: existingData.tenantId,
-            userId: input.userId,
+            userId: targetUserId,
         }, "critical");
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
@@ -1505,7 +1563,7 @@ export const requestStaffPasswordReset = async (
     logStaffDiagnostic("staff_owner_passcode_reset", {
         ...getBoundedStaffStringContext("tenantId", input.tenantId),
         ...getBoundedStaffStringContext("storeId", input.storeId),
-        ...getBoundedStaffStringContext("userId", input.userId),
+        ...getBoundedStaffStringContext("userId", targetUserId),
     });
 
     const updatedSnapshot = await targetDoc.ref.get();
@@ -1517,8 +1575,8 @@ export const requestStaffPasswordReset = async (
         staffAuthMode: getStaffAuthMode(existingData),
         staffLoginId: loginId,
         temporaryPasscode,
-        user: sanitizeStaffUserForAuthority(input.userId, updatedSnapshot.data(), authority),
-        userId: input.userId,
+        user: sanitizeStaffUserForAuthority(targetUserId, updatedSnapshot.data(), authority),
+        userId: targetUserId,
     } satisfies StaffMutationResponse);
 };
 
@@ -1540,14 +1598,23 @@ export const forceSignOutStaffUser = async (
     }
 
     const input = validation.data as ForceSignOutStaffInput;
+    const targetUserId = normalizeStaffUserId(input.userId);
+    if (!targetUserId) {
+        return jsonError("Invalid input", 400, "INVALID_INPUT");
+    }
+
     const authority = await getAuthority(session, input.tenantId, [input.storeId]);
     if (!authority?.canManageUsers) {
-        logSecurity("Authorization Failed - Staff Force Signout", session, request, input, "high");
+        logSecurity("Authorization Failed - Staff Force Signout", session, request, {
+            tenantId: input.tenantId,
+            storeId: input.storeId,
+            userId: targetUserId,
+        }, "high");
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
 
     try {
-        ensureNotSelfDestructive(session, input.userId);
+        ensureNotSelfDestructive(session, targetUserId);
     } catch (error: any) {
         if (error?.message === "SELF_UPDATE_BLOCKED") {
             return jsonError("You cannot sign yourself out from here.", 409, "SELF_UPDATE_BLOCKED");
@@ -1555,7 +1622,7 @@ export const forceSignOutStaffUser = async (
         throw error;
     }
 
-    const targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(input.userId).get();
+    const targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(targetUserId).get();
     if (!targetDoc.exists) {
         return jsonError("Staff member not found", 404, "USER_NOT_FOUND");
     }
@@ -1565,7 +1632,7 @@ export const forceSignOutStaffUser = async (
         logSecurity("Authorization Failed - Staff Force Signout Tenant Mismatch", session, request, {
             requestedTenantId: input.tenantId,
             targetTenantId: existingData.tenantId,
-            userId: input.userId,
+            userId: targetUserId,
         }, "critical");
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
@@ -1584,7 +1651,7 @@ export const forceSignOutStaffUser = async (
         action: "staff-force-signout",
         tenantId: input.tenantId,
         storeId: input.storeId,
-        userId: input.userId,
+        userId: targetUserId,
     });
 
     await targetDoc.ref.update(sanitizeFirestoreValue({
@@ -1596,7 +1663,7 @@ export const forceSignOutStaffUser = async (
     logStaffDiagnostic("staff_owner_forced_session_signout", {
         ...getBoundedStaffStringContext("tenantId", input.tenantId),
         ...getBoundedStaffStringContext("storeId", input.storeId),
-        ...getBoundedStaffStringContext("userId", input.userId),
+        ...getBoundedStaffStringContext("userId", targetUserId),
     });
 
     const updatedSnapshot = await targetDoc.ref.get();
@@ -1604,8 +1671,8 @@ export const forceSignOutStaffUser = async (
         success: true,
         message: "Staff member signed out.",
         mode: "session_revoked",
-        user: sanitizeStaffUserForAuthority(input.userId, updatedSnapshot.data(), authority),
-        userId: input.userId,
+        user: sanitizeStaffUserForAuthority(targetUserId, updatedSnapshot.data(), authority),
+        userId: targetUserId,
     } satisfies StaffMutationResponse);
 };
 
@@ -1647,6 +1714,9 @@ export const saveRoleDefinition = async (
     const authority = await getRoleEditAuthority(request, session, input.tenantId, input.storeId);
     if (!authority) return jsonError("Forbidden", 403, "FORBIDDEN");
 
+    const storeScope = normalizeStaffStoreScopeDocumentId(input.storeId);
+    if (!storeScope) return jsonError("Invalid input", 400, "INVALID_INPUT");
+
     const store = await fetchStoreById(input.storeId);
     if (!isEligibleStaffTargetStore(store, input.tenantId)) {
         return jsonError("Store not found", 404, "STORE_NOT_FOUND");
@@ -1681,7 +1751,7 @@ export const saveRoleDefinition = async (
     if (existingIndex >= 0) roles[existingIndex] = nextRole;
     else roles.push(nextRole);
 
-    await firestoreAdmin.collection(STORES_COLLECTION).doc(String(input.storeId)).update(sanitizeFirestoreValue({
+    await firestoreAdmin.collection(STORES_COLLECTION).doc(storeScope.documentId).update(sanitizeFirestoreValue({
         modifiedBy: session?.user?.email,
         modifiedOn: admin.firestore.Timestamp.now(),
         roles,
@@ -1718,6 +1788,9 @@ export const deleteRoleDefinition = async (
     const authority = await getRoleEditAuthority(request, session, input.tenantId, input.storeId);
     if (!authority) return jsonError("Forbidden", 403, "FORBIDDEN");
 
+    const storeScope = normalizeStaffStoreScopeDocumentId(input.storeId);
+    if (!storeScope) return jsonError("Invalid input", 400, "INVALID_INPUT");
+
     if (input.roleId === DEFAULT_ROLE_IDS.OWNER) {
         return jsonError("Owner role is locked", 409, "OWNER_ROLE_LOCKED");
     }
@@ -1742,7 +1815,7 @@ export const deleteRoleDefinition = async (
             : role
     ));
 
-    await firestoreAdmin.collection(STORES_COLLECTION).doc(String(input.storeId)).update(sanitizeFirestoreValue({
+    await firestoreAdmin.collection(STORES_COLLECTION).doc(storeScope.documentId).update(sanitizeFirestoreValue({
         modifiedBy: session?.user?.email,
         modifiedOn: admin.firestore.Timestamp.now(),
         roles,

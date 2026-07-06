@@ -25,6 +25,10 @@ const TECHNICAL_ERROR_PATTERNS = [
 
 const TECHNICAL_ERROR_SHAPE_PATTERN = /[\r\n\t{}[\]`]|[A-Z0-9_]{8,}/;
 
+type SafeUiErrorMessageOptions = {
+    allowTrustedPlainText?: boolean;
+};
+
 export function extractUiErrorMessage(error: unknown): string | null {
     if (typeof error === 'string') {
         return error;
@@ -42,7 +46,11 @@ export function extractUiErrorMessage(error: unknown): string | null {
     return null;
 }
 
-export function getSafeUiErrorMessage(error: unknown, fallback: string): string {
+export function getSafeUiErrorMessage(
+    error: unknown,
+    fallback: string,
+    options: SafeUiErrorMessageOptions = {},
+): string {
     const rawMessage = extractUiErrorMessage(error)?.replace(/^Error:\s*/i, '').trim();
 
     if (!rawMessage) {
@@ -54,6 +62,10 @@ export function getSafeUiErrorMessage(error: unknown, fallback: string): string 
     }
 
     if (TECHNICAL_ERROR_PATTERNS.some(pattern => pattern.test(rawMessage))) {
+        return fallback;
+    }
+
+    if (!options.allowTrustedPlainText) {
         return fallback;
     }
 

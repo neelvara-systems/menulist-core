@@ -6,7 +6,7 @@ import { getAnswerlatticeBillingHistoryForStore } from '@database/answerlattice/
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary, getAiOperationTone } from '@lib/ai/operationPresentation';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
-import { logger } from '@lib/monitoring/logger';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type { BillingHistoryItem } from '@type/razorpay';
 import { Alert, Button, Card, Flex, Grid, Space, Spin, Table, Tag, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
@@ -18,6 +18,33 @@ import BillingHistory from '@/components/templates/main-app/billing/BillingHisto
 
 const { Title, Text } = Typography;
 const AI_OPERATIONS_PAGE_SIZE = 12;
+const ANSWERLATTICE_BILLING_HISTORY_LOAD_FAILED = 'answerlattice_billing_history_load_failed';
+const ANSWERLATTICE_SUPPORT_CREDIT_USAGE_LOAD_FAILED = 'answerlattice_support_credit_usage_load_failed';
+const ANSWERLATTICE_SUPPORT_CREDIT_USAGE_MORE_LOAD_FAILED = 'answerlattice_support_credit_usage_more_load_failed';
+
+type AnswerlatticeTransactionsDiagnosticScope = {
+    tenantId?: unknown;
+    storeId?: unknown;
+} | null | undefined;
+
+const getTransactionsLoadContext = (scope: AnswerlatticeTransactionsDiagnosticScope) => ({
+    ...getBoundedRuntimeStringContext('tenantId', scope?.tenantId),
+    ...getBoundedRuntimeStringContext('storeId', scope?.storeId),
+});
+
+const getAiOperationsLoadMoreContext = (
+    scope: AnswerlatticeTransactionsDiagnosticScope,
+    options: {
+        aiOperationCount: number;
+        hasCursor: boolean;
+        hasMoreAiOperations: boolean;
+    },
+) => ({
+    ...getTransactionsLoadContext(scope),
+    aiOperationCount: options.aiOperationCount,
+    hasCursor: options.hasCursor,
+    hasMoreAiOperations: options.hasMoreAiOperations,
+});
 
 const getCurrentHostname = () => (typeof window === 'undefined' ? undefined : window.location.hostname);
 
@@ -60,7 +87,10 @@ export default function AnswerlatticeTransactions() {
     const [isLoadingMoreAiOperations, setIsLoadingMoreAiOperations] = useState(false);
 
     const fetchBillingHistory = useCallback(async () => {
-        if (!scope?.tenantId || !scope?.storeId) {
+        const tenantId = scope?.tenantId;
+        const storeId = scope?.storeId;
+
+        if (!tenantId || !storeId) {
             setIsLoading(false);
             return;
         }
@@ -68,7 +98,7 @@ export default function AnswerlatticeTransactions() {
         setIsLoading(true);
         try {
             const [billingResult, aiOperationsResult] = await Promise.allSettled([
-                getAnswerlatticeBillingHistoryForStore(scope.tenantId, scope.storeId),
+                getAnswerlatticeBillingHistoryForStore(tenantId, storeId),
                 getPaginatedAnswerlatticeAiOperations({
                     pageNumber: 1,
                     pageSize: AI_OPERATIONS_PAGE_SIZE,
@@ -86,7 +116,7 @@ export default function AnswerlatticeTransactions() {
                 }));
             } else {
                 setBillingHistory([]);
-                logger.error('Failed to load Answerlattice billing history', billingResult.reason);
+                logRuntimeFailure(ANSWERLATTICE_BILLING_HISTORY_LOAD_FAILED, billingResult.reason, getTransactionsLoadContext({ tenantId, storeId }));
                 message.error('Could not load Answerlattice transactions.');
             }
 
@@ -98,7 +128,7 @@ export default function AnswerlatticeTransactions() {
                 setAiOperations([]);
                 setAiOperationsCursor(null);
                 setHasMoreAiOperations(false);
-                logger.error('Failed to load Answerlattice support credit usage', aiOperationsResult.reason);
+                logRuntimeFailure(ANSWERLATTICE_SUPPORT_CREDIT_USAGE_LOAD_FAILED, aiOperationsResult.reason, getTransactionsLoadContext({ tenantId, storeId }));
                 message.error('Could not load support credit usage.');
             }
         } finally {
@@ -107,7 +137,10 @@ export default function AnswerlatticeTransactions() {
     }, [formatter, scope?.tenantId, scope?.storeId]);
 
     const loadMoreAiOperations = useCallback(async () => {
-        if (!scope?.tenantId || !scope?.storeId || !hasMoreAiOperations || isLoadingMoreAiOperations) return;
+        const tenantId = scope?.tenantId;
+        const storeId = scope?.storeId;
+
+        if (!tenantId || !storeId || !hasMoreAiOperations || isLoadingMoreAiOperations) return;
         setIsLoadingMoreAiOperations(true);
         try {
             const response = await getPaginatedAnswerlatticeAiOperations({
@@ -119,7 +152,14 @@ export default function AnswerlatticeTransactions() {
             setAiOperationsCursor(response.lastVisibleDoc);
             setHasMoreAiOperations(response.hasMore);
         } catch (error) {
-            logger.error('Failed to load more Answerlattice AI operations', error);
+            logRuntimeFailure(ANSWERLATTICE_SUPPORT_CREDIT_USAGE_MORE_LOAD_FAILED, error, getAiOperationsLoadMoreContext(
+                { tenantId, storeId },
+                {
+                    aiOperationCount: aiOperations.length,
+                    hasCursor: Boolean(aiOperationsCursor?.id),
+                    hasMoreAiOperations,
+                },
+            ));
             message.error('Could not load more support credit usage.');
         } finally {
             setIsLoadingMoreAiOperations(false);

@@ -85,12 +85,19 @@ requireToken(features, 'ENABLE_PUBLIC_API: true', 'Platform Pull API feature fla
   'PULL_API_RESPONSE_CACHE_CONTROL = "private, max-age=60, stale-while-revalidate=300"',
   'PULL_API_RESPONSE_VARY = "X-API-Key"',
   "const PUBLIC_API_KEY_PATTERN = /^(ml|cn|al)_[A-Za-z0-9_-]{20,128}$/;",
+  'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+  'export function normalizePublicApiDocumentId(value: unknown): string | null',
+  'return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;',
+  'export function normalizeMenuListPublicApiNumericId(value: unknown): number | null',
+  'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
   'function normalizePublicApiKey(apiKey: string | null): string | null',
   'export function hashApiKey(apiKey: string): string',
   'export function buildPullApiResponseHeaders(etag: string): Record<string, string>',
   "'Vary': PULL_API_RESPONSE_VARY",
   'export async function isMenuListPublicApiTargetAllowed(storeData: any): Promise<boolean>',
   'storeData.active === false || storeData.deleted === true || isPlatformEntityBlocked(storeData)',
+  'const tenantNumericId = normalizeMenuListPublicApiNumericId(tenantId);',
+  'const tenantDocumentId = String(tenantNumericId);',
   '.collection(DB_COLLECTIONS.TENANTS)',
   'return tenantSnap.exists && !isPlatformEntityBlocked(tenantSnap.data());',
   "secureLog('[Public API] Request'",
@@ -103,9 +110,12 @@ requireToken(features, 'ENABLE_PUBLIC_API: true', 'Platform Pull API feature fla
   ".where('publicApi.apiKey', '==', normalizedApiKey)",
   "secureLog('[Public API] Invalid API key attempt')",
 ].forEach((token) => requireToken(publicApiAuth, token, 'Public API auth helper'));
+requireOccurrenceAtLeast(publicApiAuth, 'const storeDocumentId = normalizePublicApiDocumentId(doc.id);', 2, 'Public API auth helper store document-ID validation');
+requireOccurrenceAtLeast(publicApiAuth, 'storeId: storeDocumentId', 2, 'Public API auth helper normalized validation result store ID');
 forbidToken(publicApiAuth, 'secureLog(`[Public API] ${endpoint}`', 'Public API auth helper raw dynamic log event');
 forbidToken(publicApiAuth, 'userAgent: userAgent.slice', 'Public API auth helper raw user agent log');
 forbidToken(publicApiAuth, '        storeId,\n        ip,', 'Public API auth helper raw store/IP log context');
+forbidToken(publicApiAuth, '.doc(String(tenantId))', 'Public API auth helper raw tenant ref');
 
 [
   ['business', businessRoute, '/api/public/v1/business', 'public_api_business_route_failed'],
@@ -122,9 +132,11 @@ forbidToken(publicApiAuth, '        storeId,\n        ip,', 'Public API auth hel
     "apiError('RATE_LIMIT_EXCEEDED', 'Too many requests', 429",
     "'Retry-After': String(Math.max(retryAfter, 1))",
     'const result = await validatePublicApiKey(apiKey);',
+    'const storeNumericId = normalizeMenuListPublicApiNumericId',
     'if (!(await isMenuListPublicApiTargetAllowed(storeData)))',
     "apiError('INVALID_API_KEY', 'Invalid API key', 401)",
-    'logApiRequest(request, storeId',
+    "getBoundedSecurityStringContext('storeId', storeDocumentId)",
+    'logApiRequest(request, storeDocumentId',
     'schemaVersion: PULL_API_SCHEMA_VERSION',
     'const etag = `"${generateETag(',
     'const responseHeaders = buildPullApiResponseHeaders(etag);',
@@ -142,8 +154,9 @@ forbidToken(publicApiAuth, '        storeId,\n        ip,', 'Public API auth hel
       'const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);',
       'const rlResult = await checkRateLimit',
       'const result = await validatePublicApiKey(apiKey);',
+      'const storeNumericId = normalizeMenuListPublicApiNumericId',
       'if (!(await isMenuListPublicApiTargetAllowed(storeData)))',
-      'logApiRequest(request, storeId',
+      'logApiRequest(request, storeDocumentId',
       'const etag = `"${generateETag(',
       'const responseHeaders = buildPullApiResponseHeaders(etag);',
     ],
@@ -152,10 +165,27 @@ forbidToken(publicApiAuth, '        storeId,\n        ip,', 'Public API auth hel
   forbidToken(route, 'cacheTtlMs', `Public ${label} pull route validation cache`);
   forbidToken(route, 'key: `public-api:${apiKey}`', `Public ${label} pull route raw limiter key`);
   forbidToken(route, "'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300'", `Public ${label} pull route shared cache`);
+  forbidToken(route, 'Number(storeId)', `Public ${label} pull route raw numeric store coercion`);
 });
 
 [
+  'const tenantDocumentId = normalizePublicApiDocumentId(tenantId);',
+  'const storeDocumentId = normalizePublicApiDocumentId(storeId);',
+  'const tenantNumericId = normalizeMenuListPublicApiNumericId(tenantDocumentId);',
+  'const storeNumericId = normalizeMenuListPublicApiNumericId(storeDocumentId);',
+  '.doc(tenantDocumentId)',
+  '.collection(storeDocumentId)',
+  'storeNumericId,',
+  'tenantNumericId,',
+].forEach((token) => requireToken(menuRoute, token, 'Public menu pull route target document-ID boundary'));
+forbidToken(menuRoute, 'Number(tenantId)', 'Public menu pull route raw numeric tenant coercion');
+forbidToken(menuRoute, 'Number(storeDocumentId)', 'Public menu pull route unchecked normalized store coercion');
+forbidToken(menuRoute, 'Number(tenantDocumentId)', 'Public menu pull route unchecked normalized tenant coercion');
+
+[
   'parseSummaryProjects(summarySnap.data())',
+  '.doc(`projects_${storeDocumentId}`)',
+  'const projectDocumentId = normalizePublicApiDocumentId(projectId);',
   'project.active !== false',
   'project.deleted !== true',
   'project.isSpecialMenu !== true',
@@ -175,10 +205,18 @@ forbidToken(publicApiAuth, '        storeId,\n        ip,', 'Public API auth hel
   "export const dynamic = 'force-dynamic';",
   'export const POST = withAuth(async (request: NextRequest, session) =>',
   'if (!FEATURE_FLAGS.ENABLE_PUBLIC_API)',
-  'const { tId: tenantId, sId: storeId } = session',
+  'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+  'const PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;',
+  'function normalizeSessionDocumentId(value: unknown): string | null',
+  'documentId.length <= PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH',
+  'isValidFirestoreDocumentId(documentId)',
+  'const { tId: rawTenantId, sId: rawStoreId } = session',
+  'const tenantId = normalizeSessionDocumentId(rawTenantId);',
+  'const storeId = normalizeSessionDocumentId(rawStoreId);',
   'requireAnyStorePermission(',
   '[PERMISSIONS.MANAGE_INTEGRATIONS]',
   'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
+  'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
   'key: `api-key-mgmt:${storeRateLimitHash}`',
   'const PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES = 1024;',
   'readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES',
@@ -198,6 +236,8 @@ requireOrder(
   keyRoute,
   [
     'if (!FEATURE_FLAGS.ENABLE_PUBLIC_API)',
+    'const tenantId = normalizeSessionDocumentId(rawTenantId);',
+    'const storeId = normalizeSessionDocumentId(rawStoreId);',
     'requireAnyStorePermission(',
     'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
     'readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES',
@@ -208,6 +248,7 @@ requireOrder(
 );
 forbidToken(keyRoute, 'apiKey: apiKey', 'Public API key management route raw key storage');
 forbidToken(keyRoute, 'key: `api-key-mgmt:${storeId}`', 'Public API key management route raw limiter key');
+forbidToken(keyRoute, 'doc(String(storeId))', 'Public API key management route raw store ref');
 forbidToken(keyRoute, "secureLog('[Public API] Key generated'", 'Public API key management raw generated log');
 forbidToken(keyRoute, "secureLog('[Public API] Key revoked'", 'Public API key management raw revoked log');
 
@@ -258,6 +299,7 @@ requireToken(businessSettings, 'setStoreDetails={setStoreDetails}', 'Business Se
   '`ENABLE_PUBLIC_API: true`',
   'Business Settings Integrations tab',
   'live key/target revalidation',
+  'Target document-ID admission',
 ].forEach((token) => requireToken(readme, token, 'Platform Pull API README'));
 forbidToken(readme, 'default OFF', 'Platform Pull API README stale flag default');
 
@@ -266,6 +308,8 @@ forbidToken(readme, 'default OFF', 'Platform Pull API README stale flag default'
   '`npm run verify:platform-pull-api-boundary`',
   'Business Settings Integrations tab',
   'FR-17',
+  'FR-18',
+  'target document-ID and MenuList numeric-ID admission',
 ].forEach((token) => requireToken(spec, token, 'Platform Pull API spec'));
 
 [
@@ -273,6 +317,11 @@ forbidToken(readme, 'default OFF', 'Platform Pull API README stale flag default'
   '`npm run verify:platform-pull-api-boundary`',
   'Business Settings Integrations tab',
   'raw key is shown only once',
+  'session tenant/store IDs through the shared Firestore document-ID guard',
+  'Session tenant/store IDs pass through the shared Firestore document-ID guard',
+  'require normalized credential store IDs and exact positive numeric MenuList target IDs before response construction',
+  'normalizePublicApiDocumentId(value)',
+  'normalizeMenuListPublicApiNumericId(value)',
 ].forEach((token) => requireToken(impl, token, 'Platform Pull API implementation doc'));
 
 [
@@ -280,6 +329,10 @@ forbidToken(readme, 'default OFF', 'Platform Pull API README stale flag default'
   '`npm run verify:platform-pull-api-boundary`',
   'Feature flag is currently `ENABLE_PUBLIC_API: true`',
   'Business Settings Integrations tab',
+  'key-management session tenant/store document-ID admission',
+  'session tenant/store IDs pass through the shared Firestore document-ID guard',
+  'target document-ID and MenuList numeric-ID admission',
+  'Target document-ID guard',
 ].forEach((token) => requireToken(firebaseDoc, token, 'Platform Pull API Firebase doc'));
 forbidToken(firebaseDoc, 'Feature flag OFF by default', 'Platform Pull API Firebase stale flag default');
 
@@ -296,12 +349,23 @@ requireToken(inventory, 'platform-pull-api boundary source gate passed; live key
   'source/docs verification only',
 ].forEach((token) => requireToken(report, token, 'feature sweep report'));
 [
+  'Platform Pull API target document-ID boundary checkpoint',
+  'Owner store session document-ID boundary checkpoint',
   'Platform Pull API boundary checkpoint',
+  'Platform Pull API key-management strict session document-ID boundary checkpoint',
   '`npm run verify:platform-pull-api-boundary`',
+  'MenuList numeric-ID admission',
+  'raw `doc(String(storeId))` exclusions',
   'Business Settings Integrations tab',
 ].forEach((token) => requireToken(audit, token, 'production readiness audit'));
 [
+  'Platform Pull API Target Document ID Boundary',
+  'Owner Store Session Document ID Boundary',
+  'Platform Pull API Key-Management Strict Session Document ID Boundary',
   'July 2, 2026 - Platform Pull API Boundary',
+  'MenuList numeric-ID admission',
+  '`/api/store/public-api-key` validates session tenant/store IDs with the shared Firestore document-ID guard',
+  'raw `doc(String(storeId))` exclusions',
   'verify:platform-pull-api-boundary',
   'Business Settings Integrations tab',
 ].forEach((token) => requireToken(changelog, token, 'changelog'));

@@ -3359,6 +3359,7 @@
       "aiEyebrow": "Message से update",
       "aiTitle": "AI Menu Manager",
       "aiDesc": "MenuList को बताएं क्या बदला. यह update card prepare करता है और important change पर approval मांगता है.",
+      "aiImageAlt": "Fictional demo menu data के साथ MenuList AI Menu Manager approval card",
       "aiPoint0": "Price, sold-out, special, note, image और import cards",
       "aiPoint1": "Automatic public changes नहीं",
       "aiPoint2": "Supported updates के बाद receipts",
@@ -3366,6 +3367,7 @@
       "healthEyebrow": "जो matter करता है उसे check करें",
       "healthTitle": "Business Health",
       "healthDesc": "MenuList latest customer link, activity, locations और freshness check करता है. Stable checks No action needed कहते हैं.",
+      "healthImageAlt": "Fictional demo menu data के साथ MenuList Business Health stable check",
       "healthPoint0": "Latest check पहले",
       "healthPoint1": "Fixes safely hand off होते हैं",
       "healthPoint2": "Owner phone view से काम करता है",
@@ -3410,6 +3412,7 @@
       "heroTitle": "जानें क्या ध्यान चाहिए.",
       "heroHighlight": "ध्यान चाहिए",
       "heroSubtitle": "Business Health latest MenuList facts check करता है: menu state, public surfaces, customer attention, locations और freshness। यह बताता है कहाँ ध्यान चाहिए और real changes approved AI Menu Manager या owner-screen flows में ही रखता है.",
+      "heroImageAlt": "Fictional demo menu data के साथ MenuList Business Health stable state screen",
       "primaryCta": "Customer link बनाएं →",
       "secondaryCta": "सभी features देखें",
       "previewLabel": "Business Health dashboard preview",
@@ -4929,6 +4932,45 @@
           "alt": "MenuList owner feedback inbox showing private customer feedback status and review controls"
         }
       },
+      "officialBusinessPage": {
+        "label": "Official Business Page product screenshot proof",
+        "eyebrow": "Public page proof",
+        "title": "Official page business details और current menu को साथ दिखाता है.",
+        "highlight": "business details और current menu",
+        "subtitle": "यह demo visual customer link के पीछे public authority layer दिखाता है: identity, open status, actions, menu cards, service options और language controls एक जगह.",
+        "obpBrowser": {
+          "kicker": "Official page",
+          "title": "Customers action लेने से पहले clear business page देखते हैं",
+          "desc": "Public page contact actions, menu entry points, hours, service options और source status को approved list के पास रखता है.",
+          "alt": "MenuList Official Business Page demo showing business identity, actions, menu cards, and public status"
+        }
+      },
+      "ownerPhoneDashboard": {
+        "label": "Owner phone dashboard product screenshot proof",
+        "eyebrow": "Owner phone proof",
+        "title": "Owner phone view से status, sharing और activity check कर सकता है.",
+        "highlight": "phone view",
+        "subtitle": "यह demo visual mobile dashboard का owner-side pattern दिखाता है: today, health state, share link और activity desktop-first workflow के बिना reachable रहते हैं.",
+        "phoneToday": {
+          "kicker": "Mobile owner view",
+          "title": "Today, link sharing और activity पास रहती है",
+          "desc": "Phone dashboard stable state, simple metrics, customer link और recent activity को compact owner view में रखता है.",
+          "alt": "MenuList owner phone dashboard demo showing stable health, metrics, share link, and activity"
+        }
+      },
+      "analytics": {
+        "label": "Analytics product screenshot proof",
+        "eyebrow": "Activity proof",
+        "title": "Analytics simple रहता है: usage और freshness, another reporting product नहीं.",
+        "highlight": "usage और freshness",
+        "subtitle": "यह demo visual analytics को public menu और Official Business Page activity से tied रखता है जिसे owners quickly समझ सकते हैं.",
+        "dashboardSignals": {
+          "kicker": "Owner activity view",
+          "title": "Menu opens, page views, actions और stable state",
+          "desc": "Owner compact customer activity और freshness cues देखता है, without customer profiling, revenue promises, or unsupported attribution.",
+          "alt": "MenuList analytics demo showing menu opens, official page views, QR activity, and stable menu state"
+        }
+      },
       "publicDiscovery": {
         "label": "Public discovery product screenshot proof",
         "eyebrow": "Public source proof",
@@ -5844,6 +5886,7 @@
       "heroTitleHighlight": "Prepared update approve करें।",
       "heroTitleEnd": "",
       "heroSubtitle": "AI Menu Manager menu operations के लिए approval-based AI agent है। Prices, sold-out items, specials, photos, imports, design और publishing simple messages से update करें, जबकि MenuList control owner के पास रखता है।",
+      "heroImageAlt": "Fictional demo menu data के साथ MenuList AI Menu Manager approval screen",
       "primaryCta": "Customer link बनाएं",
       "secondaryCta": "Features देखें",
       "trust0": "Important changes से पहले approval",

@@ -1,7 +1,7 @@
 # Answerlattice Staff Access Control Implementation
 
 > Status: Implemented
-> Last updated: 2026-06-30
+> Last updated: 2026-07-05
 
 ## Main Code Paths
 
@@ -13,6 +13,7 @@
 - `src/components/templates/answerlattice/AnswerlatticeTeamAccess.tsx` renders members, role editing, activation/deactivation, password/passcode reset, force sign-out, and remove controls. Failed load/member/role actions use fixed local dashboard copy instead of raw staff API or browser exception text.
 - `src/lib/answerlattice/staffAccessServer.ts` owns all staff and role mutations. Staff/team action rate-limit keys hash the actor or request-IP segment through the shared Answerlattice limiter-key helper before calling Upstash, so raw staff user IDs and request IPs are not stored in provider key names.
 - Staff/team JSON mutation bodies are capped at 16KB through `readBoundedJsonBody()` before the existing Zod schemas run. Malformed or oversized staff mutation bodies fail before JSON parsing can allocate unbounded request payloads.
+- Answerlattice staff user ID boundary: staff update, remove, password/passcode reset, and force sign-out validate request `userId` values through `src/lib/answerlattice/staffUserIdBoundary.ts` before user document lookup. The shared helper rechecks IDs before `users/{userId}` refs, and staff create/default-auth bridge paths validate derived Answerlattice/default Firebase user IDs before writes.
 - `src/lib/answerlattice/staffAccessClient.ts` owns client fetch helpers for the Team Access page. Staff list, staff mutation, password reset, force sign-out, and role mutation browser calls use no-store cache, same-origin credentials, and manual redirect handling before response parsing. Failed staff API responses keep the route status/code for policy handling but throw fixed local copy instead of raw route response text. Staff list, staff mutation, and role mutation responses are parsed through a 64 KB bounded response reader and must match the expected response shape before Team Access callers continue.
 - `src/components/templates/main-app/users/StaffLoginDetailsContent.tsx` and `src/lib/staffManagement/shareLoginDetails.ts` are reused for Answerlattice owner-passcode sharing so the one-time passcode UX stays aligned with MenuList.
 

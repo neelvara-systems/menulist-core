@@ -4,6 +4,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from '@constant/AI/unitCosts';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import type { OwnerBusinessAssistantAnswerRequest } from '../schemas';
 import type { OwnerBusinessAssistantAnswer } from '../types';
 import { classifyOwnerBusinessAssistantIntent } from './intentClassifier';
@@ -15,6 +16,11 @@ const trimForStorage = (value: string | undefined, maxLength: number) => {
   return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 3)}...` : normalized;
 };
 
+const normalizeAnswerEventDocumentId = (value: unknown): string | null => {
+  const documentId = typeof value === 'string' ? value.trim() : '';
+  return documentId === value && isValidFirestoreDocumentId(documentId) ? documentId : null;
+};
+
 export async function logOwnerBusinessAssistantAnswerEvent(params: {
   tId: string | number;
   sId: string | number;
@@ -24,14 +30,17 @@ export async function logOwnerBusinessAssistantAnswerEvent(params: {
 }) {
   if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING) return;
 
+  const answerId = normalizeAnswerEventDocumentId(params.answer.answerId);
+  if (!answerId) return;
+
   const action = AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER;
   const providerUsed = Boolean((params.answer as { providerUsed?: boolean }).providerUsed);
   const unitsConsumed = providerUsed ? getUnitCost(action) : 0;
   const now = Timestamp.now();
 
-  await firestoreAdmin.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS).doc(params.answer.answerId).set({
-    id: params.answer.answerId,
-    answerId: params.answer.answerId,
+  await firestoreAdmin.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS).doc(answerId).set({
+    id: answerId,
+    answerId,
     threadId: params.answer.threadId || params.request.threadId || null,
     tId: String(params.tId),
     sId: String(params.sId),

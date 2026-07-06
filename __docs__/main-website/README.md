@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.105 (Website Analytics Clarity Configuration Boundary)
+**Version:** 3.6.107 (Website Google Analytics Page-Location Boundary)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** July 5, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,7 +13,15 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.105** | **Website Analytics Clarity Configuration Boundary** | **Microsoft Clarity remains consent-gated and now fails closed unless `NEXT_PUBLIC_CLARITY_ID` is explicitly configured.** | **ACTIVE** |
+| **3.6.107** | **Website Google Analytics Page-Location Boundary** | **Google Analytics page views no longer send query strings or hash fragments as the default page location.** | **ACTIVE** |
+
+Version 3.6.107 hardens the consent-gated Google Analytics page-view setup. `GoogleAnalytics` now fails closed unless `NEXT_PUBLIC_GA_MEASUREMENT_ID` matches the GA4 `G-...` shape, and the default `page_location` strips query strings and hash fragments before `gtag('config')` runs. This keeps public utility-route parameters, copied report hash payloads, and success-page URLs out of the default GA page-view URL while preserving explicit bounded custom-event context. `npm run verify:website-public-copy-boundary` source-gates the GA ID guard, sanitized page-location helper, raw `window.location.href` page-location exclusion, and docs/audit/changelog parity. This is public website GA configuration minimization only; Plausible event names, Google Analytics script source, resource custom-event payloads, Microsoft Clarity configuration, owner dashboard analytics, customer menu/OBP analytics, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
+
+Version 3.6.106 remains Website Resource Analytics Payload Boundary and is preserved below as the previous website version note.
+
+Version 3.6.106 routes resource page GA4 custom events through bounded `trackGoogleMarketingEvent`. Resource page views, AI/referrer detection, CTA clicks, create-menu/pricing clicks, and checklist-copy events still emit property-free Plausible events, but GA4 compatibility payload strings now strip control characters and bound URL/referrer/UTM/page/slug fields before leaving the browser. `npm run verify:website-public-copy-boundary` source-gates the shared payload normalizer, direct resource `gtag` call removal, and docs/audit/changelog parity. This is public website analytics payload minimization only; Plausible event names, consent gating, Google Analytics script configuration, owner dashboard analytics, customer menu/OBP analytics, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
+
+Version 3.6.105 remains Website Analytics Clarity Configuration Boundary and is preserved below as the previous website version note.
 
 Version 3.6.105 removes the committed Microsoft Clarity project fallback from the public MenuList marketing website. `ClarityAnalytics` still mounts only inside `WebsiteAnalyticsConsent` after accepted analytics consent, but it now also requires an explicit alphanumeric `NEXT_PUBLIC_CLARITY_ID`; missing or malformed config disables Clarity instead of loading a baked-in project. `npm run verify:website-public-copy-boundary` source-gates the consent mount, accepted-only child rendering, Clarity env/shape guard, and docs parity. This is public website analytics configuration hardening only; Plausible, Google Analytics, website marketing events, owner dashboard analytics, customer menu/OBP analytics, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
 

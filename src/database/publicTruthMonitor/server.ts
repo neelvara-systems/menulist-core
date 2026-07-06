@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { buildPublicTruthMonitorSummaryDocId } from "@constant/publicTruthMonitor";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import type { OwnerPublicTruthProjectSummary } from "@lib/public-truth-tools/ownerPublicTruthReadiness";
 import type { PublicTruthMonitorSummaryDocument } from "@type/publicTruthMonitor";
@@ -41,35 +42,68 @@ function legacyProjectBelongsToSession(params: {
         || (projectId.startsWith(`${expectedTenantId}-`) && projectId.endsWith(`-${expectedStoreId}`));
 }
 
+function normalizePublicTruthMonitorDocumentId(value: unknown): string | null {
+    const documentId = typeof value === "string" ? value.trim() : "";
+    return isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+function normalizePublicTruthMonitorScopeDocumentId(value: unknown): string | null {
+    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const documentId = raw.trim();
+    return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+function normalizeSelectableProject(
+    project?: OwnerPublicTruthProjectSummary | null,
+): OwnerPublicTruthProjectSummary | null {
+    if (!project) return null;
+
+    const projectId = normalizePublicTruthMonitorDocumentId(project.projectId);
+    if (!projectId) return null;
+
+    return { ...project, projectId };
+}
+
 function isSelectableProject(project?: OwnerPublicTruthProjectSummary | null): boolean {
-    return Boolean(project?.projectId)
-        && project?.active !== false
-        && project?.deleted !== true
-        && project?.isSpecialMenu !== true;
+    if (!project) return false;
+
+    return project.active !== false
+        && project.deleted !== true
+        && project.isSpecialMenu !== true;
 }
 
 export function pickPublicTruthMonitorProjectId(
     projectSummaries: OwnerPublicTruthProjectSummary[],
     selectedProjectId?: string | null,
 ): string | null {
-    const selectable = projectSummaries.filter(isSelectableProject);
-    if (selectedProjectId && selectable.some((project) => project.projectId === selectedProjectId)) {
-        return selectedProjectId;
+    const selectedProjectIdDocumentId = normalizePublicTruthMonitorDocumentId(selectedProjectId);
+    const selectable = projectSummaries
+        .map(normalizeSelectableProject)
+        .filter((project): project is OwnerPublicTruthProjectSummary => Boolean(project) && isSelectableProject(project));
+
+    if (selectedProjectIdDocumentId && selectable.some((project) => project.projectId === selectedProjectIdDocumentId)) {
+        return selectedProjectIdDocumentId;
     }
     return selectable.find((project) => project.isDefault)?.projectId || selectable[0]?.projectId || null;
 }
 
 export async function readPublicTruthMonitorStoreDataServer(storeId: string | number): Promise<any | null> {
-    const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
+    const storeDocumentId = normalizePublicTruthMonitorScopeDocumentId(storeId);
+    if (!storeDocumentId) return null;
+
+    const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId).get();
     return snap.exists ? snap.data() : null;
 }
 
 export async function readPublicTruthMonitorProjectSummariesServer(
     storeId: string | number,
 ): Promise<OwnerPublicTruthProjectSummary[]> {
+    const storeDocumentId = normalizePublicTruthMonitorScopeDocumentId(storeId);
+    if (!storeDocumentId) return [];
+
     const snap = await firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(`projects_${storeId}`)
+        .doc(`projects_${storeDocumentId}`)
         .get();
     const projectMap = snap.exists ? parseSummaryProjects(snap.data()) : {};
 
@@ -84,30 +118,39 @@ export async function readPublicTruthMonitorProjectDataServer(params: {
     sId: string | number;
     tId: string | number;
 }): Promise<any | null> {
+    const projectId = normalizePublicTruthMonitorDocumentId(params.projectId);
+    if (!projectId) return null;
+    const tenantDocumentId = normalizePublicTruthMonitorScopeDocumentId(params.tId);
+    const storeDocumentId = normalizePublicTruthMonitorScopeDocumentId(params.sId);
+    if (!tenantDocumentId || !storeDocumentId) return null;
+
     const scopedSnap = await firestoreAdmin
-        .collection(`${DB_COLLECTIONS.PROJECTS}/${params.tId}/${params.sId}`)
-        .doc(params.projectId)
+        .collection(`${DB_COLLECTIONS.PROJECTS}/${tenantDocumentId}/${storeDocumentId}`)
+        .doc(projectId)
         .get();
     if (scopedSnap.exists) return scopedSnap.data();
 
-    const legacySnap = await firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(params.projectId).get();
+    const legacySnap = await firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(projectId).get();
     if (!legacySnap.exists) return null;
 
     const projectData = legacySnap.data();
     return legacyProjectBelongsToSession({
         projectData,
-        projectId: params.projectId,
-        sId: params.sId,
-        tId: params.tId,
+        projectId,
+        sId: storeDocumentId,
+        tId: tenantDocumentId,
     }) ? projectData : null;
 }
 
 export async function readPublicTruthMonitorSummaryServer(
     storeId: string | number,
 ): Promise<PublicTruthMonitorSummaryDocument | null> {
+    const storeDocumentId = normalizePublicTruthMonitorScopeDocumentId(storeId);
+    if (!storeDocumentId) return null;
+
     const snap = await firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(buildPublicTruthMonitorSummaryDocId(storeId))
+        .doc(buildPublicTruthMonitorSummaryDocId(storeDocumentId))
         .get();
     return snap.exists ? snap.data() as PublicTruthMonitorSummaryDocument : null;
 }
@@ -116,9 +159,12 @@ export async function writePublicTruthMonitorSummaryServer(params: {
     storeId: string | number;
     summary: PublicTruthMonitorSummaryDocument;
 }): Promise<void> {
+    const storeDocumentId = normalizePublicTruthMonitorScopeDocumentId(params.storeId);
+    if (!storeDocumentId) throw new Error("Invalid Public Truth Monitor store ID");
+
     await firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(buildPublicTruthMonitorSummaryDocId(params.storeId))
+        .doc(buildPublicTruthMonitorSummaryDocId(storeDocumentId))
         .set(sanitizeForAdminFirestore({
             ...params.summary,
             updatedAt: admin.firestore.Timestamp.now(),

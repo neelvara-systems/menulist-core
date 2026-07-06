@@ -25,6 +25,7 @@ import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
+import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -40,7 +41,7 @@ import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const TranslateRequestSchema = z.object({
-    articleId: z.string().trim().min(1).max(160),
+    articleId: z.string().trim().max(160).refine((value) => normalizeAnswerlatticeKbArticleId(value) === value),
     targetLocale: z.enum(ANSWERLATTICE_SUPPORTED_LOCALES as unknown as [string, ...string[]]),
 });
 const TRANSLATE_ARTICLE_MAX_BODY_BYTES = 4 * 1024;

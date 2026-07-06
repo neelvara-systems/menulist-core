@@ -2,6 +2,7 @@
 
 > **Status:** IMPLEMENTED  
 > **Created:** 2026-06-06  
+> **Last Updated:** 2026-07-05
 > **Parent Module:** Knowledge Intake Command Center
 
 ---
@@ -34,6 +35,7 @@ Implement repeated reply import as an additive Knowledge Intake source type. Do 
 - The generic source picker stays on broad source types; repeated replies use the dedicated guided form so Q/A validation runs before source creation.
 - The repeated-reply entity selector does not load entities on mount. It searches only after the owner types a query.
 - Entity autocomplete uses the existing `answerlattice_entitySearchIndex` and then reads only the matched entity docs needed for display/filtering.
+- Answerlattice entity retrieval ID boundary: entity autocomplete normalizes search-index `entityId` values through the shared resolved-entity boundary before reading entity documents, so malformed, unresolved, or path-shaped index values are skipped before Firestore refs are built.
 - The server rejects `repeated_reply` source creation if `ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT` is disabled.
 - The server rejects malformed `repeated_reply` source creation before writing a source doc.
 - `buildReviewItemsFromSource()` branches repeated replies before the default article generation path.

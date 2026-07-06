@@ -1,7 +1,18 @@
 import { z } from 'zod';
 import { AI_MENU_MANAGER_ACTION_TYPES } from './actionTypes';
+import {
+    AI_MENU_MANAGER_PROJECT_ID_MAX_LENGTH,
+    normalizeAiMenuManagerProjectId,
+    normalizeAiMenuManagerSessionId,
+} from './routeIds';
 
 const idSchema = z.string().trim().min(1).max(160);
+const projectIdSchema = z.string()
+    .min(1)
+    .max(AI_MENU_MANAGER_PROJECT_ID_MAX_LENGTH)
+    .refine((value) => normalizeAiMenuManagerProjectId(value) === value);
+const sessionIdSchema = z.string()
+    .refine((value) => normalizeAiMenuManagerSessionId(value) === value);
 const knownActionTypes = new Set<string>(Object.values(AI_MENU_MANAGER_ACTION_TYPES));
 const actionTypeSchema = z.string()
     .trim()
@@ -24,9 +35,9 @@ const commandContextSchema = z.object({
 });
 
 export const AiMenuManagerCommandRequestSchema = z.object({
-    sessionId: z.string().trim().min(1).max(180).optional(),
+    sessionId: sessionIdSchema.optional(),
     storeId: z.union([z.string(), z.number()]).transform((value) => String(value)),
-    projectId: idSchema,
+    projectId: projectIdSchema,
     inputType: z.enum(['text', 'voice_transcript', 'upload', 'suggested_action']),
     text: z.string().trim().max(1000).optional(),
     uploadRefs: z.array(z.object({
@@ -41,23 +52,23 @@ export const AiMenuManagerCommandRequestSchema = z.object({
 });
 
 export const AiMenuManagerInboxRequestSchema = z.object({
-    sessionId: z.string().trim().min(1).max(180).optional(),
+    sessionId: sessionIdSchema.optional(),
     storeId: z.union([z.string(), z.number()]).optional().transform((value) => value === undefined ? undefined : String(value)),
-    projectId: idSchema,
+    projectId: projectIdSchema,
     sessionDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export const AiMenuManagerProposalActionSchema = z.object({
     action: z.enum(['approve', 'cancel', 'reject', 'mark_done']),
     storeId: z.union([z.string(), z.number()]).transform((value) => String(value)),
-    projectId: idSchema.optional(),
+    projectId: projectIdSchema.optional(),
     actionType: actionTypeSchema.optional(),
     idempotencyKey: idSchema,
 });
 
 export const AiMenuManagerProposalCompleteSchema = z.object({
     storeId: z.union([z.string(), z.number()]).transform((value) => String(value)),
-    projectId: idSchema.optional(),
+    projectId: projectIdSchema.optional(),
     actionType: actionTypeSchema.optional(),
     executionId: idSchema,
     patchHash: z.string().trim().min(16).max(128),

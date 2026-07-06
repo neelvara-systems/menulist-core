@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getAnalyticsReport, getRealTimeUsers } from '@lib/analytics/server/index';
 import { logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
+import { normalizeGoogleAnalyticsDateRange } from '@lib/analytics/googleReportQuery';
 import { PERMISSIONS } from '@constant/permissions';
 import { requireConfiguredGoogleAnalyticsProperty, toGoogleAnalyticsPropertyResource } from '@lib/analytics/googlePropertyAccess';
 import { requireAnyStorePermission } from '@lib/permissions/server';
@@ -21,8 +22,15 @@ export const GET = withAuth(async (request, session) => {
         const propertyAccessError = await requireConfiguredGoogleAnalyticsProperty(request, session, rawPropertyId);
         if (propertyAccessError) return propertyAccessError;
         const propertyId = toGoogleAnalyticsPropertyResource(rawPropertyId)!;
-        const startDate = searchParams.get('startDate') || '7daysAgo';
-        const endDate = searchParams.get('endDate') || 'today';
+        const dateRange = normalizeGoogleAnalyticsDateRange(
+            searchParams.get('startDate'),
+            searchParams.get('endDate'),
+            { startDate: '7daysAgo', endDate: 'today' },
+        );
+        if (!dateRange) {
+            return NextResponse.json({ error: 'Valid start date and end date are required' }, { status: 400 });
+        }
+        const { startDate, endDate } = dateRange;
 
         const [reportData, realtimeData] = await Promise.all([
             getAnalyticsReport(propertyId, startDate, endDate),

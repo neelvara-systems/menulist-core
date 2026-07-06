@@ -1,10 +1,21 @@
 import { GROWTHOS_ALLOWED_ACTION_TYPES } from "@constant/growthos";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import type { NextResponse } from "next/server";
 import { z } from "zod";
 
 const GROWTHOS_API_MAX_BODY_BYTES = 16 * 1024;
 const growthOSActionTypeSchema = z.enum(GROWTHOS_ALLOWED_ACTION_TYPES as [string, ...string[]]);
+const growthOSProjectIdSchema = z.string()
+    .trim()
+    .min(1)
+    .max(100)
+    .refine(isValidFirestoreDocumentId, "Invalid project ID");
+const growthOSKitIdSchema = z.string()
+    .trim()
+    .min(1)
+    .max(200)
+    .refine(isValidFirestoreDocumentId, "Invalid kit ID");
 
 export async function parseGrowthOSJsonBody(request: Request): Promise<
     | { data: unknown; success: true }
@@ -19,18 +30,18 @@ export async function parseGrowthOSJsonBody(request: Request): Promise<
 }
 
 export const GrowthOSRefreshRequestSchema = z.object({
-    projectId: z.string().min(1).max(100),
+    projectId: growthOSProjectIdSchema,
     forceRefresh: z.boolean().optional().default(false),
 });
 
 export const GrowthOSGenerateKitRequestSchema = z.object({
-    projectId: z.string().min(1).max(100),
+    projectId: growthOSProjectIdSchema,
     actionId: z.string().max(200).optional(),
     actionType: growthOSActionTypeSchema.optional(),
 });
 
 export const GrowthOSExportRequestSchema = z.object({
-    kitId: z.string().min(1).max(200),
+    kitId: growthOSKitIdSchema,
     destination: z.enum([
         "whatsapp_status",
         "whatsapp_message",

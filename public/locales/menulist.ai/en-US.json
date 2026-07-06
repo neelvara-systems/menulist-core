@@ -3795,6 +3795,7 @@
             "aiEyebrow": "Update by message",
             "aiTitle": "AI Menu Manager",
             "aiDesc": "Tell MenuList what changed. It prepares an update card and waits for approval when the change matters.",
+            "aiImageAlt": "MenuList AI Menu Manager approval card using fictional demo menu data",
             "aiPoint0": "Price, sold-out, special, note, image, and import cards",
             "aiPoint1": "No automatic public changes",
             "aiPoint2": "Receipts after supported updates",
@@ -3802,6 +3803,7 @@
             "healthEyebrow": "Check what matters",
             "healthTitle": "Business Health",
             "healthDesc": "MenuList checks the latest customer link, activity, locations, and freshness. Stable checks say No action needed.",
+            "healthImageAlt": "MenuList Business Health stable check using fictional demo menu data",
             "healthPoint0": "Latest check first",
             "healthPoint1": "Fixes hand off safely",
             "healthPoint2": "Works from the owner phone view",
@@ -3846,6 +3848,7 @@
             "heroTitle": "Know what needs attention.",
             "heroHighlight": "needs attention",
             "heroSubtitle": "Business Health checks the latest MenuList facts: menu state, customer links, activity, locations, and freshness. It shows what needs attention and sends real changes to approved owner flows.",
+            "heroImageAlt": "MenuList Business Health stable state screen using fictional demo menu data",
             "primaryCta": "Create customer link →",
             "secondaryCta": "See all features",
             "previewLabel": "Business Health preview",
@@ -5365,6 +5368,45 @@
                     "alt": "MenuList owner feedback inbox showing private customer feedback status and review controls"
                 }
             },
+            "officialBusinessPage": {
+                "label": "Official Business Page product screenshot proof",
+                "eyebrow": "Public page proof",
+                "title": "The official page shows business details and the current menu together.",
+                "highlight": "business details and the current menu",
+                "subtitle": "This demo visual shows the public authority layer behind the customer link: identity, open status, actions, menu cards, service options, and language controls in one place.",
+                "obpBrowser": {
+                    "kicker": "Official page",
+                    "title": "Customers see a clear business page before they act",
+                    "desc": "The public page keeps contact actions, menu entry points, hours, service options, and source status close to the approved list.",
+                    "alt": "MenuList Official Business Page demo showing business identity, actions, menu cards, and public status"
+                }
+            },
+            "ownerPhoneDashboard": {
+                "label": "Owner phone dashboard product screenshot proof",
+                "eyebrow": "Owner phone proof",
+                "title": "The owner can check status, sharing, and activity from the phone view.",
+                "highlight": "phone view",
+                "subtitle": "This demo visual shows the owner-side pattern behind the mobile dashboard: today, health state, share link, and activity stay reachable without a desktop-first workflow.",
+                "phoneToday": {
+                    "kicker": "Mobile owner view",
+                    "title": "Today, link sharing, and activity stay close",
+                    "desc": "The phone dashboard keeps the stable state, simple metrics, customer link, and recent activity in a compact owner view.",
+                    "alt": "MenuList owner phone dashboard demo showing stable health, metrics, share link, and activity"
+                }
+            },
+            "analytics": {
+                "label": "Analytics product screenshot proof",
+                "eyebrow": "Activity proof",
+                "title": "Analytics stays simple: usage and freshness, not another reporting product.",
+                "highlight": "usage and freshness",
+                "subtitle": "This demo visual keeps analytics tied to the public menu and Official Business Page activity owners can understand quickly.",
+                "dashboardSignals": {
+                    "kicker": "Owner activity view",
+                    "title": "Menu opens, page views, actions, and stable state",
+                    "desc": "The owner sees compact customer activity and freshness cues without customer profiling, revenue promises, or unsupported attribution.",
+                    "alt": "MenuList analytics demo showing menu opens, official page views, QR activity, and stable menu state"
+                }
+            },
             "publicDiscovery": {
                 "label": "Public discovery product screenshot proof",
                 "eyebrow": "Public page proof",
@@ -6280,6 +6322,7 @@
             "heroTitleHighlight": "Approve the prepared update.",
             "heroTitleEnd": "",
             "heroSubtitle": "AI Menu Manager helps with menu work by preparing price, sold-out, menu-note, design, export, and review cards from simple messages while MenuList keeps you in control.",
+            "heroImageAlt": "MenuList AI Menu Manager approval screen using fictional demo menu data",
             "primaryCta": "Create customer link",
             "secondaryCta": "Explore features",
             "trust0": "Approval before important changes",

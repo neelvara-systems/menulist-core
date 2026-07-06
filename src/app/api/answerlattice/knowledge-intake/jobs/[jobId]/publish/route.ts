@@ -5,6 +5,10 @@ import {
     serializeIntakeValue,
 } from '@lib/answerlattice/knowledgeIntake';
 import {
+    normalizeAnswerlatticeKnowledgeIntakeJobId,
+    normalizeAnswerlatticeKnowledgeIntakeReviewItemId,
+} from '@lib/answerlattice/knowledgeIntakeIdBoundary';
+import {
     getAnswerlatticeKnowledgeIntakeLogContext,
     logAnswerlatticeKnowledgeIntakeFailure,
 } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
@@ -19,12 +23,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
+const ReviewItemIdSchema = z.string()
+    .trim()
+    .refine((value) => normalizeAnswerlatticeKnowledgeIntakeReviewItemId(value) === value);
+
 const PublishSchema = z.object({
-    itemIds: z.array(z.string().trim().min(1).max(160)).max(50).optional(),
+    itemIds: z.array(ReviewItemIdSchema).max(50).optional(),
 }).optional();
 const KNOWLEDGE_INTAKE_PUBLISH_MAX_BODY_BYTES = 16 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
+    const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
+    if (!jobId) {
+        return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
+    }
+
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
         rateLimitKey: 'answerlattice-intake:publish',
         rateLimit: 6,
@@ -46,9 +59,9 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
         }
 
         const parsed = PublishSchema.parse(bodyResult.data) || {};
-        const result = await publishKnowledgeIntakeJob(access.context.scope, params.jobId, parsed.itemIds, access.context.actor);
+        const result = await publishKnowledgeIntakeJob(access.context.scope, jobId, parsed.itemIds, access.context.actor);
         secureLog('[Answerlattice Intake] Job published', getAnswerlatticeKnowledgeIntakeLogContext({
-            jobId: params.jobId,
+            jobId,
             publishedCount: result.published.length,
             scope: access.context.scope,
         }));

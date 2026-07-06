@@ -21,6 +21,7 @@ import {
 } from "@lib/billing/subscriptionProviderSync";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
+import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
 import { buildUserStoreAccessUpdate } from "@lib/multiOutlet/serverStoreAccess";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -75,8 +76,8 @@ class OutletBillingUpdateError extends Error {
 }
 
 const getOutletCreateLogContext = (
-    tenantId: number,
-    storeId: number,
+    tenantId: string | number,
+    storeId: string | number,
     extra: Record<string, boolean | number | string | null | undefined> = {},
 ) => ({
     ...getBoundedMultiOutletStringContext("tenantId", tenantId),
@@ -147,14 +148,15 @@ export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_OUTLET_CREATION) {
         return NextResponse.json({ error: "Outlet creation disabled" }, { status: 403 });
     }
-    const { tId: tenantId, sId: storeId } = session;
-    if (!tenantId || !storeId) {
+    const scope = getOutletSessionScope(session);
+    if (!scope) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
+    const { tenantId, storeId, tenantDocumentId, storeDocumentId } = scope;
     if (!verifyTenantAccess(session, tenantId, storeId, request)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantDocumentId);
     const rlResult = await checkRateLimit({ key: `outlet:${tenantRateLimitHash}`, limit: 5, window: 3600 });
     if (!rlResult.allowed) {
         return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -181,7 +183,7 @@ export const POST = withAuth(async (request, session) => {
         if (!v.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         const { outletName } = v.data;
 
-        const masterStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeId}`);
+        const masterStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`);
         const storeSnap = await masterStoreRef.get();
         if (!storeSnap.exists) {
             return NextResponse.json({ error: "Store not found" }, { status: 404 });
@@ -198,7 +200,7 @@ export const POST = withAuth(async (request, session) => {
         );
         if (permissionError) return permissionError;
 
-        const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`);
+        const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`);
         const initialTenantSnap = await tenantRef.get();
         const initialStoresList = initialTenantSnap.data()?.storesList || [];
         const activeStoreCount = initialStoresList.filter((s: any) => s?.active !== false).length || 1;
@@ -240,7 +242,7 @@ export const POST = withAuth(async (request, session) => {
             }
         }
 
-        const sub = await getActiveSubscriptionForStore(tenantId, storeId);
+        const sub = await getActiveSubscriptionForStore(tenantId as number, storeId as number);
         if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING) {
             if (!sub) {
                 return NextResponse.json(
@@ -312,17 +314,17 @@ export const POST = withAuth(async (request, session) => {
 
         // Pre-fetch master projects OUTSIDE transaction (Firestore requirement)
         const masterProjectsSnap = await db
-            .collection(`${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`)
+            .collection(`${DB_COLLECTIONS.PROJECTS}/${tenantDocumentId}/${storeDocumentId}`)
             .where('deleted', '!=', true)
             .get();
         const masterProjectsSummarySnap = await db
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(`projects_${storeId}`)
+            .doc(`projects_${storeDocumentId}`)
             .get();
         const masterProjectsSummary = masterProjectsSummarySnap.exists
             ? parseSummaryProjects(masterProjectsSummarySnap.data())
             : {};
-        const outletSlug = await buildUniqueOutletSlug(db, tenantId, outletName);
+        const outletSlug = await buildUniqueOutletSlug(db, tenantId as number, outletName);
 
         // Read current tenant data for storesList
         const tenantData = (await tenantRef.get()).data();
@@ -337,7 +339,7 @@ export const POST = withAuth(async (request, session) => {
             const storeKey = outletName.toLowerCase().replaceAll(" ", "_");
             const businessType = masterStore.businessType || FALLBACK_BUSINESS_TYPE;
             const businessCategory = resolveStoreBusinessCategory(businessType, masterStore.businessCategory);
-            const defaultPresets = getDefaultTimeSlotPresets(businessType, tenantId, newStoreId, businessCategory);
+            const defaultPresets = getDefaultTimeSlotPresets(businessType, tenantId as number, newStoreId, businessCategory);
             const roles = createDefaultRoles(newStoreId, session.user?.email || 'system');
             const tenantName = tenantData?.name || masterStore.tenantName || '';
 
@@ -398,7 +400,7 @@ export const POST = withAuth(async (request, session) => {
                 },
             };
             if (shouldMarkCurrentStoreAsMasterInTenant) {
-                storesSummaryPayload.stores[storeId] = {
+                storesSummaryPayload.stores[storeDocumentId] = {
                     isMaster: true,
                     modifiedOn: now,
                 };
@@ -450,7 +452,7 @@ export const POST = withAuth(async (request, session) => {
                 const masterProjectId = projDoc.id;
                 const masterSummary = masterProjectsSummary[masterProjectId] || {};
                 const timestamp = Date.now().toString(36);
-                const outletProjectId = `${tenantId}-${timestamp}${pi > 0 ? pi : ''}-${newStoreId}`;
+            const outletProjectId = `${tenantDocumentId}-${timestamp}${pi > 0 ? pi : ''}-${newStoreId}`;
                 const masterSummaryName = masterSummary.name || masterProject.name || projDoc.id;
                 const outletProjectSlug = typeof masterSummary.slug === "string" && masterSummary.slug.trim()
                     ? masterSummary.slug.trim()
@@ -468,7 +470,7 @@ export const POST = withAuth(async (request, session) => {
                 );
 
                 tx.set(
-                    db.doc(`${DB_COLLECTIONS.PROJECTS}/${tenantId}/${newStoreId}/${outletProjectId}`),
+                    db.doc(`${DB_COLLECTIONS.PROJECTS}/${tenantDocumentId}/${newStoreId}/${outletProjectId}`),
                     {
                         projectId: outletProjectId,
                         masterProjectId,
@@ -493,25 +495,25 @@ export const POST = withAuth(async (request, session) => {
         revalidateTag(`menu-store-${result.newStoreId}`);
         revalidateTag(`store-${result.newStoreId}`);
         if (masterPromoted) {
-            revalidateTag(`menu-store-${storeId}`);
-            revalidateTag(`store-${storeId}`);
+            revalidateTag(`menu-store-${storeDocumentId}`);
+            revalidateTag(`store-${storeDocumentId}`);
         }
         revalidateTag('client-stores');
         revalidateTag('screen-data');
         await touchDigitalScreenContentVersionForStoreServer(result.newStoreId, 'outletCreate');
         if (masterPromoted) {
-            await touchDigitalScreenContentVersionForStoreServer(storeId, 'outletCreateMasterPromoted');
+            await touchDigitalScreenContentVersionForStoreServer(storeDocumentId, 'outletCreateMasterPromoted');
         }
         await Promise.all([
             invalidateOwnerBusinessAssistantPacketCache({
-                tId: tenantId,
+                tId: tenantDocumentId,
                 sId: result.newStoreId,
             }),
             ...(masterPromoted
                 ? [
                     invalidateOwnerBusinessAssistantPacketCache({
-                        tId: tenantId,
-                        sId: storeId,
+                        tId: tenantDocumentId,
+                        sId: storeDocumentId,
                     }),
                 ]
                 : []),
@@ -542,7 +544,7 @@ export const POST = withAuth(async (request, session) => {
                     ? "multi_outlet_billing_upi_quantity_update_unsupported"
                     : "multi_outlet_billing_provider_quantity_update_failed",
                 billingError.cause,
-                getOutletCreateLogContext(tenantId, storeId, {
+                getOutletCreateLogContext(tenantDocumentId, storeDocumentId, {
                     reason: billingError.reason,
                     previousQty,
                     newQty,
@@ -553,7 +555,7 @@ export const POST = withAuth(async (request, session) => {
             logMultiOutletFailure(
                 "multi_outlet_create_failed",
                 error,
-                getOutletCreateLogContext(tenantId, storeId, {
+                getOutletCreateLogContext(tenantDocumentId, storeDocumentId, {
                     lockAcquired,
                     billingUpdated,
                     subscriptionQuantityUpdated,
@@ -569,7 +571,7 @@ export const POST = withAuth(async (request, session) => {
                 logMultiOutletFailure(
                     "multi_outlet_billing_provider_quantity_revert_failed",
                     revertErr,
-                    getOutletCreateLogContext(tenantId, storeId, {
+                    getOutletCreateLogContext(tenantDocumentId, storeDocumentId, {
                         previousQty,
                         ...getBoundedMultiOutletStringContext("providerSubscriptionId", providerSubId),
                     }),
@@ -583,7 +585,7 @@ export const POST = withAuth(async (request, session) => {
                 logMultiOutletFailure(
                     "multi_outlet_subscription_quantity_revert_failed",
                     revertErr,
-                    getOutletCreateLogContext(tenantId, storeId, {
+                    getOutletCreateLogContext(tenantDocumentId, storeDocumentId, {
                         previousQty,
                         ...getBoundedMultiOutletStringContext("subscriptionId", subId),
                     }),
@@ -594,12 +596,12 @@ export const POST = withAuth(async (request, session) => {
         // Best-effort lock release
         if (lockAcquired) {
             try {
-                await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).update({ outletCreationLock: false });
+                await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`).update({ outletCreationLock: false });
             } catch (lockReleaseError) {
                 logMultiOutletFailure(
                     "multi_outlet_create_lock_release_failed",
                     lockReleaseError,
-                    getOutletCreateLogContext(tenantId, storeId, {
+                    getOutletCreateLogContext(tenantDocumentId, storeDocumentId, {
                         billingUpdated,
                         subscriptionQuantityUpdated,
                     }),

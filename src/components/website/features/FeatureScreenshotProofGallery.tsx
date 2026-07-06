@@ -70,6 +70,42 @@ const screenshotGalleries: Partial<Record<FeatureDetailSlug, FeatureScreenshotGa
       },
     ],
   },
+  'official-business-page': {
+    key: 'officialBusinessPage',
+    screenshots: [
+      {
+        key: 'obpBrowser',
+        src: '/images/website/menulist-obp-browser.webp',
+        width: 1400,
+        height: 900,
+        variant: 'wide',
+      },
+    ],
+  },
+  'owner-phone-dashboard': {
+    key: 'ownerPhoneDashboard',
+    screenshots: [
+      {
+        key: 'phoneToday',
+        src: '/images/website/product-proof/owner-phone-dashboard.webp',
+        width: 900,
+        height: 1400,
+        variant: 'portrait',
+      },
+    ],
+  },
+  analytics: {
+    key: 'analytics',
+    screenshots: [
+      {
+        key: 'dashboardSignals',
+        src: '/images/website/menulist-analytics-proof.webp',
+        width: 1500,
+        height: 900,
+        variant: 'wide',
+      },
+    ],
+  },
   'public-discovery': {
     key: 'publicDiscovery',
     screenshots: [

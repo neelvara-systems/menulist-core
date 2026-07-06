@@ -91,17 +91,28 @@ requireToken(features, 'ENABLE_TEMP_STATUS: true', 'Temporary Status feature fla
   "export const dynamic = 'force-dynamic';",
   'export const POST = withAuth(async (request: NextRequest, session) =>',
   'if (!FEATURE_FLAGS.ENABLE_TEMP_STATUS)',
-  'const { tId: tenantId, sId: storeId, uId: userId } = session',
+  'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+  'const TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;',
+  'function normalizeSessionDocumentId(value: unknown): string | null',
+  'documentId.length <= TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH',
+  'isValidFirestoreDocumentId(documentId)',
+  'const { tId: rawTenantId, sId: rawStoreId } = session',
+  'const rawUserId = session.uId || session.user?.id;',
+  'const tenantId = normalizeSessionDocumentId(rawTenantId);',
+  'const storeId = normalizeSessionDocumentId(rawStoreId);',
+  'const userId = normalizeSessionDocumentId(rawUserId);',
   'requireAnyStorePermission(',
   'PERMISSIONS.MANAGE_STORE, PERMISSIONS.MANAGE_PUBLIC_PRESENCE',
   "getRateLimitForFeature('DATA_WRITE')",
-  "hashPublicRateLimitValue(userId || session.user?.id || 'unknown')",
+  "hashPublicRateLimitValue(userId || 'unknown')",
   'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
   'key: `temp-status:${userRateLimitHash}:${storeRateLimitHash}`',
   'const TEMP_STATUS_ACTION_MAX_BODY_BYTES = 4 * 1024;',
   'readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES',
   'RequestSchema.safeParse(body)',
   'new Date(expiresAt).getTime() <= Date.now()',
+  'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
+  'createdBy: userId || null',
   'admin.firestore.FieldValue.delete()',
   'revalidateTag(`menu-store-${storeId}`)',
   'revalidateTag(`store-${storeId}`)',
@@ -115,10 +126,12 @@ requireToken(features, 'ENABLE_TEMP_STATUS: true', 'Temporary Status feature fla
 
 requireOrder(
   route,
-  [
-    'if (!FEATURE_FLAGS.ENABLE_TEMP_STATUS)',
-    'requireAnyStorePermission(',
-    "getRateLimitForFeature('DATA_WRITE')",
+    [
+      'if (!FEATURE_FLAGS.ENABLE_TEMP_STATUS)',
+      'const tenantId = normalizeSessionDocumentId(rawTenantId);',
+      'const storeId = normalizeSessionDocumentId(rawStoreId);',
+      'requireAnyStorePermission(',
+      "getRateLimitForFeature('DATA_WRITE')",
     'readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES',
     'RequestSchema.safeParse(body)',
     'await storeRef.update',
@@ -129,6 +142,8 @@ requireOrder(
   'Temporary Status route admission and cache order',
 );
 forbidToken(route, 'key: `temp-status:${userId || session.user?.id}:${storeId}`', 'Temporary Status route raw limiter key');
+forbidToken(route, "hashPublicRateLimitValue(userId || session.user?.id || 'unknown')", 'Temporary Status route raw actor limiter key');
+forbidToken(route, 'doc(String(storeId))', 'Temporary Status route raw store ref');
 forbidToken(route, 'console.error', 'Temporary Status route diagnostics');
 
 [
@@ -265,6 +280,7 @@ forbidToken(readme, 'ENABLE_TEMP_STATUS: false', 'Temporary Status README stale 
   '## Source Gate',
   '`npm run verify:temporary-status-boundary`',
   'src/app/client/obp/OBPResolvedSurface.tsx',
+  'Session tenant/store IDs pass through the shared Firestore document-ID guard',
   'public pull API hides expired temporary status values',
   'screen-data',
   'Owner Business Assistant',
@@ -274,6 +290,7 @@ forbidToken(impl, 'src/app/_client/obp/OBPContent.tsx', 'Temporary Status implem
 [
   '## Source Gate',
   '`npm run verify:temporary-status-boundary`',
+  'validates session tenant/store IDs through the shared Firestore document-ID guard',
   '4KB bounded JSON',
   '8KB',
   'screen-data',
@@ -322,8 +339,11 @@ requireToken(inventory, 'temporary-status boundary source gate passed; browser/m
   'source/docs verification only',
 ].forEach((token) => requireToken(report, token, 'feature sweep report'));
 [
+  'Owner store session document-ID boundary checkpoint',
   'Temporary Status boundary checkpoint',
+  'Temporary Status strict session document-ID boundary checkpoint',
   '`npm run verify:temporary-status-boundary`',
+  'raw `doc(String(storeId))` exclusions',
   'public pull API expired-status hiding',
 ].forEach((token) => requireToken(audit, token, 'production readiness audit'));
 [
@@ -332,7 +352,11 @@ requireToken(inventory, 'temporary-status boundary source gate passed; browser/m
   'store `tempStatus` field and `/api/store/temp-status` response-confirmation boundary',
 ].forEach((token) => requireToken(audit, token, 'production readiness audit mobile Hours/Status boundary'));
 [
+  'Owner Store Session Document ID Boundary',
+  'Temporary Status Strict Session Document ID Boundary',
   'July 2, 2026 - Temporary Status Boundary',
+  '`/api/store/temp-status` validates session tenant/store IDs',
+  'raw `doc(String(storeId))` exclusions',
   'verify:temporary-status-boundary',
   'public pull API expired-status hiding',
 ].forEach((token) => requireToken(changelog, token, 'changelog'));

@@ -18,6 +18,7 @@ import { appendPublicPath, getMenuUrl } from '@constant/urls';
 import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from '@data/shared/businessTypes';
 import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
@@ -42,6 +43,19 @@ import { z } from 'zod';
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
 const PUBLIC_MENU_CLAIM_MAX_BODY_BYTES = 8 * 1024;
 const PUBLIC_MENU_DRAFT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function normalizePublicMenuClaimNumericDocumentId(
+    value: unknown,
+): { numericId: number; documentId: string } | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { numericId, documentId }
+        : null;
+}
 
 const getCanonicalExtractionLanguages = (languages: any): string[] => normalizeProjectLanguages(
     Array.isArray(languages)
@@ -283,6 +297,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             const activationDeadline = admin.firestore.Timestamp.fromMillis(Date.now() + STARTER_ACTIVATION_MS);
             let tenantId: number;
             let storeId: number;
+            let tenantDocumentId: string;
+            let storeDocumentId: string;
             let subdomain: string;
             let resolvedBusinessType = businessType || draft.detectedBusinessType || FALLBACK_BUSINESS_TYPE;
             let resolvedBusinessCategory = resolveStoreBusinessCategory(
@@ -299,15 +315,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             let existingSummaryProjectsForDefaultDemotion: Record<string, any> = {};
 
             if (hasExistingAccount) {
-                tenantId = Number(session.user.tenantId);
-                storeId = Number(session.user.storeId);
-                if (!Number.isSafeInteger(tenantId) || !Number.isSafeInteger(storeId)) {
+                const tenantScope = normalizePublicMenuClaimNumericDocumentId(session.user.tenantId);
+                const storeScope = normalizePublicMenuClaimNumericDocumentId(session.user.storeId);
+                if (!tenantScope || !storeScope) {
                     throw new PublicMenuClaimError(403, 'Account is not ready to publish this menu.');
                 }
+                tenantId = tenantScope.numericId;
+                storeId = storeScope.numericId;
+                tenantDocumentId = tenantScope.documentId;
+                storeDocumentId = storeScope.documentId;
 
-                const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
-                const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(tenantId));
-                const existingProjectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeId}`);
+                const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
+                const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantDocumentId);
+                const existingProjectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeDocumentId}`);
                 const storeDoc = await transaction.get(storeRef);
                 const tenantDoc = await transaction.get(tenantRef);
                 const existingSummaryDoc = await transaction.get(existingProjectsSummaryRef);
@@ -413,17 +433,27 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 });
 
                 // Update User with tenant/store IDs
+                const tenantScope = normalizePublicMenuClaimNumericDocumentId(core.tenantId);
+                const storeScope = normalizePublicMenuClaimNumericDocumentId(core.storeId);
+                if (!tenantScope || !storeScope) {
+                    throw new PublicMenuClaimError(403, 'Account is not ready to publish this menu.');
+                }
                 updateUserWithTenantStore(transaction, db, userId, core);
 
-                tenantId = core.tenantId;
-                storeId = core.storeId;
+                tenantId = tenantScope.numericId;
+                storeId = storeScope.numericId;
+                tenantDocumentId = tenantScope.documentId;
+                storeDocumentId = storeScope.documentId;
                 subdomain = core.subdomain!;
             }
 
-            const projectCollectionPath = `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`;
             const projectId = `${tenantId}-${Date.now().toString(36)}-${storeId}`;
-            const projectRef = db.collection(projectCollectionPath).doc(projectId);
-            const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeId}`);
+            const projectRef = db
+                .collection(DB_COLLECTIONS.PROJECTS)
+                .doc(tenantDocumentId)
+                .collection(storeDocumentId)
+                .doc(projectId);
+            const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeDocumentId}`);
             const summaryUpdate: Record<string, any> = { lastUpdated: now };
             if (hasExistingAccount) {
                 Object.entries(existingSummaryProjectsForDefaultDemotion).forEach(([existingProjectId, existingProject]) => {

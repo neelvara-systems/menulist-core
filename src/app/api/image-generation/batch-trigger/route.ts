@@ -4,6 +4,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PERMISSIONS } from '@constant/permissions';
 import { markImageBatchProcessingJobFailedAdmin, updateImageBatchProcessingJobAdmin } from '@database/imageBatchProcessing/server';
 import { checkAICapacity } from '@lib/ai/capacityCheck';
+import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from '@lib/ai/imageBatchIdBoundary';
 import { enqueueImageGenerationTask, getImageGenerationTaskConfigStatus } from '@lib/google/cloudTask';
 import { getAIRouteSecurityContext } from '@lib/google/genAi/diagnostics';
 import { logger } from '@lib/monitoring/logger';
@@ -189,7 +190,13 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 400 });
         }
 
-        const { generationConfig, projectId, itemsList, businessType, jobId } = validation.data as unknown as Required<Pick<GenerateImageViaApiPayloadBatchType, 'generationConfig' | 'itemsList' | 'jobId'>> & GenerateImageViaApiPayloadBatchType;
+        const { generationConfig, projectId: requestedProjectId, itemsList, businessType, jobId: requestedJobId } = validation.data as unknown as Required<Pick<GenerateImageViaApiPayloadBatchType, 'generationConfig' | 'itemsList' | 'jobId'>> & GenerateImageViaApiPayloadBatchType;
+        const projectScope = normalizeImageBatchProjectId(requestedProjectId);
+        const jobId = normalizeImageBatchJobId(requestedJobId);
+        if (!projectScope || !jobId) {
+            return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+        }
+        const projectId = projectScope.projectId;
         requestLogContext = getBatchImageRouteLogContext({
             itemCount: itemsList.length,
             jobId,

@@ -87,6 +87,75 @@ contains(
 );
 
 contains(
+  'src/lib/menu-extraction/jobIdBoundary.ts',
+  [
+    'MENU_EXTRACTION_JOB_ID_PATTERN = /^[A-Za-z0-9]{20}$/',
+    'documentId === value',
+    'isValidFirestoreDocumentId(documentId)',
+    'normalizeMenuExtractionJobId',
+  ],
+  'Menu extraction retry job IDs use the strict shared Firestore document ID boundary',
+);
+
+contains(
+  'src/lib/menu-extraction/projectIdBoundary.ts',
+  [
+    'MENU_EXTRACTION_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{3,160}$/',
+    'documentId === value',
+    'isValidFirestoreDocumentId(documentId)',
+    'normalizeMenuExtractionProjectId',
+  ],
+  'Menu extraction project IDs use the strict shared Firestore document ID boundary',
+);
+
+contains(
+  'src/lib/menu-extraction/menuIntakeIdentityServer.ts',
+  [
+    'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+    'import { normalizeMenuExtractionProjectId } from "@lib/menu-extraction/projectIdBoundary";',
+    'export function normalizeMenuIntakeScopeDocumentId(value: unknown): MenuIntakeScopeDocumentId | null {',
+    'raw !== raw.trim() || !isValidFirestoreDocumentId(raw)',
+    'Number.isSafeInteger(numericId)',
+    'String(numericId) !== raw',
+    'function requireMenuIntakeProjectId(value: unknown): string',
+    'const projectId = requireMenuIntakeProjectId(params.projectId);',
+    'const tenantScope = normalizeMenuIntakeScopeDocumentId(params.tId);',
+    'const storeScope = normalizeMenuIntakeScopeDocumentId(params.sId);',
+    '.doc(tenantScope.documentId)',
+    '.collection(storeScope.documentId)',
+    '.doc(projectId)',
+    'firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId)',
+  ],
+  'Menu intake identity server normalizes project and scope IDs before project/store reads',
+);
+
+ordered(
+  'src/lib/menu-extraction/menuIntakeIdentityServer.ts',
+  [
+    'const projectId = requireMenuIntakeProjectId(params.projectId);',
+    'const tenantScope = normalizeMenuIntakeScopeDocumentId(params.tId);',
+    'const storeScope = normalizeMenuIntakeScopeDocumentId(params.sId);',
+    '.doc(tenantScope.documentId)',
+    '.collection(storeScope.documentId)',
+    '.doc(projectId)',
+  ],
+  'Menu intake identity project/scope ID normalizers run before project document read',
+);
+
+notContains(
+  'src/lib/menu-extraction/menuIntakeIdentityServer.ts',
+  [
+    '.doc(params.projectId)',
+    '.collection(`${DB_COLLECTIONS.PROJECTS}/${params.tId}/${params.sId}`)',
+    '.collection(`${DB_COLLECTIONS.PROJECTS}/',
+    '.doc(String(params.sId))',
+    'sId: params.sId',
+    'tId: params.tId',
+  ],
+  'Menu intake identity server must not read project/store docs with raw project or scope IDs',
+);
+
+contains(
   'src/app/api/menu-extraction/jobs/route.ts',
   [
     'withAuth',
@@ -99,6 +168,15 @@ contains(
     'buildProjectMenuExtractionDestination',
     'buildMenuExtractionRoutingFields',
     'loadRetryContext',
+    'normalizeMenuExtractionProjectId',
+    'const MenuExtractionProjectIdSchema = z.string()',
+    'projectId: MenuExtractionProjectIdSchema',
+    'const MenuExtractionJobIdSchema = z.string()',
+    'normalizeMenuExtractionJobId(value) === value',
+    'retriedFromJobId: MenuExtractionJobIdSchema.optional()',
+    'function requireMenuExtractionRetryJobId(value: unknown): string',
+    'const retriedFromJobId = requireMenuExtractionRetryJobId(params.retriedFromJobId);',
+    '.doc(retriedFromJobId)',
     'normalizeProjectJobSource(retryData.source)',
     'isAllowedMenuLinkImportUrl',
     'buildOwnerUploadSourceFingerprint',
@@ -119,6 +197,195 @@ contains(
     '"project_document_size_gate"',
   ],
   'Owner job API centralizes auth, retry, source, routing, trusted owner-upload dedupe checks, and pre-AI project-size gating',
+);
+
+ordered(
+  'src/app/api/menu-extraction/jobs/route.ts',
+  [
+    'const validation = RequestSchema.safeParse(bodyResult.data);',
+    'if (validation.data.retriedFromJobId) {',
+    'retryContext = await loadRetryContext({',
+    'retriedFromJobId: validation.data.retriedFromJobId',
+  ],
+  'Owner job retry IDs are schema-normalized before original job document reads',
+);
+
+ordered(
+  'src/app/api/menu-extraction/jobs/route.ts',
+  [
+    'function requireMenuExtractionRetryJobId(value: unknown): string',
+    'const retriedFromJobId = requireMenuExtractionRetryJobId(params.retriedFromJobId);',
+    '.doc(retriedFromJobId)',
+  ],
+  'Owner job retry loader normalizes retry ID before original job document read',
+);
+
+notContains(
+  'src/app/api/menu-extraction/jobs/route.ts',
+  [
+    'retriedFromJobId: z.string().min(1).max(160).optional()',
+    'projectId: z.string().min(3).max(160)',
+    '.doc(params.retriedFromJobId)',
+  ],
+  'Owner job request IDs no longer use loose string schemas',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
+  [
+    'Menu Extraction retry job ID boundary',
+    'src/lib/menu-extraction/jobIdBoundary.ts',
+    'Firestore auto-ID shaped job IDs',
+    'whitespace-mutated',
+    '`loadRetryContext()` re-normalizes the retry job ID before the original `menuImageProcessingJobs/{jobId}` document ref',
+  ],
+  'Menu Extraction implementation docs record retry job ID boundary',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
+  [
+    'Menu Extraction project ID boundary',
+    'src/lib/menu-extraction/projectIdBoundary.ts',
+    'whitespace-mutated',
+    'before project document reads, menu-link Storage path construction, or identity preflight context loading',
+    '`loadMenuIntakeContext()` and `runMenuIntakeIdentityCheck()` also re-normalize the project ID',
+  ],
+  'Menu Extraction implementation docs record project ID boundary',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
+  [
+    'Menu Intake Identity scope document-ID boundary',
+    'normalizeMenuIntakeScopeDocumentId()',
+    'before tenant access checks, limiter key hashing, `projects/{tId}/{sId}/{projectId}` context reads',
+    'exact positive safe-integer MenuList document IDs',
+  ],
+  'Menu Extraction implementation docs record menu-intake identity scope document-ID boundary',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  [
+    'Menu Extraction retry job ID admission',
+    'Firestore auto-ID shaped job IDs',
+    'whitespace-mutated',
+    '`loadRetryContext()` repeats the same normalizer',
+    'before the original-job Firestore read',
+  ],
+  'Menu Extraction Firebase docs record retry job ID cost boundary',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  [
+    'Menu Extraction project ID admission',
+    'src/lib/menu-extraction/projectIdBoundary.ts',
+    'whitespace-mutated',
+    'before project document reads, menu-link Storage path construction, identity preflight context loading',
+    'menu-intake identity server helper also re-normalizes the final project ID before the scoped project ref',
+  ],
+  'Menu Extraction Firebase docs record project ID cost boundary',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  [
+    'Menu Intake Identity scope document-ID admission',
+    'normalizeMenuIntakeScopeDocumentId()',
+    'before tenant access checks, limiter hashing, scoped project/store context reads',
+    'This adds no Firestore reads/writes/deletes, Storage operations, provider calls',
+  ],
+  'Menu Extraction Firebase docs record menu-intake identity scope document-ID cost boundary',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Menu Extraction retry job ID boundary checkpoint',
+    'src/lib/menu-extraction/jobIdBoundary.ts',
+    'whitespace-mutated',
+    '`loadRetryContext()` repeats the same normalizer before reading `.doc(retriedFromJobId)`',
+    'excluding `.doc(params.retriedFromJobId)`',
+  ],
+  'Production audit records Menu Extraction retry job ID boundary',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Menu Extraction project ID boundary checkpoint',
+    'src/lib/menu-extraction/projectIdBoundary.ts',
+    'whitespace-mutated',
+    'Menu Extraction identity helper project ID normalization checkpoint',
+  ],
+  'Production audit records Menu Extraction project ID boundary',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Menu Intake Identity Scope Document ID Boundary checkpoint',
+    'normalizeMenuIntakeScopeDocumentId()',
+    'uses normalized tenant/store document IDs for the scoped project/store refs',
+    'raw scope usage exclusions',
+  ],
+  'Production audit records Menu Intake Identity scope document-ID boundary',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  [
+    'Menu Extraction Retry Job ID Boundary',
+    'whitespace-mutated',
+    '`loadRetryContext()` now re-normalizes `retriedFromJobId` before reading `.doc(retriedFromJobId)`',
+    'exclude `.doc(params.retriedFromJobId)`',
+  ],
+  'Changelog records Menu Extraction retry job ID boundary',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  ['Menu Extraction Project ID Boundary', 'whitespace-mutated', 'Menu Extraction Identity Helper Project ID Normalization'],
+  'Changelog records Menu Extraction project ID boundary',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  [
+    'Menu Intake Identity Scope Document ID Boundary',
+    'normalizeMenuIntakeScopeDocumentId()',
+    'normalized tenant access, normalized limiter hashes, normalized project/store refs',
+  ],
+  'Changelog records Menu Intake Identity scope document-ID boundary',
+);
+
+contains(
+  '__docs__/changelog.md',
+  [
+    'Menu Extraction Retry Job ID Boundary',
+    'whitespace-mutated',
+    '`loadRetryContext()` now re-normalizes `retriedFromJobId` before reading `.doc(retriedFromJobId)`',
+    'exclude `.doc(params.retriedFromJobId)`',
+  ],
+  'Lowercase changelog records Menu Extraction retry job ID boundary',
+);
+
+contains(
+  '__docs__/changelog.md',
+  ['Menu Extraction Project ID Boundary', 'whitespace-mutated', 'Menu Extraction Identity Helper Project ID Normalization'],
+  'Lowercase changelog records Menu Extraction project ID boundary',
+);
+
+contains(
+  '__docs__/changelog.md',
+  [
+    'Menu Intake Identity Scope Document ID Boundary',
+    'normalizeMenuIntakeScopeDocumentId()',
+    'normalized tenant access, normalized limiter hashes, normalized project/store refs',
+  ],
+  'Lowercase changelog records Menu Intake Identity scope document-ID boundary',
 );
 
 contains(
@@ -688,6 +955,103 @@ contains(
 );
 
 contains(
+  '__docs__/menu-extraction-pipeline/README.md',
+  [
+    'Extraction review apply keeps MOL audit logging fire-and-forget',
+    'menu_review_apply_mol_event_log_failed',
+    'actor/tenant/store presence-length context',
+    'applied-change count',
+    'The owner success path and valid MOL writes stay unchanged',
+  ],
+  'Menu extraction README documents review apply MOL diagnostics',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  [
+    'extraction review MOL diagnostics are Firebase-cost neutral',
+    'menu_review_apply_mol_event_log_failed',
+    'already-attempted MOL event write',
+    'no Firebase deploy requirement',
+  ],
+  'Menu extraction Firebase doc records review apply MOL cost boundary',
+);
+
+contains(
+  '__docs__/projects/ai-data-extraction/README.md',
+  [
+    'Review apply MOL failures log bounded `menu_review_apply_mol_event_log_failed` diagnostics',
+    'without blocking the acknowledged save',
+  ],
+  'AI Data Extraction README records review apply MOL diagnostic boundary',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Extraction review MOL diagnostics checkpoint',
+    'menu_review_apply_mol_event_log_failed',
+    'non-blocking `void logMOLEvent` branch',
+    'old silent catch exclusion',
+  ],
+  'Production-readiness audit records review apply MOL diagnostics',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  [
+    'Extraction Review MOL Diagnostics',
+    'Extraction review MOL failures are visible',
+    'menu_review_apply_mol_event_log_failed',
+    'comment-only silent catch',
+  ],
+  'Changelog records review apply MOL diagnostics',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
+  [
+    'Extraction review apply ID boundary',
+    'src/lib/extraction/schemas.ts',
+    'src/lib/extraction/applyChanges.ts',
+    'before client Firestore project or job refs are built',
+  ],
+  'Menu extraction implementation doc records review apply ID boundary',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  [
+    'Extraction review apply ID admission is cost-neutral',
+    'src/lib/extraction/schemas.ts',
+    'src/lib/extraction/applyChanges.ts',
+    'before client Firestore project or `menuImageProcessingJobs` document refs are built',
+  ],
+  'Menu extraction Firebase doc records review apply ID admission boundary',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Extraction review apply ID boundary checkpoint',
+    'src/lib/extraction/schemas.ts',
+    'src/lib/extraction/applyChanges.ts',
+    'malformed `projectId` and `jobId` values can no longer reach client Firestore project or `menuImageProcessingJobs` document refs',
+  ],
+  'Production-readiness audit records extraction review apply ID boundary',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  [
+    'Extraction Review Apply ID Boundary',
+    'Extraction review apply and discard IDs are validated before client Firestore refs',
+    'malformed review `projectId` or `jobId` values no longer reach client Firestore refs',
+  ],
+  'Changelog records extraction review apply ID boundary',
+);
+
+contains(
   'src/components/templates/main-app/projects/index.tsx',
   [
     'logMenuProcessingFailure',
@@ -979,12 +1343,28 @@ contains(
     'withAuth',
     'MENU_INTAKE_IDENTITY_MAX_BODY_BYTES',
     'readBoundedJsonBody(request, MENU_INTAKE_IDENTITY_MAX_BODY_BYTES)',
-    'verifyTenantAccess(session, ids.tId, ids.sId, request)',
+    'normalizeMenuIntakeScopeDocumentId',
+    'const tenantScope = normalizeMenuIntakeScopeDocumentId(ids.tId);',
+    'const storeScope = normalizeMenuIntakeScopeDocumentId(ids.sId);',
+    'verifyTenantAccess(session, tenantScope.documentId, storeScope.documentId, request)',
     'getRateLimitForFeature("AI_OPERATION")',
+    'const tenantRateLimitHash = hashPublicRateLimitValue(tenantScope.documentId);',
+    'const storeRateLimitHash = hashPublicRateLimitValue(storeScope.documentId);',
+    'normalizeMenuExtractionProjectId',
+    'const MenuExtractionProjectIdSchema = z.string()',
+    'projectId: MenuExtractionProjectIdSchema',
     'IntakeRequestSchema.safeParse(bodyResult.data)',
     'runMenuIntakeIdentityCheck',
   ],
   'Menu intake identity check is auth-scoped, rate-limited, and body-capped before identity analysis',
+);
+
+notContains(
+  'src/app/api/menu-intake-identity/route.ts',
+  [
+    'projectId: z.string().min(3).max(160)',
+  ],
+  'Menu intake identity project IDs no longer use the loose string schema',
 );
 
 ordered(
@@ -992,7 +1372,9 @@ ordered(
   [
     'const safeModeResponse = await checkSafeMode();',
     'const ids = {',
-    'verifyTenantAccess(session, ids.tId, ids.sId, request)',
+    'const tenantScope = normalizeMenuIntakeScopeDocumentId(ids.tId);',
+    'const storeScope = normalizeMenuIntakeScopeDocumentId(ids.sId);',
+    'verifyTenantAccess(session, tenantScope.documentId, storeScope.documentId, request)',
     'const rateLimitConfig = getRateLimitForFeature("AI_OPERATION");',
     'const rateLimit = await checkRateLimit({',
     'const bodyResult = await readBoundedJsonBody(request, MENU_INTAKE_IDENTITY_MAX_BODY_BYTES);',
@@ -1000,6 +1382,18 @@ ordered(
     'runMenuIntakeIdentityCheck({',
   ],
   'Menu intake identity request fails cheap before JSON parsing and analysis work',
+);
+
+notContains(
+  'src/app/api/menu-intake-identity/route.ts',
+  [
+    'verifyTenantAccess(session, ids.tId, ids.sId, request)',
+    'const tenantRateLimitHash = hashPublicRateLimitValue(ids.tId);',
+    'const storeRateLimitHash = hashPublicRateLimitValue(ids.sId);',
+    'sId: ids.sId',
+    'tId: ids.tId',
+  ],
+  'Menu intake identity route must not use raw session scope after normalization',
 );
 
 contains(
@@ -1043,6 +1437,7 @@ contains(
 contains(
   'src/app/(website)/create-menu/PreviewClient.tsx',
   [
+    "t('CreateMenu.previewFailedFallback')",
     'handlePreviewDraftResponseStatus',
     'const previewFailure = handlePreviewDraftResponseStatus(res);',
     'if (previewFailure) return previewFailure;',
@@ -1053,6 +1448,45 @@ contains(
     'res.status === 404',
   ],
   'Public create-menu preview status and full fetches share auth, expiry, and missing-draft handling',
+);
+
+notContains(
+  'src/app/(website)/create-menu/PreviewClient.tsx',
+  [
+    'draft.error ||',
+    '{draft.error',
+  ],
+  'Public create-menu preview failure does not render stored draft error text',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
+  ['Public create-menu preview stored-error display boundary'],
+  'Menu extraction implementation docs record public preview stored-error display boundary',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  ['Public create-menu preview stored-error display boundary'],
+  'Menu extraction Firebase docs record public preview stored-error display boundary',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  ['Public create-menu preview stored-error display boundary'],
+  'Production-readiness audit records public preview stored-error display boundary',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  ['Public create-menu preview stored-error display boundary'],
+  'Changelog records public preview stored-error display boundary',
+);
+
+contains(
+  '__docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md',
+  ['Public create-menu preview stored-error display boundary'],
+  'System-strengthening ledger records public preview stored-error display boundary',
 );
 
 occursAtLeast(
@@ -1171,18 +1605,27 @@ notContains(
 
 contains(
   'src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx',
-  [
-    'CREATE_MENU_SUCCESS_URL_MAX_LENGTH',
-    'CREATE_MENU_SUCCESS_INVALID_URL_REPORT_LIMIT',
-    'normalizeCreateMenuSuccessUrl',
-    'public_create_menu_success_url_invalid',
-    "const rawMenuUrl = searchParams.get('menuUrl') || '';",
-    "const rawOfficialPageUrl = searchParams.get('officialPageUrl') || '';",
-    "normalizeCreateMenuSuccessUrl('menuUrl', rawMenuUrl)",
-    "normalizeCreateMenuSuccessUrl('officialPageUrl', rawOfficialPageUrl)",
-    "if (parsed.protocol !== 'https:')",
-    'if (parsed.username || parsed.password)',
-    'trimmedValueLength',
+	  [
+	    'CREATE_MENU_SUCCESS_BUSINESS_NAME_MAX_LENGTH',
+	    'CREATE_MENU_SUCCESS_INVALID_BUSINESS_NAME_REPORT_LIMIT',
+	    'CREATE_MENU_SUCCESS_URL_MAX_LENGTH',
+	    'CREATE_MENU_SUCCESS_INVALID_URL_REPORT_LIMIT',
+	    'normalizeCreateMenuSuccessBusinessName',
+	    'normalizeCreateMenuSuccessUrl',
+	    'public_create_menu_success_business_name_invalid',
+	    'public_create_menu_success_url_invalid',
+	    "const rawMenuUrl = searchParams.get('menuUrl') || '';",
+	    "const rawOfficialPageUrl = searchParams.get('officialPageUrl') || '';",
+	    "const rawBusinessName = searchParams.get('name') || '';",
+	    'normalizeCreateMenuSuccessBusinessName(rawBusinessName, defaultBusinessName)',
+	    "normalizeCreateMenuSuccessUrl('menuUrl', rawMenuUrl)",
+	    "normalizeCreateMenuSuccessUrl('officialPageUrl', rawOfficialPageUrl)",
+	    'businessNameInvalidReason',
+	    'businessNameTrimmedLength',
+	    'businessNameMaxLength',
+	    "if (parsed.protocol !== 'https:')",
+	    'if (parsed.username || parsed.password)',
+	    'trimmedValueLength',
     'invalidUrlReason',
     'copyCreateMenuSuccessLinkToClipboard',
     'public_create_menu_success_copy_unavailable',
@@ -1212,8 +1655,9 @@ contains(
 notContains(
   'src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx',
   [
-    "const menuUrl = searchParams.get('menuUrl') || '';",
-    "const officialPageUrl = searchParams.get('officialPageUrl') || '';",
+    "const businessName = searchParams.get('name') || t('CreateMenuSuccess.defaultBusinessName');",
+	    "const menuUrl = searchParams.get('menuUrl') || '';",
+	    "const officialPageUrl = searchParams.get('officialPageUrl') || '';",
     'document.body.appendChild(input);\n                input.select();',
     'navigator.clipboard.writeText(menuUrl);\n            } catch',
     'await navigator.clipboard.writeText(menuUrl);\n        return;\n    }',
@@ -1222,6 +1666,36 @@ notContains(
     "document.execCommand('copy');\n    } finally {\n        document.body.removeChild(input);",
   ],
   'Public create-menu success copy avoids implicit nested clipboard fallback flow',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
+  ['Public create-menu success business-name query display boundary'],
+  'Menu extraction implementation docs record public success business-name query display boundary',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  ['Public create-menu success business-name query display boundary'],
+  'Menu extraction Firebase docs record public success business-name query display boundary',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  ['Public create-menu success business-name query display boundary'],
+  'Production-readiness audit records public success business-name query display boundary',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  ['Public create-menu success business-name query display boundary'],
+  'Changelog records public success business-name query display boundary',
+);
+
+contains(
+  '__docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md',
+  ['Public create-menu success business-name query display boundary'],
+  'System-strengthening ledger records public success business-name query display boundary',
 );
 
 ordered(
@@ -1272,11 +1746,18 @@ contains(
     'PUBLIC_MENU_CLAIM_MAX_BODY_BYTES',
     'readBoundedJsonBody(request, PUBLIC_MENU_CLAIM_MAX_BODY_BYTES)',
     "import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';",
-    'if (!Number.isSafeInteger(tenantId) || !Number.isSafeInteger(storeId))',
-    'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(tenantId));',
-    'const existingProjectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeId}`);',
+    "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
+    'function normalizePublicMenuClaimNumericDocumentId(',
+    'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
+    'const tenantScope = normalizePublicMenuClaimNumericDocumentId(session.user.tenantId);',
+    'const storeScope = normalizePublicMenuClaimNumericDocumentId(session.user.storeId);',
+    'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantDocumentId);',
+    'const existingProjectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeDocumentId}`);',
     'const tenantDoc = await transaction.get(tenantRef);',
     'const existingSummaryDoc = await transaction.get(existingProjectsSummaryRef);',
+    '.doc(tenantDocumentId)',
+    '.collection(storeDocumentId)',
+    'const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeDocumentId}`);',
     'let existingSummaryProjectsForDefaultDemotion: Record<string, any> = {};',
     'existingSummaryProjectsForDefaultDemotion = existingSummaryDoc.exists',
     'Object.entries(existingSummaryProjectsForDefaultDemotion).forEach',
@@ -1301,6 +1782,52 @@ contains(
     'revalidateTag(`menu-store-${result.storeId}`)',
   ],
   'Public draft claim writes parseable project IDs and the standard project file shape',
+);
+notContains(
+  'src/app/api/public/create-menu/claim/route.ts',
+  [
+    'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(tenantId));',
+    'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));',
+    'const projectCollectionPath = `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`;',
+    'const existingProjectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeId}`);',
+    'const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeId}`);',
+  ],
+  'Public draft claim no longer builds raw document refs from claim IDs',
+);
+contains(
+  '__docs__/public-menu-entry/public-menu-entry_impl.md',
+  ['Target document-ID guard'],
+  'Public menu entry implementation docs record claim target document-ID boundary',
+);
+contains(
+  '__docs__/public-menu-entry/public-menu-entry_firebase.md',
+  ['Public create-menu claim target document-ID boundary hardening is Firebase-cost neutral'],
+  'Public menu entry Firebase docs record claim target document-ID boundary',
+);
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
+  ['Public create-menu claim target document-ID boundary'],
+  'Menu extraction implementation docs record claim target document-ID boundary',
+);
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  ['Public create-menu claim target document-ID boundary hardening is Firebase-cost neutral'],
+  'Menu extraction Firebase docs record claim target document-ID boundary',
+);
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  ['Public create-menu claim target document-ID boundary checkpoint'],
+  'Production-readiness audit records claim target document-ID boundary',
+);
+contains(
+  '__docs__/CHANGELOG.md',
+  ['Public Create Menu Claim Target Document ID Boundary'],
+  'Changelog records claim target document-ID boundary',
+);
+contains(
+  '__docs__/changelog.md',
+  ['Public Create Menu Claim Target Document ID Boundary'],
+  'Lowercase changelog records claim target document-ID boundary',
 );
 
 ordered(
@@ -1356,6 +1883,9 @@ contains(
   [
     'MENU_LINK_IMPORT_MAX_BODY_BYTES',
     'readBoundedJsonBody(request, MENU_LINK_IMPORT_MAX_BODY_BYTES)',
+    'normalizeMenuExtractionProjectId',
+    'const MenuExtractionProjectIdSchema = z.string()',
+    'projectId: MenuExtractionProjectIdSchema',
     'buildProjectMenuExtractionDestination',
     "buildProjectMenuExtractionDestination(projectId, 'review')",
     'buildMenuExtractionRoutingFields',
@@ -1363,6 +1893,14 @@ contains(
     'menuLinkImports/${ids.tId}/${ids.sId}/${projectId}/${jobRef.id}/',
   ],
   'Authenticated link import uses shared project routing and review mode',
+);
+
+notContains(
+  'src/app/api/menu-link-imports/route.ts',
+  [
+    'projectId: z.string().min(3).max(160)',
+  ],
+  'Authenticated link import project IDs no longer use the loose string schema',
 );
 
 contains(
@@ -1616,16 +2154,47 @@ notContains(
 );
 
 contains(
+  'src/lib/extraction/schemas.ts',
+  [
+    "import { normalizeMenuExtractionJobId } from '@lib/menu-extraction/jobIdBoundary';",
+    "import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';",
+    'const MenuExtractionProjectIdSchema = z.string()',
+    'normalizeMenuExtractionProjectId(value) === value',
+    'const MenuExtractionJobIdSchema = z.string()',
+    'normalizeMenuExtractionJobId(value) === value',
+    'projectId: MenuExtractionProjectIdSchema',
+    'jobId: MenuExtractionJobIdSchema',
+  ],
+  'Extraction review schemas validate project and job IDs through Menu Extraction document ID boundaries',
+);
+
+notContains(
+  'src/lib/extraction/schemas.ts',
+  [
+    'projectId: z.string().min(1)',
+    'jobId: z.string().min(1)',
+  ],
+  'Extraction review schemas no longer use loose project/job ID strings',
+);
+
+contains(
   'src/lib/extraction/applyChanges.ts',
   [
     'logMenuProcessingFailure',
     'getBoundedMenuProcessingStringContext',
     'getMenuProcessingJobLogContext',
     'getMenuProcessingProjectLogContext',
+    'normalizeMenuExtractionProjectId(rawProjectId)',
+    'normalizeMenuExtractionJobId(rawJobId)',
+    'normalizeMenuExtractionJobId(jobId)',
+    'if (!projectId || !jobId) {',
+    'if (!normalizedJobId) {',
     'APPLY_CHANGES_GENERIC_ERROR',
     'menu_review_apply_source_file_missing',
     'menu_review_apply_acknowledgement_mismatch',
     'menu_review_apply_business_attributes_failed',
+    'MENU_REVIEW_APPLY_MOL_EVENT_LOG_FAILED',
+    'menu_review_apply_mol_event_log_failed',
     'menu_review_apply_failed',
     'linked_outlet_project_save_rejected',
     'linked_outlet_project_save_response_parse_failed',
@@ -1652,8 +2221,40 @@ contains(
     "await saveLinkedOutletProject(linkedOutletProjectPayload, jobId)",
     "'/api/projects/outlet-save'",
     "await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges')",
+    'void logMOLEvent({',
+    '}).catch((error) => {',
+    '...getBoundedMenuProcessingStringContext(\'actorUserId\', molContext.actorUserId)',
+    '...getBoundedMenuProcessingStringContext(\'tenantId\', molContext.tId)',
+    '...getBoundedMenuProcessingStringContext(\'storeId\', molContext.sId)',
+    'appliedChangeCount: getAppliedExtractionChangeCount(stats)',
+    'mode: applyPlan.mode',
+    'version: molContext.version',
   ],
   'Review apply validates ownership/status, creates standard project file shells, routes linked outlets through outlet-save, and revalidates public render cache',
+);
+
+ordered(
+  'src/lib/extraction/applyChanges.ts',
+  [
+    'const projectId = normalizeMenuExtractionProjectId(rawProjectId) || \'\';',
+    'const jobId = normalizeMenuExtractionJobId(rawJobId) || \'\';',
+    'if (!projectId || !jobId) {',
+    'const session = await getActiveSession();',
+    'const projectRef = doc(firebaseClient, `${DB_COLLECTIONS.PROJECTS}/${session.tId}/${session.sId}`, projectId);',
+    'const jobRef = doc(firebaseClient, DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS, jobId);',
+  ],
+  'Review apply normalizes project and job IDs before client Firestore refs',
+);
+
+ordered(
+  'src/lib/extraction/applyChanges.ts',
+  [
+    'const normalizedJobId = normalizeMenuExtractionJobId(jobId);',
+    'if (!normalizedJobId) {',
+    'const session = await getActiveSession();',
+    'const jobRef = doc(firebaseClient, DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS, normalizedJobId);',
+  ],
+  'Review discard normalizes job IDs before client Firestore refs',
 );
 
 notContains(
@@ -1666,6 +2267,7 @@ notContains(
     'Linked outlet save failed: ${response.status}',
     'error.message ||',
     '[discardExtractionChanges]',
+    '}).catch(() => { /* MOL should never block */ });',
   ],
   'Review apply helper uses bounded diagnostics and generic caller errors',
 );
@@ -1806,8 +2408,22 @@ contains(
 );
 
 contains(
+  'src/lib/messaging-onboarding/previewRouteBoundary.ts',
+  [
+    'MESSAGING_PREVIEW_SESSION_ID_PATTERN = /^[A-Za-z0-9]{20}$/',
+    'normalizeMessagingPreviewSessionId',
+    'const raw = typeof value === "string" ? value : "";',
+    'sessionId !== raw',
+    'isValidFirestoreDocumentId(sessionId)',
+  ],
+  'Messaging preview route boundary accepts only exact Firestore auto-ID session parameters',
+);
+
+contains(
   'src/app/api/msg-preview/[sessionId]/route.ts',
   [
+    'normalizeMessagingPreviewSessionId',
+    'const sessionId = normalizeMessagingPreviewSessionId(rawSessionId);',
     'messaging_preview_get_route_failed',
     'getPreviewGetLogContext',
     'getBoundedRuntimeStringContext("sessionId", sessionId)',
@@ -1826,14 +2442,17 @@ notContains(
   [
     'secureError("[msg-preview] GET error"',
     'key: `msg-preview-read:${sessionId}:${ip}`',
+    'sessionId.length < 10',
     '.catch(() => { })',
   ],
-  'Messaging preview GET route does not log raw route failures or store raw rate-limit key material',
+  'Messaging preview GET route does not log raw route failures, store raw rate-limit key material, or use loose session IDs',
 );
 
 contains(
   'src/app/api/msg-preview/[sessionId]/approve/route.ts',
   [
+    'normalizeMessagingPreviewSessionId',
+    'const sessionId = normalizeMessagingPreviewSessionId(params?.sessionId);',
     'executeMessagingOnboardingPublish',
     'state: "PUBLISHING"',
     'state === "LIVE"',
@@ -1859,14 +2478,17 @@ notContains(
     'key: `publish:${ip}`',
     'message: (retryError as Error).message',
     'Publish failed after retry: ${(retryError as Error).message}',
+    'sessionId.length < 10',
     '.catch(() => { })',
   ],
-  'Messaging approval route does not log/persist raw publish errors or raw rate-limit key material',
+  'Messaging approval route does not log/persist raw publish errors, raw rate-limit key material, or loose session IDs',
 );
 
 contains(
   'src/app/api/msg-preview/[sessionId]/fix/route.ts',
   [
+    'normalizeMessagingPreviewSessionId',
+    'const sessionId = normalizeMessagingPreviewSessionId(params?.sessionId);',
     'messaging_preview_fix_route_failed',
     'getPreviewFixLogContext',
     'getBoundedRuntimeStringContext("sessionId", sessionId)',
@@ -1886,17 +2508,81 @@ notContains(
     'secureError(',
     '[msg-preview/fix] Error',
     'key: `msg-preview-fix:${sessionId}:${ip}`',
+    'sessionId.length < 10',
     '.catch(() => { })',
   ],
-  'Messaging fix route does not log raw route failures or store raw rate-limit key material',
+  'Messaging fix route does not log raw route failures, store raw rate-limit key material, or use loose session IDs',
+);
+
+contains(
+  '__docs__/messaging-onboarding/messaging-onboarding_impl.md',
+  [
+    'July 5 route-param boundary',
+    'src/lib/messaging-onboarding/previewRouteBoundary.ts',
+    'Firestore auto-ID session shape',
+    'whitespace-mutated',
+    '400 Invalid session',
+  ],
+  'Messaging implementation docs record preview route-param boundary',
+);
+
+contains(
+  '__docs__/messaging-onboarding/messaging-onboarding_firebase.md',
+  [
+    'July 5, 2026 preview route-param boundary note',
+    'normalizeMessagingPreviewSessionId()',
+    'Firestore auto-ID preview session shape',
+    'whitespace-mutated',
+    'before Firestore work',
+  ],
+  'Messaging Firebase docs record preview route-param boundary and cost behavior',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Messaging preview session route-param boundary checkpoint',
+    'src/lib/messaging-onboarding/previewRouteBoundary.ts',
+    'whitespace-mutated',
+    'old loose `sessionId.length < 10` exclusion',
+    'npm run verify:menu-extraction-pipeline',
+  ],
+  'Production audit records messaging preview route-param boundary',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  [
+    'Messaging Preview Session Route-Param Boundary',
+    'Preview session route params are shape-checked',
+    'Whitespace-mutated preview session IDs fail closed',
+    'npm run verify:menu-extraction-pipeline',
+  ],
+  'Changelog records messaging preview route-param boundary',
+);
+
+contains(
+  '__docs__/changelog.md',
+  [
+    'Messaging Preview Session Route-Param Boundary',
+    'Preview session route params are shape-checked',
+    'Whitespace-mutated preview session IDs fail closed',
+    'npm run verify:menu-extraction-pipeline',
+  ],
+  'Lowercase changelog records messaging preview route-param boundary',
 );
 
 contains(
   'src/lib/messaging-onboarding/publish.ts',
   [
     'export async function executeMessagingOnboardingPublish',
+    'normalizeMessagingPreviewSessionId',
+    'const normalizedSessionId = normalizeMessagingPreviewSessionId(sessionId);',
+    'throw new Error("Invalid messaging preview session");',
+    'logPublishEvent(normalizedSessionId, sessionData, "PUBLISH_STARTED", "PUBLISHING", {',
     'const projectId = `${core.tenantId}-default-${core.storeId}`',
     'db.collection(`projects/${core.tenantId}/${core.storeId}`).doc(projectId)',
+    'doc(normalizedSessionId)',
     'Array.isArray(sessionData.extractedProjectFiles)',
     'active: file.active !== false',
     'deleted: file.deleted === true',
@@ -1913,9 +2599,21 @@ contains(
 	    'messaging_onboarding_publish_event_write_failed',
 	    'getBoundedRuntimeStringContext("storeId", result.storeId)',
 	    'getBoundedRuntimeStringContext("sessionId", sessionId)',
+	    'logPublishEvent(normalizedSessionId, sessionData, "PUBLISH_COMPLETED", "LIVE", {',
 	    'logRuntimeFailure',
   ],
   'Messaging publish writes a renderer-ready project, summary entry, and public cache tags',
+);
+
+ordered(
+  'src/lib/messaging-onboarding/publish.ts',
+  [
+    'const normalizedSessionId = normalizeMessagingPreviewSessionId(sessionId);',
+    'if (!normalizedSessionId) {',
+    'logPublishEvent(normalizedSessionId, sessionData, "PUBLISH_STARTED", "PUBLISHING", {',
+    'doc(normalizedSessionId)',
+  ],
+  'Messaging publish helper normalizes session id before event writes and Firestore session doc access',
 );
 
 notContains(
@@ -1924,6 +2622,7 @@ notContains(
     'secureError("[msg-preview/approve] Cache revalidation failed"',
     'secureError(',
     '.catch(() => {})',
+    '.doc(sessionId)',
   ],
   'Messaging publish cache revalidation diagnostics are bounded',
 );
@@ -2450,6 +3149,94 @@ contains(
     'onRetrySuccess={refreshData}',
   ],
   'Extraction monitor dashboard reads use SWR with a five-minute dedupe window and manual force refresh',
+);
+
+contains(
+  'src/components/templates/main-app/platform/extractionMonitor/CostMonitor.tsx',
+  [
+    "import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';",
+    "EXTRACTION_COST_MONITOR_LOAD_FAILED = 'extraction_cost_monitor_load_failed'",
+    "logOpsFailure(EXTRACTION_COST_MONITOR_LOAD_FAILED",
+    "getBoundedOpsStringContext('refreshTrigger', refreshTrigger)",
+    'externalCostProvided: false',
+    'setCostLoadFailed(true)',
+    'Cost metrics unavailable',
+    'Refresh the monitor.',
+  ],
+  'Extraction Cost Monitor standalone load failures use bounded diagnostics and fixed unavailable state',
+);
+
+notContains(
+  'src/components/templates/main-app/platform/extractionMonitor/CostMonitor.tsx',
+  [
+    '.catch(() => { if (mounted) setCost(null); })',
+  ],
+  'Extraction Cost Monitor standalone load failures are not collapsed into no-cost empty state',
+);
+
+contains(
+  '__docs__/ai-extraction-monitoring/README.md',
+  [
+    'extraction_cost_monitor_load_failed',
+    'Cost metrics unavailable',
+    'instead of reporting zero extraction calls',
+  ],
+  'AI extraction monitoring README documents Cost Monitor load diagnostics',
+);
+
+contains(
+  '__docs__/ai-extraction-monitoring/ai-extraction-monitoring_impl.md',
+  [
+    'standalone compatibility path',
+    'extraction_cost_monitor_load_failed',
+    'Cost metrics unavailable',
+    'No extraction calls today',
+  ],
+  'AI extraction monitoring implementation doc documents Cost Monitor load diagnostics',
+);
+
+contains(
+  '__docs__/ai-extraction-monitoring/ai-extraction-monitoring_firebase.md',
+  [
+    'Standalone cost-panel diagnostics',
+    'extraction_cost_monitor_load_failed',
+    'already-attempted compatibility read',
+    'no writes, Storage operations, Cloud Functions, provider calls, rules, indexes, or deploy requirement',
+  ],
+  'AI extraction monitoring Firebase doc records Cost Monitor cost boundary',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Extraction Cost Monitor load diagnostics checkpoint',
+    'extraction_cost_monitor_load_failed',
+    'old silent catch exclusion',
+    'Cost metrics unavailable',
+  ],
+  'Production-readiness audit records Cost Monitor load diagnostics',
+);
+
+contains(
+  '__docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md',
+  [
+    'Extraction Cost Monitor load diagnostics',
+    'extraction_cost_monitor_load_failed',
+    'No extraction calls today',
+    'old silent catch',
+  ],
+  'System data-flow audit records Cost Monitor load diagnostics',
+);
+
+contains(
+  '__docs__/CHANGELOG.md',
+  [
+    'Extraction Cost Monitor Load Diagnostics',
+    'extraction_cost_monitor_load_failed',
+    'Cost metrics unavailable',
+    'old silent `setCost(null)` catch exclusion',
+  ],
+  'Changelog records Cost Monitor load diagnostics',
 );
 
 contains(

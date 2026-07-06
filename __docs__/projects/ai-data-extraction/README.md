@@ -3,7 +3,7 @@
 **Sub-feature of:** Projects (Menu Digitization)
 **Status:** Controlled owner testing ready; production deploy pending for the legacy callable hardening
 **Model:** `gemini-2.5-flash` via `@google/genai` SDK
-**Last Updated:** June 11, 2026
+**Last Updated:** July 5, 2026
 
 ---
 
@@ -87,6 +87,7 @@ functions/src/sharedData/
 - Idempotency via Firestore transaction (prevents double processing)
 - Multi-tenant isolation (`tId`/`sId` in job docs)
 - Review apply/discard validates `preview_ready` job ownership/status before mutation
+- Review apply MOL failures log bounded `menu_review_apply_mol_event_log_failed` diagnostics without blocking the acknowledged save
 - Linked-outlet review applies use `POST /api/projects/outlet-save` instead of direct linked-project `files` writes
 - Sentry error tracking
 

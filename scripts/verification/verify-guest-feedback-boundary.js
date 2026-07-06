@@ -89,8 +89,20 @@ function verifySafeReviewUrlRuntime() {
 function verifyPublicSubmitRoute() {
   const route = read('src/app/api/public/feedback/submit/route.ts');
   const schema = read('src/lib/validation/apiSchemas.ts');
+  const guestFeedbackSchema = schema.slice(
+    schema.indexOf('export const guestFeedbackSubmitSchema = z.object({'),
+    schema.indexOf('export type GuestFeedbackSubmitRequest'),
+  );
+  const projectIdBoundary = read('src/lib/feedback/guestFeedbackProjectIdBoundary.ts');
   const publicApi = read('src/middleware/publicApi.ts');
   const rateLimitConfig = read('src/lib/rateLimit/configs.ts');
+
+  assertIncludes(projectIdBoundary, 'GUEST_FEEDBACK_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/', 'Guest Feedback project ID boundary pattern');
+  assertIncludes(projectIdBoundary, 'documentId === value', 'Guest Feedback project ID boundary rejects whitespace-mutated values');
+  assertIncludes(projectIdBoundary, 'isValidFirestoreDocumentId(documentId)', 'Guest Feedback project ID shared Firestore guard');
+  assertIncludes(projectIdBoundary, 'normalizeGuestFeedbackProjectId', 'Guest Feedback project ID normalizer');
+  assertIncludes(projectIdBoundary, 'normalizeGuestFeedbackNumericDocumentId', 'Guest Feedback tenant/store ID normalizer');
+  assertIncludes(projectIdBoundary, 'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId', 'Guest Feedback exact positive numeric document ID boundary');
 
   assertIncludes(route, "export const dynamic = 'force-dynamic';", 'Guest Feedback submit route dynamic boundary');
   assertIncludes(route, 'FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK', 'Guest Feedback submit route feature flag');
@@ -98,12 +110,21 @@ function verifyPublicSubmitRoute() {
   assertIncludes(route, 'PUBLIC_FEEDBACK_SUBMIT_MAX_BODY_BYTES = 16 * 1024', 'Guest Feedback submit route body cap');
   assertIncludes(route, 'readBoundedJsonBody(req, PUBLIC_FEEDBACK_SUBMIT_MAX_BODY_BYTES', 'Guest Feedback submit route bounded JSON parser');
   assertIncludes(route, 'guestFeedbackSubmitSchema.safeParse(bodyResult.data)', 'Guest Feedback submit route schema validation');
+  assertIncludes(route, "import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';", 'Guest Feedback submit route project/target ID normalizer import');
+  assertIncludes(route, 'const projectId = normalizeGuestFeedbackProjectId(data.projectId);', 'Guest Feedback submit route helper-level project ID normalization');
+  assertIncludes(route, 'const tenantScope = normalizeGuestFeedbackNumericDocumentId(data.tId);', 'Guest Feedback submit route tenant ID normalization');
+  assertIncludes(route, 'const storeScope = normalizeGuestFeedbackNumericDocumentId(data.sId);', 'Guest Feedback submit route store ID normalization');
+  assertIncludes(route, 'const tenantDocumentId = tenantScope.documentId;', 'Guest Feedback submit route tenant document ID');
+  assertIncludes(route, 'const storeDocumentId = storeScope.documentId;', 'Guest Feedback submit route store document ID');
+  assertIncludes(route, 'const tenantId = tenantScope.numericId;', 'Guest Feedback submit route tenant numeric ID');
+  assertIncludes(route, 'const storeId = storeScope.numericId;', 'Guest Feedback submit route store numeric ID');
   assertIncludes(route, 'validateHoneypot(data.website)', 'Guest Feedback submit route honeypot');
   assertIncludes(route, 'verifyTurnstileToken(data.captchaToken, req)', 'Guest Feedback submit route Turnstile verification');
   assertIncludes(route, '.collection(DB_COLLECTIONS.PROJECTS)', 'Guest Feedback submit route project lookup');
+  assertIncludes(route, '.doc(projectId)', 'Guest Feedback submit route uses normalized project document ID');
   assertIncludes(route, '.collection(DB_COLLECTIONS.STORES)', 'Guest Feedback submit route store lookup');
   assertIncludes(route, '.collection(DB_COLLECTIONS.TENANTS)', 'Guest Feedback submit route tenant lookup');
-  assertIncludes(route, 'storeTenantId !== Number(data.tId)', 'Guest Feedback submit route store/tenant match');
+  assertIncludes(route, 'storeTenantId !== tenantId', 'Guest Feedback submit route store/tenant match');
   assertIncludes(route, 'isPlatformEntityBlocked(storeData)', 'Guest Feedback submit route store block gate');
   assertIncludes(route, 'isPlatformEntityBlocked(tenantDoc.data())', 'Guest Feedback submit route tenant block gate');
   assertIncludes(route, 'projectData?.menuSettings?.feedback === false', 'Guest Feedback submit route project feedback toggle');
@@ -115,26 +136,43 @@ function verifyPublicSubmitRoute() {
   assertIncludes(route, "normalizeGuestFeedbackReviewUrl(storeData?.reviewUrl, 'store_review_url')", 'Guest Feedback submit route store review URL guard');
   assertIncludes(route, "normalizeGuestFeedbackReviewUrl(storeData?.publicPresence?.googleReviewUrl, 'public_presence_google_review_url')", 'Guest Feedback submit route public-presence review URL guard');
   assertIncludes(route, 'submitGuestFeedbackAdmin({', 'Guest Feedback submit route Admin SDK write path');
-  assertIncludes(route, "void logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED'", 'Guest Feedback submit route non-blocking MOL event');
+  assertIncludes(route, 'projectId,', 'Guest Feedback submit route writes normalized project ID');
+  assertIncludes(route, "void logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', tenantId, storeId, projectId, data.rating);", 'Guest Feedback submit route non-blocking MOL event uses normalized IDs');
   assertIncludes(route, 'logGuestFeedbackFailure', 'Guest Feedback submit route bounded diagnostics');
   assertIncludes(route, 'export const POST = withCORS(postGuestFeedback);', 'Guest Feedback submit route CORS wrapper');
   assertNotIncludes(route, 'req.json()', 'Guest Feedback submit route unbounded parser');
+  assertNotIncludes(route, '.doc(data.projectId)', 'Guest Feedback submit route direct project ID document read');
+  assertNotIncludes(route, '.doc(String(data.tId))', 'Guest Feedback submit route direct tenant ID document read');
+  assertNotIncludes(route, '.doc(String(data.sId))', 'Guest Feedback submit route direct store ID document read');
+  assertNotIncludes(route, '.collection(String(data.sId))', 'Guest Feedback submit route direct store ID collection read');
+  assertNotIncludes(route, "logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', data.tId, data.sId, data.projectId", 'Guest Feedback submit route raw project ID MOL event');
+  assertNotIncludes(route, "logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', data.tId, data.sId, projectId", 'Guest Feedback submit route raw tenant/store ID MOL event');
   assertNotIncludes(route, 'reviewUrl = storeData?.reviewUrl || storeData?.publicPresence?.googleReviewUrl', 'Guest Feedback submit route raw review URL return');
   assertOrder(route, "checkPublicRateLimit(req, 'FEEDBACK_SUBMISSION')", 'readBoundedJsonBody(req, PUBLIC_FEEDBACK_SUBMIT_MAX_BODY_BYTES', 'Guest Feedback submit route rate limit before body parse');
   assertOrder(route, 'readBoundedJsonBody(req, PUBLIC_FEEDBACK_SUBMIT_MAX_BODY_BYTES', 'guestFeedbackSubmitSchema.safeParse(bodyResult.data)', 'Guest Feedback submit route bounded parse before schema');
   assertOrder(route, 'guestFeedbackSubmitSchema.safeParse(bodyResult.data)', 'validateHoneypot(data.website)', 'Guest Feedback submit route validation before honeypot');
+  assertOrder(route, 'const projectId = normalizeGuestFeedbackProjectId(data.projectId);', 'validateHoneypot(data.website)', 'Guest Feedback submit route helper-level project ID normalization before bot checks');
+  assertOrder(route, 'const tenantScope = normalizeGuestFeedbackNumericDocumentId(data.tId);', 'validateHoneypot(data.website)', 'Guest Feedback submit route tenant ID normalization before bot checks');
+  assertOrder(route, 'const storeScope = normalizeGuestFeedbackNumericDocumentId(data.sId);', 'validateHoneypot(data.website)', 'Guest Feedback submit route store ID normalization before bot checks');
+  assertOrder(route, 'const projectId = normalizeGuestFeedbackProjectId(data.projectId);', '.doc(projectId)', 'Guest Feedback submit route helper-level project ID normalization before Firestore lookup');
+  assertOrder(route, 'const storeDocumentId = storeScope.documentId;', '.collection(storeDocumentId)', 'Guest Feedback submit route store document ID before Firestore lookup');
+  assertOrder(route, 'const tenantDocumentId = tenantScope.documentId;', '.doc(tenantDocumentId)', 'Guest Feedback submit route tenant document ID before Firestore lookup');
   assertOrder(route, 'validateHoneypot(data.website)', 'verifyTurnstileToken(data.captchaToken, req)', 'Guest Feedback submit route honeypot before Turnstile');
   assertOrder(route, 'verifyTurnstileToken(data.captchaToken, req)', '.collection(DB_COLLECTIONS.PROJECTS)', 'Guest Feedback submit route Turnstile before Firestore lookup');
 
-  assertIncludes(schema, 'export const guestFeedbackSubmitSchema = z.object({', 'Guest Feedback submit schema');
-  assertIncludes(schema, 'rating: z.number().int().min(1).max(5)', 'Guest Feedback rating schema');
-  assertIncludes(schema, "source: z.enum(['menu_footer', 'feedback_qr', 'direct_link'])", 'Guest Feedback source schema');
-  assertIncludes(schema, 'message: z.string().max(300).optional()', 'Guest Feedback message cap');
-  assertIncludes(schema, 'customerName: z.string().max(60).optional()', 'Guest Feedback name cap');
-  assertIncludes(schema, 'customerPhone: z.string().max(20)', 'Guest Feedback phone cap');
-  assertIncludes(schema, 'customerEmail: z.string().email().max(120).optional()', 'Guest Feedback email cap');
-  assertIncludes(schema, 'captchaToken: z.string().max(2048).optional()', 'Guest Feedback captcha cap');
-  assertIncludes(schema, 'website: z.string().max(0).optional()', 'Guest Feedback honeypot schema');
+  assertIncludes(guestFeedbackSchema, 'export const guestFeedbackSubmitSchema = z.object({', 'Guest Feedback submit schema');
+  assertIncludes(schema, "import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';", 'Guest Feedback submit schema project ID normalizer import');
+  assertIncludes(guestFeedbackSchema, 'projectId: z.string()\n        .refine((value) => normalizeGuestFeedbackProjectId(value) === value, \'Invalid project ID\')', 'Guest Feedback submit schema project ID boundary');
+  assertNotIncludes(guestFeedbackSchema, 'projectId: z.string()\n        .trim()', 'Guest Feedback submit schema must not trim project IDs before boundary validation');
+  assertNotIncludes(guestFeedbackSchema, 'projectId: z.string().min(1).max(100)', 'Guest Feedback submit schema loose project ID field');
+  assertIncludes(guestFeedbackSchema, 'rating: z.number().int().min(1).max(5)', 'Guest Feedback rating schema');
+  assertIncludes(guestFeedbackSchema, "source: z.enum(['menu_footer', 'feedback_qr', 'direct_link'])", 'Guest Feedback source schema');
+  assertIncludes(guestFeedbackSchema, 'message: z.string().max(300).optional()', 'Guest Feedback message cap');
+  assertIncludes(guestFeedbackSchema, 'customerName: z.string().max(60).optional()', 'Guest Feedback name cap');
+  assertIncludes(guestFeedbackSchema, 'customerPhone: z.string().max(20)', 'Guest Feedback phone cap');
+  assertIncludes(guestFeedbackSchema, 'customerEmail: z.string().email().max(120).optional()', 'Guest Feedback email cap');
+  assertIncludes(guestFeedbackSchema, 'captchaToken: z.string().max(2048).optional()', 'Guest Feedback captcha cap');
+  assertIncludes(guestFeedbackSchema, 'website: z.string().max(0).optional()', 'Guest Feedback honeypot schema');
 
   assertIncludes(publicApi, 'checkPublicRateLimit', 'Guest Feedback public rate-limit helper');
   assertIncludes(publicApi, 'hashPublicRateLimitValue', 'Guest Feedback public rate-limit hashed keys');
@@ -152,7 +190,11 @@ function verifyPublicPageAndForm() {
   const diagnostics = read('src/lib/feedback/publicFeedbackDiagnostics.ts');
 
   assertIncludes(page, 'FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK', 'Guest Feedback public page feature flag');
-  assertIncludes(page, 'parseProjectId(projectId)', 'Guest Feedback public page project id parser');
+  assertIncludes(page, "import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';", 'Guest Feedback public page project ID normalizer import');
+  assertIncludes(page, 'const normalizedProjectId = normalizeGuestFeedbackProjectId(projectId);', 'Guest Feedback public page project ID boundary');
+  assertIncludes(page, 'parseProjectId(normalizedProjectId)', 'Guest Feedback public page parses normalized project ID');
+  assertIncludes(page, '.doc(normalizedProjectId)', 'Guest Feedback public page uses normalized project document ID');
+  assertNotIncludes(page, '.doc(projectId)', 'Guest Feedback public page direct project ID document read');
   assertIncludes(page, 'data?.menuSettings?.feedback === false', 'Guest Feedback public page project feedback toggle');
   assertIncludes(page, 'isPlatformEntityBlocked(storeData)', 'Guest Feedback public page store block gate');
   assertIncludes(page, 'feedbackEnabled: storeData.feedbackEnabled !== false', 'Guest Feedback public page store feedback toggle');
@@ -309,16 +351,45 @@ function verifyDocsParity() {
 
   assertIncludes(readme, 'Safe review URL boundary', 'Guest Feedback README safe URL boundary');
   assertIncludes(readme, 'review URL parse diagnostics', 'Guest Feedback README review URL parse diagnostics');
+  assertIncludes(impl, 'Guest Feedback project ID boundary', 'Guest Feedback implementation project ID boundary');
+  assertIncludes(impl, 'whitespace-mutated', 'Guest Feedback implementation strict project ID boundary');
+  assertIncludes(impl, 'The submit schema no longer trims project IDs before validation', 'Guest Feedback implementation raw submit project ID schema boundary');
+  assertIncludes(impl, 'Guest Feedback target document-ID boundary', 'Guest Feedback implementation target document ID boundary');
+  assertIncludes(impl, 'normalizeGuestFeedbackNumericDocumentId', 'Guest Feedback implementation target ID helper');
+  assertIncludes(impl, 'src/lib/feedback/guestFeedbackProjectIdBoundary.ts', 'Guest Feedback implementation project ID helper');
+  assertIncludes(impl, 'The submit route also re-normalizes `data.projectId` into local `projectId`', 'Guest Feedback implementation submit route project ID recheck');
+  assertIncludes(impl, 'excludes `.doc(data.projectId)`', 'Guest Feedback implementation raw project document ref exclusion');
   assertIncludes(impl, 'Safe review URL boundary', 'Guest Feedback implementation safe URL boundary');
   assertIncludes(impl, 'guest_feedback_review_url_parse_failed', 'Guest Feedback implementation review URL parse diagnostic');
   assertIncludes(firebase, 'Guest feedback writes do not invalidate public menu/OBP cache', 'Guest Feedback Firebase cache boundary');
+  assertIncludes(firebase, 'Guest Feedback project ID admission', 'Guest Feedback Firebase project ID admission boundary');
+  assertIncludes(firebase, 'whitespace-mutated', 'Guest Feedback Firebase strict project ID admission boundary');
+  assertIncludes(firebase, 'The submit schema no longer trims project IDs before validation', 'Guest Feedback Firebase raw submit project ID schema boundary');
+  assertIncludes(firebase, 'Guest Feedback target document-ID admission', 'Guest Feedback Firebase target ID admission boundary');
+  assertIncludes(firebase, 'normalizeGuestFeedbackNumericDocumentId', 'Guest Feedback Firebase target ID helper');
+  assertIncludes(firebase, 'src/lib/feedback/guestFeedbackProjectIdBoundary.ts', 'Guest Feedback Firebase project ID helper');
+  assertIncludes(firebase, 'The submit route repeats the normalizer before `.doc(projectId)`', 'Guest Feedback Firebase submit route project ID recheck');
+  assertIncludes(firebase, '`.doc(data.projectId)` remains excluded', 'Guest Feedback Firebase raw project document ref exclusion');
   assertIncludes(firebase, 'guest_feedback_review_url_parse_failed', 'Guest Feedback Firebase review URL parse diagnostic boundary');
   assertIncludes(mobile, 'Mobile shell route-map source gate', 'Guest Feedback mobile route-map gate');
   assertIncludes(helpdoc, 'Private feedback', 'Guest Feedback helpdoc private feedback wording');
   assertIncludes(website, 'Review URL safety', 'Guest Feedback website review URL safety');
+  assertIncludes(audit, 'Guest Feedback strict project ID boundary checkpoint', 'Production readiness audit Guest Feedback strict project ID checkpoint');
+  assertIncludes(audit, 'whitespace-mutated', 'Production readiness audit Guest Feedback strict project ID evidence');
+  assertIncludes(audit, 'no longer trims `projectId` before `normalizeGuestFeedbackProjectId(value) === value`', 'Production readiness audit Guest Feedback raw submit schema evidence');
+  assertIncludes(audit, 'Guest Feedback Target Document ID Boundary checkpoint', 'Production readiness audit Guest Feedback target ID checkpoint');
+  assertIncludes(audit, 'normalizeGuestFeedbackNumericDocumentId', 'Production readiness audit Guest Feedback target ID helper');
+  assertIncludes(audit, 'repeats `normalizeGuestFeedbackProjectId(data.projectId)` into local `projectId` before reading `.doc(projectId)`', 'Production readiness audit Guest Feedback submit route project ID recheck');
+  assertIncludes(audit, 'excluding `.doc(data.projectId)`', 'Production readiness audit Guest Feedback raw project document ref exclusion');
   assertIncludes(audit, 'Guest Feedback boundary source-gate checkpoint', 'Production readiness audit Guest Feedback checkpoint');
   assertIncludes(audit, 'Guest Feedback review URL parse diagnostics checkpoint', 'Production readiness audit Guest Feedback review URL parse diagnostics checkpoint');
   assertIncludes(audit, '`npm run verify:guest-feedback-boundary`', 'Production readiness audit Guest Feedback verifier command');
+  assertIncludes(changelog, 'Guest Feedback Strict Project ID Boundary', 'Changelog Guest Feedback strict project ID boundary');
+  assertIncludes(changelog, 'Whitespace-mutated feedback project IDs fail closed', 'Changelog Guest Feedback whitespace-mutated project ID boundary');
+  assertIncludes(changelog, 'Submit schema no longer trims project IDs', 'Changelog Guest Feedback raw submit schema boundary');
+  assertIncludes(changelog, 'Guest Feedback Target Document ID Boundary', 'Changelog Guest Feedback target ID boundary');
+  assertIncludes(changelog, 'the submit route now re-normalizes `data.projectId` before reading `.doc(projectId)`', 'Changelog Guest Feedback submit route project ID recheck');
+  assertIncludes(changelog, 'or `.doc(data.projectId)`', 'Changelog Guest Feedback raw project document ref exclusion');
   assertIncludes(changelog, 'Guest Feedback Review URL Parse Diagnostics', 'Changelog Guest Feedback review URL parse diagnostics');
   assertIncludes(changelog, 'guest_feedback_review_url_parse_failed', 'Changelog Guest Feedback review URL parse diagnostic code');
 }

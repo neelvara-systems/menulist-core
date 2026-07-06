@@ -16,6 +16,7 @@ import {
     getAuthUserByEmail,
     getAuthUserByLoginIdentifier,
 } from '@lib/auth/serverUserContext';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { sendOwnerNotificationWhatsApp } from '@lib/owner-notifications/channels/whatsapp';
 import {
@@ -31,6 +32,7 @@ const LOGIN_TOKEN_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 const OTP_LENGTH = 6;
 const GRAPH_TEMPLATE_LANGUAGE = 'en';
+const PHONE_OTP_CHALLENGE_ID_PATTERN = /^[A-Za-z0-9]{20}$/;
 
 export type PhoneOtpPurpose = 'dashboard_login' | 'create_menu' | 'login';
 
@@ -156,6 +158,20 @@ export const normalizePhoneForOtp = (input: string | PhoneOtpNumberInput): Norma
 export const hashPhoneForOtpRateLimit = (phone: string | PhoneOtpNumberInput) => {
     const normalized = normalizePhoneForOtp(phone);
     return hmac(`phone-rate:${normalized.e164}`).slice(0, 32);
+};
+
+export const normalizePhoneOtpChallengeId = (value: unknown): string | null => {
+    const challengeId = typeof value === 'string' ? value.trim() : '';
+    if (!PHONE_OTP_CHALLENGE_ID_PATTERN.test(challengeId)) return null;
+    return isValidFirestoreDocumentId(challengeId) ? challengeId : null;
+};
+
+export const normalizePhoneOtpUserDocumentId = (value: unknown): string | null => {
+    const raw = typeof value === 'string' ? value : '';
+    const userId = raw.trim();
+    return userId === raw && userId.length > 0 && userId.length <= 160 && isValidFirestoreDocumentId(userId)
+        ? userId
+        : null;
 };
 
 const hashOtp = (params: { challengeId: string; code: string; phoneE164: string }) => (
@@ -312,7 +328,12 @@ async function ensurePhoneOtpUser(phone: NormalizedPhoneOtpNumber): Promise<any>
     const now = admin.firestore.Timestamp.now();
 
     if (dbUser?.id) {
-        await firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(String(dbUser.id)).set({
+        const existingUserId = normalizePhoneOtpUserDocumentId(dbUser.id);
+        if (!existingUserId) {
+            throw new PhoneOtpError('user_not_found', 'User not found.');
+        }
+
+        await firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(existingUserId).set({
             phone: dbUser.phone || phone.e164,
             phoneNumber: dbUser.phoneNumber || phone.phoneNumber || phone.e164,
             phoneUsername: phone.phoneUsername,
@@ -325,6 +346,7 @@ async function ensurePhoneOtpUser(phone: NormalizedPhoneOtpNumber): Promise<any>
         }, { merge: true });
         return {
             ...dbUser,
+            id: existingUserId,
             phone: dbUser.phone || phone.e164,
             phoneNumber: dbUser.phoneNumber || phone.phoneNumber || phone.e164,
             phoneUsername: phone.phoneUsername,
@@ -448,7 +470,12 @@ export async function verifyPhoneOtpChallenge(params: {
         throw new PhoneOtpError('invalid_code', 'Invalid verification code.');
     }
 
-    const challengeRef = firestoreAdmin.collection(DB_COLLECTIONS.AUTH_PHONE_OTP_CHALLENGES).doc(params.challengeId);
+    const challengeId = normalizePhoneOtpChallengeId(params.challengeId);
+    if (!challengeId) {
+        throw new PhoneOtpError('invalid_code', 'Invalid verification code.');
+    }
+
+    const challengeRef = firestoreAdmin.collection(DB_COLLECTIONS.AUTH_PHONE_OTP_CHALLENGES).doc(challengeId);
     const challenge = await firestoreAdmin.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(challengeRef);
         if (!snapshot.exists) {
@@ -479,7 +506,7 @@ export async function verifyPhoneOtpChallenge(params: {
         }
 
         const actualHash = hashOtp({
-            challengeId: params.challengeId,
+            challengeId,
             code,
             phoneE164: String(data.phoneE164 || ''),
         });
@@ -514,7 +541,8 @@ export async function verifyPhoneOtpChallenge(params: {
         phone: challenge.phoneE164 || challenge.phoneUsername,
     });
     const dbUser = await ensurePhoneOtpUser(phone);
-    if (!dbUser?.email) {
+    const dbUserId = normalizePhoneOtpUserDocumentId(dbUser?.id);
+    if (!dbUser?.email || !dbUserId) {
         throw new PhoneOtpError('user_not_found', 'User not found.');
     }
 
@@ -524,8 +552,8 @@ export async function verifyPhoneOtpChallenge(params: {
     await firestoreAdmin.collection(DB_COLLECTIONS.AUTH_PHONE_OTP_LOGIN_TOKENS).doc(loginTokenHash).set({
         id: loginTokenHash,
         status: 'active',
-        challengeId: params.challengeId,
-        userId: dbUser.id,
+        challengeId,
+        userId: dbUserId,
         email: String(dbUser.email).toLowerCase().trim(),
         phoneHash: hmac(`phone:${phone.e164}`),
         phoneLast4: phone.digits.slice(-4),
@@ -592,7 +620,9 @@ export async function consumePhoneOtpLoginToken(params: {
     });
 
     const dbUser = await getAuthUserByEmail(tokenData.email);
-    if (!dbUser || (tokenData.userId && String(dbUser.id) !== tokenData.userId)) {
+    const tokenUserId = normalizePhoneOtpUserDocumentId(tokenData.userId);
+    const dbUserId = normalizePhoneOtpUserDocumentId(dbUser?.id);
+    if (!dbUser || !tokenUserId || !dbUserId || dbUserId !== tokenUserId) {
         logAuthFailure(
             'phone_otp_user_not_found',
             new Error('phone_otp_user_not_found'),
@@ -601,7 +631,10 @@ export async function consumePhoneOtpLoginToken(params: {
         throw new PhoneOtpError('user_not_found', 'User not found.');
     }
 
-    return dbUser;
+    return {
+        ...dbUser,
+        id: dbUserId,
+    };
 }
 
 export const hashRequestValueForPhoneOtp = (value: string) => (

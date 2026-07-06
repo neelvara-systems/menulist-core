@@ -169,6 +169,11 @@ function verifyMetadataAndRegistration() {
   const docsLoader = read('src/lib/mycodex/docs.ts');
   const documentRoute = read('src/app/sites/mycodex/api/document/route.ts');
   const sessionRoute = read('src/app/sites/mycodex/api/session/route.ts');
+  const clientContainer = read('src/app/sites/mycodex/components/MyCodexClientContainer.tsx');
+  const shellImplDoc = read('__docs__/mycodex-pwa-shell/mycodex-pwa-shell_impl.md');
+  const shellFirebaseDoc = read('__docs__/mycodex-pwa-shell/mycodex-pwa-shell_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
   const apiSchemas = read('src/lib/validation/apiSchemas.ts');
   const billingPlans = read('src/lib/billing/productBillingPlans.ts');
   const billingServer = read('src/lib/billing/productBillingServer.ts');
@@ -196,6 +201,14 @@ function verifyMetadataAndRegistration() {
   assertIncludes(billingServer, 'MyCodex billing is not configured.', 'MyCodex billing fails closed');
   assertIncludes(nextConfig, 'outputFileTracingIncludes', 'MyCodex Vercel filesystem tracing');
   assertIncludes(nextConfig, "'/sites/mycodex/**/*': ['./__docs__/**/*']", 'MyCodex Vercel filesystem tracing');
+  assertIncludes(clientContainer, "const normalizedTargetPath = String(targetPath || '').trim();", 'MyCodex client route builder boundary');
+  assertIncludes(clientContainer, "const safeTargetPath = !normalizedTargetPath || normalizedTargetPath.startsWith('//') ? '/' : normalizedTargetPath;", 'MyCodex client route builder protocol-relative guard');
+  assertIncludes(clientContainer, "const cleanPath = safeTargetPath.startsWith('/') ? safeTargetPath : '/' + safeTargetPath;", 'MyCodex client route builder same-origin path normalization');
+  assertNotIncludes(clientContainer, "const cleanPath = targetPath.startsWith('/') ? targetPath : '/' + targetPath;", 'MyCodex client route builder must not trust raw protocol-relative target paths');
+  assertIncludes(shellImplDoc, 'MyCodex client navigation path boundary', 'MyCodex implementation docs route builder boundary');
+  assertIncludes(shellFirebaseDoc, 'Client navigation path guard', 'MyCodex Firebase docs route builder boundary');
+  assertIncludes(productionAudit, 'MyCodex client navigation path boundary checkpoint', 'Production audit MyCodex route builder boundary');
+  assertIncludes(changelog, 'MyCodex Client Navigation Path Boundary', 'Changelog MyCodex route builder boundary');
 
   for (const [label, content] of [
     ['MyCodex docs loader', docsLoader],

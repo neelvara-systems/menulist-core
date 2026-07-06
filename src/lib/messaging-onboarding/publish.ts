@@ -22,6 +22,7 @@ import crypto from "crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { revalidateTag } from "next/cache";
 import { sanitizeMessagingOnboardingEventMetadata } from "./eventMetadata";
+import { normalizeMessagingPreviewSessionId } from "./previewRouteBoundary";
 
 const db = admin.firestore();
 
@@ -69,6 +70,11 @@ export async function executeMessagingOnboardingPublish(
   sessionId: string,
   params: MessagingOnboardingPublishParams,
 ): Promise<MessagingOnboardingPublishResult> {
+  const normalizedSessionId = normalizeMessagingPreviewSessionId(sessionId);
+  if (!normalizedSessionId) {
+    throw new Error("Invalid messaging preview session");
+  }
+
   const { businessName, address, phone, sessionData } = params;
   const menuData = sessionData.extractedMenuData;
   const extractedProfile = sessionData.extractedBusinessProfile || menuData?.extractedBusinessProfile || null;
@@ -77,7 +83,7 @@ export async function executeMessagingOnboardingPublish(
     getSuggestionValue(extractedProfile?.identity?.businessType, "medium") ||
     FALLBACK_BUSINESS_TYPE;
 
-  logPublishEvent(sessionId, sessionData, "PUBLISH_STARTED", "PUBLISHING", {
+  logPublishEvent(normalizedSessionId, sessionData, "PUBLISH_STARTED", "PUBLISHING", {
     businessName,
     businessType,
   });
@@ -170,7 +176,7 @@ export async function executeMessagingOnboardingPublish(
 
   // Pre-check subdomain uniqueness (must be outside transaction)
   const preCheckedSubdomain = await preCheckSubdomain(db, businessName);
-  const sessionRef = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS).doc(sessionId);
+  const sessionRef = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS).doc(normalizedSessionId);
 
   // Atomic transaction
   const result = await db.runTransaction(async (transaction) => {
@@ -420,7 +426,7 @@ export async function executeMessagingOnboardingPublish(
     });
   }
 
-  logPublishEvent(sessionId, sessionData, "PUBLISH_COMPLETED", "LIVE", {
+  logPublishEvent(normalizedSessionId, sessionData, "PUBLISH_COMPLETED", "LIVE", {
     tenantId: result.tenantId,
     storeId: result.storeId,
     projectId: result.projectId,

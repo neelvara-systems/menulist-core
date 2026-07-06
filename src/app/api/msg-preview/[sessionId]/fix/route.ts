@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { sanitizeMessagingOnboardingEventMetadata } from "@lib/messaging-onboarding/eventMetadata";
+import { normalizeMessagingPreviewSessionId } from "@lib/messaging-onboarding/previewRouteBoundary";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody, rejectInvalidOrOversizedDeclaredBody } from "@lib/security/boundedRequestBody";
@@ -74,9 +75,8 @@ export async function POST(
     );
     if (declaredBodyResponse) return declaredBodyResponse;
 
-    const { sessionId } = params;
-
-    if (!sessionId || sessionId.length < 10) {
+    const sessionId = normalizeMessagingPreviewSessionId(params?.sessionId);
+    if (!sessionId) {
       return NextResponse.json({ error: "Invalid session" }, { status: 400 });
     }
 

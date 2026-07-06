@@ -241,6 +241,8 @@ The manifest includes both generated screenshots for richer install UI support. 
 
 The screenshot route validates store ID shape and applies the shared `PUBLIC_DYNAMIC_ASSET` rate limit before reading `stores/{storeId}`. Failure paths use `logRuntimeFailure()` with the stable `customer_app_screenshot_generation_failed` code, dimensions, form factor, source error name/code/status, and store-id presence/length metadata only, then return a generic screenshot image.
 
+Dynamic asset store ID fallback boundary: `src/app/api/app-icons/[storeId]/[size]/route.tsx`, `src/app/api/app-splash/[storeId]/[size]/route.tsx`, and `src/app/api/app-screenshots/[storeId]/[formFactor]/route.tsx` all keep the same `/^\d{1,20}$/` store ID admission rule and return a generic generated asset before `getPublicStoreById(storeId)` when the route store ID is malformed or the public dynamic asset limiter blocks the request. `npm run verify:customer-app-pwa` source-gates that fallback-before-store-lookup ordering.
+
 Not current runtime:
 
 - No `/api/app-icons/generate` route.
@@ -296,6 +298,8 @@ Current shortcuts are app actions inside the same store app.
 | Order Online | Order URL exists | Same-origin `/pwa/order` handoff |
 
 Shortcut URLs include source attribution for analytics. They do not imply separate installed apps.
+
+Shortcut handoff URL boundary: server pages still normalize reservation/order as HTTPS URLs, directions as Google Maps HTTPS URLs, WhatsApp as `https://wa.me/{digits}`, and call as `tel:+{digits}` before rendering a handoff page. The client handoff layer now re-checks those targets through `shortcutHandoffUrl.ts` before firing shortcut analytics, calling `window.location.replace()`, or rendering the noscript fallback link. Malformed serialized props fail closed with the shortcut unavailable message and create no redirect or shortcut analytics write.
 
 ---
 

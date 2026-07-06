@@ -22,7 +22,9 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticePlanById } from '@data/answerlattice/plans';
 import { getOwnerRoleId } from '@data/defaultRoles';
+import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
+import { requireAnswerlatticeOnboardingUserId } from '@lib/answerlattice/onboardingUserIdBoundary';
 import { ANSWERLATTICE_PRODUCT_ACCOUNT_KEY } from '@lib/answerlattice/sessionScope';
 import { buildAnswerlatticeWidgetApiStateWithNewKey } from '@lib/answerlattice/widgetKeyManager';
 import {
@@ -171,6 +173,7 @@ const bootstrapInitialProductSurfaces = async (params: {
     surfaceKeys: string[];
 }): Promise<number> => {
     const surfaceKeys = normalizeOnboardingSurfaces(params.surfaceKeys);
+    const userId = requireAnswerlatticeOnboardingUserId(params.userId);
     const batch = params.db.batch();
     const now = admin.firestore.FieldValue.serverTimestamp();
     const surfaceSummary: Record<string, any> = {};
@@ -198,9 +201,9 @@ const bootstrapInitialProductSurfaces = async (params: {
             ...parsed,
             createdOn: now,
             modifiedOn: now,
-            createdBy: params.userId,
-            modifiedBy: params.userId,
-            uId: params.userId,
+            createdBy: userId,
+            modifiedBy: userId,
+            uId: userId,
             onboardingSource: 'ANSWERLATTICE_ONBOARDING',
         }, { merge: true });
 
@@ -269,8 +272,11 @@ const createAnswerlatticeSubscription = async (
     providerSubscriptionId: string,
     data: Omit<FirestoreSubscriptionDoc, 'id'>,
 ) => {
+    const subscriptionId = normalizeAnswerlatticeSubscriptionId(providerSubscriptionId);
+    if (!subscriptionId) throw new Error('Invalid Answerlattice subscription id.');
+
     const now = admin.firestore.Timestamp.now();
-    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(providerSubscriptionId).set({
+    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({
         ...data,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         productId: PRODUCT_IDS.ANSWERLATTICE,
@@ -292,6 +298,7 @@ const syncDefaultAuthProductAccount = async (params: {
     storeId: number;
     storeName: string;
 }) => {
+    const userId = requireAnswerlatticeOnboardingUserId(params.userId);
     const now = admin.firestore.Timestamp.now();
     const role = getOwnerRoleId();
     const rootTenantMissing = !params.session?.user?.tenantId;
@@ -326,17 +333,20 @@ const syncDefaultAuthProductAccount = async (params: {
 
     await admin.firestore()
         .collection(DB_COLLECTIONS.USERS)
-        .doc(params.userId)
+        .doc(userId)
         .set(defaultUserUpdate, { merge: true });
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
-    const userId = session.user.id;
+    const rawUserId = session.user.id;
     let tenantIdForLog: number | string | undefined;
     let storeIdForLog: number | string | undefined;
-    const userIdForLog: string | undefined = userId;
+    let userIdForLog: string | undefined;
 
     try {
+        const userId = requireAnswerlatticeOnboardingUserId(rawUserId);
+        userIdForLog = userId;
+
         // 0. Feature flag check — widget flag acts as the Answerlattice distribution gate
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
             return NextResponse.json(

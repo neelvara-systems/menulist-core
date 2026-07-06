@@ -1,23 +1,34 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 
 const COLLECTION = DB_COLLECTIONS.COMPLIANCE_PAGES;
 
 export interface ComplianceOverrideDocServer {
-    sId: number;
-    tId: number;
+    sId: string | number;
+    tId: string | number;
     privacyOverride?: string;
     termsOverride?: string;
     refundOverride?: string;
     modifiedOn: admin.firestore.Timestamp;
 }
 
-const getComplianceDocRefServer = (sId: number) => (
-    firestoreAdmin.collection(COLLECTION).doc(String(sId))
-);
+function normalizeComplianceStoreDocumentId(value: unknown): string | null {
+    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const documentId = raw.trim();
+    return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+const getComplianceDocRefServer = (sId: string | number) => {
+    const documentId = normalizeComplianceStoreDocumentId(sId);
+    if (!documentId) {
+        throw new Error("invalid_compliance_store_id");
+    }
+    return firestoreAdmin.collection(COLLECTION).doc(documentId);
+};
 
 export async function getComplianceOverridesServer(
-    sId: number,
+    sId: string | number,
 ): Promise<ComplianceOverrideDocServer | null> {
     const docSnap = await getComplianceDocRefServer(sId).get();
     if (!docSnap.exists) return null;
@@ -25,8 +36,8 @@ export async function getComplianceOverridesServer(
 }
 
 export async function saveComplianceOverrideServer(
-    sId: number,
-    tId: number,
+    sId: string | number,
+    tId: string | number,
     type: "privacy" | "terms" | "refund",
     content: string,
 ): Promise<void> {
@@ -45,7 +56,7 @@ export async function saveComplianceOverrideServer(
 }
 
 export async function deleteComplianceOverrideServer(
-    sId: number,
+    sId: string | number,
     type: "privacy" | "terms" | "refund",
 ): Promise<void> {
     const fieldMap: Record<string, string> = {

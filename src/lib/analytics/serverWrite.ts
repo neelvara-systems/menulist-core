@@ -1,9 +1,43 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { FieldValue } from 'firebase-admin/firestore';
 import { filterAnalyticsUpdateData, TWO_LEVEL_ANALYTICS_MAP_FIELDS } from './writePolicy';
 
 const DAILY_ANALYTICS_COLLECTION = 'daily';
+const PUBLIC_ANALYTICS_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,120}$/;
+const ANALYTICS_DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function normalizePublicAnalyticsWriteScopeDocumentId(value: unknown): string | null {
+  const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  const documentId = raw.trim();
+  if (documentId !== raw || !/^\d+$/.test(documentId) || !isValidFirestoreDocumentId(documentId)) return null;
+
+  const numericId = Number(documentId);
+  return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+    ? documentId
+    : null;
+}
+
+function normalizePublicAnalyticsWriteProjectId(value: unknown): string | null {
+  const raw = typeof value === 'string' ? value : '';
+  const projectDocumentId = raw.trim();
+  return projectDocumentId === raw
+    && PUBLIC_ANALYTICS_PROJECT_ID_PATTERN.test(projectDocumentId)
+    && isValidFirestoreDocumentId(projectDocumentId)
+    ? projectDocumentId
+    : null;
+}
+
+function normalizePublicAnalyticsWriteDateKey(value: unknown): string | null {
+  const dateKey = typeof value === 'string' ? value.trim() : '';
+  if (dateKey !== value || !ANALYTICS_DATE_KEY_PATTERN.test(dateKey)) return null;
+
+  const parsed = new Date(`${dateKey}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== dateKey
+    ? null
+    : dateKey;
+}
 
 const setAnalyticsObjectValue = (target: Record<string, any>, key: string, value: any) => {
   Object.defineProperty(target, key, {
@@ -77,7 +111,15 @@ export async function writePublicAnalyticsEventAdmin({
   storeTimeZone?: string;
   businessDayEndTime?: string;
 }) {
-  const docId = `${tenantId}_${storeId}_${projectId}_${DAILY_ANALYTICS_COLLECTION}_${dateString}`;
+  const tenantDocumentId = normalizePublicAnalyticsWriteScopeDocumentId(tenantId);
+  const storeDocumentId = normalizePublicAnalyticsWriteScopeDocumentId(storeId);
+  const analyticsProjectId = normalizePublicAnalyticsWriteProjectId(projectId);
+  const analyticsDateKey = normalizePublicAnalyticsWriteDateKey(dateString);
+  if (!tenantDocumentId || !storeDocumentId || !analyticsProjectId || !analyticsDateKey) {
+    throw new Error('Invalid public analytics write scope.');
+  }
+
+  const docId = `${tenantDocumentId}_${storeDocumentId}_${analyticsProjectId}_${DAILY_ANALYTICS_COLLECTION}_${analyticsDateKey}`;
   const processedData: Record<string, any> = {};
   const policyData = filterAnalyticsUpdateData(updateData);
   if (Object.keys(policyData).length === 0) return;
@@ -93,17 +135,17 @@ export async function writePublicAnalyticsEventAdmin({
   });
 
   await firestoreAdmin.collection(DB_COLLECTIONS.ANALYTICS).doc(docId).set({
-    tId: String(tenantId),
-    sId: String(storeId),
-    projectId: String(projectId),
+    tId: tenantDocumentId,
+    sId: storeDocumentId,
+    projectId: analyticsProjectId,
     grain: DAILY_ANALYTICS_COLLECTION,
     analyticsScope: 'customer',
-    surface: projectId === 'obp'
+    surface: analyticsProjectId === 'obp'
       ? 'obp'
-      : projectId === 'customerApp'
+      : analyticsProjectId === 'customerApp'
         ? 'customerApp'
         : 'menu',
-    localDate: dateString,
+    localDate: analyticsDateKey,
     storeTimeZone: storeTimeZone || 'UTC',
     businessDayEndTime: businessDayEndTime || null,
     ...processedData,

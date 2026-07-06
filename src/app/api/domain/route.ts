@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import {
     addDomainToVercelProject,
     getVercelDomainConfig,
@@ -75,7 +76,19 @@ const buildDomainRouteLogContext = (
     ...metadata,
 });
 
-async function checkDomainManagementRateLimit(session: any, storeId: string | number) {
+function normalizeDomainSessionDocumentId(value: unknown): string | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+function getDomainSessionScope(session: any): { tenantId: string; storeId: string } | null {
+    const tenantId = normalizeDomainSessionDocumentId(session?.tId);
+    const storeId = normalizeDomainSessionDocumentId(session?.sId);
+    return tenantId && storeId ? { tenantId, storeId } : null;
+}
+
+async function checkDomainManagementRateLimit(session: any, storeId: string) {
     const config = getRateLimitForFeature('DOMAIN_MANAGEMENT');
     const userId = session?.uId || session?.user?.id || session?.userId || 'unknown';
     const userRateLimitHash = hashPublicRateLimitValue(userId || session.user?.id || 'unknown');
@@ -106,13 +119,14 @@ async function checkDomainManagementRateLimit(session: any, storeId: string | nu
  * POST /api/domain — Add custom domain to Vercel project + store in Firestore
  */
 export const POST = withAuth(async (request: NextRequest, session) => {
-    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Custom domain");
-    if (permissionError) return permissionError;
-
-    const { tId: tenantId, sId: storeId } = session;
-    if (!tenantId || !storeId) {
+    const scope = getDomainSessionScope(session);
+    if (!scope) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
+    const { tenantId, storeId } = scope;
+
+    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Custom domain");
+    if (permissionError) return permissionError;
 
     const rateLimitResponse = await checkDomainManagementRateLimit(session, storeId);
     if (rateLimitResponse) return rateLimitResponse;
@@ -175,7 +189,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const configResult = await getVercelDomainConfig(normalizedDomain);
 
         // Update store doc with custom domain info
-        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
+        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);
         await storeRef.update({
             customDomain: normalizedDomain,
             domainVerified: false,
@@ -209,20 +223,21 @@ export const POST = withAuth(async (request: NextRequest, session) => {
  * GET /api/domain — Check domain verification status
  */
 export const GET = withAuth(async (request: NextRequest, session) => {
-    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Custom domain");
-    if (permissionError) return permissionError;
-
-    const { tId: tenantId, sId: storeId } = session;
-    if (!tenantId || !storeId) {
+    const scope = getDomainSessionScope(session);
+    if (!scope) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
+    const { tenantId, storeId } = scope;
+
+    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Custom domain");
+    if (permissionError) return permissionError;
 
     const rateLimitResponse = await checkDomainManagementRateLimit(session, storeId);
     if (rateLimitResponse) return rateLimitResponse;
 
     // Get current store's custom domain
     const db = admin.firestore();
-    const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
+    const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
     const storeData = storeDoc.data();
 
     if (!storeData?.customDomain) {
@@ -249,7 +264,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         // If newly verified, update store doc + invalidate cache
         if (isConfigured && !storeData.domainVerified) {
-            await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).update({
+            await db.collection(DB_COLLECTIONS.STORES).doc(storeId).update({
                 domainVerified: true,
                 domainVerifiedAt: admin.firestore.Timestamp.now(),
             });
@@ -283,19 +298,20 @@ export const GET = withAuth(async (request: NextRequest, session) => {
  * DELETE /api/domain — Remove custom domain from Vercel + Firestore
  */
 export const DELETE = withAuth(async (request: NextRequest, session) => {
-    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Custom domain");
-    if (permissionError) return permissionError;
-
-    const { tId: tenantId, sId: storeId } = session;
-    if (!tenantId || !storeId) {
+    const scope = getDomainSessionScope(session);
+    if (!scope) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
+    const { tenantId, storeId } = scope;
+
+    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Custom domain");
+    if (permissionError) return permissionError;
 
     const rateLimitResponse = await checkDomainManagementRateLimit(session, storeId);
     if (rateLimitResponse) return rateLimitResponse;
 
     const db = admin.firestore();
-    const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
+    const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
     const storeData = storeDoc.data();
 
     if (!storeData?.customDomain) {
@@ -326,7 +342,7 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
     }
 
     // Remove from store doc
-    await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).update({
+    await db.collection(DB_COLLECTIONS.STORES).doc(storeId).update({
         customDomain: admin.firestore.FieldValue.delete(),
         domainVerified: admin.firestore.FieldValue.delete(),
         domainAddedAt: admin.firestore.FieldValue.delete(),

@@ -1,10 +1,10 @@
 'use client';
 
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import {
   LuArrowRight,
   LuBadgeCheck,
-  LuBot,
   LuCheckCircle2,
   LuImage,
   LuMessageSquare,
@@ -57,35 +57,17 @@ export default function AiMenuManagerPage() {
           </AnimateOnScroll>
 
           <AnimateOnScroll className="ws-ai-menu-manager-hero__visual" delay={0.08}>
-            <div className="ws-ai-menu-manager-agent-card">
-              <div className="ws-ai-menu-manager-agent-card__top">
-                <span>
-                  <LuBot size={20} aria-hidden="true" />
-                </span>
-                <div>
-                  <strong>{t('AiMenuManagerPage.agentTitle')}</strong>
-                  <small>{t('AiMenuManagerPage.agentSubtitle')}</small>
-                </div>
-              </div>
-              <div className="ws-ai-menu-manager-agent-card__message">
-                <small>{t('AiMenuManagerPage.ownerSays')}</small>
-                <p>{t('AiMenuManagerPage.ownerMessage')}</p>
-              </div>
-              <div className="ws-ai-menu-manager-agent-card__proposal">
-                <span>{t('AiMenuManagerPage.preparedCard')}</span>
-                <h2>{t('AiMenuManagerPage.cardTitle')}</h2>
-                <p>{t('AiMenuManagerPage.cardBody')}</p>
-                <div>
-                  <strong>{t('AiMenuManagerPage.cardOld')}</strong>
-                  <LuArrowRight size={16} aria-hidden="true" />
-                  <strong>{t('AiMenuManagerPage.cardNew')}</strong>
-                </div>
-              </div>
-              <div className="ws-ai-menu-manager-agent-card__buttons">
-                <button type="button">{t('AiMenuManagerPage.approve')}</button>
-                <button type="button">{t('AiMenuManagerPage.change')}</button>
-              </div>
-            </div>
+            <figure className="ws-ai-menu-manager-product-frame">
+              <Image
+                src="/images/website/product-proof/ai-menu-manager-approval-card.webp"
+                alt={t('AiMenuManagerPage.heroImageAlt')}
+                width={1280}
+                height={900}
+                sizes="(min-width: 1180px) 620px, (min-width: 768px) 52vw, 100vw"
+                priority
+                unoptimized
+              />
+            </figure>
           </AnimateOnScroll>
         </div>
       </section>

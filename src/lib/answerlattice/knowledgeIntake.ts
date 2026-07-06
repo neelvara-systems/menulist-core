@@ -14,6 +14,12 @@ import {
     getAnswerlatticeKnowledgeIntakeLogContext,
     logAnswerlatticeKnowledgeIntakeFailure,
 } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
+import { normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
+import {
+    normalizeAnswerlatticeKnowledgeIntakeJobId,
+    normalizeAnswerlatticeKnowledgeIntakeReviewItemId,
+    normalizeAnswerlatticeKnowledgeIntakeSourceId,
+} from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import {
     finalizeAnswerlatticeIntakeUsage,
     refundAnswerlatticeIntakeUsage,
@@ -207,15 +213,8 @@ const cleanList = (value: unknown, maxItems: number, maxLength = 80) => {
         .slice(0, maxItems);
 };
 
-const cleanIdList = (value: unknown, maxItems: number, maxLength = 160) => {
-    const raw = typeof value === 'string'
-        ? value.split(/[\n,]/)
-        : Array.isArray(value) ? value : [];
-    return Array.from(new Set(raw
-        .map(item => cleanText(item, maxLength).replace(/[^a-zA-Z0-9_\-:.]/g, ''))
-        .filter(Boolean)))
-        .slice(0, maxItems);
-};
+const cleanIdList = (value: unknown, maxItems: number) =>
+    normalizeAnswerlatticeResolvedEntityIds(value, maxItems);
 
 const sha256 = (value: string | Buffer) => crypto.createHash('sha256').update(value).digest('hex');
 
@@ -238,13 +237,32 @@ const mutableActorFields = (actor?: IntakeActor) => ({
     modifiedBy: cleanText(actor?.email || actor?.name || actor?.id, 160) || 'answerlattice',
 });
 
-const jobRef = (jobId: string) => db.collection(JOBS).doc(jobId);
-const sourceRef = (sourceId: string) => db.collection(SOURCES).doc(sourceId);
-const reviewItemRef = (itemId: string) => db.collection(REVIEW_ITEMS).doc(itemId);
+const requireKnowledgeIntakeJobId = (jobId: string) => {
+    const normalizedJobId = normalizeAnswerlatticeKnowledgeIntakeJobId(jobId);
+    if (!normalizedJobId) throw new Error('Invalid knowledge intake job.');
+    return normalizedJobId;
+};
+
+const requireKnowledgeIntakeSourceId = (sourceId: string) => {
+    const normalizedSourceId = normalizeAnswerlatticeKnowledgeIntakeSourceId(sourceId);
+    if (!normalizedSourceId) throw new Error('Invalid knowledge intake source.');
+    return normalizedSourceId;
+};
+
+const requireKnowledgeIntakeReviewItemId = (itemId: string) => {
+    const normalizedItemId = normalizeAnswerlatticeKnowledgeIntakeReviewItemId(itemId);
+    if (!normalizedItemId) throw new Error('Invalid review item.');
+    return normalizedItemId;
+};
+
+const jobRef = (jobId: string) => db.collection(JOBS).doc(requireKnowledgeIntakeJobId(jobId));
+const sourceRef = (sourceId: string) => db.collection(SOURCES).doc(requireKnowledgeIntakeSourceId(sourceId));
+const reviewItemRef = (itemId: string) => db.collection(REVIEW_ITEMS).doc(requireKnowledgeIntakeReviewItemId(itemId));
 const summaryRef = (scope: IntakeScope) => db.collection(SUMMARY).doc(getKnowledgeIntakeSummaryDocId(scope.tId, scope.sId));
 
 const ensureJobForScope = async (scope: IntakeScope, jobId: string) => {
-    const snap = await jobRef(jobId).get();
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
+    const snap = await jobRef(normalizedJobId).get();
     if (!snap.exists) throw new Error('Knowledge intake job not found.');
     const job = { id: snap.id, ...snap.data() } as AnswerlatticeKnowledgeIntakeJob;
     if (Number(job.tId) !== Number(scope.tId) || Number(job.sId) !== Number(scope.sId)) {
@@ -263,7 +281,7 @@ const assertJobCanAcceptSource = (job: AnswerlatticeKnowledgeIntakeJob) => {
 };
 
 const buildKnowledgeSourceId = (jobId: string, contentHash: string) =>
-    `kis_${sha256(`${jobId}:${contentHash}`).slice(0, 28)}`;
+    `kis_${sha256(`${requireKnowledgeIntakeJobId(jobId)}:${contentHash}`).slice(0, 28)}`;
 
 const buildSummaryPatch = (scope: IntakeScope, patch: Record<string, any>) => ({
     schemaVersion: 1,
@@ -275,10 +293,11 @@ const buildSummaryPatch = (scope: IntakeScope, patch: Record<string, any>) => ({
 });
 
 const countReviewItems = async (scope: IntakeScope, jobId: string) => {
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
     const snap = await db.collection(REVIEW_ITEMS)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
-        .where('jobId', '==', jobId)
+        .where('jobId', '==', normalizedJobId)
         .limit(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_ITEMS_PER_JOB)
         .get();
 
@@ -301,18 +320,19 @@ const countReviewItems = async (scope: IntakeScope, jobId: string) => {
 };
 
 const refreshJobCounters = async (scope: IntakeScope, jobId: string) => {
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
     const [sourcesSnap, counts] = await Promise.all([
         db.collection(SOURCES)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
-            .where('jobId', '==', jobId)
+            .where('jobId', '==', normalizedJobId)
             .limit(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCES_PER_JOB)
             .get(),
-        countReviewItems(scope, jobId),
+        countReviewItems(scope, normalizedJobId),
     ]);
 
     const readySourceCount = sourcesSnap.docs.filter(docSnap => docSnap.data()?.status === 'ready').length;
-    await jobRef(jobId).set({
+    await jobRef(normalizedJobId).set({
         sourceCount: sourcesSnap.size,
         readySourceCount,
         reviewItemCount: counts.total,
@@ -421,19 +441,20 @@ export async function getKnowledgeIntakeBundle(scopeInput: IntakeScope, jobId: s
     assertEnabled();
     assertDb();
     const scope = assertScope(scopeInput);
-    const job = await ensureJobForScope(scope, jobId);
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
+    const job = await ensureJobForScope(scope, normalizedJobId);
     const [sourcesSnap, reviewSnap] = await Promise.all([
         db.collection(SOURCES)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
-            .where('jobId', '==', jobId)
+            .where('jobId', '==', normalizedJobId)
             .orderBy('createdOn', 'desc')
             .limit(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCES_PER_JOB)
             .get(),
         db.collection(REVIEW_ITEMS)
             .where('tId', '==', scope.tId)
             .where('sId', '==', scope.sId)
-            .where('jobId', '==', jobId)
+            .where('jobId', '==', normalizedJobId)
             .orderBy('createdOn', 'desc')
             .limit(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_ITEMS_PER_JOB)
             .get(),
@@ -475,6 +496,7 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
     assertEnabled();
     assertDb();
     const scope = assertScope(scopeInput);
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
     const sourceType = normalizeSourceType(input.type);
     if (
         sourceType === ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.REPEATED_REPLY
@@ -487,7 +509,7 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
         ? prepareRepeatedReplySourceText(input)
         : null;
 
-    const job = await ensureJobForScope(scope, jobId);
+    const job = await ensureJobForScope(scope, normalizedJobId);
     assertJobCanAcceptSource(job);
 
     const fetched = preparedRepeatedReply
@@ -512,7 +534,7 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
         ? cleanText(input.dedupeContentHash, 80)
         : computedContentHash;
 
-    const sourceId = buildKnowledgeSourceId(jobId, contentHash);
+    const sourceId = buildKnowledgeSourceId(normalizedJobId, contentHash);
     const createdAt = now();
     const title = cleanText(input.title || fetched.title || input.fileName || input.originUrl || 'Imported source', 160);
     const source: AnswerlatticeKnowledgeSource = {
@@ -520,7 +542,7 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: scope.tId,
         sId: scope.sId,
-        jobId,
+        jobId: normalizedJobId,
         type: sourceType,
         title,
         status: contentText ? 'ready' : 'needs_text',
@@ -546,7 +568,7 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
     const sourceDocRef = sourceRef(sourceId);
     const duplicate = await db.runTransaction(async (tx) => {
         const [jobSnap, existingSourceSnap] = await Promise.all([
-            tx.get(jobRef(jobId)),
+            tx.get(jobRef(normalizedJobId)),
             tx.get(sourceDocRef),
         ]);
         if (!jobSnap.exists) throw new Error('Knowledge intake job not found.');
@@ -560,7 +582,7 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
         assertJobCanAcceptSource(currentJob);
 
         tx.set(sourceDocRef, source);
-        tx.set(jobRef(jobId), {
+        tx.set(jobRef(normalizedJobId), {
             status: ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.COLLECTING,
             sourceCount: FieldValue.increment(1),
             readySourceCount: FieldValue.increment(source.status === 'ready' ? 1 : 0),
@@ -568,7 +590,7 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
             ...mutableActorFields(actor),
         }, { merge: true });
         tx.set(summaryRef(scope), buildSummaryPatch(scope, {
-            activeJobId: jobId,
+            activeJobId: normalizedJobId,
             activeJobTitle: currentJob.title || job.title,
             readySources: FieldValue.increment(source.status === 'ready' ? 1 : 0),
         }), { merge: true });
@@ -586,7 +608,8 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
     }
 
     const scope = assertScope(scopeInput);
-    const job = await ensureJobForScope(scope, jobId);
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
+    const job = await ensureJobForScope(scope, normalizedJobId);
     assertJobCanAcceptSource(job);
     const mediaKind = classifyMediaMimeType(input.mimeType);
     if (!mediaKind) {
@@ -611,7 +634,7 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
         sourceType,
         rawMediaHash,
     ].join('\n'));
-    const mediaSourceId = buildKnowledgeSourceId(jobId, mediaDedupeContentHash);
+    const mediaSourceId = buildKnowledgeSourceId(normalizedJobId, mediaDedupeContentHash);
     const existingSourceSnap = await sourceRef(mediaSourceId).get();
     if (existingSourceSnap.exists) {
         return {
@@ -632,7 +655,7 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
         actor,
         byteSize: input.buffer.byteLength,
         fileName: input.fileName,
-        jobId,
+        jobId: normalizedJobId,
         metadata: {
             ...input.metadata,
             mediaKind,
@@ -684,7 +707,7 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
             unitsConsumed: getUnitCost(action),
         }, actor);
 
-        const source = await addKnowledgeSource(scope, jobId, {
+        const source = await addKnowledgeSource(scope, normalizedJobId, {
             type: sourceType,
             title: input.title || input.fileName || (mediaKind === 'image' ? 'Screenshot evidence' : 'Media transcript'),
             fileName: input.fileName,
@@ -721,7 +744,7 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
             unitsCharged: reservation.unitsReserved,
         });
 
-        await jobRef(jobId).set({
+        await jobRef(normalizedJobId).set({
             usageSummary: {
                 lastUsageLedgerId: reservation.ledgerId,
                 lastAction: action,
@@ -743,7 +766,7 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
     } catch (error) {
         await refundAnswerlatticeIntakeUsage(scope, reservation.ledgerId, ANSWERLATTICE_INTAKE_MEDIA_REFUND_FAILURE_REASON);
         logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Media extraction failed', 'answerlattice_intake_media_extraction_failed', error, {
-            jobId,
+            jobId: normalizedJobId,
             ledgerId: reservation.ledgerId,
             mediaKind,
             scope,
@@ -756,7 +779,9 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
     assertEnabled();
     assertDb();
     const scope = assertScope(scopeInput);
-    const ref = reviewItemRef(itemId);
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
+    const normalizedItemId = requireKnowledgeIntakeReviewItemId(itemId);
+    const ref = reviewItemRef(normalizedItemId);
     let updatedItem: AnswerlatticeIntakeReviewItem | null = null;
 
     await db.runTransaction(async (tx) => {
@@ -766,7 +791,7 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
         if (Number(current.tId) !== scope.tId || Number(current.sId) !== scope.sId) {
             throw new Error('Review item is not available.');
         }
-        if (current.jobId !== jobId) {
+        if (current.jobId !== normalizedJobId) {
             throw new Error('Review item is not available for this intake job.');
         }
         if (current.status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED) {
@@ -803,7 +828,7 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
             }, { merge: true });
         }
 
-        updatedItem = { id: itemId, ...current, ...patch };
+        updatedItem = { id: normalizedItemId, ...current, ...patch };
     });
 
     if (!updatedItem) throw new Error('Review item update failed.');
@@ -814,11 +839,12 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
     assertEnabled();
     assertDb();
     const scope = assertScope(scopeInput);
-    const job = await ensureJobForScope(scope, jobId);
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
+    const job = await ensureJobForScope(scope, normalizedJobId);
     const sourcesSnap = await db.collection(SOURCES)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
-        .where('jobId', '==', jobId)
+        .where('jobId', '==', normalizedJobId)
         .where('status', '==', 'ready')
         .orderBy('createdOn', 'asc')
         .limit(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCES_TO_ANALYZE)
@@ -838,7 +864,7 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
     const batch = db.batch();
     const createdAt = now();
     deduped.forEach((item, index) => {
-        const itemId = buildReviewItemId(jobId, item);
+        const itemId = buildReviewItemId(normalizedJobId, item);
         batch.set(reviewItemRef(itemId), {
             ...item,
             id: itemId,
@@ -848,7 +874,7 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             ...actorFields(actor),
         }, { merge: true });
     });
-    batch.set(jobRef(jobId), {
+    batch.set(jobRef(normalizedJobId), {
         status: ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.REVIEWING,
         reviewItemCount: deduped.length,
         acceptedItemCount: 0,
@@ -859,12 +885,12 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
         ...mutableActorFields(actor),
     }, { merge: true });
     batch.set(summaryRef(scope), buildSummaryPatch(scope, {
-        activeJobId: jobId,
+        activeJobId: normalizedJobId,
         activeJobTitle: job.title,
         reviewItems: deduped.length,
     }), { merge: true });
     await batch.commit();
-    await refreshJobCounters(scope, jobId);
+    await refreshJobCounters(scope, normalizedJobId);
     return { created: deduped.length };
 }
 
@@ -872,8 +898,9 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
     assertEnabled();
     assertDb();
     const scope = assertScope(scopeInput);
-    const job = await ensureJobForScope(scope, jobId);
-    const acceptedItems = await loadItemsForPublish(scope, jobId, itemIds);
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
+    const job = await ensureJobForScope(scope, normalizedJobId);
+    const acceptedItems = await loadItemsForPublish(scope, normalizedJobId, itemIds);
     if (acceptedItems.length === 0) {
         throw new Error('Accept at least one review item before publishing.');
     }
@@ -881,7 +908,7 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
         throw new Error(`Publish up to ${ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_PUBLISH_ITEMS} items at a time.`);
     }
 
-    await jobRef(jobId).set({
+    await jobRef(normalizedJobId).set({
         status: ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.PUBLISHING,
         modifiedOn: now(),
         ...mutableActorFields(actor),
@@ -899,9 +926,9 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             }
         }
 
-        const counters = await refreshJobCounters(scope, jobId);
+        const counters = await refreshJobCounters(scope, normalizedJobId);
         const completedAt = now();
-        await jobRef(jobId).set({
+        await jobRef(normalizedJobId).set({
             status: ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.PUBLISHED,
             publishedOn: completedAt,
             publishedItemCount: counters.published,
@@ -934,9 +961,9 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
     } catch (error) {
         const failedAt = now();
         const safeFailureMessage = getKnowledgeIntakePublishFailureMessage(published.length);
-        const counters = await refreshJobCounters(scope, jobId).catch((counterError) => {
+        const counters = await refreshJobCounters(scope, normalizedJobId).catch((counterError) => {
             logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Failed to refresh counters after partial publish failure', 'answerlattice_intake_publish_counter_refresh_failed', counterError, {
-                jobId,
+                jobId: normalizedJobId,
                 scope,
             });
             return null;
@@ -946,7 +973,7 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             await Promise.all(Array.from(segments).map(segment => revalidateAnswerlatticePublicCache(scope.tId, scope.sId, segment))).catch((cacheError) => {
                 logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Public cache revalidation failed after partial publish failure', 'answerlattice_intake_publish_cache_revalidation_failed', cacheError, {
                     cacheSegment: Array.from(segments)[0],
-                    jobId,
+                    jobId: normalizedJobId,
                     scope,
                 });
             });
@@ -954,7 +981,7 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
 
         if (published.length > 0) {
             await summaryRef(scope).set(buildSummaryPatch(scope, {
-                activeJobId: jobId,
+                activeJobId: normalizedJobId,
                 activeJobTitle: job.title,
                 publishedItems: FieldValue.increment(published.length),
                 lastPublishedAt: failedAt,
@@ -965,7 +992,7 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             }), { merge: true });
         }
 
-        await jobRef(jobId).set({
+        await jobRef(normalizedJobId).set({
             status: published.length > 0
                 ? ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.REVIEWING
                 : ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.FAILED,
@@ -984,18 +1011,22 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
 }
 
 async function loadItemsForPublish(scope: IntakeScope, jobId: string, itemIds?: string[]) {
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
     if (Array.isArray(itemIds) && itemIds.length > 0) {
-        const docs = await Promise.all(itemIds.slice(0, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_PUBLISH_ITEMS).map(id => reviewItemRef(id).get()));
+        const normalizedItemIds = itemIds
+            .slice(0, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_PUBLISH_ITEMS)
+            .map(id => requireKnowledgeIntakeReviewItemId(id));
+        const docs = await Promise.all(normalizedItemIds.map(id => reviewItemRef(id).get()));
         return docs
             .filter(snap => snap.exists)
             .map(snap => ({ id: snap.id, ...snap.data() } as AnswerlatticeIntakeReviewItem))
-            .filter(item => item.tId === scope.tId && item.sId === scope.sId && item.jobId === jobId && item.status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED);
+            .filter(item => item.tId === scope.tId && item.sId === scope.sId && item.jobId === normalizedJobId && item.status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED);
     }
 
     const snap = await db.collection(REVIEW_ITEMS)
         .where('tId', '==', scope.tId)
         .where('sId', '==', scope.sId)
-        .where('jobId', '==', jobId)
+        .where('jobId', '==', normalizedJobId)
         .where('status', '==', ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED)
         .limit(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_PUBLISH_ITEMS)
         .get();
@@ -1008,7 +1039,8 @@ async function publishReviewItem(
     item: AnswerlatticeIntakeReviewItem,
     actor?: IntakeActor,
 ): Promise<{ id: string; segments: AnswerlatticePublicCacheSegment[] } | null> {
-    const currentSnap = await reviewItemRef(item.id).get();
+    const normalizedItemId = requireKnowledgeIntakeReviewItemId(item.id);
+    const currentSnap = await reviewItemRef(normalizedItemId).get();
     if (!currentSnap.exists) return null;
     const current = { id: currentSnap.id, ...currentSnap.data() } as AnswerlatticeIntakeReviewItem;
     if (Number(current.tId) !== Number(scope.tId) || Number(current.sId) !== Number(scope.sId) || current.jobId !== job.id) {
@@ -1507,7 +1539,7 @@ function dedupeReviewItems(items: AnswerlatticeIntakeReviewItem[]) {
 }
 
 function buildReviewItemId(jobId: string, item: AnswerlatticeIntakeReviewItem) {
-    return `kii_${sha256(`${jobId}:${item.target}:${item.title}:${item.question || ''}:${item.routePath || ''}`).slice(0, 28)}`;
+    return `kii_${sha256(`${requireKnowledgeIntakeJobId(jobId)}:${item.target}:${item.title}:${item.question || ''}:${item.routePath || ''}`).slice(0, 28)}`;
 }
 
 function titleFromText(fallbackTitle: string, text: string) {

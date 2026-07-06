@@ -18,6 +18,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { markCompiledContextSourceChanged } from './compiledContextVersions';
+import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -97,8 +98,8 @@ async function loadAnswerSummariesByEntity(
     const out = new Map<string, any>();
     const targetEntityIds = Array.from(new Set(
         entityIds
-            .filter((entityId): entityId is string => typeof entityId === 'string' && Boolean(entityId.trim()))
-            .map(entityId => entityId.trim())
+            .map(entityId => normalizeAnswerlatticeResolvedFunctionEntityId(entityId))
+            .filter((entityId): entityId is string => Boolean(entityId))
     )).slice(0, MAX_TRIGGERS_PER_TENANT);
 
     if (targetEntityIds.length === 0) return out;
@@ -124,8 +125,9 @@ async function loadAnswerSummariesByEntity(
 
             const answer: any = { ...doc.data(), id: doc.id };
             const answerEntityIds: string[] = Array.isArray(answer.scope?.entityIds) ? answer.scope.entityIds : [];
-            answerEntityIds.forEach(entityId => {
-                if (targetSet.has(entityId) && !out.has(entityId)) out.set(entityId, answer);
+            answerEntityIds.forEach(rawEntityId => {
+                const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(rawEntityId);
+                if (entityId && targetSet.has(entityId) && !out.has(entityId)) out.set(entityId, answer);
             });
         });
     }
@@ -177,17 +179,19 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
         const coveredEntityIds = new Set<string>();
         existingSnap.docs.forEach(d => {
             const data = d.data();
-            if (data.action?.entityId) {
-                coveredEntityIds.add(data.action.entityId);
+            const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.action?.entityId);
+            if (entityId) {
+                coveredEntityIds.add(entityId);
             }
         });
 
         // Generate suggestions for uncovered high-friction entities
         for (const entity of topEntities) {
             if (generated >= MAX_AUTO_SUGGESTIONS_PER_NIGHT) break;
-            if (!entity.entityId || !entity.entityName) continue;
+            const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(entity.entityId);
+            if (!entityId || !entity.entityName) continue;
             if (entity.last7d?.frictionScore < MIN_FRICTION_SCORE_FOR_SUGGESTION) continue;
-            if (coveredEntityIds.has(entity.entityId)) continue;
+            if (coveredEntityIds.has(entityId)) continue;
 
             const now = Timestamp.now();
             await db.collection(DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS).add({
@@ -200,14 +204,14 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
                 },
                 action: {
                     type: 'help_card',
-                    entityId: entity.entityId,
+                    entityId,
                 },
                 priority: Math.min(Math.round((entity.last7d?.frictionScore || 0) * 10), 100),
                 cooldownHours: 24,
                 status: 'suggested',
                 source: 'friction_auto',
                 frictionSource: {
-                    entityId: entity.entityId,
+                    entityId,
                     entityName: entity.entityName,
                     frictionScore: entity.last7d?.frictionScore || 0,
                     signalCount: entity.last7d?.queryCount || 0,
@@ -246,14 +250,16 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
         const rawTriggers: any[] = snap.docs.map(d => ({ ...d.data(), id: d.id }));
         const activeTriggerEntityIds = rawTriggers
             .filter(trigger => trigger.status === 'active' && typeof trigger.action?.entityId === 'string' && trigger.action.entityId)
-            .map(trigger => trigger.action.entityId as string);
+            .map(trigger => normalizeAnswerlatticeResolvedFunctionEntityId(trigger.action.entityId))
+            .filter((entityId): entityId is string => Boolean(entityId));
         const activeEntityTriggerExists = activeTriggerEntityIds.length > 0;
         const answersByEntity = activeEntityTriggerExists
             ? await loadAnswerSummariesByEntity(tId, sId, activeTriggerEntityIds)
             : new Map<string, any>();
 
         rawTriggers.forEach(trigger => {
-            const answer = trigger.action?.entityId ? answersByEntity.get(trigger.action.entityId) : null;
+            const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(trigger.action?.entityId);
+            const answer = entityId ? answersByEntity.get(entityId) : null;
             const resolvedTitle = trigger.action?.customTitle || answer?.title || trigger.name;
             const resolvedSummary = trigger.action?.customSummary || answer?.content?.structuredSummary || '';
             triggers[trigger.id] = {

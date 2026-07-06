@@ -27,4 +27,4 @@ Governance and editing screens can still use Firestore because they need fresh m
 
 ## Diagnostics Rule
 
-Manual and nightly bundle builders must keep failure output bounded. Changelog fallback warnings, best-effort Storage manifest-copy failures, build locks, manifests, scheduler results, and owner-visible responses use fixed status/error codes plus source error name/code/status metadata only. They must not store or emit raw exception text, tenant/store identifiers, Storage paths beyond approved bundle refs, or source content.
+Manual and nightly bundle builders must keep failure output bounded. Changelog fallback warnings, best-effort Storage manifest-copy failures, build locks, manifests, scheduler results, and owner-visible responses use fixed status/error codes plus source error name/code/status metadata only. Manual rebuild request metadata uses fixed reason/requester codes. These paths must not store or emit raw exception text, raw owner ids/emails, arbitrary request reason text, tenant/store identifiers, Storage paths beyond approved bundle refs, or source content.

@@ -1,7 +1,7 @@
 # Predictive Support — Firebase & Cost Analysis
 
-> **Version:** 1.1.1
-> **Last Updated:** 2026-05-24
+> **Version:** 1.1.2
+> **Last Updated:** 2026-07-06
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT`
 
 ---
@@ -46,6 +46,8 @@
 Predictive help diagnostics use fixed runtime failure codes with bounded store metadata and source error name/code/status only; diagnostics do not add Firestore operations or expose raw workspace identifiers.
 
 ### 2.3 — Trigger CRUD (Admin Action)
+
+Answerlattice App Predictive Trigger ID Boundary: app-side update/activate/disable/delete refs and audit-log entity IDs normalize trigger document IDs through the shared Firestore document-ID guard before touching `answerlattice_predictiveTriggers/{triggerId}`. Malformed IDs fail before Firestore access and do not add reads or writes.
 
 | Operation | Count | Type | Description |
 |-----------|-------|------|-------------|

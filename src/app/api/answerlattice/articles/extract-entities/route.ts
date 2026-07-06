@@ -9,6 +9,7 @@ import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { extractEntitiesFromArticles, extractPlainTextFromTipTap } from '@lib/answerlattice/entityExtraction';
+import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -27,7 +28,7 @@ import { withAuth } from '../../../../../middleware/auth';
 const ArticleSchema = z.object({
     categoryTitle: z.string().trim().max(180).optional().nullable(),
     content: z.any(),
-    id: z.string().trim().min(1).max(160),
+    id: z.string().trim().max(160).refine((value) => normalizeAnswerlatticeKbArticleId(value) === value),
     title: z.string().trim().min(1).max(240),
 });
 const ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES = 256 * 1024;

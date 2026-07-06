@@ -30,6 +30,7 @@ import { getActiveAnswersForEntity } from "@database/answerlattice/canonicalAnsw
 import { addMutationProposal } from "@database/answerlattice/mutationProposals";
 import { getRecentSignalEvents } from "@database/answerlattice/signalEvents";
 import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
+import { normalizeAnswerlatticeResolvedEntityId } from "@lib/answerlattice/governanceIdBoundary";
 import {
     ANSWERLATTICE_MUTATION_TYPE,
     ANSWERLATTICE_SIGNAL_TYPE,
@@ -107,10 +108,11 @@ function clusterSignalsByEntity(signals: AnswerlatticeSignalEvent[]): SignalClus
     const clusterMap = new Map<string, AnswerlatticeSignalEvent[]>();
 
     for (const signal of signals) {
-        if (!signal.entityId || signal.entityId === 'unresolved') continue;
-        const existing = clusterMap.get(signal.entityId) || [];
+        const entityId = normalizeAnswerlatticeResolvedEntityId(signal.entityId);
+        if (!entityId) continue;
+        const existing = clusterMap.get(entityId) || [];
         existing.push(signal);
-        clusterMap.set(signal.entityId, existing);
+        clusterMap.set(entityId, existing);
     }
 
     return Array.from(clusterMap.entries()).map(([entityId, clusterSignals]) => {

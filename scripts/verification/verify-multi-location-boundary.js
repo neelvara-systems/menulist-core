@@ -43,8 +43,10 @@ function assertOrder(content, orderedTokens, label) {
 function verifyOutletActionRoute(content, label, maxBodyToken, limiterToken) {
   [
     'export const POST = withAuth(async (request, session) => {',
+    'getOutletSessionScope(session)',
+    'const { tenantId, storeId, tenantDocumentId, storeDocumentId } = scope;',
     'verifyTenantAccess(session, tenantId, storeId, request)',
-    'hashPublicRateLimitValue(tenantId)',
+    'hashPublicRateLimitValue(tenantDocumentId)',
     limiterToken,
     'checkRateLimit({ key:',
     `readBoundedJsonBody(request, ${maxBodyToken}`,
@@ -72,7 +74,7 @@ function verifyOutletActionRoute(content, label, maxBodyToken, limiterToken) {
     content,
     [
       'verifyTenantAccess(session, tenantId, storeId, request)',
-      'hashPublicRateLimitValue(tenantId)',
+      'hashPublicRateLimitValue(tenantDocumentId)',
       'checkRateLimit({ key:',
       `readBoundedJsonBody(request, ${maxBodyToken}`,
       'validateAPIInput(schema, body)',
@@ -87,7 +89,24 @@ function verifyOutletActionRoute(content, label, maxBodyToken, limiterToken) {
     'data.error ||',
     'throw new Error(data.error',
     'res.json().catch(() => ({}))',
+    'const { tId: tenantId, sId: storeId } = session',
+    'hashPublicRateLimitValue(tenantId)',
   ].forEach((token) => assertNotIncludes(content, token, `${label} raw diagnostics boundary`));
+}
+
+function verifyOutletSessionScopeHelper(helper) {
+  [
+    'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+    'export type OutletSessionScope = {',
+    'tenantDocumentId: string;',
+    'storeDocumentId: string;',
+    'export function normalizeOutletDocumentId(value: unknown): string | null',
+    'return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;',
+    'function normalizeOutletSessionDocumentId(value: unknown): OutletSessionDocumentId | null',
+    'export function getOutletSessionScope(session: any): OutletSessionScope | null',
+    'const tenantId = normalizeOutletSessionDocumentId(session?.tId);',
+    'const storeId = normalizeOutletSessionDocumentId(session?.sId);',
+  ].forEach((token) => assertIncludes(helper, token, 'Outlet session scope helper boundary'));
 }
 
 function verifyCreateRoute(createRoute) {
@@ -134,7 +153,7 @@ function verifyCreateRoute(createRoute) {
     [
       'const masterProjectsSnap = await db',
       '.where(\'deleted\', \'!=\', true)',
-      'const outletSlug = await buildUniqueOutletSlug(db, tenantId, outletName);',
+      'const outletSlug = await buildUniqueOutletSlug(db, tenantId as number, outletName);',
       'const result = await db.runTransaction(async (tx) => {',
       'tx.set(db.doc(`${DB_COLLECTIONS.STORES}/${newStoreId}`),',
       'tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), storesSummaryPayload, { merge: true });',
@@ -149,7 +168,8 @@ function verifyDeactivateRoute(deactivateRoute) {
 
   [
     'FEATURE_FLAGS.ENABLE_OUTLET_DEACTIVATE',
-    'const targetStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreId}`);',
+    'const outletStoreDocumentId = normalizeOutletDocumentId(outletStoreId);',
+    'const targetStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreDocumentId}`);',
     'const targetStoreSnap = await targetStoreRef.get();',
     'Number(targetStore?.tenantId) !== Number(tenantId)',
     'targetStore?.isMaster === true',
@@ -159,7 +179,7 @@ function verifyDeactivateRoute(deactivateRoute) {
     'tx.update(targetStoreRef, {',
     'active: false',
     'tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`),',
-    'tx.update(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`), { storesList: updatedStoresList });',
+    'tx.update(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`), { storesList: updatedStoresList });',
     'FEATURE_FLAGS.ENABLE_BILLING_REMOVAL_IMMEDIATE && FEATURE_FLAGS.ENABLE_OUTLET_BILLING',
     "logger.security('Outlet Deactivated'",
   ].forEach((token) => assertIncludes(deactivateRoute, token, 'Outlet deactivate route boundary'));
@@ -171,6 +191,7 @@ function verifyRenameRoute(renameRoute) {
   [
     'FEATURE_FLAGS.ENABLE_MULTI_OUTLET',
     'MAX_PREVIOUS_OUTLET_SLUGS = 5',
+    'const outletStoreIdStr = normalizeOutletDocumentId(outletStoreId);',
     'isReservedOutletSlug(proposed)',
     'outlet.active === false',
     ".where('outletSlug', '==', proposed)",
@@ -188,8 +209,10 @@ function verifyPolicyRoute(policyRoute) {
   [
     'export const POST = withAuth(async (request, session) => {',
     'FEATURE_FLAGS.ENABLE_MULTI_OUTLET',
+    'getOutletSessionScope(session)',
+    'const { tenantId, storeId, tenantDocumentId, storeDocumentId } = scope;',
     'verifyTenantAccess(session, tenantId, storeId, request)',
-    'hashPublicRateLimitValue(tenantId)',
+    'hashPublicRateLimitValue(tenantDocumentId)',
     'outlet-policy:${tenantRateLimitHash}',
     'readBoundedJsonBody(request, OUTLET_POLICY_MAX_BODY_BYTES',
     'validateAPIInput(schema, body)',
@@ -204,7 +227,7 @@ function verifyPolicyRoute(policyRoute) {
     'tx.set(storeRef,',
     'tx.update(tenantRef,',
     'tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`),',
-    'touchDigitalScreenContentVersionForStoreServer(storeId, "outletPolicy")',
+    'touchDigitalScreenContentVersionForStoreServer(storeDocumentId, "outletPolicy")',
     'invalidateOwnerBusinessAssistantPacketCache({',
     'outlet_policy_update_route_failed',
   ].forEach((token) => assertIncludes(policyRoute, token, 'Outlet policy route boundary'));
@@ -223,6 +246,7 @@ function verifyPolicyRoute(policyRoute) {
     policyRoute,
     [
       'verifyTenantAccess(session, tenantId, storeId, request)',
+      'hashPublicRateLimitValue(tenantDocumentId)',
       'checkRateLimit({ key:',
       'readBoundedJsonBody(request, OUTLET_POLICY_MAX_BODY_BYTES',
       'validateAPIInput(schema, body)',
@@ -238,6 +262,9 @@ function verifyLinkedOutletSaveRoute(route) {
     'export const POST = withAuth(async (request: NextRequest, session) => {',
     'FEATURE_FLAGS.ENABLE_MULTI_OUTLET',
     'OUTLET_SAVE_MAX_BODY_BYTES = 2 * 1024 * 1024',
+    'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+    '.refine(isValidFirestoreDocumentId, "Invalid project ID")',
+    '.refine(isValidFirestoreDocumentId, "Invalid override ID")',
     'readBoundedJsonBody(request, OUTLET_SAVE_MAX_BODY_BYTES',
     'validateAPIInput(schema, body)',
     'parseProjectId(project.projectId)',
@@ -557,6 +584,7 @@ function verifyDocs(packageJson, docs) {
     'Multi-location boundary source gate: `npm run verify:multi-location-boundary`',
     'source-only and does not run browser, Razorpay, Firebase deploy, or live Firestore smoke',
     'active non-master outlets only',
+    '**July 5, 2026 linked outlet save ID boundary:**',
   ].forEach((token) => assertIncludes(implDoc, token, 'Multi-outlet implementation source gate docs'));
 
   [
@@ -575,6 +603,7 @@ function verifyDocs(packageJson, docs) {
     'Master update awareness snapshot hardening is cost-neutral',
     'nested `undefined` values that Firestore rejects',
     'Active-only max-outlet cap is cost-neutral',
+    'Linked outlet save ID admission is cost-neutral',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Multi-outlet Firebase source gate docs'));
 
   [
@@ -629,6 +658,8 @@ function verifyDocs(packageJson, docs) {
     'source-only outlet lifecycle/project-save/mobile-shell gate',
     'active-cap source checkpoint',
     'Browser smoke for desktop/mobile Locations, Add Outlet, Rename Outlet, and Deactivate Outlet remains pending',
+    'Linked outlet save ID boundary checkpoint',
+    'src/lib/firebase/firestoreDocumentId.ts',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit multi-location source gate evidence'));
 
   [
@@ -660,6 +691,12 @@ function verifyDocs(packageJson, docs) {
     'saved master changes flowing through the outlet sync/cache path',
     'No Multi-Outlet runtime behavior',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit multi-outlet marketing update-everywhere evidence'));
+
+  [
+    'Linked Outlet Save ID Boundary',
+    'npm run verify:multi-location-boundary',
+    'npm run verify:menulist-api-tenant-safety',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog linked outlet save ID boundary evidence'));
 
   [
     'Multi-Outlet Sync/Cache Claim Boundary',
@@ -694,6 +731,7 @@ function verifyMultiLocationBoundary() {
   const policyRoute = read('src/app/api/outlets/policy/route.ts');
   const linkedOutletSaveRoute = read('src/app/api/projects/outlet-save/route.ts');
   const files = {
+    outletSessionScope: read('src/lib/multiOutlet/outletSessionScope.ts'),
     actionGuards: read('src/lib/multiOutlet/outletActionResponseGuards.ts'),
     linkedOutletSaveResponse: read('src/lib/multiOutlet/linkedOutletSaveResponse.ts'),
     multiOutletDal: read('src/database/multiOutlet/index.ts'),
@@ -729,6 +767,7 @@ function verifyMultiLocationBoundary() {
     changelogDoc: read('__docs__/CHANGELOG.md'),
   };
 
+  verifyOutletSessionScopeHelper(files.outletSessionScope);
   verifyCreateRoute(createRoute);
   verifyDeactivateRoute(deactivateRoute);
   verifyRenameRoute(renameRoute);

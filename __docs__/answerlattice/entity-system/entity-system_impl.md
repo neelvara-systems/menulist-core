@@ -1,7 +1,7 @@
 # Entity System — Implementation Blueprint
 
-> **Version:** 2.0.1
-> **Last Updated:** 2026-06-29
+> **Version:** 2.0.2
+> **Last Updated:** 2026-07-05
 > **Audience:** Developers
 > **Status:** ENHANCEMENT — 6 targeted changes to existing infrastructure
 
@@ -43,6 +43,12 @@
 | `src/lib/answerlattice/driftDetection.ts`     | 4-class drift governance                         |
 | `src/lib/answerlattice/signalMutation.ts`     | Signal → mutation proposal pipeline              |
 | `src/lib/answerlattice/tokenizer.ts`          | Shared tokenizer for index + query normalization |
+
+Answerlattice entity retrieval ID boundary: `src/lib/answerlattice/entityLookup.ts` and `src/lib/answerlattice/canonicalRetrieval.ts` normalize entity IDs through the resolved-entity helpers in `src/lib/answerlattice/governanceIdBoundary.ts` before direct `answerlattice_entities/{entityId}` reads. Search-index and context-boost entity IDs that are malformed, unresolved, reserved, or path-shaped are skipped before Firestore refs are built; valid entity retrieval behavior and query shapes are unchanged.
+
+Answerlattice App Entity Candidate ID Boundary: `src/database/answerlattice/entityCandidates.ts` uses `src/lib/answerlattice/entityCandidateIdBoundary.ts` before candidate approval/rejection/promote/merge refs, promotion status writes, promotion audit previous state, and promotion return metadata. Invalid candidate IDs fail with fixed errors before Firestore document refs, while valid candidate review and entity-promotion behavior is unchanged.
+
+Answerlattice App Entity DAL ID Boundary: `src/database/answerlattice/entities.ts` normalizes entity document IDs, relation document IDs, search-index document IDs, relation endpoint entity IDs, alias-sync entity IDs, and merge survivor/merged IDs before Firestore refs, query keys, compiled-context source-version IDs, and audit metadata. Invalid entity/relation/search-index IDs fail before document refs; merge not-found errors avoid raw IDs.
 
 ### 1.4 Hooks
 

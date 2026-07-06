@@ -5,6 +5,7 @@ import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/pro
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
+import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
@@ -23,7 +24,7 @@ const ARTICLE_EMBEDDING_GENERATION_FAILED = 'embedding_generation_failed';
 
 const ArticleEmbeddingRequestSchema = z.object({
     embeddingPayload: z.object({
-        articleId: z.string().trim().min(1).max(160),
+        articleId: z.string().trim().max(160).refine((value) => normalizeAnswerlatticeKbArticleId(value) === value),
         content: z.unknown().optional(),
         categoryId: z.string().trim().min(1).max(160),
         sectionId: z.string().trim().max(160).optional().default(''),

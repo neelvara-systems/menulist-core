@@ -873,11 +873,12 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
           }
           addMenuLanguageCounters(updateData, sessionMilestones, data, 'view');
           updateData[`viewsByEntrySource.${entrySource}`] = 1;
-          if (data.utm_source) {
-            updateData[`viewsBySource.${data.utm_source}`] = 1;
-          }
-          if (data.utm_medium) updateData[`viewsByMedium.${data.utm_medium}`] = 1;
-          if (data.utm_campaign) updateData[`viewsByCampaign.${data.utm_campaign}`] = 1;
+          const utmSource = normalizeAnalyticsMapKey(data.utm_source);
+          if (utmSource) updateData[`viewsBySource.${utmSource}`] = 1;
+          const utmMedium = normalizeAnalyticsMapKey(data.utm_medium);
+          if (utmMedium) updateData[`viewsByMedium.${utmMedium}`] = 1;
+          const utmCampaign = normalizeAnalyticsMapKey(data.utm_campaign);
+          if (utmCampaign) updateData[`viewsByCampaign.${utmCampaign}`] = 1;
           const utmContent = normalizeAnalyticsMapKey(data.utm_content);
           if (utmContent) updateData[`viewsByContent.${utmContent}`] = 1;
           // T5-N-01: R5 Layer resolution split — lets us measure how often /menu
@@ -1028,11 +1029,12 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData.totalSessions = 1;
         updateData[`viewsByEntrySource.${entrySource}`] = 1;
         addOBPLanguageCounters(updateData, sessionMilestones, data, 'view');
-        if (data.utm_source) {
-          updateData[`viewsBySource.${data.utm_source}`] = 1;
-        }
-        if (data.utm_medium) updateData[`viewsByMedium.${data.utm_medium}`] = 1;
-        if (data.utm_campaign) updateData[`viewsByCampaign.${data.utm_campaign}`] = 1;
+        const obpUtmSource = normalizeAnalyticsMapKey(data.utm_source);
+        if (obpUtmSource) updateData[`viewsBySource.${obpUtmSource}`] = 1;
+        const obpUtmMedium = normalizeAnalyticsMapKey(data.utm_medium);
+        if (obpUtmMedium) updateData[`viewsByMedium.${obpUtmMedium}`] = 1;
+        const obpUtmCampaign = normalizeAnalyticsMapKey(data.utm_campaign);
+        if (obpUtmCampaign) updateData[`viewsByCampaign.${obpUtmCampaign}`] = 1;
         const obpUtmContent = normalizeAnalyticsMapKey(data.utm_content);
         if (obpUtmContent) updateData[`viewsByContent.${obpUtmContent}`] = 1;
         break;

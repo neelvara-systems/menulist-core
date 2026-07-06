@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { LuCopy } from 'react-icons/lu';
 import type { WebsiteResourceSection } from '@/content/websiteResources/types';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { trackPlausibleEvent } from '@lib/website/plausible';
+import { trackGoogleMarketingEvent, trackPlausibleEvent } from '@lib/website/plausible';
 
 interface ArticleSectionProps {
     articleCluster: string;
@@ -18,17 +18,10 @@ interface ArticleSectionProps {
     section: WebsiteResourceSection;
 }
 
-type WebsiteGtagWindow = Window & {
-    gtag?: (...args: unknown[]) => void;
-};
-
 function trackChecklistCopy(articleSlug: string, articleCluster: string, sectionId: string) {
     trackPlausibleEvent('resource_checklist_copy');
 
-    const analyticsWindow = window as WebsiteGtagWindow;
-    if (typeof analyticsWindow.gtag !== 'function') return;
-
-    analyticsWindow.gtag('event', 'resource_checklist_copy', {
+    trackGoogleMarketingEvent('resource_checklist_copy', {
         category: articleCluster,
         checklist_id: sectionId,
         cluster: articleCluster,

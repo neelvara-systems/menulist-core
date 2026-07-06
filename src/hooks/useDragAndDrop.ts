@@ -129,7 +129,7 @@ export const useDragAndDrop = ({
             if (validateFile) {
                 const validation = validateFile(file);
                 if (!validation.valid) {
-                    errors.push(getSafeUiErrorMessage(validation.error, DROP_FILE_FALLBACK_ERROR));
+                    errors.push(getSafeUiErrorMessage(validation.error, DROP_FILE_FALLBACK_ERROR, { allowTrustedPlainText: true }));
                     continue;
                 }
             }

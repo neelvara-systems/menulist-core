@@ -14,6 +14,7 @@ import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { requireAnyStorePermission, requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { buildTestPayload } from "@lib/posSync/payloadFormatter";
+import { normalizePosSyncNumericDocumentId } from "@lib/posSync/posSyncDocumentId";
 import { validatePosSyncWebhookNetworkTarget } from "@lib/posSync/serverWebhookTarget";
 import { generateDeliveryId, signPayload } from "@lib/posSync/signature";
 import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
@@ -27,8 +28,8 @@ import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 
 const schema = z.object({
-    storeId: z.number().positive(),
-    tenantId: z.number().positive(),
+    storeId: z.number().int().positive(),
+    tenantId: z.number().int().positive(),
 });
 
 const WEBHOOK_TIMEOUT_MS = 5_000;
@@ -76,12 +77,18 @@ export const POST = withAuth(async (request, session) => {
     }
 
     const { storeId, tenantId } = validation.data;
+    const tenantScope = normalizePosSyncNumericDocumentId(tenantId);
+    const storeScope = normalizePosSyncNumericDocumentId(storeId);
+    if (!tenantScope || !storeScope) {
+        return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    }
+    const storeDocumentId = storeScope.documentId;
 
     if (!verifyTenantAccess(session, tenantId, storeId, request)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
+    const storeRateLimitHash = hashPublicRateLimitValue(storeDocumentId);
     const rlResult = await checkRateLimit({ key: `pos-test:${storeRateLimitHash}`, limit: 10, window: 60 });
     if (!rlResult.allowed) {
         return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -89,7 +96,8 @@ export const POST = withAuth(async (request, session) => {
 
     try {
         const db = admin.firestore();
-        const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
+        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
+        const storeDoc = await storeRef.get();
         if (!storeDoc.exists) {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
@@ -111,7 +119,6 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
-        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
         const markConnectionIssue = async () => {
             await storeRef.update({
                 'posSync.status': 'connection_issue',

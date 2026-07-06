@@ -78,6 +78,18 @@ Shared input and file validators use `src/lib/security/securityDiagnostics.ts` f
 
 `validateAPIInput()` returns generic `Invalid input` failure text. It must not expose raw Zod issue paths or schema messages through API `details`; routes that need more specific owner copy should return fixed local messages outside the shared validator.
 
+### Owner-visible UI Error Copy Boundary
+
+Shared owner-visible exception copy uses `getSafeUiErrorMessage()` from `src/lib/errors/uiErrorMessages.ts`. By default, this helper returns the fixed fallback copy after applying the length, technical-shape, provider, URL/API, session, authorization, and stack filters. Short plain `Error.message` strings are not displayed unless the caller explicitly passes `{ allowTrustedPlainText: true }`.
+
+Only deterministic local validation-copy sources may opt into `allowTrustedPlainText`. The current allowed opt-ins are custom drag-and-drop file validators and Menu Correctness Engine Publish-Gate validation messages; both still pass through the same technical-shape filters first. DAL, API, provider, Firestore, Auth, payment, Storage, browser fetch, and route exception paths must not opt into trusted plain text. They should keep fixed fallback copy and bounded internal diagnostics.
+
+### CSV Export Output Sanitization
+
+CSV and Excel-style browser exports must route cells through `escapeCSVValue()` from `src/utils/exportUtils.ts`. This helper is the shared CSV export output sanitizer: it preserves numeric values, quotes comma/newline/quote characters, and prefixes spreadsheet-active string cells with a leading apostrophe before CSV quoting.
+
+Do not reimplement private CSV escaping inside feature components. Formula-like string values that start with `=`, `+`, `-`, `@`, tab, carriage return, newline, or those prefixes after leading whitespace must be neutralized before download so customer, owner, support, or analytics text cannot become an executable spreadsheet formula.
+
 ---
 
 ## 🚀 Quick Implementation

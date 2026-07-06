@@ -65,7 +65,7 @@
 | Use returned `addFeedback()` payload for UI | 0 | 0 |
 | **Total** | **0** | **1-2** |
 
-Widget negative-feedback signals dedupe by `searchHistoryId` within the active runtime process to avoid duplicate signal writes from repeated clicks on the same answer.
+Widget negative-feedback signals dedupe by `searchHistoryId` within the active runtime process to avoid duplicate signal writes from repeated clicks on the same answer. Widget feedback validates `searchHistoryId` through the shared Firestore document-ID boundary before updating `aiSearchHistory`.
 
 ### 2.2 Get Latest Feedback (On Page Load)
 

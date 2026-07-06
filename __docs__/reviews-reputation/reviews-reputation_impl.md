@@ -538,6 +538,8 @@ export function classifyReview(
 
 Diagnostics: unexpected read failures log `reviews_states_fetch_failed` through the shared runtime diagnostics helper with tenant/store/user presence-length metadata and source error name/code/status only. The owner response remains generic.
 
+Session boundary: `GET /api/reviews/states` validates session tenant/store IDs with the shared Firestore document-ID guard before limiter keys, `reviewsState` query filters, or bounded diagnostics. The route uses normalized document-ID strings only for hashed limiter key material and preserves the original numeric/string session values for existing `reviewsState` equality filters.
+
 ```typescript
 // Request (query params)
 interface GetReviewStatesParams {

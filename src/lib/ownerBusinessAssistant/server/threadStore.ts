@@ -4,6 +4,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import type { OwnerBusinessAssistantAnswer, OwnerBusinessHealthQuestion } from '../types';
 import type { OwnerBusinessAssistantAnswerRequest } from '../schemas';
+import { normalizeOwnerBusinessAssistantThreadId } from '../threadIdBoundary';
 
 const THREAD_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_MESSAGES_PER_THREAD = 20;
@@ -57,7 +58,9 @@ export async function persistOwnerBusinessAssistantExchange(params: {
     return undefined;
   }
 
-  const threadId = params.request.threadId;
+  const threadId = normalizeOwnerBusinessAssistantThreadId(params.request.threadId);
+  if (!threadId) return undefined;
+
   const tId = String(params.tId);
   const sId = String(params.sId);
   const userId = params.userId ? String(params.userId) : null;

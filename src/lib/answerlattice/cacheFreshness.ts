@@ -8,6 +8,8 @@ import {
     normalizeCacheVersion,
 } from './cacheVersionManifest';
 import { getAnswerlatticeCacheVersionServer } from './cacheVersionServer';
+import { normalizeAnswerlatticeCanonicalAnswerId } from './governanceIdBoundary';
+import { normalizeAnswerlatticeKbArticleId } from './kbArticleIdBoundary';
 
 const FRESHNESS_CLOCK_SKEW_MS = 1000;
 
@@ -62,7 +64,8 @@ export const isCachedCanonicalAnswerFresh = async ({
     sourceVersions,
     currentSourceVersions,
 }: CanonicalFreshnessInput): Promise<boolean> => {
-    if (!canonicalAnswerId || !cachedAtMs) return false;
+    const normalizedCanonicalAnswerId = normalizeAnswerlatticeCanonicalAnswerId(canonicalAnswerId);
+    if (!normalizedCanonicalAnswerId || !cachedAtMs) return false;
 
     const manifestFresh = await isVersionManifestFresh(
         ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
@@ -75,7 +78,7 @@ export const isCachedCanonicalAnswerFresh = async ({
 
     const doc = await firestoreAdmin
         .collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
-        .doc(canonicalAnswerId)
+        .doc(normalizedCanonicalAnswerId)
         .get();
 
     if (!doc.exists) return false;
@@ -102,7 +105,7 @@ const isCachedArticleReferenceFresh = async (
     sId: number,
     cachedAtMs: number,
 ): Promise<boolean> => {
-    const articleId = typeof reference?.id === 'string' ? reference.id : '';
+    const articleId = normalizeAnswerlatticeKbArticleId(reference?.id);
     if (!articleId || !cachedAtMs) return false;
 
     const doc = await firestoreAdmin

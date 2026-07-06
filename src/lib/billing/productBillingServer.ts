@@ -7,10 +7,12 @@ import {
     getSubscriptionById as getMenuListSubscriptionById,
     updateSubscription as updateMenuListSubscription,
 } from '@database/subscriptions/server';
+import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { getAnswerlatticeScopedSession, resolveAnswerlatticeSessionScope, canUseAnswerlatticeManagement } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getGracePeriodInfo } from '@util/razorpay';
 import type { MinimalStoreDataType } from '@type/platform/store';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -29,6 +31,22 @@ export type ProductBillingScope = {
     userId: string;
     scopedSession: any;
 };
+
+export type AnswerlatticeBillingScopeDocumentId = {
+    numericId: number;
+    documentId: string;
+};
+
+export function normalizeAnswerlatticeBillingScopeDocumentId(value: unknown): AnswerlatticeBillingScopeDocumentId | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { numericId, documentId }
+        : null;
+}
 
 const isTimestampLike = (value: any) => (
     value
@@ -215,9 +233,12 @@ export const createProductInitialSubscription = async (
         return;
     }
 
+    const subscriptionId = normalizeAnswerlatticeSubscriptionId(providerSubscriptionId);
+    if (!subscriptionId) throw new Error('Invalid Answerlattice subscription id.');
+
     await getBillingFirestoreAdminForProduct(productId)
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-        .doc(providerSubscriptionId)
+        .doc(subscriptionId)
         .set(productDocPayload(productId, data, { isNew: true }));
 };
 
@@ -235,9 +256,12 @@ export const updateProductSubscription = async (
         return;
     }
 
+    const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscriptionId);
+    if (!normalizedSubscriptionId) throw new Error('Invalid Answerlattice subscription id.');
+
     await getBillingFirestoreAdminForProduct(productId)
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-        .doc(subscriptionId)
+        .doc(normalizedSubscriptionId)
         .set(productDocPayload(productId, data), { merge: true });
 };
 
@@ -253,44 +277,52 @@ export const getProductSubscriptionById = async (
         return await getMenuListSubscriptionById(id);
     }
 
+    const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(id);
+    if (!normalizedSubscriptionId) return null;
+
     const docSnap = await getBillingFirestoreAdminForProduct(productId)
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-        .doc(id)
+        .doc(normalizedSubscriptionId)
         .get();
 
     if (!docSnap.exists) return null;
-    return { ...(docSnap.data() as FirestoreSubscriptionDoc), id };
+    return { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
 };
 
 const fetchAnswerlatticeSubscriptionRaw = async (
     tenantId: number,
     storeId: number,
 ): Promise<FirestoreSubscriptionDoc | null> => {
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(tenantId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(storeId);
+    if (!tenantScope || !storeScope) return null;
+
     const db = getBillingFirestoreAdminForProduct(PRODUCT_IDS.ANSWERLATTICE);
     const collectionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
-    const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
+    const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();
     const subscriptionSummary = storeSnap.exists ? storeSnap.data()?.answerlatticeSubscription : null;
-    const summarySubscriptionId = String(subscriptionSummary?.id || subscriptionSummary?.providerSubscriptionId || '').trim();
+    const rawSummarySubscriptionId = String(subscriptionSummary?.id || subscriptionSummary?.providerSubscriptionId || '').trim();
+    const summarySubscriptionId = normalizeAnswerlatticeSubscriptionId(rawSummarySubscriptionId);
 
     if (summarySubscriptionId) {
         const subscriptionSnap = await collectionRef.doc(summarySubscriptionId).get();
         if (subscriptionSnap.exists) {
-            const subscription = normalizeAnswerlatticeSubscription(subscriptionSnap.data() || {}, subscriptionSnap.id, tenantId, storeId);
-            if (isAnswerlatticeSubscriptionForScope(subscription, tenantId, storeId) && isCurrentAnswerlatticeSubscription(subscription)) {
+            const subscription = normalizeAnswerlatticeSubscription(subscriptionSnap.data() || {}, subscriptionSnap.id, tenantScope.numericId, storeScope.numericId);
+            if (isAnswerlatticeSubscriptionForScope(subscription, tenantScope.numericId, storeScope.numericId) && isCurrentAnswerlatticeSubscription(subscription)) {
                 return subscription;
             }
         }
     }
 
     const fallbackSnapshot = await collectionRef
-        .where('tenantId', '==', tenantId)
-        .where('storeId', '==', storeId)
+        .where('tenantId', '==', tenantScope.numericId)
+        .where('storeId', '==', storeScope.numericId)
         .limit(10)
         .get();
 
     return fallbackSnapshot.docs
-        .map((docSnap) => normalizeAnswerlatticeSubscription(docSnap.data(), docSnap.id, tenantId, storeId))
-        .filter((subscription) => isAnswerlatticeSubscriptionForScope(subscription, tenantId, storeId))
+        .map((docSnap) => normalizeAnswerlatticeSubscription(docSnap.data(), docSnap.id, tenantScope.numericId, storeScope.numericId))
+        .filter((subscription) => isAnswerlatticeSubscriptionForScope(subscription, tenantScope.numericId, storeScope.numericId))
         .filter(isCurrentAnswerlatticeSubscription)
         .sort((a, b) => toMillis(b.cycleEndDate) - toMillis(a.cycleEndDate))[0] || null;
 };
@@ -393,15 +425,19 @@ export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
     subscription: FirestoreSubscriptionDoc,
     source: string,
 ): Promise<void> => {
-    const storeId = String(subscription.storeId || '').trim();
-    if (!storeId) return;
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(subscription.storeId ?? subscription.sId);
+    if (!storeScope) return;
 
     const db = getBillingFirestoreAdminForProduct(PRODUCT_IDS.ANSWERLATTICE);
     const syncedAt = admin.firestore.FieldValue.serverTimestamp();
     const activePlanType = getActivePlanTypeForSubscription(subscription);
+    const subscriptionId = normalizeAnswerlatticeSubscriptionId(subscription.id || subscription.providerSubscriptionId);
+    if (!subscriptionId) return;
+
+    const providerSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscription.providerSubscriptionId || subscription.id);
     const subscriptionSummary = {
-        id: subscription.id || subscription.providerSubscriptionId,
-        providerSubscriptionId: subscription.providerSubscriptionId || subscription.id || null,
+        id: subscriptionId,
+        providerSubscriptionId: providerSubscriptionId || subscriptionId,
         planId: subscription.planId || null,
         planName: subscription.planName || null,
         status: subscription.status || null,
@@ -417,21 +453,19 @@ export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
     };
 
     await Promise.all([
-        db.collection(DB_COLLECTIONS.STORES).doc(storeId).set({
+        db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).set({
             activePlanType,
             answerlatticeSubscription: subscriptionSummary,
             answerlatticeBillingUpdatedAt: syncedAt,
         }, { merge: true }),
-        subscription.id
-            ? db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscription.id).set({
-                analyticsEntitlement: {
-                    activePlanType,
-                    status: subscription.status || null,
-                    syncedAt,
-                    source,
-                },
-            }, { merge: true })
-            : Promise.resolve(),
+        db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({
+            analyticsEntitlement: {
+                activePlanType,
+                status: subscription.status || null,
+                syncedAt,
+                source,
+            },
+        }, { merge: true }),
     ]);
 };
 

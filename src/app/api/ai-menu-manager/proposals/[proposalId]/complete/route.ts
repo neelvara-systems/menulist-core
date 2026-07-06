@@ -11,6 +11,7 @@ import {
     buildAiMenuManagerInvalidRequestResponse,
     resolveAiMenuManagerSelectedStoreScope,
 } from '@lib/ai-menu-manager/apiGuards';
+import { normalizeAiMenuManagerProposalId } from '@lib/ai-menu-manager/routeIds';
 import { AiMenuManagerProposalCompleteSchema } from '@lib/ai-menu-manager/schemas';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -28,7 +29,7 @@ export const POST = withAuth(async (
         return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
     }
 
-    const proposalId = params?.proposalId;
+    const proposalId = normalizeAiMenuManagerProposalId(params?.proposalId);
     if (!proposalId) {
         return NextResponse.json({ error: 'Invalid proposal' }, { status: 400 });
     }

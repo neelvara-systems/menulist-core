@@ -12,7 +12,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { getBrandStoreLabel } from "@lib/businessIdentity/names";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
-import { apiError, buildPullApiResponseHeaders, generateETag, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
+import { apiError, buildPullApiResponseHeaders, generateETag, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, normalizeMenuListPublicApiNumericId, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getBoundedSecurityStringContext, logSecurityFailure } from "@lib/security/securityDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
@@ -66,12 +66,17 @@ export async function GET(request: NextRequest) {
         }
 
         const { storeData, storeId } = result;
+        const storeNumericId = normalizeMenuListPublicApiNumericId(storeId);
+        if (storeNumericId == null) {
+            return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+        }
+        const storeDocumentId = String(storeNumericId);
         if (!(await isMenuListPublicApiTargetAllowed(storeData))) {
             return apiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
         failureContext = {
             ...failureContext,
-            ...getBoundedSecurityStringContext('storeId', storeId),
+            ...getBoundedSecurityStringContext('storeId', storeDocumentId),
         };
 
         const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
@@ -94,13 +99,13 @@ export async function GET(request: NextRequest) {
             : null;
 
         // Abuse logging
-        logApiRequest(request, storeId, 'GET /business');
+        logApiRequest(request, storeDocumentId, 'GET /business');
 
         // Build business details response
         const response: Record<string, any> = {
             schemaVersion: PULL_API_SCHEMA_VERSION,
             generatedAt: new Date().toISOString(),
-            storeId: Number(storeId),
+            storeId: storeNumericId,
             name: publicName || null,
             businessType: storeData.businessType || null,
             description: publicDescription || null,

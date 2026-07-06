@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import {
     handlePublicApiCorsPreflight,
@@ -34,7 +35,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const FeedbackRequestSchema = z.object({
-    searchHistoryId: z.string().trim().min(1).max(180),
+    searchHistoryId: z.string().trim().max(180).refine((value) => normalizeAnswerlatticeSearchHistoryId(value) === value),
     isGood: z.boolean(),
 });
 const WIDGET_FEEDBACK_MAX_BODY_BYTES = 2 * 1024;

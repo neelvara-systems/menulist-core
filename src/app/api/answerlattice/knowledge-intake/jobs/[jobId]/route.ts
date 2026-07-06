@@ -4,6 +4,7 @@ import {
     getKnowledgeIntakeBundle,
     serializeIntakeValue,
 } from '@lib/answerlattice/knowledgeIntake';
+import { normalizeAnswerlatticeKnowledgeIntakeJobId } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import { logAnswerlatticeKnowledgeIntakeFailure } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
@@ -14,11 +15,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
 export const GET = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
+    const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
+    if (!jobId) {
+        return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
+    }
+
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session);
     if (access.response) return access.response;
 
     try {
-        const bundle = await getKnowledgeIntakeBundle(access.context.scope, params.jobId);
+        const bundle = await getKnowledgeIntakeBundle(access.context.scope, jobId);
         return NextResponse.json({ bundle: serializeIntakeValue(bundle) }, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch (error) {
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);

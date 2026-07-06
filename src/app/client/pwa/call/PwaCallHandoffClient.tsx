@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { detectAndTrackShortcutLaunch } from '@lib/pwa/shortcutSourceDetector';
+import { getSafePwaTelUrl } from '../shortcutHandoffUrl';
 
 interface Props {
     storeId: string | number;
@@ -31,19 +32,25 @@ export default function PwaCallHandoffClient({
     locationTrackingEnabled = true,
 }: Props) {
     const [ready, setReady] = useState(false);
+    const safeTelUrl = getSafePwaTelUrl(telUrl);
 
     useEffect(() => {
+        if (!safeTelUrl) {
+            setReady(true);
+            return;
+        }
+
         // Fire-and-forget analytics; never block the redirect.
         void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         // Give the event a tick to leave before navigating away.
         const t = window.setTimeout(() => {
-            window.location.replace(telUrl);
+            window.location.replace(safeTelUrl);
         }, 80);
 
         setReady(true);
         return () => window.clearTimeout(t);
-    }, [storeId, tenantId, telUrl, trackingEnabled, locationTrackingEnabled]);
+    }, [storeId, tenantId, safeTelUrl, trackingEnabled, locationTrackingEnabled]);
 
     return (
         <div
@@ -64,13 +71,15 @@ export default function PwaCallHandoffClient({
                 Calling {storeName}…
             </h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-                {ready ? 'Opening your phone…' : 'Preparing…'}
+                {ready ? (safeTelUrl ? 'Opening your phone…' : 'This shortcut is unavailable.') : 'Preparing…'}
             </p>
-            <noscript>
-                <p style={{ marginTop: 16 }}>
-                    <a href={telUrl}>Tap to call</a>
-                </p>
-            </noscript>
+            {safeTelUrl ? (
+                <noscript>
+                    <p style={{ marginTop: 16 }}>
+                        <a href={safeTelUrl}>Tap to call</a>
+                    </p>
+                </noscript>
+            ) : null}
         </div>
     );
 }

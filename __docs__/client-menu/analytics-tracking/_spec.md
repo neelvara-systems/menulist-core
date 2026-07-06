@@ -191,6 +191,8 @@ Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_
 }
 ```
 
+UTM map-key boundary: Menu and OBP analytics keep `utm_source`, `utm_medium`, `utm_campaign`, and `utm_content` as intentional campaign-link inputs only after normalizing each value through the analytics map-key guard. Values that normalize to an empty key are skipped, so public query text cannot become a raw Firestore field-path suffix.
+
 ### Summary Document
 
 **Path:** `analytics/{tId}_{sId}_{projectId}_overall_summary`
@@ -273,7 +275,7 @@ Total: ~₹183/month
 | Facebook Pixel     | `FacebookPixel.tsx`     | PageView, ViewContent |
 | Enhanced Ecommerce | `EnhancedEcommerce.tsx` | Product tracking      |
 
-Google Analytics and Meta Pixel are owner-provided external scripts. MenuList loads them only when the owner saves the corresponding ID in Analytics Settings. These third-party tools may read intentional campaign parameters (`utm_source`, `utm_medium`, `utm_campaign`) from the public URL, but MenuList internal source attribution uses `entry_source`. Normal MenuList share links do not need a UTM toggle; removing the saved GA4 / Meta Pixel ID stops that external script from loading.
+Google Analytics and Meta Pixel are owner-provided external scripts. MenuList loads them only when the owner saves a valid corresponding ID in Analytics Settings: GA4 IDs must match `G-[A-Z0-9]+`, and Meta Pixel IDs must be numeric with 5 to 32 digits. Malformed saved values behave like absent IDs and load no third-party script. These third-party tools may read intentional campaign parameters (`utm_source`, `utm_medium`, `utm_campaign`) from the public URL, but MenuList internal source attribution uses `entry_source`. Normal MenuList share links do not need a UTM toggle; removing the saved GA4 / Meta Pixel ID stops that external script from loading.
 
 ---
 

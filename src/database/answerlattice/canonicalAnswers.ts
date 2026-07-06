@@ -17,6 +17,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, query, setDoc, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { normalizeAnswerlatticeCanonicalAnswerId, normalizeAnswerlatticeResolvedEntityId, normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
@@ -27,7 +28,11 @@ import { AnswerlatticeCanonicalAnswer } from "@type/answerlattice";
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS;
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
-const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
+const getDocRef = (docId: string) => {
+    const normalizedDocId = normalizeAnswerlatticeCanonicalAnswerId(docId);
+    if (!normalizedDocId) throw new Error('Invalid canonical answer id');
+    return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);
+};
 
 const resolveAnswerScope = async (
     data?: Partial<AnswerlatticeCanonicalAnswer> | null,
@@ -39,8 +44,9 @@ const resolveAnswerScope = async (
         return { tId: dataTId, sId: dataSId };
     }
 
-    if (answerId) {
-        const docSnap = await getDoc(getDocRef(answerId));
+    const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answerId);
+    if (normalizedAnswerId) {
+        const docSnap = await getDoc(getDocRef(normalizedAnswerId));
         if (docSnap.exists()) {
             const existing = docSnap.data() as Partial<AnswerlatticeCanonicalAnswer>;
             const existingTId = Number(existing.tId);
@@ -59,14 +65,19 @@ const bumpCanonicalAnswerVersion = async (
     reason: string,
     answerId?: string,
 ) => {
-    const scope = await resolveAnswerScope(data, answerId);
+    const normalizedAnswerId = answerId === undefined ? undefined : normalizeAnswerlatticeCanonicalAnswerId(answerId);
+    if (answerId !== undefined && !normalizedAnswerId) {
+        throw new Error('Invalid canonical answer id');
+    }
+
+    const scope = await resolveAnswerScope(data, normalizedAnswerId);
     if (!scope) {
         throw new Error('Cannot update Answerlattice canonical cache version without tenant and store scope.');
     }
 
     await bumpAnswerlatticeCacheVersion(ANSWERLATTICE_CACHE_SOURCES.CANONICAL, scope.tId, scope.sId, {
         reason,
-        sourceId: answerId,
+        sourceId: normalizedAnswerId,
         sourceType: 'canonical_answer',
     });
 };
@@ -101,11 +112,14 @@ export const getCanonicalAnswers = async (tId: number, sId: number) => {
 export const getActiveAnswersForEntity = async (tId: number, sId: number, entityId: string) => {
     return await apiCallComposer(
         async () => {
+            const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
+            if (!normalizedEntityId) return [];
+
             const q = query(
                 getCollectionRef(),
                 where('tId', '==', tId),
                 where('sId', '==', sId),
-                where('scope.entityIds', 'array-contains', entityId),
+                where('scope.entityIds', 'array-contains', normalizedEntityId),
                 where('status', '==', 'active'),
                 limit(200)
             );
@@ -150,7 +164,10 @@ export const getDriftedAnswers = async (tId: number, sId: number) => {
 export const getCanonicalAnswerById = async (answerId: string) => {
     return await apiCallComposer(
         async () => {
-            const docSnap = await getDoc(getDocRef(answerId));
+            const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answerId);
+            if (!normalizedAnswerId) return null;
+
+            const docSnap = await getDoc(getDocRef(normalizedAnswerId));
             if (docSnap.exists()) {
                 return { ...docSnap.data(), id: docSnap.id } as AnswerlatticeCanonicalAnswer;
             }
@@ -167,18 +184,26 @@ export const getCanonicalAnswerById = async (answerId: string) => {
 export const addCanonicalAnswer = async (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            if (!data.scope?.entityIds || data.scope.entityIds.length === 0) {
+            const entityIds = normalizeAnswerlatticeResolvedEntityIds(data.scope?.entityIds, 25);
+            if (entityIds.length === 0) {
                 throw new Error('CanonicalAnswer requires at least one entityId in scope');
             }
+            const canonicalData = {
+                ...data,
+                scope: {
+                    ...data.scope,
+                    entityIds,
+                },
+            };
             // Guided Workflows: validate procedure structure at write-time
-            if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS && data.content?.procedure) {
-                normalizeStepOrder(data.content.procedure);
-                const validation = validateProcedure(data.answerType, data.content.procedure);
+            if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS && canonicalData.content?.procedure) {
+                normalizeStepOrder(canonicalData.content.procedure);
+                const validation = validateProcedure(canonicalData.answerType, canonicalData.content.procedure);
                 if (!validation.valid) {
                     throw new Error(`Procedure validation failed: ${validation.errors.join('; ')}`);
                 }
             }
-            const submitData = await answerlatticeRequestBodyComposer(data);
+            const submitData = await answerlatticeRequestBodyComposer(canonicalData);
             await bumpCanonicalAnswerVersion(submitData as Partial<AnswerlatticeCanonicalAnswer>, 'canonical_answer_create');
             const docRef = await addDoc(getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as AnswerlatticeCanonicalAnswer;
@@ -195,21 +220,25 @@ export const addCanonicalAnswer = async (data: Omit<AnswerlatticeCanonicalAnswer
 export const updateCanonicalAnswer = async (data: Partial<AnswerlatticeCanonicalAnswer> & { id: string }) => {
     return await apiCallComposer(
         async () => {
+            const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(data.id);
+            if (!normalizedAnswerId) throw new Error('Invalid canonical answer id');
+
+            const canonicalData = { ...data, id: normalizedAnswerId };
             // Guided Workflows: validate procedure structure at write-time
-            if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS && data.content?.procedure) {
-                normalizeStepOrder(data.content.procedure);
-                const validation = validateProcedure(data.answerType, data.content.procedure);
+            if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS && canonicalData.content?.procedure) {
+                normalizeStepOrder(canonicalData.content.procedure);
+                const validation = validateProcedure(canonicalData.answerType, canonicalData.content.procedure);
                 if (!validation.valid) {
                     throw new Error(`Procedure validation failed: ${validation.errors.join('; ')}`);
                 }
             }
-            const composedData = await answerlatticeRequestBodyComposer(data);
+            const composedData = await answerlatticeRequestBodyComposer(canonicalData);
             await bumpCanonicalAnswerVersion(
                 composedData as Partial<AnswerlatticeCanonicalAnswer>,
                 'canonical_answer_update',
-                data.id,
+                normalizedAnswerId,
             );
-            await setDoc(getDocRef(data.id), composedData, { merge: true });
+            await setDoc(getDocRef(normalizedAnswerId), composedData, { merge: true });
             return composedData;
         },
         data,
@@ -224,14 +253,17 @@ export const updateAnswerGovernance = async (
     answerId: string,
     governance: AnswerlatticeCanonicalAnswer['governance']
 ) => {
+    const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answerId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedAnswerId) throw new Error('Invalid canonical answer id');
+
             const composedData = await answerlatticeRequestBodyComposer({ governance });
-            await bumpCanonicalAnswerVersion(null, 'canonical_answer_governance_update', answerId);
-            await setDoc(getDocRef(answerId), composedData, { merge: true });
+            await bumpCanonicalAnswerVersion(null, 'canonical_answer_governance_update', normalizedAnswerId);
+            await setDoc(getDocRef(normalizedAnswerId), composedData, { merge: true });
             return composedData;
         },
-        { answerId, governance },
+        { answerId: normalizedAnswerId, governance },
         "updateAnswerGovernance"
     );
 };
@@ -243,14 +275,17 @@ export const updateAnswerSignalMetrics = async (
     answerId: string,
     signalMetrics: AnswerlatticeCanonicalAnswer['signalMetrics']
 ) => {
+    const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answerId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedAnswerId) throw new Error('Invalid canonical answer id');
+
             const composedData = await answerlatticeRequestBodyComposer({ signalMetrics });
-            await bumpCanonicalAnswerVersion(null, 'canonical_answer_signal_update', answerId);
-            await setDoc(getDocRef(answerId), composedData, { merge: true });
+            await bumpCanonicalAnswerVersion(null, 'canonical_answer_signal_update', normalizedAnswerId);
+            await setDoc(getDocRef(normalizedAnswerId), composedData, { merge: true });
             return composedData;
         },
-        { answerId, signalMetrics },
+        { answerId: normalizedAnswerId, signalMetrics },
         "updateAnswerSignalMetrics"
     );
 };

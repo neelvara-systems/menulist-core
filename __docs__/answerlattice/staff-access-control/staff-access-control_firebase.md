@@ -1,7 +1,7 @@
 # Answerlattice Staff Access Control Firebase Notes
 
 > Status: Implemented
-> Last updated: 2026-06-30
+> Last updated: 2026-07-05
 
 ## Firestore Writes
 
@@ -30,6 +30,8 @@ Owner-triggered reset/sign-out operations revoke default Firebase refresh tokens
 Staff client request/response validation adds no Firestore reads, writes, deletes, rules, indexes, Auth operations, or Cloud Function work. The browser caller uses no-store cache, same-origin credentials, and manual redirect handling before rejecting malformed, oversized, rejected, or wrong-shape responses before Team Access treats staff or role actions as loaded/saved. The shared Answerlattice access provider now applies the same browser request policy and a 64 KB bounded response guard to `/api/answerlattice/access`; this changes no access-context Firestore reads or role backfill writes beyond the existing route behavior.
 
 Staff setup email provider hardening adds no Firestore reads, writes, deletes, rules, indexes, Auth operations beyond the existing valid Firebase Auth setup-email request, Cloud Function work, or browser API calls. The provider call now has a timeout and bounded provider diagnostics, and failures continue to return the existing `password_reset_email_failed` marker while staff creation remains acknowledged.
+
+Answerlattice staff user ID boundary: staff update/remove/reset/sign-out now reject malformed, reserved, or path-shaped `userId` values before `users/{userId}` reads. Staff create and default-auth bridge writes also validate the derived user document IDs before writing. This is an admission guard only; valid staff mutations keep the same Firestore read/write shape.
 
 ## Deploy
 

@@ -221,6 +221,8 @@ The index stores summary metadata only. The full reusable pack/editor document l
 
 When the owner saves a reusable pack from an active non-CueLayers editor session, CampaignCue stores the current `CreativeEditorDocument` as the optional editor document artifact. CueLayers reuse documents are not automatically saved as generic pack templates because the original image preservation and safety metadata belong to the CueLayers source package.
 
+Workspace template Storage cleanup is best-effort but not silent. If a save uploads new payload/editor/preview artifacts and the index write later fails, CampaignCue attempts to delete only newly-created artifacts that do not belong to the previous saved template record. If an owner deletes a saved template, CampaignCue first removes the visible index record and then attempts to delete the payload/editor/preview artifacts. Missing Storage objects are treated as already-cleaned state, while unexpected delete failures log bounded `campaigncue_workspace_template_storage_cleanup_failed` diagnostics with cleanup target plus storage path, template id, and workspace id presence-length metadata only.
+
 ## Security
 
 | Surface | Requirement |

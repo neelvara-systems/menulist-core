@@ -32,6 +32,7 @@
 | `stores`                 | 0 READ / 0 WRITE | Widget key copy after creation is intentionally unavailable; operators create a replacement key if the raw value is lost | $0.00 |
 | `aiSearchHistory`        | 0-12 READS | `/api/answerlattice/widget-activity` recent widget questions panel in `/answerlattice/widget`; protected tenant/store read after the shared `DATA_READ` gate | Rate-limited refreshes perform no search-history reads |
 | Browser request/response validation | 0 READ / 0 WRITE | Widget Management uses no-store, same-origin, manual-redirect request policy and validates widget-config, widget-activity, widget-key, and hosted-help settings response bodies before local UI state changes | $0.00 |
+| Widget activity timestamp normalization | 0 READ / 0 WRITE | `/api/answerlattice/widget-activity` accepts Firestore Timestamp-like values and canonical ISO `...Z` strings only when sorting fallback rows or serializing `createdAt`; malformed stored values become `null`/oldest instead of permissive parsed dates | $0.00 |
 | Public iframe response validation | 0 READ / 0 WRITE | WidgetClient validates widget search responses in the browser before rendering assistant messages; feedback request policy changes stay browser-local | $0.00 |
 
 ## No New Collections

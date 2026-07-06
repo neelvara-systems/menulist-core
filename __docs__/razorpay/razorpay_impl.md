@@ -1,7 +1,7 @@
 # Razorpay Payment System — Complete Technical Reference
 
 **For:** Developers, Founder, CEO, Co-Founder
-**Last Updated:** July 1, 2026
+**Last Updated:** July 6, 2026
 **Status:** Implemented and billing-slice audited — full MenuList production certification still pending
 **Codebase:** Single source of truth. Every claim links to exact file:line.
 
@@ -21,7 +21,7 @@ June 11, 2026 audit corrections:
 - Browser billing route responses in `usePaymentHandler` now pass through `readPaymentResponseJson()`, which uses `readJsonResponseWithLimit()` with a 32KB cap. Malformed or oversized create, cancel, pause, resume, upgrade, top-up, onboarding, and verification responses log `payment_response_parse_failed` with status/OK/max-byte metadata plus bounded plan/pack/subscription context only, then continue through fixed generic failure codes. Successful subscription, top-up order, and onboarding responses are shape-checked before checkout opens or session state updates. Cancel, pause, resume, and upgrade responses must also parse as `{ success: true }` before owner success copy or follow-up state refresh can continue.
 - Browser payment verification acknowledgements are shape-checked before checkout success resolves. `/api/razorpay/verify-subscription` must return `{ success: true, status: "active" }`, and `/api/razorpay/verify-topup` must return `{ success: true, newCreditBalance: number }`; malformed 2xx responses fail through fixed payment verification failure codes.
 - Authenticated Razorpay route `logger.security()` events use `getBoundedRazorpaySecurityContext()` instead of raw `buildSecurityContext()` output. Validation failure `attemptedData`, billing-permission failures, signature failures, tenant/store mismatches, and mutation mismatch breadcrumbs record identifier presence/length metadata instead of raw user IDs, emails, tenant/store IDs, request IP/user-agent values, product/plan/pack IDs, subscription IDs, order IDs, or payment IDs.
-- Authenticated MenuList billing mutations use `canManageBillingMutation()` to fail closed for missing store/tenant/role context, cross-tenant stores, inactive stores, soft-deleted stores, and platform-blocked stores before subscription, top-up, cancellation, pause, resume, or upgrade mutations proceed.
+- Authenticated MenuList billing mutations use `canManageBillingMutation()` to fail closed for missing store/tenant/role context, cross-tenant stores, inactive stores, soft-deleted stores, and platform-blocked stores before subscription, top-up, cancellation, pause, resume, or upgrade mutations proceed. `normalizeBillingMutationScopeDocumentId()` validates the session tenant/store scope before the shared billing authorization helper reads `stores/{storeId}`; malformed, reserved, path-shaped, whitespace-mutated, decimal, zero, negative, unsafe, or nonnumeric scope IDs stop before the store read or provider work.
 - Website pricing, website credit packs, desktop billing, subscription self-service, and mobile billing callers now use the same bounded payment diagnostics for payment failures. They do not direct-console or raw-log checkout/store-switch/history/refetch errors, and owner-visible payment failure messages stay generic.
 - Desktop and mobile retry-payment and invoice links now open through guarded `noopener,noreferrer` browser handoffs. Blocked opens log bounded URL presence/length and invoice/subscription context only.
 - Server-side plan creation and entitlement sync diagnostics are bounded. Razorpay plan lookup/create logs use lookup/provider-plan presence and length metadata only, no longer emit normal-path plan-search debug breadcrumbs, throw fixed local failure text, and store source error name/code/status only in diagnostics. MenuList entitlement sync failures use `billing_store_plan_entitlement_sync_failed` with bounded subscription/tenant/store/plan/status/source metadata.
@@ -30,7 +30,14 @@ June 11, 2026 audit corrections:
 - Successful authenticated billing mutations keep lifecycle/internal notification sends fire-and-forget, but failed notification imports/sends now emit bounded `logRazorpayNonBlockingFailure` diagnostics. Verify-subscription, verify-topup, cancel, pause, resume, and upgrade routes log stable notification failure codes plus identifier presence/length metadata only; they do not log raw emails, store names, provider payloads, or raw tenant/store/payment/subscription IDs.
 - Razorpay webhook notification, alert, and failed-status bookkeeping fallbacks also use bounded `logRazorpayNonBlockingFailure` diagnostics. Webhook receipt and duplicate breadcrumbs bound provider event IDs/event keys as presence/length metadata instead of logging raw provider identifiers, and unhandled webhook events keep the local `RAZORPAY_WEBHOOK_UNHANDLED_EVENT` audit row without an extra normal-path debug breadcrumb.
 - Onboarding subscription diagnostics and the shared `handlePaymentError()` helper are bounded. Onboarding validation security breadcrumbs, existing-user attempts, success breadcrumbs, failure logs, and local dev payment logs store stable codes plus identifier presence/length metadata only. Shared Firestore/Razorpay payment-handler logs no longer include raw exception messages, stacks, provider descriptions, or raw user/tenant/store IDs; generic Firestore/Razorpay fallback responses use fixed detail text in every environment.
+- Desktop Billing, mobile Billing, and website subscription management use the shared past-due grace-period display fallback. If a past-due subscription has enough timestamp context, the UI shows the remaining recovery window; if the grace-period timestamp is missing or invalid, it shows fixed recovery copy instead of a misleading countdown.
 - Billing entitlement boundary source gate: `npm run verify:billing-entitlement-boundary`. This locks server-side payment verification, active-subscription top-up gating, checkout response acknowledgement, and entitlement/cache sync source contracts. It is source/docs parity only and does not replace real Razorpay sandbox checkout or webhook smoke.
+- Payment verification rate-limit boundary: `/api/razorpay/verify-subscription` and `/api/razorpay/verify-topup` now run the shared `PAYMENT_VERIFICATION` limiter with HMAC-hashed authenticated user key material before bounded body parsing, checkout signature checks, Razorpay provider fetch/capture calls, subscription/top-up reads, or billing writes. The 20-per-hour user ceiling keeps normal checkout completion, browser retry, and webhook race recovery available while bounding repeated verification attempts.
+- July 5 past-due grace-period display fallback: `src/utils/razorpay.ts` now exposes `getGracePeriodDisplayInfo()`. Desktop Billing, Mobile Billing, and authenticated pricing subscription-management use it so valid `pastDueSinceAt` values keep the normal countdown, while missing or malformed legacy `past_due` docs show fixed "Grace period details unavailable." recovery copy instead of a misleading zero-day countdown. This is UI/source-gate hardening only; it does not change webhook status writes, DAL access logic, reconciliation, provider calls, or billing mutations.
+- MenuList Billing Subscription Document ID Boundary: `src/lib/billing/subscriptionDocumentIdBoundary.ts` validates subscription document IDs before server/client subscription DAL refs, AI capacity reset/consume refs, entitlement sync mirror writes, and top-up verification refs. Valid Razorpay `sub_...` IDs keep the same path and Firestore read/write shape; malformed, reserved, empty, or path-shaped IDs fail or return null before Firestore document refs.
+- MenuList Billing Subscription Scope Document ID Boundary: `src/database/subscriptions/server.ts` validates tenant/store subscription scope with the shared Firestore document ID guard and exact positive numeric admission before subscription queries or the outlet-to-master fallback `tenants/{tenantId}` read. Valid numeric tenant/store scope keeps the same direct subscription lookup and master-store fallback behavior; malformed, reserved, empty, whitespace-mutated, decimal, zero, negative, unsafe, nonnumeric, or path-shaped scope IDs return no active subscription before Firestore refs.
+- MenuList Top-Up Order Document ID Boundary: `src/lib/billing/topupDocumentIdBoundary.ts` validates Razorpay `order_...` document IDs before `topups/{orderId}` pending writes, idempotency reads, and paid audit writes. Valid order IDs keep the same pending/paid audit path and duplicate-verification behavior; malformed, reserved, empty, or path-shaped IDs fail before top-up document refs.
+- MenuList Top-Up Scope Document ID Boundary: `normalizeBillingTopupScopeDocumentId()` validates the resolved billing tenant/store scope before top-up rate limits, Razorpay order creation, provider-note comparisons, active-subscription lookup, Answerlattice store-summary mirror refs, and paid top-up writes. Valid numeric tenant/store scopes keep the same billing behavior; malformed, reserved, empty, whitespace-mutated, decimal, zero, negative, unsafe, or path-shaped scope IDs fail before provider or Firestore work.
 
 ---
 
@@ -143,7 +150,7 @@ June 11, 2026 audit corrections:
 | `src/lib/razorpay/razorpay.ts`          | Razorpay SDK singleton client                                 | 18    |
 | `src/lib/razorpay/plan-handler.ts`      | `getOrCreateRazorpayPlan()` — dedup plans by lookup key       | 130   |
 | `src/lib/razorpay/webhook-validator.ts` | HMAC-SHA256 signature validation with timing-safe compare     | 94    |
-| `src/utils/razorpay.ts`                 | `getGracePeriodInfo()`, `calculateRemainingCredits()`         | 74    |
+| `src/utils/razorpay.ts`                 | `getGracePeriodInfo()`, `getGracePeriodDisplayInfo()`, `calculateRemainingCredits()` | 133   |
 | `src/lib/ai/capacityCheck.ts`           | `checkAICapacity()`, `consumeAICapacity()`, lazy credit reset | 202   |
 
 ### Frontend Diagnostics
@@ -781,7 +788,7 @@ BACKEND (create-topup-order):
    - amount: pack price
    - currency
    - notes: { tenantId, storeId, userId, packId, creditAmount, packName, price }
-8. Write `topups/{orderId}` as `pending`
+8. Normalize the Razorpay order ID through `src/lib/billing/topupDocumentIdBoundary.ts`, then write `topups/{orderId}` as `pending`
 9. Return { order }
 
 FRONTEND (continued):
@@ -794,7 +801,7 @@ BACKEND (verify-topup):
 13. withAuth() + verifyTenantAccess() + canManageSubscription
 14. Zod validation (VerifyTopupRequestSchema)
 15. Verify Razorpay checkout signature
-16. Read `topups/{orderId}` for idempotency
+16. Normalize the checkout order ID through `src/lib/billing/topupDocumentIdBoundary.ts`, then read `topups/{orderId}` for idempotency
 17. Fetch order and validate tenant/store notes
 18. Fetch payment: razorpayClient.payments.fetch(payment_id)
 19. If payment.status === "authorized" → programmatic capture:
@@ -895,11 +902,15 @@ When `getActiveSubscriptionForStore()` finds a subscription with `pastDueSinceAt
 
 ### Utility Function
 
-**File:** `src/utils/razorpay.ts:4-32` → `getGracePeriodInfo()`
+**File:** `src/utils/razorpay.ts` → `getGracePeriodInfo()` and `getGracePeriodDisplayInfo()`
 
 ```typescript
 getGracePeriodInfo(pastDueTimestamp, graceDays = 7)
 → Returns: { remainingDays, graceEndsDate, graceEndsTimestamp }
+
+getGracePeriodDisplayInfo(pastDueTimestamp, graceDays = 7)
+→ Returns known countdown metadata when pastDueSinceAt exists
+→ Returns fixed "Payment recovery" / "Grace period details unavailable." fallback metadata when it does not
 ```
 
 ### Frontend Display
@@ -909,8 +920,9 @@ getGracePeriodInfo(pastDueTimestamp, graceDays = 7)
 When `past_due`:
 
 - Tag shows "Payment Failed" (warning color)
-- Grace period countdown: "X days left"
-- Warning message: "Your last payment attempt failed..."
+- Grace period countdown: "X days left" when `pastDueSinceAt` is known.
+- Grace-period fallback: fixed "Grace period details unavailable." recovery copy when a legacy or malformed `past_due` doc has no `pastDueSinceAt`.
+- Warning message: "Your last payment attempt failed..." followed by either known countdown recovery copy or the fixed unavailable fallback.
 - Action buttons: "Cancel Subscription" + "Retry Payment" (links to Razorpay short_url)
 - Webhook status remarks use fixed local text such as "Payment failed" or "Payment retry pending"; raw Razorpay `error_description` / `error_reason` values stay out of subscription history and platform alert messages.
 

@@ -11,6 +11,12 @@ July 4, 2026 account/link boundary correction:
 - Active reseller onboarding creates the tenant/store account, owner access, subscription state, dashboard link, and public customer link handoff.
 - It does not upload menu files or run menu extraction inside `/api/reseller/onboard`; menu content is added through the standard owner dashboard and import/review flows after account handoff.
 
+July 5, 2026 monthly-summary query boundary:
+
+- Missing `month` still uses the current India month for `/api/reseller/monthly-summary`.
+- Malformed or impossible explicit `month` query values now return `400` before monthly transaction/profile reads.
+- Accepted explicit months must be calendar-valid `YYYY-MM` values from 2020 through 2100.
+
 July 2, 2026 source-gate correction:
 
 - `npm run verify:reseller-dashboard-boundary` now locks reseller route admission order, platform/reseller role separation, hashed read/write rate-limit keys, bounded request/response parsing, offline/manual entitlement sync, online-provider failure compensation, desktop/mobile shell parity, and docs parity.
@@ -28,6 +34,7 @@ June 29, 2026 runtime corrections:
 - The shared reseller dashboard hook now reads profile, client-list, and monthly-summary responses through a 64KB bounded JSON parser. Those browser reads use `no-store`, same-origin credentials, and manual redirect handling before response parsing. Malformed, oversized, redirected, or invalid successful responses log `reseller_dashboard_response_parse_failed` or `reseller_dashboard_response_invalid` with phase/status metadata only and fail through fixed local load errors.
 - Desktop and mobile platform reseller management now send `/api/reseller/manage` and `/api/reseller/monthly-summary` requests with the shared reseller request policy before reading responses through a 64KB bounded JSON parser. Successful profile-list, monthly-summary, and save acknowledgements must match the route contract before management UI state updates.
 - Reseller management update acknowledgements must return the same `profileId` as the edited profile before desktop or mobile management closes the editor or shows saved success. Create acknowledgements still require a non-empty returned `profileId` and `action: "created"`.
+- July 5, 2026 profile-id boundary: Platform reseller management validates update `profileId` through the shared Firestore document-ID boundary before reseller profile lookup, Firebase Auth sync, or profile merge work.
 - Desktop and mobile reseller onboarding now send `/api/reseller/onboard` requests with the shared reseller request policy before reading acknowledgements through a 16KB bounded JSON parser. Successful responses must include store, tenant, subscription, and status fields before the returned login/link details are rendered.
 - Desktop and mobile add-location capacity actions now send `/api/reseller/add-location-capacity` requests with the shared reseller request policy before reading acknowledgements through an 8KB bounded JSON parser. Successful responses must include `success: true`, numeric positive `amountExpected`, the requested store id, the requested tenant id, and the requested location count before the UI shows the collect amount.
 - Reseller onboarding and dashboard browser handoffs now wrap returned `shortUrl`, `dashboardUrl`, `publicUrl`, owner username, login email, password, and pending payment-link copy/share/open actions in bounded diagnostics.

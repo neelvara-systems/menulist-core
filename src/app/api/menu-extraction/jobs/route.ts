@@ -30,6 +30,8 @@ import {
   MenuIntakeIdentityServerError,
   runMenuIntakeIdentityCheck,
 } from "@lib/menu-extraction/menuIntakeIdentityServer";
+import { normalizeMenuExtractionJobId } from "@lib/menu-extraction/jobIdBoundary";
+import { normalizeMenuExtractionProjectId } from "@lib/menu-extraction/projectIdBoundary";
 import { checkSafeMode } from "@lib/ops/safeMode";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -79,6 +81,14 @@ const TargetLanguageSchema = z.object({
   name: z.string().min(1).max(80),
 });
 
+const MenuExtractionJobIdSchema = z.string()
+  .trim()
+  .refine((value) => normalizeMenuExtractionJobId(value) === value);
+
+const MenuExtractionProjectIdSchema = z.string()
+  .trim()
+  .refine((value) => normalizeMenuExtractionProjectId(value) === value);
+
 const RequestSchema = z.object({
   action: z.string().min(1).max(80).optional(),
   businessCategory: z.string().max(80).optional(),
@@ -87,11 +97,19 @@ const RequestSchema = z.object({
   forceReview: z.boolean().optional(),
   identityOverrideConfirmed: z.boolean().optional(),
   jobMode: z.enum(["SINGLE_STORE", "MASTER_PROJECT", "OUTLET_LINKED"]).optional(),
-  projectId: z.string().min(3).max(160),
-  retriedFromJobId: z.string().min(1).max(160).optional(),
+  projectId: MenuExtractionProjectIdSchema,
+  retriedFromJobId: MenuExtractionJobIdSchema.optional(),
   retryCount: z.number().int().min(0).max(10).optional(),
   targetLanguages: z.array(TargetLanguageSchema).min(1).max(12),
 });
+
+function requireMenuExtractionRetryJobId(value: unknown): string {
+  const jobId = normalizeMenuExtractionJobId(value);
+  if (!jobId) {
+    throw new MenuIntakeIdentityServerError(400, "Invalid retry request.");
+  }
+  return jobId;
+}
 
 function parseProjectIds(projectId: string): { sId: string; tId: string } | null {
   const parts = projectId.split("-");
@@ -417,9 +435,10 @@ async function loadRetryContext(params: {
   projectId: string;
   retriedFromJobId: string;
 }): Promise<RetryContext> {
+  const retriedFromJobId = requireMenuExtractionRetryJobId(params.retriedFromJobId);
   const retryDoc = await firestoreAdmin
     .collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS)
-    .doc(params.retriedFromJobId)
+    .doc(retriedFromJobId)
     .get();
 
   if (!retryDoc.exists) {

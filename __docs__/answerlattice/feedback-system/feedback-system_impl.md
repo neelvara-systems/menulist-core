@@ -175,7 +175,7 @@ FeedbackSection → addContentFeedback('changelog'|'article', entryId, comment, 
 
 ## 4.1 Widget Negative Feedback Surface Context
 
-Widget search writes only compact, non-sensitive surface fields to `aiSearchHistory` (`contextKey`, `surfaceFeature`, `surfacePage`, `surfaceWorkflow`). The full `AnswerlatticeContextPayload` remains transient. Widget search and feedback parse bounded JSON only after API key auth, rate limiting, Answerlattice product/purpose/scope checks, and origin allowlist checks. When a widget answer receives negative feedback, `/api/widget/feedback` copies those compact fields plus capped query/source/confidence metadata into the `CHAT_NEGATIVE` signal metadata so Signal Queue and Support Board triage can group failures by Product Surface.
+Widget search writes only compact, non-sensitive surface fields to `aiSearchHistory` (`contextKey`, `surfaceFeature`, `surfacePage`, `surfaceWorkflow`). The full `AnswerlatticeContextPayload` remains transient. Widget search and feedback parse bounded JSON only after API key auth, rate limiting, Answerlattice product/purpose/scope checks, origin allowlist checks, and search-history document-ID validation. When a widget answer receives negative feedback, `/api/widget/feedback` copies those compact fields plus capped query/source/confidence metadata into the `CHAT_NEGATIVE` signal metadata so Signal Queue and Support Board triage can group failures by Product Surface.
 
 ---
 

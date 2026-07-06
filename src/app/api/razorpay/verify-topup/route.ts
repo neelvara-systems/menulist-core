@@ -6,6 +6,8 @@ import {
     getBillingFirestoreAdminForProduct,
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
+import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
+import { normalizeBillingTopupDocumentId, normalizeBillingTopupScopeDocumentId } from "@lib/billing/topupDocumentIdBoundary";
 import {
     getBoundedRazorpaySecurityContext,
     getBoundedRazorpayStringContext,
@@ -15,6 +17,8 @@ import {
 import { getCreditPacksForProduct, isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { recordFounderRevenueMovement } from "@lib/ops/founderRevenueReadModel";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -22,6 +26,7 @@ import { validateAPIInput } from "@lib/security/inputValidation";
 import { VerifyTopupRequestSchema } from "@lib/validation/apiSchemas";
 import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
+import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
@@ -47,13 +52,13 @@ const verifyRazorpayOrderSignature = (
 
 const mirrorAnswerlatticeCreditSummary = async (
     billingDb: FirebaseFirestore.Firestore,
-    storeId: number | string,
+    storeDocumentId: string,
     subscription: any,
     topUpCredits?: number,
 ) => {
     if (!subscription) return;
     const serverNow = admin.firestore.FieldValue.serverTimestamp();
-    await billingDb.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).set({
+    await billingDb.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId).set({
         'answerlatticeSubscription.id': subscription.id || subscription.providerSubscriptionId || null,
         'answerlatticeSubscription.providerSubscriptionId': subscription.providerSubscriptionId || subscription.id || null,
         'answerlatticeSubscription.monthlyCreditsAllowance': Number(subscription.monthlyCreditsAllowance ?? 0),
@@ -69,6 +74,39 @@ export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     try {
+        const rateLimitConfig = getRateLimitForFeature('PAYMENT_VERIFICATION');
+        const userRateLimitHash = hashPublicRateLimitValue(session.user.id);
+        const rateLimitResult = await checkRateLimit({
+            key: `payment-verify:topup:${userRateLimitHash}`,
+            ...rateLimitConfig,
+        });
+
+        if (!rateLimitResult.allowed) {
+            const waitSeconds = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
+            logger.security('Payment Verification Rate Limit Exceeded', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Too many payment verification attempts',
+                feature: 'PAYMENT_VERIFICATION',
+                limit: rateLimitConfig.limit,
+                waitSeconds,
+                window: rateLimitConfig.window,
+            }, 'high');
+
+            return NextResponse.json(
+                { error: 'Too many payment verification attempts. Please try again later.', retryAfter: waitSeconds },
+                {
+                    status: 429,
+                    headers: {
+                        'Retry-After': String(waitSeconds),
+                        'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                        'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+                        'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+                    },
+                },
+            );
+        }
+
         // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
         const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid input',
@@ -99,6 +137,11 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = validation.data;
+        const topupDocumentId = normalizeBillingTopupDocumentId(razorpay_order_id);
+        if (!topupDocumentId) {
+            return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+        }
+
         if (!verifyRazorpayOrderSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature)) {
             logger.security('Invalid Topup Payment Signature', {
                 ...getBoundedRazorpaySecurityContext(session, request),
@@ -125,7 +168,24 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
         }
 
-        const { tenantId, storeId } = scope;
+        const tenantScope = normalizeBillingTopupScopeDocumentId(scope.tenantId);
+        const storeScope = normalizeBillingTopupScopeDocumentId(scope.storeId);
+        if (!tenantScope || !storeScope) {
+            logger.security('Invalid Billing Scope - Verify Topup', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Resolved billing scope failed document ID admission',
+                ...getBoundedRazorpayStringContext('productId', productId),
+                ...getBoundedRazorpayStringContext('tenantId', scope.tenantId),
+                ...getBoundedRazorpayStringContext('storeId', scope.storeId),
+            }, 'high');
+
+            return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
+        }
+
+        const tenantId = tenantScope.numericId;
+        const storeId = storeScope.numericId;
+        const storeDocumentId = storeScope.documentId;
         if (!isAnswerlatticeProduct && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
@@ -142,7 +202,7 @@ export const POST = withAuth(async (request, session) => {
 
         const orderTenantId = Number(order.notes?.tenantId);
         const orderStoreId = Number(order.notes?.storeId);
-        if (orderTenantId !== Number(tenantId) || orderStoreId !== Number(storeId)) {
+        if (orderTenantId !== tenantId || orderStoreId !== storeId) {
             logger.security('Unauthorized Topup Order Verification Attempt', {
                 ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-topup',
@@ -161,15 +221,15 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const billingDb = getBillingFirestoreAdminForProduct(productId);
-        const topupRef = billingDb.collection(DB_COLLECTIONS.TOPUPS).doc(razorpay_order_id);
+        const topupRef = billingDb.collection(DB_COLLECTIONS.TOPUPS).doc(topupDocumentId);
         const existingTopupSnap = await topupRef.get();
         const existingTopup = existingTopupSnap.exists ? existingTopupSnap.data() : null;
 
         if (
             existingTopup
             && (
-                (existingTopup.tenantId != null && Number(existingTopup.tenantId) !== Number(tenantId))
-                || (existingTopup.storeId != null && Number(existingTopup.storeId) !== Number(storeId))
+                (existingTopup.tenantId != null && Number(existingTopup.tenantId) !== tenantId)
+                || (existingTopup.storeId != null && Number(existingTopup.storeId) !== storeId)
             )
         ) {
             logger.security('Unauthorized Topup Order Verification Attempt', {
@@ -204,10 +264,10 @@ export const POST = withAuth(async (request, session) => {
                 return NextResponse.json({ error: 'Forbidden - payment mismatch' }, { status: 403 });
             }
 
-            const currentSub = await getActiveProductSubscriptionForStore(productId, Number(tenantId), Number(storeId));
+            const currentSub = await getActiveProductSubscriptionForStore(productId, tenantId, storeId);
             if (isAnswerlatticeProduct && currentSub) {
                 try {
-                    await mirrorAnswerlatticeCreditSummary(billingDb, storeId, currentSub, currentSub.topUpCredits ?? existingTopup.creditsAdded ?? 0);
+                    await mirrorAnswerlatticeCreditSummary(billingDb, storeDocumentId, currentSub, currentSub.topUpCredits ?? existingTopup.creditsAdded ?? 0);
                 } catch (summaryError) {
                     logger.error('Answerlattice top-up summary mirror failed for already verified order', new Error('razorpay_topup_summary_mirror_failed'), {
                         ...getRazorpayFailureLogData('razorpay_topup_summary_mirror_failed', summaryError),
@@ -277,7 +337,7 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // Step D: Find the user's active subscription document in our database
-        const internalSub = await getActiveProductSubscriptionForStore(productId, Number(tenantId), Number(storeId));
+        const internalSub = await getActiveProductSubscriptionForStore(productId, tenantId, storeId);
         if (!internalSub) {
             logger.error('No active subscription for top-up', undefined, {
                 ...getBoundedRazorpayStringContext('tenantId', tenantId),
@@ -289,7 +349,7 @@ export const POST = withAuth(async (request, session) => {
 
         // 🔒 CRITICAL: Double-check subscription belongs to this tenant.
         // Store may differ when an outlet inherits HQ billing.
-        if (Number(internalSub.tenantId) !== Number(tenantId)) {
+        if (Number(internalSub.tenantId) !== tenantId) {
             logger.security('Unauthorized Topup Verification Attempt', {
                 ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-topup',
@@ -327,9 +387,14 @@ export const POST = withAuth(async (request, session) => {
             ...getBoundedRazorpayStringContext('storeId', storeId),
         });
 
-        const subscriptionRef = billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(internalSub.id);
+        const subscriptionId = normalizeBillingSubscriptionDocumentId(internalSub.id);
+        if (!subscriptionId) {
+            return NextResponse.json({ success: false, error: "Active subscription not found." }, { status: 404 });
+        }
+
+        const subscriptionRef = billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
         const answerlatticeStoreRef = isAnswerlatticeProduct
-            ? billingDb.collection(DB_COLLECTIONS.STORES).doc(String(storeId))
+            ? billingDb.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId)
             : null;
         const subscriptionTenantId = Number(internalSub.tenantId ?? internalSub.tId ?? tenantId);
         const subscriptionStoreId = Number(internalSub.storeId ?? internalSub.sId ?? storeId);
@@ -375,7 +440,7 @@ export const POST = withAuth(async (request, session) => {
             }, { merge: true });
             tx.set(topupRef, {
                 paymentProvider: 'razorpay',
-                providerOrderId: razorpay_order_id,
+                providerOrderId: topupDocumentId,
                 providerPaymentId: razorpay_payment_id,
                 creditsAdded: creditsToAdd,
                 amount: order.amount,
@@ -428,7 +493,7 @@ export const POST = withAuth(async (request, session) => {
         if (transactionResult.alreadyVerified) {
             if (isAnswerlatticeProduct) {
                 try {
-                    await mirrorAnswerlatticeCreditSummary(billingDb, storeId, internalSub, transactionResult.newBalance);
+                    await mirrorAnswerlatticeCreditSummary(billingDb, storeDocumentId, internalSub, transactionResult.newBalance);
                 } catch (summaryError) {
                     logger.error('Answerlattice top-up summary mirror failed for transaction retry', new Error('razorpay_topup_summary_mirror_failed'), {
                         ...getRazorpayFailureLogData('razorpay_topup_summary_mirror_failed', summaryError),

@@ -123,6 +123,8 @@ All mobile Menu Kit and QR downloads use the same premium output tokens as deskt
 The table tent and single table/counter card downloads use the same Print Menu Surfaces renderers as desktop through `generateMenuKitAsset()` for single-file actions and `generateMenuKit()` for the complete ZIP. Mobile Share must not fork mobile-only table tent, single-card, or QR designs; it should request the same assets and then use mobile-native share/download actions.
 - no separate mobile generator or mobile-only design variant
 
+Menu Kit ZIP filename boundary: Mobile Share uses the shared `generateMenuKit()` `result.zipFilename` for complete ZIP downloads, matching desktop Use MenuList, project Share Modal, and printable-template output. Mobile must not reintroduce hand-rolled store-name filename derivation for Menu Kit ZIP downloads.
+
 ## Mobile Implementation Notes
 
 1. Detect mobile via `navigator.share` availability (not user agent)

@@ -31,13 +31,21 @@
 8. Ticket, feedback, and signal source cards preserve available source customer identity in the card document so the board does not need to re-read the original ticket, conversation, feedback row, or signal event just to show who raised it.
 9. Internal notes are embedded on the card with a cap of 25 notes.
 10. Card status changes append to capped `statuses[]` history while the top-level `status` remains the query/filter field.
-11. If the card has `relatedEntityId`, owner can create a `new_answer_required` mutation proposal.
+11. If the card has a resolved `relatedEntityId`, owner can create a `new_answer_required` mutation proposal.
 12. Knowledge Governance remains the place where drafts are generated, edited, approved, and published.
 13. UI reads `platformSummary/supportBoardSummary_{tId}_{sId}` only when `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY` is enabled.
 
 Hook load/action failures use fixed local owner-facing copy. Ticket, signal, Firestore, mutation-proposal, scheduler-summary, or browser exception text must not be copied into Support Board toasts or error state. If the optional nightly summary read fails, the hook logs `answerlattice_support_board_summary_load_failed` with bounded tenant/store metadata and still renders the card list with `summary: null`.
 
+Answerlattice App Support Board Card ID Boundary: `src/lib/answerlattice/supportBoardCardIdBoundary.ts` validates Support Board card document IDs before `src/database/answerlattice/supportBoard.ts` builds card document refs for detail updates, status transactions, and note writes. Malformed, reserved, empty, or path-shaped card IDs fail through the existing fixed Support Board action copy before Firestore document access.
+
+Answerlattice App Support Board Related Entity ID Boundary: `src/database/answerlattice/supportBoard.ts`, `src/hooks/answerlattice/useSupportBoard.ts`, and `src/components/templates/answerlattice/supportBoard/AnswerlatticeSupportBoard.tsx` use the shared resolved-entity helper before Support Board card `relatedEntityId` writes, ticket/signal source-card creation, card badge/proposal eligibility, and mutation proposal `relatedEntityIds`. Malformed or unresolved related entity IDs are skipped before card persistence or governance proposal creation.
+
 Nightly sync diagnostics in `functions-answerlattice/src/answerlattice/supportBoardSync.ts` use fixed `ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED` result/log codes, source error name/code/status metadata, and tenant/store scope booleans. Success logs use scope booleans and counts only. Valid source scans, deterministic card upserts, unchanged/resolved skips, and compact summary writes are unchanged.
+
+Support Board nightly derived-card source-text duplication boundary: recurring-miss and signal-cluster cards created by nightly sync store source example counts and bounded context keys only. They do not copy raw search queries, prompts, ticket subjects, reasons, or messages into the derived card description. Reviewers use the original search/signal history when source text is needed.
+
+Answerlattice Functions signal-source entity ID boundary: `functions-answerlattice/src/answerlattice/entityIdBoundary.ts` is used by nightly Support Board sync before entity document reads, derived-card grouping, drift/release impact matching, and related-entity assignment. Stored malformed entity IDs are skipped rather than becoming `answerlattice_entities/{entityId}` refs or derived card keys.
 
 ## Manual Sync
 
@@ -126,7 +134,7 @@ Status model:
 `createAnswerProposal(card)` creates a pending `AnswerlatticeMutationProposal` with:
 
 - `mutationType: new_answer_required`
-- `relatedEntityIds: [card.relatedEntityId]`
+- `relatedEntityIds: [resolved card.relatedEntityId]`
 - `draftStatus: pending`
 - `draftSource: ticket_resolution` or `recurring_fallback`
 

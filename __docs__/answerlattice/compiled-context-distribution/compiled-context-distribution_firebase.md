@@ -15,7 +15,9 @@ The centralized Answerlattice scheduler compares `sourceVersions_*` with `bundle
 
 Knowledge Intake counters should not increase bundle churn. Intake-only counters can be stored in summary/source-version docs for owner UI and scheduler repair, but they are excluded from compiled context equality. Bundle rebuilds happen when approved destination content changes existing bundle inputs: KB/docs navigation, canonical answers, surfaces, releases, entities, entity relations, widget config, branding, MCP policy, or predictive triggers.
 
-Build failure diagnostics are bounded. Manifests keep fixed status fields such as `lastBuildError: "build_failed"`, build locks store fixed failure codes plus source error name/code/status metadata, and scheduler-facing repair results return fixed codes only. Raw exception text is not stored in `platformSummary`.
+Answerlattice Compiled Context Bundle Entity ID Boundary: manual/server and Functions repair builds normalize resolved relation endpoints and answer/article/FAQ/surface/release entity ID arrays before public/private Storage objects are written. Malformed or unresolved relation endpoints are dropped from relation output; malformed or unresolved array entries are skipped without changing valid bundle read/write counts.
+
+Build and failure diagnostics are bounded. Manifests keep fixed status fields such as `lastBuildError: "build_failed"`, build locks store fixed failure codes plus source error name/code/status metadata, manual rebuild request metadata is limited to fixed reason/requester codes, and scheduler-facing repair results return fixed codes only. Raw exception text, raw owner ids/emails, and arbitrary request reason text are not stored in `platformSummary`.
 
 ## Storage
 

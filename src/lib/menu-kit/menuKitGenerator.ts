@@ -148,11 +148,26 @@ function buildSurfaceInput(input: MenuKitInput, utmMedium: string): MenuKitInput
     return { ...input, menuUrl: buildMenuKitUrl(input.menuUrl, utmMedium) };
 }
 
-function buildSafeName(storeName: string): string {
-    return storeName
-        .replace(/[^a-zA-Z0-9\s]/g, '')
+function buildMenuKitFilenamePart(value: string, fallback: string, options?: { allowSeparators?: boolean }): string {
+    const normalized = value
+        .replace(options?.allowSeparators ? /[^a-zA-Z0-9\s._-]/g : /[^a-zA-Z0-9\s]/g, '')
         .trim()
-        .replace(/\s+/g, '_') || 'Menu';
+        .replace(/\s+/g, '_');
+    const cleaned = options?.allowSeparators
+        ? normalized.replace(/[._-]{2,}/g, '_').replace(/^[._-]+|[._-]+$/g, '')
+        : normalized;
+    return cleaned || fallback;
+}
+
+export function buildMenuKitSafeName(storeName: string): string {
+    return buildMenuKitFilenamePart(storeName, 'Menu');
+}
+
+export function buildMenuKitZipFilename(storeName: string, templateFamilyId?: string): string {
+    const templateSuffix = templateFamilyId
+        ? buildMenuKitFilenamePart(templateFamilyId, '', { allowSeparators: true })
+        : '';
+    return `${buildMenuKitSafeName(storeName)}_MenuKit${templateSuffix ? `_${templateSuffix}` : ''}.zip`;
 }
 
 async function prepareMenuKitInput(input: MenuKitInput): Promise<{
@@ -165,7 +180,7 @@ async function prepareMenuKitInput(input: MenuKitInput): Promise<{
         throw new Error('Invalid menu URL: must use http:// or https:// protocol');
     }
 
-    const safeName = buildSafeName(input.storeName);
+    const safeName = buildMenuKitSafeName(input.storeName);
 
     // Pre-load logo image once, share across selected template(s).
     let logo: PreloadedLogo | null = null;
@@ -247,7 +262,7 @@ export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResul
     zip.file('PRINT_INSTRUCTIONS.txt', buildPrintInstructions(input.storeName, labels));
     const zipBlob = await zip.generateAsync({ type: 'blob' });
 
-    return { assets, staffScript: labels.staffScript, zipBlob };
+    return { assets, staffScript: labels.staffScript, zipBlob, zipFilename: buildMenuKitZipFilename(input.storeName, input.templateFamilyId) };
 }
 
 /**

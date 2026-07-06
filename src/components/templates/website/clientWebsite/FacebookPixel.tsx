@@ -13,8 +13,15 @@ interface FacebookPixelProps {
     storeDetails?: StoreDataType;
 }
 
+const META_PIXEL_ID_PATTERN = /^\d{5,32}$/;
+
+const getSafeMetaPixelId = (value?: string | null): string | null => {
+    const normalized = String(value || '').trim();
+    return META_PIXEL_ID_PATTERN.test(normalized) ? normalized : null;
+};
+
 const FacebookPixel = ({ storeDetails }: FacebookPixelProps) => {
-    const pixelId = storeDetails?.analytics?.facebookPixelId;
+    const pixelId = getSafeMetaPixelId(storeDetails?.analytics?.facebookPixelId);
 
     useEffect(() => {
         if (!pixelId) return;

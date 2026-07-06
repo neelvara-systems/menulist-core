@@ -2,7 +2,7 @@
 
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline  
 **Status:** ✅ IMPLEMENTED — dashboard reads are consolidated and bounded
-**Last Updated:** June 30, 2026
+**Last Updated:** July 5, 2026
 
 ---
 
@@ -13,6 +13,7 @@
 - **New Collections:** None
 - **Estimated Monthly Cost:** ~₹4/month at 10 internal visits/day (read-only queries from existing collections; assumes Firestore read pricing at $0.06/100K reads and ₹83/USD)
 - **Browser-local copy diagnostics:** Job Inspector copy hardening adds no Firestore, Storage, Cloud Function, provider, or cache operations. Failed clipboard handoffs use the existing ops diagnostics boundary with bounded metadata only, including clipboard/fallback support booleans and copied-text length rather than raw extraction payloads.
+- **Standalone cost-panel diagnostics:** The dashboard snapshot path remains the normal cost source. If `CostMonitor.tsx` is reused without snapshot cost data and its direct compatibility read rejects, the component logs bounded `extraction_cost_monitor_load_failed` diagnostics and shows fixed unavailable copy instead of reporting zero calls. This adds no reads beyond the already-attempted compatibility read and no writes, Storage operations, Cloud Functions, provider calls, rules, indexes, or deploy requirement.
 
 ---
 

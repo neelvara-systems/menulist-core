@@ -48,6 +48,23 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
+     * Batch Image Worker - internal Cloud Tasks image-generation worker.
+     * Used by: POST /api/image-generation/batch-generation
+     *
+     * Why 600/min:
+     * - A valid owner batch can enqueue up to 50 item tasks, and the owner
+     *   trigger already limits batches to 3 per 5 minutes.
+     * - Cloud Tasks retries need room without breaking normal batch completion.
+     * - A generous store-scoped ceiling still bounds retry storms or leaked
+     *   worker-secret abuse before job reads, provider calls, or Storage writes.
+     */
+    BATCH_IMAGE_WORKER: {
+        limit: 600,
+        window: 60,
+        description: 'Batch image worker - 600 per minute per store'
+    },
+
+    /**
      * Knowledge Base Search - Moderate cost
      * Used by: Regular search endpoints without AI
      */
@@ -126,6 +143,55 @@ export const RATE_LIMIT_CONFIGS = {
         limit: 50,
         window: 60,
         description: 'Data write operations - 50 per minute'
+    },
+
+    /**
+     * Menu Cache Revalidation - public menu/OBP/screen cache invalidation.
+     * Used by: POST /api/revalidate/menu
+     *
+     * Why 600/min:
+     * - Valid owner saves and Cloud Function writes may invalidate cache often.
+     * - The route is still bounded because accepted calls can churn Vercel
+     *   cache tags and Owner Business Assistant packet invalidation.
+     * - Keeps normal bursts available while stopping runaway loops or abuse.
+     */
+    MENU_CACHE_REVALIDATION: {
+        limit: 600,
+        window: 60,
+        description: 'Menu cache revalidation - 600 per minute per source'
+    },
+
+    /**
+     * Platform Entity Blocks - rare platform-only auth/cache mutation.
+     * Used by: POST /api/platform/entity-blocks
+     *
+     * Why 20/hour:
+     * - Normal platform block/unblock work is rare and human-operated.
+     * - Each accepted request can fan out to Firestore writes, Firebase Auth
+     *   disable/token revocation, public cache invalidation, screen wakeups,
+     *   and Owner Business Assistant packet invalidation.
+     * - Keeps retries available while bounding repeated internal mutation loops.
+     */
+    PLATFORM_ENTITY_BLOCK_MUTATION: {
+        limit: 20,
+        window: 3600,
+        description: 'Platform entity block mutation - 20 per hour per platform operator'
+    },
+
+    /**
+     * Admin Subdomain Rename - platform-only public routing mutation.
+     * Used by: POST /api/admin/subdomains/rename
+     *
+     * Why 10/hour:
+     * - Legal/trademark/acquisition rename work is rare and human-operated.
+     * - Each accepted request reads collision state, writes store summary/audit
+     *   state, and invalidates public menu, screen, and assistant caches.
+     * - Keeps explicit retries available while bounding repeated routing changes.
+     */
+    ADMIN_SUBDOMAIN_RENAME_MUTATION: {
+        limit: 10,
+        window: 3600,
+        description: 'Admin subdomain rename - 10 per hour per platform operator'
     },
 
     /**
@@ -315,6 +381,21 @@ export const RATE_LIMIT_CONFIGS = {
         description: 'Topup orders - 10 per hour (frequent purchases)'
     },
 
+    /**
+     * Payment Verification - provider truth checks after checkout.
+     * Used by: verify-subscription, verify-topup
+     *
+     * Why 20/hour:
+     * - Normal checkout verification is one request with occasional retry.
+     * - Failed browser retries and webhook races should not block owners.
+     * - Provider fetch/capture and billing writes still need a hard ceiling.
+     */
+    PAYMENT_VERIFICATION: {
+        limit: 20,
+        window: 3600,
+        description: 'Payment verification - 20 per hour per user'
+    },
+
     // ─────────────────────────────────────────────────────────────
     // GUEST FEEDBACK (Internal Feedback System)
     // @see __docs__/projects/internal-feedback-system/
@@ -364,7 +445,7 @@ export const RATE_LIMIT_CONFIGS = {
      * Auth Sensitive Operations - Prevents brute force on account mutations.
      * Used by: claim-account, create-staff, change-password, validate-claim
      * 
-     * Why 5/15min per IP:
+     * Why 5/15min per actor/IP:
      * - claim-account: one-time operation, 5 retries is generous
      * - create-staff: owner rarely creates >5 staff in 15 min
      * - change-password: 5 attempts is generous for legitimate use
@@ -372,7 +453,22 @@ export const RATE_LIMIT_CONFIGS = {
     AUTH_SENSITIVE: {
         limit: 5,
         window: 900,  // 15 minutes
-        description: 'Auth sensitive ops - 5 per 15 minutes per IP'
+        description: 'Auth sensitive ops - 5 per 15 minutes per actor/IP'
+    },
+
+    /**
+     * Firebase Auth claim sync - bounded bootstrap and store-scope refresh.
+     * Used by: set-claims
+     *
+     * Why 30/15min per actor:
+     * - Normal login can call set-claims from login handoff and session bootstrap.
+     * - Store switching and multi-tab reloads can trigger several valid refreshes.
+     * - The route still needs a ceiling before Firestore/Firebase Auth work.
+     */
+    AUTH_CLAIM_SYNC: {
+        limit: 30,
+        window: 900,
+        description: 'Auth claim sync - 30 per 15 minutes per actor'
     },
 
     // ─────────────────────────────────────────────────────────────

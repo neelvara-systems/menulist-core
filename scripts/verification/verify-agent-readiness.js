@@ -412,6 +412,7 @@ function verifyEnvironmentTargets() {
   const authOnboardingFirebase = read('__docs__/auth-onboarding/auth-onboarding_firebase.md');
   const authOnboardingMobileSupport = read('__docs__/auth-onboarding/auth-onboarding_mobile-support.md');
   const onboardingCentralizationReadme = read('__docs__/onboarding-centralization/README.md');
+  const onboardingUserIdBoundary = read('src/lib/onboarding/onboardingUserId.ts');
   const ponrOnboardingSpec = read('__docs__/onboarding/ponr-onboarding_spec.md');
   const businessTypeDataModelReadme = read('__docs__/business-type-data-model/README.md');
   const clientMenuReadme = read('__docs__/client-menu/README.md');
@@ -2017,6 +2018,13 @@ function verifyEnvironmentTargets() {
   assertIncludes(onboardingCreateSubscriptionRoute, 'compensateFailedTenantStoreOnboarding', 'Onboarding create-subscription provider-failure compensation source gate');
   assertIncludes(onboardingCreateSubscriptionRoute, 'razorpayClient.subscriptions.create', 'Onboarding create-subscription Razorpay subscription source gate');
   assertIncludes(onboardingCreateSubscriptionRoute, 'createInitialSubscription(razorpaySubscription.id, subscriptionPayload)', 'Onboarding create-subscription initial subscription source gate');
+  assertIncludes(onboardingUserIdBoundary, 'normalizeOnboardingUserId', 'Onboarding user ID boundary helper source gate');
+  assertIncludes(onboardingUserIdBoundary, 'const raw = value;', 'Onboarding user ID helper preserves raw helper input before normalization');
+  assertIncludes(onboardingUserIdBoundary, 'userId === raw && userId.length > 0 && userId.length <= 160 && isValidFirestoreDocumentId(userId)', 'Onboarding user ID helper rejects whitespace-mutated, empty, oversized, path-shaped, or reserved user IDs');
+  assertIncludes(onboardingUserIdBoundary, 'isValidFirestoreDocumentId(userId)', 'Onboarding user ID helper rejects unsafe Firestore document IDs');
+  assertIncludes(onboardingCreateTenantStore, 'const normalizedUserId = requireOnboardingUserId(userId);', 'Onboarding user update helper normalizes user IDs before document refs');
+  assertIncludes(onboardingCreateTenantStore, '.doc(normalizedUserId)', 'Onboarding user update helper uses normalized user document refs');
+  assertNotIncludes(onboardingCreateTenantStore, '.doc(userId);', 'Onboarding user update helper must not use raw user IDs in document refs');
   assertIncludes(businessTypeDataModelReadme, 'Implemented source evidence; migration guarded; not current launch certification', 'Business type data model launch boundary status');
   assertIncludes(businessTypeDataModelReadme, 'Local Source Gate', 'Business type data model source gate documentation');
   assertIncludes(businessTypeDataModelReadme, 'scripts/migrate-business-type-swap.ts', 'Business type data model migration script documentation');

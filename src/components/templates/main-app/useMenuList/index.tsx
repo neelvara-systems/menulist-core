@@ -423,8 +423,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
         setGeneratingKit(true);
         try {
             const result = await generateMenuKit(input);
-            const safeName = input.storeName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') || 'Menu';
-            downloadBlob(result.zipBlob, `${safeName}_MenuKit.zip`);
+            downloadBlob(result.zipBlob, result.zipFilename);
             message.success('Menu Kit downloaded');
             recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
         } catch (error) {

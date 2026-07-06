@@ -99,11 +99,16 @@ Job-card polling must be bounded:
 
 The normal deterministic AMM path stays client-DAL-first. Server fallback routes are capped before schema validation or Firestore work:
 
+- AMM route ID boundary: supplied `sessionId` values must match deterministic `amm_` session IDs, route `proposalId` values must match deterministic `amm_prop_` proposal IDs, and selected `projectId` values must be simple bounded Firestore document IDs before any session, proposal, or selected-project document read.
+- AMM server DAL ID boundary: `src/database/aiMenuManager/server.ts` repeats the same session/proposal/project ID admission before building session, proposal, scoped project, or legacy project document refs, and it filters stored pending-card proposal IDs before inbox proposal hydration.
+- AMM scope document-ID admission: `src/lib/ai-menu-manager/routeIds.ts`, `src/lib/ai-menu-manager/apiGuards.ts`, and `src/database/aiMenuManager/server.ts` require exact positive safe-integer MenuList tenant/store document IDs before selected-store authorization, tenant access fallback checks, limiter scope material, scoped project reads, session/proposal scope comparisons, or AMM proposal/session writes.
 - `POST /api/ai-menu-manager/command`: `DATA_WRITE` rate limit, then 64KB bounded JSON, then selected-store scope and project/proposal reads.
 - `POST /api/ai-menu-manager/proposals/{proposalId}/actions`: `DATA_WRITE` rate limit, then 16KB bounded JSON, then selected-store scope and proposal/project checks.
 - `POST /api/ai-menu-manager/proposals/{proposalId}/complete`: `DATA_WRITE` rate limit, then 16KB bounded JSON, then selected-store scope and proposal/project checks.
 
-Rejected malformed, oversized, or rate-limited fallback requests add no AMM session/proposal writes and do not reach selected project/proposal reads.
+Rejected malformed, oversized, rate-limited, or route/query ID-invalid fallback requests add no AMM session/proposal writes and do not reach session, proposal, or selected-project reads.
+
+AMM scope document-ID admission is cost-neutral for valid fallback requests. Malformed tenant/store scope fails before Firestore session/proposal/project reads or writes, and valid command, inbox, proposal action, and proposal completion requests keep the same compact session/proposal/project read/write counts. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.
 
 Browser response parsing is also bounded. The shared AMM client API reader caps command, inbox, proposal-action, and completion response JSON at 64KB and logs `ai_menu_manager_response_parse_failed` for malformed, oversized, or empty successful responses. This does not add Firestore reads/writes/deletes; it only makes bad acknowledgement bodies visible before the existing fixed owner failure path runs.
 

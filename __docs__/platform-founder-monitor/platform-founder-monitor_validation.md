@@ -1,5 +1,23 @@
 # Platform Founder Monitor Validation
 
+## July 6, 2026
+
+### Passed
+
+```bash
+npm run verify:platform-founder-monitor-boundary
+```
+
+### Verified Scope
+
+- Founder revenue movement IDs pass through `src/lib/firebase/firestoreDocumentId.ts` before `founderRevenueMovements/{movementId}` refs.
+- Payment-to-live transition store IDs pass through the same document-ID guard before `founderOnboardingTransitions/{storeId}` refs.
+- Valid Razorpay-driven cash, failed-payment, new-MRR, churn, refund, expansion, and downgrade movements keep the same deterministic summary-write behavior.
+
+### Not Run
+
+- Firebase deploy, Vercel deploy, production build, browser/device QA, provider smoke, live Firestore writes, Storage writes, or production-host smoke.
+
 ## July 3, 2026
 
 ### Passed

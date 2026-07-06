@@ -42,6 +42,8 @@ Remaining cost risks are non-blocking and documented below.
 | Changelog writes | `addChangelogEntry`, `updateChangelogEntry`, feedback | transactions | `changelog/{tId}/{sId}` | Platform CRUD/user feedback | Exact | No | Low | Page model and 900 KB guard retained. |
 | Scheduler functions | `functions-answerlattice/src/answerlattice/*` | bounded Admin queries/writes | Answerlattice collections | Nightly/manual scheduler | Fresh batch | No | Low | Existing caps/run logs retained; no scheduler schema change in this pass. |
 
+Answerlattice cache freshness ID boundary: cache freshness checks now validate cached canonical answer IDs and KB article reference IDs before either manifest freshness or fallback source-document reads can accept a cached row. This changes malformed-cache admission only; valid cache hits keep the same manifest-read and fallback source-read shape.
+
 ---
 
 ## Changes Implemented

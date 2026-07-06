@@ -159,7 +159,7 @@ secureLog('[Auth] Complex data', {
 | `/lib/apiHelper/apiCallComposerClient.ts` | ✅ Done | Client DAL wrapper failures require an active session and log only normalized failure code, error name, and bounded argument summaries |
 | `/lib/apiHelper/apiCallComposerClientWithoutLoader.ts` | ✅ Done | No-loader client DAL wrapper failures require an active session and use the same bounded DAL diagnostics |
 | `/lib/apiHelper/apiCallComposerServer.ts` | ✅ Done | Server DAL wrapper failures use normalized `secureError` diagnostics while preserving ignored-session metadata |
-| `/lib/errors/uiErrorMessages.ts` | ✅ Done | Client DAL toasts reject technical-looking exception text and use generic fallback copy |
+| `/lib/errors/uiErrorMessages.ts` | ✅ Done | Client DAL toasts use generic fallback copy for generic exceptions; only explicitly trusted local validation-copy callers can display short plain text after the technical filters |
 | `/lib/debug/clientConsoleBuffer.ts` | ✅ Done | Failure-screen console snapshots serialize errors with bounded metadata only |
 | `/lib/localLogs/localLogsTracker.ts` | ✅ Done | Browser log capture for tickets stores bounded error metadata instead of raw messages or stacks |
 | `/lib/monitoring/sentryShared.ts` | ✅ Done | Sentry context, tag, user, breadcrumb, event, and exception metadata use bounded monitoring sanitizers |

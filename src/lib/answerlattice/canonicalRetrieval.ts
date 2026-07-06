@@ -21,6 +21,7 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { answerlatticeFirestoreAdmin } from "@lib/firebase/answerlatticeFirebaseAdmin";
+import { normalizeAnswerlatticeResolvedEntityId } from "@lib/answerlattice/governanceIdBoundary";
 import { answerlatticeTokenize } from "@lib/answerlattice/tokenizer";
 import { AnswerlatticeAnswerType, AnswerlatticeCanonicalAnswer, AnswerlatticeContextPayload, AnswerlatticeEntity, AnswerlatticeEntityGraphIndex, AnswerlatticeEntitySearchIndex, AnswerlatticeGraphExpansionResult, AnswerlatticeRelease } from "@type/answerlattice";
 
@@ -138,9 +139,12 @@ const getLatestReleaseServer = async (tId: number, sId: number): Promise<Answerl
 };
 
 const getEntityByIdServer = async (entityId: string, tId: number, sId: number): Promise<AnswerlatticeEntity | null> => {
+    const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
+    if (!normalizedEntityId) return null;
+
     const doc = await getAnswerlatticeAdminDb()
         .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
-        .doc(entityId)
+        .doc(normalizedEntityId)
         .get();
 
     if (!doc.exists) return null;
@@ -229,14 +233,18 @@ function matchEntitiesFromIndex(
         }
 
         if (matchScore > 0) {
-            const current = entityScores.get(entry.entityId) || 0;
-            entityScores.set(entry.entityId, current + matchScore);
+            const entityId = normalizeAnswerlatticeResolvedEntityId(entry.entityId);
+            if (!entityId) continue;
+            const current = entityScores.get(entityId) || 0;
+            entityScores.set(entityId, current + matchScore);
         }
     }
 
     // Context-aware boost application with Guardrail 2 (query dominance)
     if (contextBoosts && contextBoosts.size > 0) {
-        Array.from(contextBoosts.entries()).forEach(([entityId, rawBoost]) => {
+        Array.from(contextBoosts.entries()).forEach(([rawEntityId, rawBoost]) => {
+            const entityId = normalizeAnswerlatticeResolvedEntityId(rawEntityId);
+            if (!entityId) return;
             const queryScore = entityScores.get(entityId) || 0;
             // Guardrail 2: If query strongly matches this entity, dampen context boost
             const dampenedBoost = queryScore >= STRONG_QUERY_THRESHOLD
@@ -344,9 +352,11 @@ function applyContextBoosts(
                 }
             }
             if (matched) {
-                const current = boosts.get(entry.entityId) || 0;
+                const entityId = normalizeAnswerlatticeResolvedEntityId(entry.entityId);
+                if (!entityId) continue;
+                const current = boosts.get(entityId) || 0;
                 // Guardrail 3: Cap total boost per entity
-                boosts.set(entry.entityId, Math.min(current + weight, MAX_CONTEXT_BOOST));
+                boosts.set(entityId, Math.min(current + weight, MAX_CONTEXT_BOOST));
             }
         }
     };
@@ -362,8 +372,9 @@ function applyContextBoosts(
     // client payloads cannot set this field because context validation strips
     // unknown fields before coreSearch().
     if (Array.isArray(context.surfaceEntityIds)) {
-        for (const entityId of context.surfaceEntityIds.slice(0, 10)) {
-            if (typeof entityId !== 'string' || !entityId.trim()) continue;
+        for (const rawEntityId of context.surfaceEntityIds.slice(0, 10)) {
+            const entityId = normalizeAnswerlatticeResolvedEntityId(rawEntityId);
+            if (!entityId) continue;
             const current = boosts.get(entityId) || 0;
             boosts.set(entityId, Math.min(current + MAX_CONTEXT_BOOST, MAX_CONTEXT_BOOST));
         }

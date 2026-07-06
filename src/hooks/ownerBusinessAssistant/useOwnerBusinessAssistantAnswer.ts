@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { FEATURE_FLAGS } from '@config/features';
 import { OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
 import { OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY } from '@lib/ownerBusinessAssistant/clientResponses';
+import { normalizeOwnerBusinessAssistantThreadId } from '@lib/ownerBusinessAssistant/threadIdBoundary';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import type {
@@ -44,6 +45,9 @@ const buildThreadStorageKey = (projectId?: string, storeScopeKey?: string | numb
   `ownerBusinessAssistant-thread:${storeScopeKey || 'store'}:${projectId || 'all'}`;
 
 const createThreadId = () => createRuntimeId('oba');
+const readStoredThreadId = (storageKey: string): string | undefined => (
+  normalizeOwnerBusinessAssistantThreadId(window.localStorage.getItem(storageKey)) || undefined
+);
 
 const readOwnerBusinessAssistantAnswerResponseJson = async (
   response: Response,
@@ -87,7 +91,7 @@ export function useOwnerBusinessAssistantAnswer(
     }
 
     const storageKey = buildThreadStorageKey(projectId, storeScopeKey);
-    const existing = window.localStorage.getItem(storageKey);
+    const existing = readStoredThreadId(storageKey);
     const nextThreadId = existing || createThreadId();
     if (!existing) window.localStorage.setItem(storageKey, nextThreadId);
     setThreadId(nextThreadId);
@@ -102,7 +106,9 @@ export function useOwnerBusinessAssistantAnswer(
     }
 
     const storageKey = buildThreadStorageKey(projectId, storeScopeKey);
-    const nextThreadId = threadId || window.localStorage.getItem(storageKey) || createThreadId();
+    const nextThreadId = normalizeOwnerBusinessAssistantThreadId(threadId)
+      || readStoredThreadId(storageKey)
+      || createThreadId();
     if (window.localStorage.getItem(storageKey) !== nextThreadId) {
       window.localStorage.setItem(storageKey, nextThreadId);
     }
@@ -159,10 +165,11 @@ export function useOwnerBusinessAssistantAnswer(
         });
         throw new OwnerBusinessAssistantSafeError();
       }
-      if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS && answerData.threadId && typeof window !== 'undefined') {
-        window.localStorage.setItem(buildThreadStorageKey(projectId, storeScopeKey), answerData.threadId);
-        setThreadId(answerData.threadId);
-        setLastQuestion((current) => current ? { ...current, threadId: answerData.threadId } : current);
+      const normalizedAnswerThreadId = normalizeOwnerBusinessAssistantThreadId(answerData.threadId);
+      if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS && normalizedAnswerThreadId && typeof window !== 'undefined') {
+        window.localStorage.setItem(buildThreadStorageKey(projectId, storeScopeKey), normalizedAnswerThreadId);
+        setThreadId(normalizedAnswerThreadId);
+        setLastQuestion((current) => current ? { ...current, threadId: normalizedAnswerThreadId } : current);
       }
       setAnswer(answerData);
       return answerData as OwnerBusinessAssistantAnswer;

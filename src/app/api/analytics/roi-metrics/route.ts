@@ -16,6 +16,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { applyAnalyticsReadRateLimit } from '../readRateLimit';
 
 const MAX_ROI_RANGE_DAYS = 90;
+const DEFAULT_ROI_RANGE_DAYS = 30;
+const MAX_ROI_HOURLY_COST = 1000;
+const MAX_ROI_CUSTOMER_LIFETIME_VALUE = 1_000_000;
+const MAX_ROI_PLATFORM_MONTHLY_COST = 100_000;
+const ROI_DAYS_PARAM_PATTERN = /^\d{1,3}$/;
+const ROI_MONEY_PARAM_PATTERN = /^\d+(?:\.\d{1,2})?$/;
+
+function parseBoundedRoiDaysParam(rawDays: string | null): number {
+    const trimmed = String(rawDays || DEFAULT_ROI_RANGE_DAYS).trim();
+    if (!ROI_DAYS_PARAM_PATTERN.test(trimmed)) return DEFAULT_ROI_RANGE_DAYS;
+
+    const parsed = Number(trimmed);
+    return Math.min(Math.max(parsed, 1), MAX_ROI_RANGE_DAYS);
+}
+
+function parseBoundedRoiMoneyParam(rawValue: string | null, maxValue: number): number | undefined {
+    const trimmed = String(rawValue || '').trim();
+    if (!trimmed || !ROI_MONEY_PARAM_PATTERN.test(trimmed)) return undefined;
+
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed)) return undefined;
+
+    return Math.min(parsed, maxValue);
+}
 
 export const GET = withAuth(async (request: NextRequest, session) => {
     let userIdForLog: string | number | null | undefined;
@@ -38,11 +62,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         // Get date range from query params (default: last 30 days)
         const searchParams = request.nextUrl.searchParams;
-        const daysParam = searchParams.get('days') || '30';
-        const parsedDays = parseInt(daysParam, 10);
-        const days = Number.isFinite(parsedDays)
-            ? Math.min(Math.max(parsedDays, 1), MAX_ROI_RANGE_DAYS)
-            : 30;
+        const days = parseBoundedRoiDaysParam(searchParams.get('days'));
         daysForLog = days;
 
         const endDate = new Date();
@@ -69,12 +89,15 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const hourlyCostParam = searchParams.get('hourlyCost');
         const clvParam = searchParams.get('clv');
         const platformCostParam = searchParams.get('platformCost');
+        const hourlyCost = parseBoundedRoiMoneyParam(hourlyCostParam, MAX_ROI_HOURLY_COST);
+        const customerLifetimeValue = parseBoundedRoiMoneyParam(clvParam, MAX_ROI_CUSTOMER_LIFETIME_VALUE);
+        const platformMonthlyCost = parseBoundedRoiMoneyParam(platformCostParam, MAX_ROI_PLATFORM_MONTHLY_COST);
 
         const params: ROICalculationParams = {
             ...getDefaultROIParams(analyticsData),
-            ...(hourlyCostParam && { avgSupportAgentHourlyCost: parseFloat(hourlyCostParam) }),
-            ...(clvParam && { avgCustomerLifetimeValue: parseFloat(clvParam) }),
-            ...(platformCostParam && { platformMonthlyCost: parseFloat(platformCostParam) }),
+            ...(hourlyCost !== undefined && { avgSupportAgentHourlyCost: hourlyCost }),
+            ...(customerLifetimeValue !== undefined && { avgCustomerLifetimeValue: customerLifetimeValue }),
+            ...(platformMonthlyCost !== undefined && { platformMonthlyCost }),
         };
 
         // Calculate ROI metrics

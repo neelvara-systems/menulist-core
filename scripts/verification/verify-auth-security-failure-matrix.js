@@ -1450,6 +1450,9 @@ const ownerBusinessAssistantAnswerHook = read('src/hooks/ownerBusinessAssistant/
 const businessCopyLocalization = read('src/services/ai/businessCopy/localizeBusinessCopyResult.ts');
 const formatters = read('src/utils/formatters.ts');
 const exportUtils = read('src/utils/exportUtils.ts');
+const securityInputValidationGuide = read('__docs__/security/input-validation/input-validation-guide.md');
+const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+const changelog = read('__docs__/CHANGELOG.md');
 const sharedUtils = read('src/utils/utils.ts');
 const aiSearchActionButtons = read('src/components/organisms/AISearchModal/ActionButtons.tsx');
 const answerlatticeSupportClipboard = read('src/lib/answerlattice/supportClipboard.ts');
@@ -1566,14 +1569,19 @@ const contactForm = read('src/app/sites/answerlattice/contact/ContactForm.tsx');
 const answerlatticeOnboardingForm = read('src/app/sites/answerlattice/get-started/OnboardingForm.tsx');
 const feedbackForm = read('src/components/atoms/GuestFeedbackForm/index.tsx');
 const loginPage = read('src/components/templates/loginPage/index.tsx');
+const authFirebaseDoc = read('__docs__/auth/auth_firebase.md');
+const authMobileSupportDoc = read('__docs__/auth/auth_mobile-support.md');
 const phoneOtpPanel = read('src/components/auth/PhoneOtpAuthPanel.tsx');
 const turnstileWidget = read('src/components/security/TurnstileWidget.tsx');
 const authIndex = read('src/lib/auth/index.ts');
+const serverUserContext = read('src/lib/auth/serverUserContext.ts');
 const authMiddleware = read('src/middleware/auth.ts');
 const setClaimsRoute = read('src/app/api/auth/set-claims/route.ts');
 const authSecurity = read('src/lib/auth/security.ts');
 const phoneOtpHelper = read('src/lib/auth/phoneOtp.ts');
 const forgotPassword = read('src/components/templates/forgotPassword/index.tsx');
+const accessStatusRoute = read('src/app/api/auth/access-status/route.ts');
+const claimTokenBoundary = read('src/lib/auth/claimTokenBoundary.ts');
 const claimAccount = read('src/app/api/auth/claim-account/route.ts');
 const validateClaim = read('src/app/api/auth/validate-claim/route.ts');
 const changePassword = read('src/app/api/auth/change-password/route.ts');
@@ -2280,6 +2288,10 @@ assert(!systemHealthDashboard.includes('Mock data for now'), 'Analytics health d
 assert(!systemHealthDashboard.includes("component: 'Firestore'"), 'Analytics health dashboard must not manufacture Firestore health status.');
 assertIncludes(analyticsExportButton, 'analytics_export_failed', 'Analytics export button must code failed export diagnostics.');
 assertIncludes(analyticsExportButton, 'getBoundedRuntimeStringContext', 'Analytics export button must log bounded filename context.');
+assertIncludes(analyticsExportButton, "import { escapeCSVValue } from '@util/exportUtils';", 'Analytics export button must use the shared CSV cell sanitizer.');
+assertIncludes(analyticsExportButton, 'headers.map(escapeCSVValue).join', 'Analytics export button must sanitize CSV header cells.');
+assertIncludes(analyticsExportButton, 'return escapeCSVValue(row[header]);', 'Analytics export button must sanitize CSV row cells.');
+assert(!analyticsExportButton.includes('String(value === null || value === undefined ?'), 'Analytics export button must not keep private CSV escaping that bypasses spreadsheet formula protection.');
 assert(!analyticsExportButton.includes('PDF export coming soon!'), 'Analytics export button must not promise unsupported PDF export.');
 assertIncludes(businessCopyLocalization, 'business_copy_batch_translation_failed', 'Business copy localization must code batch translation failures.');
 assertIncludes(businessCopyLocalization, 'logTranslationFailure', 'Business copy localization must use bounded translation diagnostics.');
@@ -2289,6 +2301,16 @@ assertIncludes(formatters, 'date_format_preference_read_failed', 'Shared formatt
 assertIncludes(formatters, 'time_format_preference_read_failed', 'Shared formatters must code time preference fallback failures.');
 assertIncludes(exportUtils, 'csv_export_failed', 'Shared export utilities must code CSV export failures.');
 assertIncludes(exportUtils, 'excel_export_failed', 'Shared export utilities must code Excel export failures.');
+assertIncludes(exportUtils, 'CSV_FORMULA_INJECTION_PREFIXES', 'Shared export utilities must define spreadsheet formula injection prefixes.');
+assertIncludes(exportUtils, 'shouldEscapeCSVFormula', 'Shared export utilities must gate spreadsheet formula injection handling.');
+assertIncludes(exportUtils, 'value.trimStart()', 'Shared export utilities must detect spreadsheet formulas after leading whitespace.');
+assertIncludes(exportUtils, "export const escapeCSVValue", 'Shared export utilities must expose one CSV cell sanitizer.');
+assertIncludes(exportUtils, "shouldEscapeCSVFormula(value) ? `'${stringValue}` : stringValue", 'Shared export utilities must prefix spreadsheet-active string cells.');
+assertIncludes(exportUtils, "columns.map(col => escapeCSVValue(col.header))", 'Shared export utilities must sanitize CSV headers.');
+assertIncludes(securityInputValidationGuide, 'CSV Export Output Sanitization', 'Security input-validation docs must document CSV export output sanitization.');
+assertIncludes(securityInputValidationGuide, 'escapeCSVValue()', 'Security input-validation docs must name the shared CSV sanitizer.');
+assertIncludes(productionReadinessAudit, 'CSV export spreadsheet formula boundary checkpoint: fixed in source.', 'Production readiness audit must document CSV spreadsheet formula hardening.');
+assertIncludes(changelog, 'CSV Export Spreadsheet Formula Boundary', 'Changelog must document CSV spreadsheet formula hardening.');
 assertIncludes(sharedUtils, 'image_compression_failed', 'Shared utility helpers must code image compression failures.');
 assert(!sharedUtils.includes('console.log(manifestString)'), 'Shared utility helpers must not keep old manifest debug console probes.');
 assertIncludes(aiSearchActionButtons, 'ai_search_answer_copy_failed', 'AI search action buttons must code clipboard failures.');
@@ -2579,6 +2601,43 @@ assertIncludes(staffServer, 'const isEligibleStaffTargetStore = (', 'Staff serve
 assertIncludes(staffServer, 'if (!isEligibleStaffTargetStore(authorityStore, tenantId))', 'Staff authority checks must reject inactive/deleted/platform-blocked authority stores.');
 assertIncludes(staffServer, 'if (!isEligibleStaffTargetStore(targetStore, tenantId))', 'Staff list must reject inactive/deleted/platform-blocked target stores.');
 assertIncludes(staffServer, 'if (!isEligibleStaffTargetStore(store, tenantId))', 'Staff mapping validation must reject inactive/deleted/platform-blocked stores.');
+assertIncludes(staffServer, 'StaffUserIdSchema', 'Staff mutation schemas must use the staff user ID boundary.');
+assertIncludes(staffServer, 'normalizeStaffUserId(value: unknown)', 'Staff server must expose a staff user ID normalizer.');
+assertIncludes(staffServer, 'userId === value && userId.length > 0 && userId.length <= 160 && isValidFirestoreDocumentId(userId)', 'Staff user ID normalizer must reject whitespace-mutated, empty, oversized, path-shaped, or reserved document IDs.');
+assertIncludes(staffServer, 'isValidFirestoreDocumentId(userId)', 'Staff user ID normalizer must reject path-shaped or reserved document IDs.');
+assertIncludes(staffServer, 'const StaffUserIdSchema = z.string()\n    .min(1)\n    .max(160)\n    .refine((value) => normalizeStaffUserId(value) === value, "Invalid user ID");', 'Staff user ID schema must validate the raw user ID value.');
+assertIncludes(staffServer, 'function normalizeStaffStoreScopeDocumentId(value: unknown): StaffStoreScopeDocumentId | null', 'Staff server must expose a staff store scope normalizer.');
+assertIncludes(staffServer, 'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId', 'Staff store scope normalizer must require exact positive numeric document IDs.');
+assertIncludes(staffServer, 'const storeScope = normalizeStaffStoreScopeDocumentId(storeId);', 'Staff store reads must normalize target store IDs.');
+assertIncludes(staffServer, 'const storeScope = normalizeStaffStoreScopeDocumentId(store?.storeId);', 'Staff default-role repair must normalize stored store IDs.');
+assertIncludes(staffServer, 'const storeScope = normalizeStaffStoreScopeDocumentId(input.storeId);', 'Staff role mutation writes must normalize target store IDs.');
+assertIncludes(staffServer, '.doc(storeScope.documentId)', 'Staff store refs must use normalized store scope document IDs.');
+assertIncludes(staffServer, 'const targetUserId = normalizeStaffUserId(input.userId);', 'Staff mutation paths must normalize target user IDs.');
+assertIncludes(staffServer, '.doc(targetUserId)', 'Staff mutation user document refs must use normalized target user IDs.');
+assertIncludes(staffServer, 'sanitizeStaffUserForAuthority(targetUserId', 'Staff mutation acknowledgements must use normalized target user IDs.');
+assert((staffServer.match(/userId: StaffUserIdSchema/g) || []).length >= 3, 'Staff update/remove/reset schemas must use the staff user ID boundary.');
+assert((staffServer.match(/const targetUserId = normalizeStaffUserId\(input\.userId\);/g) || []).length >= 4, 'Staff update/remove/reset/signout paths must normalize target user IDs.');
+assert((staffServer.match(/\.doc\(targetUserId\)/g) || []).length >= 5, 'Staff mutation user document refs must use normalized target user IDs.');
+assert((staffServer.match(/normalizeStaffStoreScopeDocumentId/g) || []).length >= 5, 'Staff store read/write paths must normalize store scope before refs.');
+assert((staffServer.match(/\.doc\(storeScope\.documentId\)/g) || []).length >= 4, 'Staff store document refs must use normalized store scope document IDs.');
+assert(!staffServer.includes('const StaffUserIdSchema = z.string()\n    .trim()'), 'Staff user ID schema must not trim IDs before boundary validation.');
+assert(!staffServer.includes('.doc(input.userId)'), 'Staff mutation user document refs must not use raw input user IDs.');
+assert(!staffServer.includes('sanitizeStaffUserForAuthority(input.userId'), 'Staff mutation acknowledgements must not use raw input user IDs.');
+assert(!staffServer.includes('userId: input.userId'), 'Staff mutation logs/responses must not use raw input user IDs after normalization.');
+assert(!staffServer.includes('.doc(String(storeId))'), 'Staff store reads must not use raw store IDs.');
+assert(!staffServer.includes('.doc(String(store.storeId))'), 'Staff default-role repair writes must not use raw store IDs.');
+assert(!staffServer.includes('.doc(String(input.storeId))'), 'Staff role mutation writes must not use raw store IDs.');
+assertIncludes(read('__docs__/roles-permissions/roles-permissions_impl.md'), 'Staff store refs use `normalizeStaffStoreScopeDocumentId()`', 'Roles docs must record staff store scope boundary.');
+assertIncludes(read('__docs__/roles-permissions/roles-permissions_impl.md'), 'whitespace-mutated', 'Roles docs must record staff user-ID whitespace mutation rejection.');
+assertIncludes(read('__docs__/roles-permissions/roles-permissions_firebase.md'), 'Staff store scope document-ID admission is cost-neutral', 'Roles Firebase docs must record staff store scope cost boundary.');
+assertIncludes(read('__docs__/roles-permissions/roles-permissions_firebase.md'), 'Staff mutation user-ID admission is cost-neutral', 'Roles Firebase docs must record staff user-ID cost boundary.');
+assertIncludes(read('__docs__/roles-permissions/roles-permissions_firebase.md'), 'whitespace-mutated', 'Roles Firebase docs must record staff user-ID whitespace mutation rejection.');
+assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'Staff store scope document-ID boundary checkpoint', 'Production audit must record staff store scope boundary.');
+assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'Staff mutation strict user-ID boundary checkpoint', 'Production audit must record strict staff user-ID boundary.');
+assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'no longer trims `userId` before `normalizeStaffUserId(value) === value`', 'Production audit must record raw staff user-ID schema validation.');
+assertIncludes(read('__docs__/CHANGELOG.md'), 'Staff Store Scope Document ID Boundary', 'Changelog must record staff store scope boundary.');
+assertIncludes(read('__docs__/CHANGELOG.md'), 'Staff Mutation Strict User ID Boundary', 'Changelog must record strict staff user-ID boundary.');
+assertIncludes(read('__docs__/changelog.md'), 'Staff Store Scope Document ID Boundary', 'Lowercase changelog must record staff store scope boundary.');
 assert((staffServer.match(/if \(!isEligibleStaffTargetStore\(store, input\.tenantId\)\)/g) || []).length >= 2, 'Role save/delete must reject inactive/deleted/platform-blocked target stores.');
 assertNoRandomReactKeys(tooltipElement, 'Tooltip wrapper');
 assertNoRandomReactKeys(platformUsers, 'Platform users dashboard');
@@ -3267,6 +3326,7 @@ assert(!authIndex.includes("secureError('[Auth]"), 'Auth index must not pass raw
     'set_claims_invalid_input',
     'set_claims_inactive_answerlattice_auth_profile_rejected',
     'set_claims_store_switch_outside_user_stores_rejected',
+    'set_claims_invalid_workspace_scope_rejected',
     'answerlattice_firebase_custom_token_sync_failed',
     'set_claims_uid_email_mismatch_rejected',
     'set_claims_existing_firebase_user_synced',
@@ -3278,6 +3338,47 @@ assert(!authIndex.includes("secureError('[Auth]"), 'Auth index must not pass raw
     assertIncludes(setClaimsRoute, diagnosticCode, `Set-claims route must include bounded diagnostic ${diagnosticCode}.`);
 });
 assertIncludes(setClaimsRoute, 'getSetClaimsLogContext', 'Set-claims route must centralize bounded claim diagnostics.');
+assertIncludes(setClaimsRoute, "import { checkRateLimit } from '@lib/rateLimit';", 'Set-claims route must import the shared rate limiter.');
+assertIncludes(setClaimsRoute, "import { getRateLimitForFeature } from '@lib/rateLimit/configs';", 'Set-claims route must use shared rate-limit profiles.');
+assertIncludes(setClaimsRoute, "import { hashPublicRateLimitValue } from 'src/middleware/publicApi';", 'Set-claims route must hash rate-limit identity material.');
+assertIncludes(setClaimsRoute, "const SET_CLAIMS_RATE_LIMIT_KEY = 'auth-set-claims';", 'Set-claims route must use a stable limiter namespace.');
+assertIncludes(setClaimsRoute, "const rateLimitConfig = getRateLimitForFeature('AUTH_CLAIM_SYNC');", 'Set-claims route must use the auth claim sync limiter profile.');
+assertIncludes(setClaimsRoute, 'const setClaimsUserRateLimitHash = hashPublicRateLimitValue(session.uId || session.user.id || session.user.email);', 'Set-claims route must hash user/email limiter material.');
+assertIncludes(setClaimsRoute, 'key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${setClaimsUserRateLimitHash}`', 'Set-claims route must build limiter keys from hashed material.');
+assertIncludes(setClaimsRoute, "logger.security('Rate Limit Exceeded - Set Claims'", 'Set-claims route must security-log rate-limit rejections.');
+assertOrder(
+    setClaimsRoute,
+    [
+        'if (!session?.user?.email)',
+        "const rateLimitConfig = getRateLimitForFeature('AUTH_CLAIM_SYNC');",
+        'const rateLimit = await checkRateLimit({',
+        'readOptionalBoundedJsonBody(request, SET_CLAIMS_MAX_BODY_BYTES',
+        'getAuthUserByEmail(session.user.email)',
+    ],
+    'Set-claims route must rate-limit before body parsing and user/provider reads.',
+);
+assert(!setClaimsRoute.includes('key: `auth-set-claims:${session.uId'), 'Set-claims route must not store raw session user IDs in rate-limit keys.');
+assert(!setClaimsRoute.includes('key: `auth-set-claims:${session.user.email'), 'Set-claims route must not store raw emails in rate-limit keys.');
+assert(!setClaimsRoute.includes('key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${session'), 'Set-claims route must build limiter keys from hashed identity material.');
+assertIncludes(setClaimsRoute, "import { normalizeStorePermissionScopeDocumentId, type StorePermissionScopeDocumentId } from '@lib/permissions/server';", 'Set-claims route must reuse the shared tenant/store scope document ID normalizer.');
+assertIncludes(setClaimsRoute, 'const resolveClaimStoreScope = (dbUser: any, targetStoreId?: number): StorePermissionScopeDocumentId | null => {', 'Set-claims route must expose a normalized claim-store scope resolver.');
+assertIncludes(setClaimsRoute, 'const claimStoreScope = effectiveTargetStoreId && (hasDefaultPlatformAccess || canAccessStore(dbUser, effectiveTargetStoreId))', 'Set-claims route must normalize the selected claim store scope.');
+assertIncludes(setClaimsRoute, 'const claimTenantScope = normalizeStorePermissionScopeDocumentId(dbUser.tenantId ?? dbUser.tId);', 'Set-claims route must normalize the selected claim tenant scope.');
+assertIncludes(setClaimsRoute, ".doc(params.storeScope.documentId)", 'Set-claims Answerlattice permission lookup must use the normalized store document ID.');
+assertIncludes(setClaimsRoute, 'tenantId: claimTenantScope.documentId', 'Set-claims custom claims must use the normalized tenant document ID.');
+assertIncludes(setClaimsRoute, 'storeId: claimStoreScope.documentId', 'Set-claims custom claims must use the normalized store document ID.');
+assert(!setClaimsRoute.includes('.doc(String(params.storeId))'), 'Set-claims route must not read Answerlattice store roles from raw store IDs.');
+assert(!setClaimsRoute.includes('tenantId: String(dbUser.tenantId)'), 'Set-claims route must not mint tenant claims from raw dbUser tenant IDs.');
+assertIncludes(authFirebaseDoc, 'Set-claims workspace scope boundary', 'Auth Firebase docs must record the set-claims workspace scope boundary.');
+assertIncludes(authFirebaseDoc, 'Set-claims rate-limit boundary', 'Auth Firebase docs must record the set-claims rate-limit boundary.');
+assertIncludes(read('__docs__/auth/firebase-auth-sync.md'), 'Set-claims workspace scope boundary', 'Firebase Auth sync docs must record the set-claims workspace scope boundary.');
+assertIncludes(read('__docs__/auth/firebase-auth-sync.md'), 'Set-claims rate-limit boundary', 'Firebase Auth sync docs must record the set-claims rate-limit boundary.');
+assertIncludes(productionReadinessAudit, 'Set-claims workspace scope boundary checkpoint', 'Production audit must record the set-claims workspace scope boundary.');
+assertIncludes(productionReadinessAudit, 'Set-claims rate-limit boundary checkpoint', 'Production audit must record the set-claims rate-limit boundary.');
+assertIncludes(changelog, 'Set-claims Workspace Scope Boundary', 'Changelog must record the set-claims workspace scope boundary.');
+assertIncludes(changelog, 'Set-claims Rate-Limit Boundary', 'Changelog must record the set-claims rate-limit boundary.');
+assertIncludes(read('__docs__/changelog.md'), 'Set-claims Workspace Scope Boundary', 'Lowercase changelog must record the set-claims workspace scope boundary.');
+assertIncludes(read('__docs__/changelog.md'), 'Set-claims Rate-Limit Boundary', 'Lowercase changelog must record the set-claims rate-limit boundary.');
 assert(!setClaimsRoute.includes('secureLog('), 'Set-claims route must not log raw auth context through secureLog.');
 assert(!setClaimsRoute.includes('secureError('), 'Set-claims route must not pass raw auth context to secureError.');
 [
@@ -3455,10 +3556,18 @@ assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(swrLocalStorageProvider), 'SWR
 });
 assertIncludes(apiCallComposerClient, 'getSafeUiErrorMessage(error, fallbackMessage)', 'Client DAL composer with loader must show safe owner errors.');
 assertIncludes(apiCallComposerClientWithoutLoader, 'getSafeUiErrorMessage(error, fallbackMessage)', 'Client DAL composer without loader must show safe owner errors.');
+assert(!apiCallComposerClient.includes('allowTrustedPlainText'), 'Client DAL composer with loader must not opt into trusted plain exception text.');
+assert(!apiCallComposerClientWithoutLoader.includes('allowTrustedPlainText'), 'Client DAL composer without loader must not opt into trusted plain exception text.');
 assertIncludes(uiErrorMessages, 'const MAX_SAFE_UI_ERROR_LENGTH = 160;', 'UI error helper must cap owner-visible exception messages.');
 assertIncludes(uiErrorMessages, 'TECHNICAL_ERROR_SHAPE_PATTERN', 'UI error helper must reject technical-looking message shapes.');
 assertIncludes(uiErrorMessages, 'rawMessage.length > MAX_SAFE_UI_ERROR_LENGTH', 'UI error helper must reject long exception messages.');
 assertIncludes(uiErrorMessages, 'TECHNICAL_ERROR_PATTERNS.some', 'UI error helper must keep technical provider/runtime patterns generic.');
+assertIncludes(uiErrorMessages, 'allowTrustedPlainText?: boolean;', 'UI error helper must require explicit trust before displaying plain exception text.');
+assertIncludes(uiErrorMessages, 'if (!options.allowTrustedPlainText)', 'UI error helper must default generic exception text to fallback copy.');
+assertIncludes(securityInputValidationGuide, 'Owner-visible UI Error Copy Boundary', 'Security input-validation docs must document owner-visible UI error copy trust boundary.');
+assertIncludes(securityInputValidationGuide, 'getSafeUiErrorMessage()', 'Security input-validation docs must name the shared UI error helper.');
+assertIncludes(securityInputValidationGuide, 'allowTrustedPlainText', 'Security input-validation docs must document the trusted plain-text opt-in.');
+assertIncludes(securityInputValidationGuide, 'DAL, API, provider, Firestore, Auth, payment, Storage, browser fetch, and route exception paths must not opt into trusted plain text', 'Security input-validation docs must block trusted plain text for external exception paths.');
 [
     '/firestore/i',
     '/razorpay/i',
@@ -3469,7 +3578,7 @@ assertIncludes(uiErrorMessages, 'TECHNICAL_ERROR_PATTERNS.some', 'UI error helpe
     assertIncludes(uiErrorMessages, pattern, `UI error helper must reject ${pattern} messages.`);
 });
 assertIncludes(dragAndDropHook, "import { getSafeUiErrorMessage } from '@lib/errors/uiErrorMessages';", 'Drag-and-drop hook must sanitize custom upload validation copy.');
-assertIncludes(dragAndDropHook, "getSafeUiErrorMessage(validation.error, DROP_FILE_FALLBACK_ERROR)", 'Drag-and-drop hook must not show unchecked custom validator text.');
+assertIncludes(dragAndDropHook, "getSafeUiErrorMessage(validation.error, DROP_FILE_FALLBACK_ERROR, { allowTrustedPlainText: true })", 'Drag-and-drop hook must explicitly trust local custom validator text.');
 assertIncludes(dragAndDropHook, "const DROP_FILE_TYPE_ERROR = 'File type is not allowed.';", 'Drag-and-drop hook must keep type failures generic.');
 assertIncludes(dragAndDropHook, 'errors.forEach((safeError) => message.error(safeError));', 'Drag-and-drop hook must emit sanitized upload errors.');
 [
@@ -3557,6 +3666,14 @@ assertIncludes(loginPage, 'displayErrorMessage', 'Login page must render sanitiz
 assertIncludes(loginPage, 'readJsonResponseWithLimit<unknown>', 'Login page must parse auth responses through a bounded reader.');
 assertIncludes(loginPage, 'LOGIN_PAGE_RESPONSE_JSON_MAX_BYTES', 'Login page must cap auth response parsing.');
 assertIncludes(loginPage, 'AUTH_BROWSER_REQUEST_POLICY', 'Login page auth requests must use the shared browser auth request policy.');
+assertIncludes(loginPage, 'const parsedUrl = new URL(callbackUrl, window.location.origin);', 'Login callbackUrl redirect must be parsed against current origin.');
+assertIncludes(loginPage, 'if (parsedUrl.origin === window.location.origin)', 'Login callbackUrl redirect must require same-origin targets.');
+assertIncludes(loginPage, 'return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;', 'Login callbackUrl redirect must return only path/search/hash.');
+assert(!loginPage.includes("if (callbackUrl.startsWith('/')) return callbackUrl;"), 'Login callbackUrl redirect must not trust protocol-relative // URLs through a raw leading-slash shortcut.');
+assertIncludes(authFirebaseDoc, 'Login callback redirect boundary', 'Auth Firebase docs must document login callback redirect boundary.');
+assertIncludes(authMobileSupportDoc, 'same-origin callback redirect guard', 'Auth mobile docs must inherit login callback redirect guard.');
+assertIncludes(productionReadinessAudit, 'Login callback redirect boundary checkpoint', 'Production audit must document login callback redirect boundary.');
+assertIncludes(changelog, 'Login Callback Redirect Boundary', 'Changelog must document login callback redirect boundary.');
 [
     '/api/auth/set-claims',
     '/api/auth/claim-account',
@@ -3628,6 +3745,22 @@ assertIncludes(sessionExpiryMonitor, 'auth_access_status_response_redirected', '
 assertIncludes(sessionExpiryMonitor, 'auth_access_status_response_parse_failed', 'Session expiry monitor must code malformed access-status responses.');
 assertIncludes(sessionExpiryMonitor, 'auth_access_status_response_invalid', 'Session expiry monitor must code invalid access-status responses.');
 assert(!sessionExpiryMonitor.includes('response.json().catch(() => ({})'), 'Session expiry monitor must not silently swallow access-status response parse failures.');
+assertIncludes(accessStatusRoute, "import { isValidFirestoreDocumentId } from \"@lib/firebase/firestoreDocumentId\";", 'Access-status route must use the shared Firestore document ID guard.');
+assertIncludes(accessStatusRoute, 'const CANONICAL_ISO_TIMESTAMP_PATTERN', 'Access-status route must define a canonical ISO timestamp guard.');
+assertIncludes(accessStatusRoute, 'const canonicalIsoTimestampToMillis', 'Access-status route must parse string timestamps through a strict helper.');
+assertIncludes(accessStatusRoute, 'new Date(millis).toISOString() === normalized', 'Access-status route must round-trip string timestamps before session revocation comparisons.');
+assert(!accessStatusRoute.includes('Date.parse(value)'), 'Access-status route must not use permissive Date.parse for session revocation timestamps.');
+assertIncludes(accessStatusRoute, 'const normalizeOptionalDocumentId', 'Access-status route must normalize optional Firestore document IDs.');
+assertIncludes(accessStatusRoute, 'isValidFirestoreDocumentId(documentId)', 'Access-status route must reject path-shaped user/tenant/store document IDs.');
+assertIncludes(accessStatusRoute, 'if (!userDocumentId) return null;', 'Access-status route must fail malformed session user IDs before user doc reads.');
+assertIncludes(accessStatusRoute, 'TENANT_REFERENCE_INVALID', 'Access-status route must fail malformed tenant references.');
+assertIncludes(accessStatusRoute, 'STORE_REFERENCE_INVALID', 'Access-status route must fail malformed store references.');
+assert(!accessStatusRoute.includes('.doc(String(userId))'), 'Access-status route must not read user docs with raw session user IDs.');
+assert(!accessStatusRoute.includes('.doc(String(id))'), 'Access-status route must not read tenant/store docs with raw entity IDs.');
+assertIncludes(authFirebaseDoc, 'Access-status entity reference boundary', 'Auth Firebase docs must document access-status entity reference boundary.');
+assertIncludes(authMobileSupportDoc, 'access-status entity reference guard', 'Auth mobile docs must inherit access-status entity reference guard.');
+assertIncludes(productionReadinessAudit, 'Auth access-status entity reference boundary checkpoint', 'Production audit must document access-status entity reference boundary.');
+assertIncludes(changelog, 'Auth Access-Status Entity Reference Boundary', 'Changelog must document access-status entity reference boundary.');
 assertIncludes(turnstileWidget, 'NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'Client Turnstile widget must use the public site key env.');
 assertIncludes(stagingEnv, 'TURNSTILE_SECRET_KEY=', 'Staging env template must expose server Turnstile secret placeholder.');
 assertIncludes(stagingEnv, 'NEXT_PUBLIC_TURNSTILE_SITE_KEY=', 'Staging env template must expose client Turnstile site key placeholder.');
@@ -3816,11 +3949,67 @@ assertIncludes(
     'getBoundedAuthStringContext("claimToken", claimToken)',
     'Claim account missing-token diagnostics must bound claim token metadata.',
 );
+assert(
+    claimTokenBoundary.includes('AUTH_CLAIM_TOKEN_MIN_LENGTH = 20')
+    && claimTokenBoundary.includes('AUTH_CLAIM_TOKEN_MAX_LENGTH = 256')
+    && claimTokenBoundary.includes('AUTH_CLAIM_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/')
+    && claimTokenBoundary.includes('normalizeAuthClaimToken'),
+    'Auth claim token boundary helper must cap and shape-check claim tokens.',
+);
+assert(
+    claimAccount.includes('AuthClaimTokenSchema')
+    && claimAccount.includes('normalizeAuthClaimToken(body.claimToken)')
+    && claimAccount.includes('claimToken: AuthClaimTokenSchema'),
+    'Claim account must share claim-token shape validation before lookup and mode validation.',
+);
+assertIncludes(
+    claimAccount,
+    'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+    'Claim account must use the shared Firestore document ID guard for claimed tenant/store scope.',
+);
+assertIncludes(
+    claimAccount,
+    'const normalizeClaimAccountScopeDocumentId = (value: unknown): string | null => {',
+    'Claim account must normalize claimed tenant/store document IDs before ownership writes.',
+);
+assertIncludes(
+    claimAccount,
+    'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
+    'Claim account tenant/store document IDs must be exact positive numeric IDs.',
+);
+assertIncludes(
+    claimAccount,
+    'const claimAccountScope = normalizeClaimAccountScope(data);',
+    'Claim account transaction guard must re-check claimed tenant/store scope after re-reading the messaging user.',
+);
+assertIncludes(
+    claimAccount,
+    'if (!normalizeClaimAccountScope(messagingUser))',
+    'Claim account must reject unsafe tenant/store scope before Firebase Auth or ownership mutation work.',
+);
+assertIncludes(
+    claimAccount,
+    '.doc(claimScope.tenantDocumentId)',
+    'Claim account tenant writes must use normalized tenant document IDs.',
+);
+assertIncludes(
+    claimAccount,
+    '.doc(claimScope.storeDocumentId)',
+    'Claim account store writes must use normalized store document IDs.',
+);
+assertIncludes(
+    claimAccount,
+    'await revalidateMenuCache(claimScope.storeId, { tId: claimScope.tenantId });',
+    'Claim account cache revalidation must use normalized numeric tenant/store scope.',
+);
 assert(!claimAccount.includes('logger.error("[claim-account] Error"'), 'Claim account must not raw-log unexpected failures.');
 assert(!claimAccount.includes('new Error(String(error))'), 'Claim account must not stringify unexpected thrown values.');
 assert(!claimAccount.includes('key: `auth-claim:${ip}`'), 'Claim account must not store raw request IP in rate-limit keys.');
 assert(!claimAccount.includes('claimToken.slice'), 'Claim account must not log raw claim token prefixes.');
+assert(!claimAccount.includes('claimToken.length < 20 || claimToken.length > 256'), 'Claim account must not keep an inline loose claim-token length check.');
 assert(!claimAccount.includes('buildSecurityContext'), 'Claim account must not spread raw request security context into security logs.');
+assert(!claimAccount.includes('.doc(String(currentMessagingUser.tenantId))'), 'Claim account must not compose tenant refs from raw messaging-user tenant IDs.');
+assert(!claimAccount.includes('.doc(String(currentMessagingUser.storeId))'), 'Claim account must not compose store refs from raw messaging-user store IDs.');
 assertIncludes(
     validateClaim,
     'logAuthFailure(\n      "validate_claim_unexpected_error"',
@@ -3830,6 +4019,11 @@ assertIncludes(
     validateClaim,
     'const ipHash = hashPublicRateLimitValue(ip);',
     'Validate-claim must hash request IP before building rate-limit provider keys.',
+);
+assertIncludes(
+    validateClaim,
+    'const token = normalizeAuthClaimToken(searchParams.get("token"));',
+    'Validate-claim must shape-check claim token query values before Firestore lookup.',
 );
 assertIncludes(
     validateClaim,
@@ -3848,6 +4042,24 @@ assertIncludes(
 );
 assert(!validateClaim.includes('logger.error("[validate-claim] Error"'), 'Validate-claim must not raw-log unexpected failures.');
 assert(!validateClaim.includes('key: `auth-validate:${ip}`'), 'Validate-claim must not store raw request IP in rate-limit keys.');
+assert(!validateClaim.includes('token.length < 20'), 'Validate-claim must not keep a loose minimum-only claim-token length check.');
+[
+    [authFirebaseDoc, 'Auth Firebase doc'],
+    [authMobileSupportDoc, 'Auth mobile doc'],
+].forEach(([content, label]) => {
+    assert(content.includes('Claim-token lookup boundary'), `${label} must document claim-token lookup boundary`);
+    assert(content.includes('normalizeAuthClaimToken'), `${label} must mention shared claim-token normalization`);
+});
+assert(read('__docs__/auth/README.md').includes('Claim-token lookup boundary'), 'Auth README must document claim-token lookup boundary.');
+assert(read('__docs__/audits/menulist-production-readiness-audit.md').includes('Auth claim-token lookup boundary checkpoint'), 'Production audit must record auth claim-token lookup boundary.');
+assert(read('__docs__/CHANGELOG.md').includes('Auth Claim-Token Lookup Boundary'), 'Changelog must record auth claim-token lookup boundary.');
+assert(read('__docs__/changelog.md').includes('Auth Claim-Token Lookup Boundary'), 'Lowercase changelog must record auth claim-token lookup boundary.');
+assert(read('__docs__/auth/README.md').includes('Claim-account tenant/store scope boundary'), 'Auth README must document claim-account tenant/store scope boundary.');
+assert(authFirebaseDoc.includes('Claim-account tenant/store scope boundary'), 'Auth Firebase docs must document claim-account tenant/store scope boundary.');
+assert(authMobileSupportDoc.includes('Claim-account tenant/store scope boundary'), 'Auth mobile docs must document claim-account tenant/store scope boundary.');
+assert(read('__docs__/audits/menulist-production-readiness-audit.md').includes('Auth claim-account tenant/store scope boundary checkpoint'), 'Production audit must record auth claim-account tenant/store scope boundary.');
+assert(read('__docs__/CHANGELOG.md').includes('Auth Claim-Account Tenant/Store Scope Boundary'), 'Changelog must record auth claim-account tenant/store scope boundary.');
+assert(read('__docs__/changelog.md').includes('Auth Claim-Account Tenant/Store Scope Boundary'), 'Lowercase changelog must record auth claim-account tenant/store scope boundary.');
 assertIncludes(
     changePassword,
     'logAuthFailure(\n        "change_password_firebase_api_key_missing"',
@@ -3868,6 +4080,78 @@ assertIncludes(
     'getAuthSessionLogContext(session)',
     'Change-password diagnostics must bound session metadata.',
 );
+assertIncludes(
+    changePassword,
+    'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+    'Change-password route must use the shared Firestore document ID guard.',
+);
+assertIncludes(
+    changePassword,
+    'function normalizeChangePasswordUserDocumentId(value: unknown): string | null',
+    'Change-password route must expose a strict session user document ID normalizer.',
+);
+assertIncludes(
+    changePassword,
+    'userId === raw',
+    'Change-password route must reject whitespace-mutated session user IDs.',
+);
+assertIncludes(
+    changePassword,
+    'userId.length <= CHANGE_PASSWORD_USER_DOCUMENT_ID_MAX_LENGTH',
+    'Change-password route must reject oversized session user IDs.',
+);
+assertIncludes(
+    changePassword,
+    'isValidFirestoreDocumentId(userId)',
+    'Change-password route must reject path-shaped or reserved session user IDs.',
+);
+assertIncludes(
+    changePassword,
+    'const userId = normalizeChangePasswordUserDocumentId(rawUserId);',
+    'Change-password route must normalize session user IDs before rate-limit and Firestore work.',
+);
+assertIncludes(
+    changePassword,
+    '"change_password_invalid_session_user_id"',
+    'Change-password route must log malformed session user IDs with a fixed code.',
+);
+assertIncludes(
+    authFirebaseDoc,
+    'Change-password user document boundary',
+    'Auth Firebase docs must document change-password user document boundary.',
+);
+assertIncludes(
+    authFirebaseDoc,
+    'session user ID normalized through the shared Firestore document-ID guard',
+    'Auth Firebase docs must document strict change-password session user ID normalization.',
+);
+assertIncludes(
+    authFirebaseDoc,
+    'Malformed, reserved, whitespace-mutated, path-shaped, or oversized session user IDs fail',
+    'Auth Firebase docs must document strict change-password malformed user ID handling.',
+);
+assertIncludes(
+    productionReadinessAudit,
+    'Auth change-password user document boundary checkpoint',
+    'Production audit must record change-password user document boundary.',
+);
+assertIncludes(
+    productionReadinessAudit,
+    'Auth change-password strict user document-ID boundary checkpoint',
+    'Production audit must record strict change-password user document-ID boundary.',
+);
+assertIncludes(
+    changelog,
+    'Auth Change-Password User Document Boundary',
+    'Changelog must record change-password user document boundary.',
+);
+assertIncludes(
+    changelog,
+    'Auth Change-Password Strict User Document ID Boundary',
+    'Changelog must record strict change-password user document boundary.',
+);
+assert(read('__docs__/changelog.md').includes('Auth Change-Password User Document Boundary'), 'Lowercase changelog must record change-password user document boundary.');
+assert(read('__docs__/changelog.md').includes('Auth Change-Password Strict User Document ID Boundary'), 'Lowercase changelog must record strict change-password user document boundary.');
 assertIncludes(
     changePassword,
     'logger.info("[change-password] Password changed", getChangePasswordLogContext(request, session))',
@@ -3913,6 +4197,21 @@ assertIncludes(
     'key: `auth-pwd:${userRateLimitHash}`',
     'Change-password must not store raw authenticated user IDs in rate-limit keys.',
 );
+assertOrder(
+    changePassword,
+    [
+        'function normalizeChangePasswordUserDocumentId(value: unknown): string | null',
+        'const rawUserId = session?.uId || session?.user?.id;',
+        'const userId = normalizeChangePasswordUserDocumentId(rawUserId);',
+        '"change_password_invalid_session_user_id"',
+        'const userRateLimitHash = hashPublicRateLimitValue(userId);',
+        'readBoundedJsonBody(request, CHANGE_PASSWORD_MAX_BODY_BYTES',
+        'fetch(buildFirebasePasswordVerificationEndpoint(firebaseApiKey), {',
+        'const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(userId);',
+    ],
+    'Change password must validate session user ID before rate-limit, body, provider, and user doc write work',
+);
+assert(!changePassword.includes('const userId = String(session?.uId || session?.user?.id || "");'), 'Change-password route must not coerce raw session user IDs before document-ID validation.');
 assert(!changePassword.includes('logger.error("[change-password] Current password verification failed"'), 'Change-password must not raw-log verification exceptions.');
 assert(!changePassword.includes('logger.error("[change-password] Error"'), 'Change-password must not raw-log unexpected exceptions.');
 assertIncludes(
@@ -3956,7 +4255,27 @@ assertIncludes(
 );
 assertIncludes(
     switchStore,
-    'const targetStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${targetStoreId}`).get();',
+    'normalizeStorePermissionScopeDocumentId',
+    'Switch-store must normalize session and target store document IDs before Firestore reads.',
+);
+assertIncludes(
+    switchStore,
+    'const tenantScope = normalizeStorePermissionScopeDocumentId(session.tId);',
+    'Switch-store must normalize session tenant IDs before tenant access checks.',
+);
+assertIncludes(
+    switchStore,
+    'const currentStoreScope = normalizeStorePermissionScopeDocumentId(session.sId);',
+    'Switch-store must normalize current session store IDs before tenant access checks.',
+);
+assertIncludes(
+    switchStore,
+    'const targetStoreScope = normalizeStorePermissionScopeDocumentId(targetStoreId);',
+    'Switch-store must normalize target store IDs before store reads.',
+);
+assertIncludes(
+    switchStore,
+    'const targetStoreSnap = await db.collection(DB_COLLECTIONS.STORES).doc(targetStoreScope.documentId).get();',
     'Switch-store must read the canonical target store before success.',
 );
 assertIncludes(
@@ -3965,6 +4284,47 @@ assertIncludes(
     'Switch-store must reject blocked target stores before success.',
 );
 assert(!switchStore.includes('key: `switch-store:${session.uId || session.user?.id}`'), 'Switch-store must not store raw session user IDs in rate-limit keys.');
+assert(!switchStore.includes('db.doc(`${DB_COLLECTIONS.STORES}/${currentStoreId}`).get()'), 'Switch-store must not read caller store through raw session store IDs.');
+assert(!switchStore.includes('db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get()'), 'Switch-store must not read tenant through raw session tenant IDs.');
+assert(!switchStore.includes('db.doc(`${DB_COLLECTIONS.STORES}/${targetStoreId}`).get()'), 'Switch-store must not read target store through raw body IDs.');
+assert(authFirebaseDoc.includes('Switch-store scope document ID boundary'), 'Auth Firebase docs must document switch-store scope document ID boundary.');
+assert(authMobileSupportDoc.includes('Switch-store scope document ID boundary'), 'Auth mobile docs must document switch-store scope document ID boundary.');
+assert(productionReadinessAudit.includes('Switch-store scope document ID boundary checkpoint'), 'Production audit must document switch-store scope document ID boundary.');
+assert(read('__docs__/multi-outlet-consistency/multi-outlet-consistency_firebase.md').includes('Switch-store scope document ID boundary'), 'Multi-outlet Firebase docs must document switch-store scope document ID boundary.');
+assert(read('__docs__/CHANGELOG.md').includes('Switch-Store Scope Document ID Boundary'), 'Changelog must document switch-store scope document ID boundary.');
+assert(read('__docs__/changelog.md').includes('Switch-Store Scope Document ID Boundary'), 'Lowercase changelog must document switch-store scope document ID boundary.');
+
+assertIncludes(
+    serverUserContext,
+    'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+    'Auth server user context must use the shared Firestore document ID guard.',
+);
+assertIncludes(
+    serverUserContext,
+    'import { normalizeStorePermissionScopeDocumentId } from "@lib/permissions/server";',
+    'Auth server user context must reuse the shared tenant/store scope document ID boundary.',
+);
+assertIncludes(
+    serverUserContext,
+    'const scopeDocumentId = collectionName === DB_COLLECTIONS.TENANTS || collectionName === DB_COLLECTIONS.STORES',
+    'Auth entity snapshots must identify tenant/store collections before Firestore reads.',
+);
+assertIncludes(
+    serverUserContext,
+    '? normalizeStorePermissionScopeDocumentId(id)?.documentId',
+    'Auth entity tenant/store snapshots must normalize numeric scope document IDs.',
+);
+assertIncludes(
+    serverUserContext,
+    '.doc(scopeDocumentId).get()',
+    'Auth entity snapshots must read only normalized document IDs.',
+);
+assert(!serverUserContext.includes('.doc(String(id)).get()'), 'Auth entity snapshots must not read raw stringified entity IDs.');
+assert(authFirebaseDoc.includes('Auth entity snapshot document ID boundary'), 'Auth Firebase docs must document auth entity snapshot document ID boundary.');
+assert(authMobileSupportDoc.includes('Auth entity snapshot document ID boundary'), 'Auth mobile docs must document auth entity snapshot document ID boundary.');
+assert(productionReadinessAudit.includes('Auth entity snapshot document ID boundary checkpoint'), 'Production audit must document auth entity snapshot document ID boundary.');
+assert(read('__docs__/CHANGELOG.md').includes('Auth Entity Snapshot Document ID Boundary'), 'Changelog must document auth entity snapshot document ID boundary.');
+assert(read('__docs__/changelog.md').includes('Auth Entity Snapshot Document ID Boundary'), 'Lowercase changelog must document auth entity snapshot document ID boundary.');
 
 [
     ['claim-account', claimAccount],
@@ -4020,10 +4380,21 @@ assertOrder(
         'const ipHash = hashPublicRateLimitValue(ip);',
         "checkRateLimit({ key: `auth-claim:${ipHash}`",
         'readBoundedJsonBody(request, CLAIM_ACCOUNT_MAX_BODY_BYTES',
-        'const { claimToken, email, password, useWhatsappPhone } = body;',
+        'const { email, password, useWhatsappPhone } = body;',
+        'const claimToken = normalizeAuthClaimToken(body.claimToken);',
         '.where("claimToken", "==", claimToken)',
     ],
     'Claim account must rate-limit and body-cap before claim-token lookup',
+);
+
+assertOrder(
+    claimAccount,
+    [
+        '.where("claimToken", "==", claimToken)',
+        'if (!normalizeClaimAccountScope(messagingUser))',
+        'const firebaseUid = await createOrUpdateFirebasePasswordUser({',
+    ],
+    'Claim account must validate claimed tenant/store scope before Firebase Auth user mutations',
 );
 
 assertOrder(
@@ -4041,12 +4412,15 @@ assertOrder(
 assertOrder(
     switchStore,
     [
-        'verifyTenantAccess(session, tenantId, currentStoreId, request)',
+        'const tenantScope = normalizeStorePermissionScopeDocumentId(session.tId);',
+        'const currentStoreScope = normalizeStorePermissionScopeDocumentId(session.sId);',
+        'verifyTenantAccess(session, tenantScope.numericId, currentStoreScope.numericId, request)',
         'const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || "unknown");',
         'const rateLimit = await checkRateLimit({',
         'readBoundedJsonBody(request, SWITCH_STORE_MAX_BODY_BYTES',
         'validateAPIInput(schema, body)',
-        'db.doc(`${DB_COLLECTIONS.STORES}/${currentStoreId}`).get()',
+        'const targetStoreScope = normalizeStorePermissionScopeDocumentId(targetStoreId);',
+        'db.collection(DB_COLLECTIONS.STORES).doc(currentStoreScope.documentId).get()',
     ],
     'Switch-store must throttle and body-cap before store reads',
 );
@@ -4087,10 +4461,52 @@ assertIncludes(phoneOtpVerify, "'phone_otp_verify_route_failed'", 'Phone OTP ver
 assertIncludes(phoneOtpVerify, "getBoundedAuthStringContext('requestIp', getRequestIp(request))", 'Phone OTP verify diagnostics must bound request IP metadata.');
 assertIncludes(phoneOtpVerify, "action: 'verify'", 'Phone OTP verify route must return explicit verify acknowledgement.');
 assertIncludes(phoneOtpVerify, 'challengeId: parsed.data.challengeId', 'Phone OTP verify route must echo the verified challenge id.');
+assertIncludes(phoneOtpVerify, 'normalizePhoneOtpChallengeId', 'Phone OTP verify route must use the shared challenge ID normalizer.');
+assertIncludes(phoneOtpVerify, 'const PhoneOtpChallengeIdSchema = z.string()', 'Phone OTP verify route must define a challenge ID schema.');
+assertIncludes(phoneOtpVerify, ".refine((value) => normalizePhoneOtpChallengeId(value) !== null, 'Invalid challenge')", 'Phone OTP verify route must reject malformed challenge IDs before challenge throttling.');
+assertIncludes(phoneOtpVerify, 'challengeId: PhoneOtpChallengeIdSchema', 'Phone OTP verify route must wire the challenge ID schema into request validation.');
+assert(!phoneOtpVerify.includes('challengeId: z.string().trim().min(12).max(128)'), 'Phone OTP verify route must not keep loose challenge ID validation.');
 assert(!phoneOtpVerify.includes("secureError('[Phone OTP] Verify route failed'"), 'Phone OTP verify must not raw secureError unexpected failures.');
+assertIncludes(phoneOtpHelper, "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';", 'Phone OTP helper must import the shared Firestore document ID guard.');
+assertIncludes(phoneOtpHelper, 'const PHONE_OTP_CHALLENGE_ID_PATTERN = /^[A-Za-z0-9]{20}$/;', 'Phone OTP helper must restrict challenge IDs to Firestore auto-ID shape.');
+assertIncludes(phoneOtpHelper, 'export const normalizePhoneOtpChallengeId = (value: unknown): string | null => {', 'Phone OTP helper must expose the challenge ID normalizer.');
+assertIncludes(phoneOtpHelper, 'isValidFirestoreDocumentId(challengeId)', 'Phone OTP helper must reject path-shaped or reserved challenge IDs.');
+assertIncludes(phoneOtpHelper, 'export const normalizePhoneOtpUserDocumentId = (value: unknown): string | null => {', 'Phone OTP helper must expose a user document ID normalizer.');
+assertIncludes(phoneOtpHelper, 'userId === raw && userId.length > 0 && userId.length <= 160 && isValidFirestoreDocumentId(userId)', 'Phone OTP user document ID normalizer must reject whitespace-mutated, empty, oversized, path-shaped, or reserved user IDs.');
+assertIncludes(phoneOtpHelper, 'const existingUserId = normalizePhoneOtpUserDocumentId(dbUser.id);', 'Phone OTP existing user profile update must normalize the user document ID.');
+assertIncludes(phoneOtpHelper, '.doc(existingUserId)', 'Phone OTP existing user profile update must use the normalized user document ID.');
+assertIncludes(phoneOtpHelper, 'const dbUserId = normalizePhoneOtpUserDocumentId(dbUser?.id);', 'Phone OTP login-token creation and consumption must normalize resolved user IDs.');
+assertIncludes(phoneOtpHelper, 'userId: dbUserId', 'Phone OTP login-token writes must store normalized user IDs.');
+assertIncludes(phoneOtpHelper, 'const tokenUserId = normalizePhoneOtpUserDocumentId(tokenData.userId);', 'Phone OTP consumed login tokens must normalize stored token user IDs.');
+assertIncludes(phoneOtpHelper, 'if (!dbUser || !tokenUserId || !dbUserId || dbUserId !== tokenUserId)', 'Phone OTP consumed login tokens must fail closed on malformed or mismatched user IDs.');
+assert(!phoneOtpHelper.includes('.doc(String(dbUser.id))'), 'Phone OTP helper must not build user document refs from raw resolved user IDs.');
+assertIncludes(phoneOtpHelper, 'const challengeId = normalizePhoneOtpChallengeId(params.challengeId);', 'Phone OTP helper must normalize challenge IDs before Firestore access.');
+assertIncludes(phoneOtpHelper, '.doc(challengeId)', 'Phone OTP helper must read normalized challenge document IDs.');
+assert(!phoneOtpHelper.includes('.doc(params.challengeId)'), 'Phone OTP helper must not read raw challenge document IDs.');
+assertOrder(
+    phoneOtpHelper,
+    [
+        'const challengeId = normalizePhoneOtpChallengeId(params.challengeId);',
+        'if (!challengeId) {',
+        '.doc(challengeId)',
+        'challengeId,',
+        'challengeId,',
+    ],
+    'Phone OTP helper must normalize challenge ID before transaction and login-token write',
+);
 assertIncludes(phoneOtpHelper, "'phone_otp_user_not_found'", 'Phone OTP consumed-token helper must use stable user-not-found diagnostics.');
 assertIncludes(phoneOtpHelper, "getBoundedAuthStringContext('userId', tokenData.userId)", 'Phone OTP consumed-token helper must bound token user metadata.');
 assert(!phoneOtpHelper.includes("secureError('[Phone OTP] Consumed token did not resolve to auth user'"), 'Phone OTP helper must not raw-log consumed-token user IDs.');
+assert(read('__docs__/phone-otp-auth/phone-otp-auth_impl.md').includes('July 5 challenge ID boundary'), 'Phone OTP implementation docs must record challenge ID boundary.');
+assert(read('__docs__/phone-otp-auth/phone-otp-auth_firebase.md').includes('The July 5 challenge ID boundary'), 'Phone OTP Firebase docs must record challenge ID cost boundary.');
+assert(read('__docs__/phone-otp-auth/phone-otp-auth_impl.md').includes('Phone OTP User Document ID Boundary'), 'Phone OTP implementation docs must record user document ID boundary.');
+assert(read('__docs__/phone-otp-auth/phone-otp-auth_firebase.md').includes('Phone OTP User Document ID Boundary'), 'Phone OTP Firebase docs must record user document ID cost boundary.');
+assert(productionReadinessAudit.includes('Phone OTP challenge ID boundary checkpoint'), 'Production audit must record Phone OTP challenge ID boundary.');
+assert(productionReadinessAudit.includes('Phone OTP user document-ID boundary checkpoint'), 'Production audit must record Phone OTP user document ID boundary.');
+assert(changelog.includes('Phone OTP Challenge ID Boundary'), 'Changelog must record Phone OTP challenge ID boundary.');
+assert(changelog.includes('Phone OTP User Document ID Boundary'), 'Changelog must record Phone OTP user document ID boundary.');
+assert(read('__docs__/changelog.md').includes('Phone OTP Challenge ID Boundary'), 'Lowercase changelog must record Phone OTP challenge ID boundary.');
+assert(read('__docs__/changelog.md').includes('Phone OTP User Document ID Boundary'), 'Lowercase changelog must record Phone OTP user document ID boundary.');
 
 if (failures.length > 0) {
     console.error('Auth/security failure matrix verification failed:');

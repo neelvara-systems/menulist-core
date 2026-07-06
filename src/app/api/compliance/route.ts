@@ -18,6 +18,7 @@ import { deleteComplianceOverrideServer, getComplianceOverridesServer, saveCompl
 import { sanitizeComplianceContent } from '@lib/compliance/sanitizer';
 import { composeComplianceContent, extractComplianceInputs, generateComplianceContent } from '@lib/compliance/templates';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -39,6 +40,18 @@ type ComplianceStoreLookupResult =
     | { ok: true; store: any | null }
     | { ok: false };
 
+function normalizeComplianceSessionDocumentId(value: unknown): string | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+function getComplianceSessionScope(session: any): { sId: string; tId: string } | null {
+    const sId = normalizeComplianceSessionDocumentId(session?.sId);
+    const tId = normalizeComplianceSessionDocumentId(session?.tId);
+    return sId && tId ? { sId, tId } : null;
+}
+
 /**
  * GET /api/compliance — Get compliance pages status for dashboard
  *
@@ -50,10 +63,11 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
     }
 
-    const { sId, tId } = session;
-    if (!sId || !tId) {
+    const scope = getComplianceSessionScope(session);
+    if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
+    const { sId, tId } = scope;
 
     // Get store data for template generation
     const storeLookup = await getStoreData(sId, tId);
@@ -116,10 +130,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
     }
 
-    const { sId, tId } = session;
-    if (!sId || !tId) {
+    const scope = getComplianceSessionScope(session);
+    if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
+    const { sId, tId } = scope;
 
     const permissionError = await requireAnyStorePermission(
         request,
@@ -203,11 +218,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 /**
  * Helper: Get store data by storeId
  */
-async function getStoreData(sId: number, tId?: number): Promise<ComplianceStoreLookupResult> {
+async function getStoreData(sId: string, tId?: string): Promise<ComplianceStoreLookupResult> {
     try {
         const snapshot = await firestoreAdmin
             .collection(DB_COLLECTIONS.STORES)
-            .doc(String(sId))
+            .doc(sId)
             .get();
         if (!snapshot.exists || snapshot.data()?.active === false) return { ok: true, store: null };
         return { ok: true, store: snapshot.data() };

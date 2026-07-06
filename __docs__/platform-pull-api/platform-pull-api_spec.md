@@ -1,9 +1,9 @@
 # Platform Pull API — Specification
 
-**Status:** ✅ IMPLEMENTED (v1.3 — live key/target revalidation hardened Jul 2, 2026)
+**Status:** ✅ IMPLEMENTED (v1.4 — target document-ID boundary hardened Jul 6, 2026)
 **Date:** February 22, 2026  
 **Audience:** CEO, PM, Clients
-**Last Source Gate Update:** July 2, 2026
+**Last Source Gate Update:** July 6, 2026
 
 ---
 
@@ -11,7 +11,7 @@
 
 Current source/docs parity is guarded by `npm run verify:platform-pull-api-boundary`.
 
-The gate checks the Business Settings Integrations tab key controls, the authenticated key-management route, pull-route key validation, private response headers, target eligibility, menu summary selection, active temporary-status behavior in the business response, bounded diagnostics, and this spec.
+The gate checks the Business Settings Integrations tab key controls, the authenticated key-management route, pull-route key validation, private response headers, target eligibility, target document-ID and MenuList numeric-ID admission, menu summary selection, active temporary-status behavior in the business response, bounded diagnostics, and this spec.
 
 ---
 
@@ -85,6 +85,7 @@ Returns full menu data in the same format as POS Webhook Sync payload: categorie
 | FR-15 | Valid keys only return data for active, non-deleted, non-blocked stores and non-blocked tenants | P0       | ✅     |
 | FR-16 | Pull endpoints revalidate key and store/tenant eligibility on every request; no process-local validation cache | P0       | ✅     |
 | FR-17 | Business Settings Integrations tab can generate, regenerate, copy, and revoke the store's public API key | P0       | ✅     |
+| FR-18 | Pull endpoints normalize credential store IDs, require exact positive numeric MenuList tenant/store IDs before response construction, and normalize menu project IDs before project document refs | P0       | ✅     |
 
 ---
 

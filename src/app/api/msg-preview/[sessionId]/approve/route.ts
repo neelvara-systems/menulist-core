@@ -14,6 +14,7 @@ import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
 import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { sanitizeMessagingOnboardingEventMetadata } from "@lib/messaging-onboarding/eventMetadata";
+import { normalizeMessagingPreviewSessionId } from "@lib/messaging-onboarding/previewRouteBoundary";
 import { executeMessagingOnboardingPublish } from "@lib/messaging-onboarding/publish";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody, rejectInvalidOrOversizedDeclaredBody } from "@lib/security/boundedRequestBody";
@@ -104,6 +105,11 @@ export async function POST(
     );
     if (declaredBodyResponse) return declaredBodyResponse;
 
+    const sessionId = normalizeMessagingPreviewSessionId(params?.sessionId);
+    if (!sessionId) {
+      return NextResponse.json({ error: "Invalid session" }, { status: 400 });
+    }
+
     // 🛡️ PUBLISH THROTTLE: Prevent rapid-fire publishes (IP-based)
     const { checkRateLimit } = await import('@lib/rateLimit');
     const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');
@@ -116,12 +122,6 @@ export async function POST(
         { error: "Too many publish attempts. Wait before trying again." },
         { status: 429 }
       );
-    }
-
-    const { sessionId } = params;
-
-    if (!sessionId || sessionId.length < 10) {
-      return NextResponse.json({ error: "Invalid session" }, { status: 400 });
     }
 
     const bodyResult = await readBoundedJsonBody(request, MSG_PREVIEW_ACTION_MAX_BODY_BYTES);

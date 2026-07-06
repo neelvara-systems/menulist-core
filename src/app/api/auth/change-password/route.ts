@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { getAuthSessionLogContext, getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
 import { admin, authAdmin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -30,6 +31,7 @@ const ChangePasswordSchema = z.object({
   newPassword: z.string().min(6).max(128),
 });
 const CHANGE_PASSWORD_MAX_BODY_BYTES = 2 * 1024;
+const CHANGE_PASSWORD_USER_DOCUMENT_ID_MAX_LENGTH = 160;
 const FIREBASE_AUTH_SIGN_IN_WITH_PASSWORD_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword";
 
 const normalizeFirebaseAuthApiKey = (value?: string) => {
@@ -56,11 +58,30 @@ const getChangePasswordLogContext = (request: NextRequest, session: any) => ({
   ...getBoundedAuthStringContext("requestIp", getRequestIp(request)),
 });
 
+function normalizeChangePasswordUserDocumentId(value: unknown): string | null {
+  const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+  const userId = raw.trim();
+  return userId === raw
+    && userId.length > 0
+    && userId.length <= CHANGE_PASSWORD_USER_DOCUMENT_ID_MAX_LENGTH
+    && isValidFirestoreDocumentId(userId)
+    ? userId
+    : null;
+}
+
 export const POST = withAuth(async (request: NextRequest, session) => {
   try {
-    const userId = String(session?.uId || session?.user?.id || "");
+    const rawUserId = session?.uId || session?.user?.id;
+    const userId = normalizeChangePasswordUserDocumentId(rawUserId);
     const email = String(session?.user?.email || "").toLowerCase().trim();
     if (!userId || !email) {
+      if (rawUserId !== undefined && rawUserId !== null && String(rawUserId).length > 0 && !userId) {
+        logAuthFailure(
+          "change_password_invalid_session_user_id",
+          undefined,
+          getChangePasswordLogContext(request, session),
+        );
+      }
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 

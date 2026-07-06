@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { isValidPrice } from "@lib/extraction/validation";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
@@ -24,8 +25,16 @@ import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 
-const projectIdSchema = z.string().min(1).max(200).regex(/^[a-zA-Z0-9_-]+$/);
-const overrideIdSchema = z.string().min(1).max(200).regex(/^[a-zA-Z0-9_-]+$/);
+const projectIdSchema = z.string()
+    .min(1)
+    .max(200)
+    .regex(/^[a-zA-Z0-9_-]+$/)
+    .refine(isValidFirestoreDocumentId, "Invalid project ID");
+const overrideIdSchema = z.string()
+    .min(1)
+    .max(200)
+    .regex(/^[a-zA-Z0-9_-]+$/)
+    .refine(isValidFirestoreDocumentId, "Invalid override ID");
 const languageCodeSchema = z.string().min(2).max(16).regex(/^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/i);
 const localizedTextSchema = z
     .record(languageCodeSchema, z.string().max(5000))

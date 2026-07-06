@@ -55,6 +55,8 @@ MyCodex reader state is browser-local and scoped with `mycodex:*` keys. The shel
 
 The hydration guard in `MyCodexClientContainer` prevents first-render defaults from resetting stored values during PWA relaunches or mobile browser refreshes.
 
+MyCodex client navigation path boundary: `MyCodexClientContainer.buildUrl()` trims browser-local reader targets, collapses empty values and protocol-relative `//...` targets to `/`, then prefixes normal relative document paths with `/` and the local `/__mycodex` route when needed. This keeps favorite, queue, recent, continue-reading, previous/next, and document-tree navigation on the MyCodex origin even if browser-local reader state is malformed.
+
 ## Favorites Route
 
 `/favorites` is a MyCodex-only reader route. It reads `mycodex:favorite-docs` from browser `localStorage`, lists every starred document on the current device, and can play the list through the browser speech engine. Local development reaches the same page at `/__mycodex/favorites`.

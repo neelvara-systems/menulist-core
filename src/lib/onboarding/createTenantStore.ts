@@ -22,6 +22,7 @@ import { createDefaultRoles, getOwnerRoleId } from '@data/defaultRoles';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
+import { requireOnboardingUserId } from './onboardingUserId';
 import { slugify } from '@lib/utils/slugify';
 import { computeSchedulerHour } from '@lib/utils/schedulerHour';
 
@@ -369,7 +370,8 @@ export function updateUserWithTenantStore(
     result: TenantStoreResult,
     extraFields?: Record<string, any>,
 ): void {
-    const userRef = db.collection(DB_COLLECTIONS.USERS).doc(userId);
+    const normalizedUserId = requireOnboardingUserId(userId);
+    const userRef = db.collection(DB_COLLECTIONS.USERS).doc(normalizedUserId);
     transaction.update(userRef, {
         tenantId: result.tenantId,
         storeId: result.storeId,

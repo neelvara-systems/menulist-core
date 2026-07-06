@@ -91,6 +91,12 @@ assertIncludes("src/lib/campaigncue/pack-templates/category.ts", "resolveBusines
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadPlatformTemplates");
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadWorkspaceTemplates");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "MAX_WORKSPACE_TEMPLATES");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "campaigncue_workspace_template_storage_cleanup_failed");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "getBoundedRuntimeStringContext(\"storagePath\", path)");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "isMissingStorageObjectError");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "cleanupTarget: \"payload\"");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "cleanupTarget: \"editorDocument\"");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "cleanupTarget: \"preview\"");
 assertIncludes("src/lib/campaigncue/server.ts", "Creator fit check");
 assertIncludes("src/lib/campaigncue/server.ts", "baseline views, real comment quality, local audience fit");
 assertIncludes("src/lib/campaigncue/server.ts", "3-test plan");
@@ -102,11 +108,16 @@ assertIncludes("src/lib/campaigncue/server.ts", "Disclose paid, gifted, agency, 
 assertIncludes("src/lib/campaigncue/server.ts", "Do not present synthetic or fictional people as real customers");
 assertIncludes("src/app/sites/campaigncue/page.tsx", "Local creator brief");
 assertIncludes("src/app/sites/campaigncue/page.tsx", "creator-fit notes");
+assertIncludes("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_impl.md", "campaigncue_workspace_template_storage_cleanup_failed");
+assertIncludes("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_impl.md", "Missing Storage objects are treated as already-cleaned state");
 assertIncludes("firestore-campaigncue.rules", "campaigncuePlatformPackTemplates");
 assertIncludes("firestore-campaigncue.rules", "packTemplateIndexes");
 assertIncludes("storage-campaigncue.rules", "campaigncue/templates/platform");
 assertIncludes("storage-campaigncue.rules", "campaigncue/templates/workspaces");
 assertIncludes("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_firebase.md", "1 Firestore read");
+assertIncludes("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_firebase.md", "Unexpected cleanup failures log bounded diagnostics");
+assertIncludes("__docs__/audits/menulist-production-readiness-audit.md", "CampaignCue workspace template Storage cleanup diagnostics checkpoint: fixed in source.");
+assertIncludes("__docs__/CHANGELOG.md", "CampaignCue Workspace Template Storage Cleanup Diagnostics");
 assertIncludes("__docs__/campaigncue/ugc-script-studio/ugc-script-studio_firebase.md", "no new Firestore collection, read, write, Storage object, Cloud Function, provider call, model call, creator CRM record, contract record, or payment record");
 assertIncludes("__docs__/campaigncue/campaigncue_founder-research-addendum.md", "not \"build influencer marketing software.\"");
 assertIncludes("__docs__/campaigncue/campaigncue_founder-research-addendum.md", "do not broker, price-guarantee, contract, or pay creators");
@@ -124,6 +135,9 @@ if (implementation.includes("onSnapshot(")) {
 }
 if (implementation.includes("httpsCallable(")) {
   fail("CampaignCue pack template browsing must not call Cloud Functions");
+}
+if (implementation.includes("]).catch(() => undefined);") || implementation.includes("deleteObject(ref(firebaseStorage, path)).catch(() => undefined)")) {
+  fail("CampaignCue workspace template Storage cleanup failures must be logged instead of silently swallowed");
 }
 
 console.log("CampaignCue pack template registry verification passed.");

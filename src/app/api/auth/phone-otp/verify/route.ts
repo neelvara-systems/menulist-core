@@ -5,6 +5,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
 import {
     hashRequestValueForPhoneOtp,
+    normalizePhoneOtpChallengeId,
     PhoneOtpError,
     verifyPhoneOtpChallenge,
 } from '@lib/auth/phoneOtp';
@@ -15,8 +16,12 @@ import { secureLog } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+const PhoneOtpChallengeIdSchema = z.string()
+    .trim()
+    .refine((value) => normalizePhoneOtpChallengeId(value) !== null, 'Invalid challenge');
+
 const bodySchema = z.object({
-    challengeId: z.string().trim().min(12).max(128),
+    challengeId: PhoneOtpChallengeIdSchema,
     code: z.string().trim().regex(/^\d{4,8}$/),
 });
 const PHONE_OTP_VERIFY_MAX_BODY_BYTES = 1024;

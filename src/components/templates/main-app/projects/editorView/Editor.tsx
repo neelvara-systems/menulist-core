@@ -332,7 +332,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
 
                 if (!mceResult.verified) {
                     for (const error of mceResult.errors) {
-                        validationErrors.push(getSafeUiErrorMessage(error.message, PUBLISH_GATE_FALLBACK_ERROR));
+                        validationErrors.push(getSafeUiErrorMessage(error.message, PUBLISH_GATE_FALLBACK_ERROR, { allowTrustedPlainText: true }));
                     }
                 }
             } catch (e) {

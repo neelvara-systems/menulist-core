@@ -47,6 +47,7 @@ import {
 import {
     getBoundedMenuChangeLogStringContext,
     getMenuChangeLogEntryContext,
+    logMenuChangeLogDiagnostic,
     logMenuChangeLogFailure,
 } from './menuChangeLogDiagnostics';
 
@@ -127,13 +128,14 @@ function getDebounceKey(
 export async function logMenuChange(entry: MenuChangeLogInput): Promise<void> {
     // COST GATE: Check feature flag first (zero cost if disabled)
     if (!FEATURE_FLAGS.ENABLE_MENU_OBSERVATION) {
-        return; // Silent return - no logging to avoid console spam
+        return;
     }
 
     try {
         const session = await getActiveSession();
         if (!session?.tId || !session?.sId) {
-            return; // Silent return - no session
+            logMenuChangeLogDiagnostic('menu_change_log_session_missing', getMenuChangeLogEntryContext(entry));
+            return;
         }
 
         await queueScopedMenuChange(entry, session);
@@ -152,6 +154,11 @@ export async function logMenuChangeForScope(
     }
 
     if (!scope?.tId || !scope?.sId) {
+        logMenuChangeLogDiagnostic('menu_change_log_scope_missing', {
+            ...getMenuChangeLogEntryContext(entry),
+            ...getBoundedMenuChangeLogStringContext('tenantId', scope?.tId),
+            ...getBoundedMenuChangeLogStringContext('storeId', scope?.sId),
+        });
         return;
     }
 
@@ -257,7 +264,11 @@ export function flushPendingChanges(): void {
             void getActiveSession().then(session => {
                 if (session?.tId && session?.sId) {
                     void executeLogWrite(session.tId, session.sId, pending.entry);
+                    return;
                 }
+                logMenuChangeLogDiagnostic('menu_change_log_flush_session_missing', {
+                    ...getMenuChangeLogEntryContext(pending.entry),
+                });
             }).catch((error) => {
                 logMenuChangeLogFailure('menu_change_log_flush_session_failed', error, {
                     ...getMenuChangeLogEntryContext(pending.entry),

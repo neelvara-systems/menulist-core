@@ -6,6 +6,8 @@
  * Use these schemas in API routes to validate incoming requests
  */
 
+import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
+import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from '@lib/ai/imageBatchIdBoundary';
 import { z } from 'zod';
 
 // ═══════════════════════════════════════════════════════════
@@ -384,26 +386,26 @@ export type UpgradeSubscriptionRequest = z.infer<typeof UpgradeSubscriptionReque
 
 export const BatchImageGenerationRequestSchema = z.object({
     generationConfig: imageGenerationConfigSchema,
-    projectId: z.string().max(100),
+    projectId: z.string().max(160).refine((value) => normalizeImageBatchProjectId(value)?.projectId === value),
     itemsList: z.array(imageGenerationItemDetailsSchema.extend({
         id: z.string().min(1).max(100),
         name: z.string().min(1).max(500),
     })).min(1).max(50),
     businessType: z.string().max(100).optional(),
-    jobId: z.string().max(100)
+    jobId: z.string().max(100).refine((value) => normalizeImageBatchJobId(value) === value)
 });
 
 export type BatchImageGenerationRequest = z.infer<typeof BatchImageGenerationRequestSchema>;
 
 export const BatchImageGenerationWorkerRequestSchema = z.object({
     generationConfig: imageGenerationConfigSchema,
-    projectId: z.string().max(100),
+    projectId: z.string().max(160).refine((value) => normalizeImageBatchProjectId(value)?.projectId === value),
     businessType: z.string().max(100).optional(),
     itemDetails: imageGenerationItemDetailsSchema.extend({
         id: z.string().min(1).max(100),
         name: z.string().min(1).max(500),
     }),
-    jobId: z.string().max(100)
+    jobId: z.string().max(100).refine((value) => normalizeImageBatchJobId(value) === value)
 });
 
 export type BatchImageGenerationWorkerRequest = z.infer<typeof BatchImageGenerationWorkerRequestSchema>;
@@ -541,7 +543,8 @@ export const guestFeedbackSubmitSchema = z.object({
     // Required fields
     tId: z.number().int().positive(),
     sId: z.number().int().positive(),
-    projectId: z.string().min(1).max(100),
+    projectId: z.string()
+        .refine((value) => normalizeGuestFeedbackProjectId(value) === value, 'Invalid project ID'),
     rating: z.number().int().min(1).max(5),
     source: z.enum(['menu_footer', 'feedback_qr', 'direct_link']),
 

@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermission } from "@lib/permissions/server";
@@ -42,6 +43,18 @@ const ClearStatusSchema = z.object({
 
 const RequestSchema = z.discriminatedUnion('action', [SetStatusSchema, ClearStatusSchema]);
 const TEMP_STATUS_ACTION_MAX_BODY_BYTES = 4 * 1024;
+const TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;
+
+function normalizeSessionDocumentId(value: unknown): string | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    return documentId === raw
+        && documentId.length > 0
+        && documentId.length <= TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH
+        && isValidFirestoreDocumentId(documentId)
+        ? documentId
+        : null;
+}
 
 /**
  * POST /api/store/temp-status
@@ -54,7 +67,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Feature disabled" }, { status: 403 });
     }
 
-    const { tId: tenantId, sId: storeId, uId: userId } = session;
+    const { tId: rawTenantId, sId: rawStoreId } = session;
+    const rawUserId = session.uId || session.user?.id;
+    const tenantId = normalizeSessionDocumentId(rawTenantId);
+    const storeId = normalizeSessionDocumentId(rawStoreId);
+    const userId = normalizeSessionDocumentId(rawUserId);
     if (!tenantId || !storeId) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
@@ -68,7 +85,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (permissionError) return permissionError;
 
     const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
-    const userRateLimitHash = hashPublicRateLimitValue(userId || session.user?.id || 'unknown');
+    const userRateLimitHash = hashPublicRateLimitValue(userId || 'unknown');
     const storeRateLimitHash = hashPublicRateLimitValue(storeId);
     const rateLimitResult = await checkRateLimit({
         key: `temp-status:${userRateLimitHash}:${storeRateLimitHash}`,
@@ -95,7 +112,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const db = admin.firestore();
-    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
+    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);
 
     try {
         if (validation.data.action === 'set') {

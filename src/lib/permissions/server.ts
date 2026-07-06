@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
@@ -14,8 +15,24 @@ import type { PermissionKey } from "@constant/permissions";
 import { getPermissionsForRole } from "./hasPermission";
 import type { StoreRoleDataType } from "@type/platform/roles";
 
-const getSessionStoreId = (session: any) => Number(session?.sId ?? session?.user?.storeId);
-const getSessionTenantId = (session: any) => Number(session?.tId ?? session?.user?.tenantId);
+export type StorePermissionScopeDocumentId = {
+    numericId: number;
+    documentId: string;
+};
+
+export function normalizeStorePermissionScopeDocumentId(value: unknown): StorePermissionScopeDocumentId | null {
+    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const documentId = raw.trim();
+    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { numericId, documentId }
+        : null;
+}
+
+const getRawSessionStoreId = (session: any) => session?.sId ?? session?.user?.storeId;
+const getRawSessionTenantId = (session: any) => session?.tId ?? session?.user?.tenantId;
 
 const isPlatformSession = (session: any) => (
     session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
@@ -36,25 +53,25 @@ export async function requireAnyStorePermission(
 ) {
     if (isPlatformSession(session)) return null;
 
-    const storeId = getSessionStoreId(session);
-    const tenantId = getSessionTenantId(session);
-    if (!storeId || !tenantId) {
+    const storeScope = normalizeStorePermissionScopeDocumentId(getRawSessionStoreId(session));
+    const tenantScope = normalizeStorePermissionScopeDocumentId(getRawSessionTenantId(session));
+    if (!storeScope || !tenantScope) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
 
     const storeDoc = await admin.firestore()
         .collection(DB_COLLECTIONS.STORES)
-        .doc(String(storeId))
+        .doc(storeScope.documentId)
         .get();
 
     const storeData = storeDoc.data();
-    if (!storeDoc.exists || Number(storeData?.tenantId) !== tenantId || isStorePermissionTargetBlocked(storeData)) {
+    if (!storeDoc.exists || Number(storeData?.tenantId) !== tenantScope.numericId || isStorePermissionTargetBlocked(storeData)) {
         logger.security("Authorization Failed - Permission Store Missing", {
             ...getBoundedSecurityRouteContext(session, request),
             ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
             ...getBoundedSecurityStringContext("label", label),
-            ...getBoundedSecurityStringContext("storeId", storeId),
-            ...getBoundedSecurityStringContext("tenantId", tenantId),
+            ...getBoundedSecurityStringContext("storeId", storeScope.numericId),
+            ...getBoundedSecurityStringContext("tenantId", tenantScope.numericId),
         }, "high");
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -65,8 +82,8 @@ export async function requireAnyStorePermission(
         storeData,
         permissions,
         label,
-        storeId,
-        tenantId,
+        storeScope.numericId,
+        tenantScope.numericId,
     );
 }
 
@@ -76,27 +93,27 @@ export async function requireAnyStorePermissionForStore(
     permissions: PermissionKey[],
     label: string,
     storeId: string | number,
-    tenantId: string | number = getSessionTenantId(session),
+    tenantId: string | number = getRawSessionTenantId(session),
 ) {
-    const normalizedStoreId = Number(storeId);
-    const normalizedTenantId = Number(tenantId);
-    if (!normalizedStoreId || !normalizedTenantId) {
+    const storeScope = normalizeStorePermissionScopeDocumentId(storeId);
+    const tenantScope = normalizeStorePermissionScopeDocumentId(tenantId);
+    if (!storeScope || !tenantScope) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
 
     const storeDoc = await admin.firestore()
         .collection(DB_COLLECTIONS.STORES)
-        .doc(String(normalizedStoreId))
+        .doc(storeScope.documentId)
         .get();
 
     const storeData = storeDoc.data();
-    if (!storeDoc.exists || Number(storeData?.tenantId) !== normalizedTenantId || isStorePermissionTargetBlocked(storeData)) {
+    if (!storeDoc.exists || Number(storeData?.tenantId) !== tenantScope.numericId || isStorePermissionTargetBlocked(storeData)) {
         logger.security("Authorization Failed - Permission Store Missing", {
             ...getBoundedSecurityRouteContext(session, request),
             ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
             ...getBoundedSecurityStringContext("label", label),
-            ...getBoundedSecurityStringContext("storeId", normalizedStoreId),
-            ...getBoundedSecurityStringContext("tenantId", normalizedTenantId),
+            ...getBoundedSecurityStringContext("storeId", storeScope.numericId),
+            ...getBoundedSecurityStringContext("tenantId", tenantScope.numericId),
         }, "high");
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -109,8 +126,8 @@ export async function requireAnyStorePermissionForStore(
         storeData,
         permissions,
         label,
-        normalizedStoreId,
-        normalizedTenantId,
+        storeScope.numericId,
+        tenantScope.numericId,
     );
 }
 
@@ -120,23 +137,26 @@ export function requireAnyStorePermissionForStoreData(
     storeData: any,
     permissions: PermissionKey[],
     label: string,
-    storeId: number = getSessionStoreId(session),
-    tenantId: number = getSessionTenantId(session),
+    storeId: string | number = getRawSessionStoreId(session),
+    tenantId: string | number = getRawSessionTenantId(session),
 ) {
     if (isPlatformSession(session)) return null;
 
-    if (!storeId || !tenantId || !storeData || Number(storeData?.tenantId) !== tenantId || isStorePermissionTargetBlocked(storeData)) {
+    const storeScope = normalizeStorePermissionScopeDocumentId(storeId);
+    const tenantScope = normalizeStorePermissionScopeDocumentId(tenantId);
+
+    if (!storeScope || !tenantScope || !storeData || Number(storeData?.tenantId) !== tenantScope.numericId || isStorePermissionTargetBlocked(storeData)) {
         logger.security("Authorization Failed - Permission Store Missing", {
             ...getBoundedSecurityRouteContext(session, request),
             ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
             ...getBoundedSecurityStringContext("label", label),
-            ...getBoundedSecurityStringContext("storeId", storeId),
-            ...getBoundedSecurityStringContext("tenantId", tenantId),
+            ...getBoundedSecurityStringContext("storeId", storeScope?.numericId ?? storeId),
+            ...getBoundedSecurityStringContext("tenantId", tenantScope?.numericId ?? tenantId),
         }, "high");
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const roleId = session?.user?.stores?.find((store: any) => Number(store?.storeId) === storeId)?.role
+    const roleId = session?.user?.stores?.find((store: any) => Number(store?.storeId) === storeScope.numericId)?.role
         || session?.role
         || session?.user?.role;
     const effectivePermissions = getPermissionsForRole(roleId, (storeData?.roles || []) as StoreRoleDataType[]);
@@ -148,8 +168,8 @@ export function requireAnyStorePermissionForStoreData(
         ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
         ...getBoundedSecurityStringContext("label", label),
         permissionCount: permissions.length,
-        ...getBoundedSecurityStringContext("storeId", storeId),
-        ...getBoundedSecurityStringContext("tenantId", tenantId),
+        ...getBoundedSecurityStringContext("storeId", storeScope.numericId),
+        ...getBoundedSecurityStringContext("tenantId", tenantScope.numericId),
     }, "high");
 
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

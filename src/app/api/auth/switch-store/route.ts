@@ -10,7 +10,7 @@ import { admin } from "@lib/firebase/firebaseAdmin";
 import { getAuthSessionLogContext, getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
 import { logger } from "@lib/monitoring/logger";
 import { canUserAccessStore } from "@lib/multiOutlet/storeSwitchAccess";
-import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
+import { normalizeStorePermissionScopeDocumentId, requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { checkRateLimit } from "@lib/rateLimit";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -35,9 +35,12 @@ export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
         return NextResponse.json({ error: "Multi-outlet disabled" }, { status: 403 });
     }
-    const { tId: tenantId, sId: currentStoreId } = session;
-    if (!tenantId) return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
-    if (!verifyTenantAccess(session, tenantId, currentStoreId, request)) {
+    const tenantScope = normalizeStorePermissionScopeDocumentId(session.tId);
+    const currentStoreScope = normalizeStorePermissionScopeDocumentId(session.sId);
+    if (!tenantScope || !currentStoreScope) {
+        return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
+    }
+    if (!verifyTenantAccess(session, tenantScope.numericId, currentStoreScope.numericId, request)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -61,10 +64,12 @@ export const POST = withAuth(async (request, session) => {
         const v = validateAPIInput(schema, body);
         if (!v.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         const { targetStoreId } = v.data;
-        targetStoreIdForLog = targetStoreId;
+        const targetStoreScope = normalizeStorePermissionScopeDocumentId(targetStoreId);
+        if (!targetStoreScope) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+        targetStoreIdForLog = targetStoreScope.numericId;
 
         const db = admin.firestore();
-        const callerStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${currentStoreId}`).get();
+        const callerStoreSnap = await db.collection(DB_COLLECTIONS.STORES).doc(currentStoreScope.documentId).get();
         const callerStore = callerStoreSnap.data();
         const permissionError = requireAnyStorePermissionForStoreData(
             request,
@@ -72,19 +77,19 @@ export const POST = withAuth(async (request, session) => {
             callerStore,
             [PERMISSIONS.SWITCH_STORES],
             "Store switching",
-            Number(currentStoreId),
-            Number(tenantId),
+            currentStoreScope.numericId,
+            tenantScope.numericId,
         );
         if (permissionError) return permissionError;
 
-        const tenantSnap = await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get();
+        const tenantSnap = await db.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId).get();
         const tenantData = tenantSnap.exists ? tenantSnap.data() : null;
         if (!tenantData || isPlatformEntityBlocked(tenantData)) {
             return NextResponse.json({ error: "Store access not allowed" }, { status: 403 });
         }
 
         const storesList = tenantData?.storesList || [];
-        const targetStore = storesList.find((s: any) => Number(s.storeId) === Number(targetStoreId));
+        const targetStore = storesList.find((s: any) => Number(s.storeId) === targetStoreScope.numericId);
         if (!targetStore) {
             return NextResponse.json({ error: "Store not in tenant" }, { status: 404 });
         }
@@ -92,11 +97,11 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Store is inactive" }, { status: 400 });
         }
 
-        const targetStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${targetStoreId}`).get();
+        const targetStoreSnap = await db.collection(DB_COLLECTIONS.STORES).doc(targetStoreScope.documentId).get();
         const targetStoreData = targetStoreSnap.exists ? targetStoreSnap.data() : null;
         if (
             !targetStoreData
-            || Number(targetStoreData.tenantId) !== Number(tenantId)
+            || Number(targetStoreData.tenantId) !== tenantScope.numericId
             || targetStoreData.active === false
             || targetStoreData.deleted === true
             || isPlatformEntityBlocked(targetStoreData)
@@ -108,17 +113,17 @@ export const POST = withAuth(async (request, session) => {
             ...(session.user || {}),
             platformRole: session.user?.platformRole || session.platformRole,
         };
-        if (!canUserAccessStore({ sessionUser: switchAccessUser as any, storeId: targetStoreId })) {
+        if (!canUserAccessStore({ sessionUser: switchAccessUser as any, storeId: targetStoreScope.numericId })) {
             logger.security("Unauthorized Store Switch Attempt", {
                 ...getBoundedSecurityRouteContext(session, request),
-                ...getSwitchStoreLogContext(session, targetStoreId),
+                ...getSwitchStoreLogContext(session, targetStoreScope.numericId),
             }, "high");
             return NextResponse.json({ error: "Store access not allowed" }, { status: 403 });
         }
 
         return NextResponse.json({
             success: true,
-            targetStoreId,
+            targetStoreId: targetStoreScope.numericId,
             targetStoreName: targetStoreData.name || targetStore.name,
             isMaster: targetStoreData.isMaster || targetStore.isMaster || false,
         });

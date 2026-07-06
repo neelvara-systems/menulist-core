@@ -5,6 +5,11 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+    AI_OPERATION_DATE_FILTER_MAX_LENGTH,
+    isValidAiOperationCursorId,
+    normalizeAiOperationHistoryDateRange,
+} from '@lib/ai/operationHistoryQuery';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -22,10 +27,12 @@ const MAX_FILTER_SCAN_DOCS = 500;
 
 const QuerySchema = z.object({
     action: z.string().trim().max(120).optional(),
-    cursorId: z.string().trim().max(160).optional(),
-    endDate: z.string().trim().optional(),
+    cursorId: z.string().trim().max(160)
+        .refine((value) => !value || isValidAiOperationCursorId(value), 'Invalid cursor ID')
+        .optional(),
+    endDate: z.string().trim().max(AI_OPERATION_DATE_FILTER_MAX_LENGTH).optional(),
     pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
-    startDate: z.string().trim().optional(),
+    startDate: z.string().trim().max(AI_OPERATION_DATE_FILTER_MAX_LENGTH).optional(),
 });
 
 const PLATFORM_ONLY_FIELDS = new Set([
@@ -77,12 +84,6 @@ function serializeFirestoreValue(value: any): any {
         );
     }
     return value;
-}
-
-function getDateParam(value?: string): Date | null {
-    if (!value) return null;
-    const date = new Date(value);
-    return Number.isFinite(date.getTime()) ? date : null;
 }
 
 function sanitizeOwnerOperation(id: string, data: Record<string, any>) {
@@ -252,10 +253,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         pageSizeForLog = pageSize;
         hasStartDateForLog = Boolean(startDate);
         hasEndDateForLog = Boolean(endDate);
-        const start = getDateParam(startDate);
-        const end = getDateParam(endDate);
+        const dateRange = normalizeAiOperationHistoryDateRange(startDate, endDate);
 
-        if ((startDate && !start) || (endDate && !end)) {
+        if (!dateRange) {
             return NextResponse.json({ error: 'Invalid date filter' }, { status: 400 });
         }
 
@@ -265,11 +265,11 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             .collection(String(storeId))
             .orderBy('createdOn', 'desc');
 
-        if (start) {
-            query = query.where('createdOn', '>=', start);
+        if (dateRange.start) {
+            query = query.where('createdOn', '>=', dateRange.start);
         }
-        if (end) {
-            query = query.where('createdOn', '<=', end);
+        if (dateRange.end) {
+            query = query.where('createdOn', '<=', dateRange.end);
         }
 
         const cursorDoc = await getCursorDoc(tenantId, storeId, cursorId);

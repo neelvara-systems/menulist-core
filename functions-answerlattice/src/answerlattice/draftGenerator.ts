@@ -30,6 +30,7 @@ import {
     callAnswerlatticeGeminiContent,
     recordGeminiCallOperation,
 } from './aiOperationAccounting';
+import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -167,7 +168,9 @@ function getDraftDiagnosticContext(context: {
  */
 async function getEntityContext(entityId: string): Promise<{ name: string; description: string; type: string } | null> {
     try {
-        const doc = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(entityId).get();
+        const normalizedEntityId = normalizeAnswerlatticeResolvedFunctionEntityId(entityId);
+        if (!normalizedEntityId) return null;
+        const doc = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(normalizedEntityId).get();
         if (!doc.exists) return null;
         const data = doc.data();
         return {
@@ -434,7 +437,7 @@ export async function generateDraftsForNewProposals(
                 });
 
                 // Gather context
-                const entityId = proposal.relatedEntityIds?.[0];
+                const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(proposal.relatedEntityIds?.[0]);
                 if (!entityId) {
                     await proposalDoc.ref.update({
                         'suggestedChange.draftStatus': 'failed',
@@ -554,14 +557,14 @@ export async function generateDraftsForNewProposals(
                 // Per-proposal failure — continue with next
                 logger.error('[Answerlattice Draft] Proposal draft generation failed', {
                     failureCode: ANSWERLATTICE_DRAFT_PROPOSAL_FAILED,
-                    ...getDraftDiagnosticContext({
-                        tId,
-                        sId,
-                        proposalId: proposal.id,
-                        entityId: proposal.relatedEntityIds?.[0] ?? null,
-                    }),
-                    ...getDraftSourceErrorContext(error),
-                });
+                        ...getDraftDiagnosticContext({
+                            tId,
+                            sId,
+                            proposalId: proposal.id,
+                            entityId: normalizeAnswerlatticeResolvedFunctionEntityId(proposal.relatedEntityIds?.[0]),
+                        }),
+                        ...getDraftSourceErrorContext(error),
+                    });
                 try {
                     await proposalDoc.ref.update({
                         'suggestedChange.draftStatus': 'failed',
@@ -575,7 +578,7 @@ export async function generateDraftsForNewProposals(
                             tId,
                             sId,
                             proposalId: proposal.id,
-                            entityId: proposal.relatedEntityIds?.[0] ?? null,
+                            entityId: normalizeAnswerlatticeResolvedFunctionEntityId(proposal.relatedEntityIds?.[0]),
                         }),
                         ...getDraftSourceErrorContext(statusError),
                     });

@@ -21,6 +21,7 @@ import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const MAX_ACTIVITY_ITEMS = 12;
 const FALLBACK_SCAN_LIMIT = 80;
+const CANONICAL_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
@@ -37,21 +38,38 @@ const getAnswerlatticeDb = () => {
     return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
 };
 
-const toIsoString = (value: any): string | null => {
+const canonicalIsoTimestampToMillis = (value: string): number | null => {
+    const normalized = value.trim();
+    if (!CANONICAL_ISO_TIMESTAMP_PATTERN.test(normalized)) return null;
+    const millis = new Date(normalized).getTime();
+    if (!Number.isFinite(millis)) return null;
+    return new Date(millis).toISOString() === normalized ? millis : null;
+};
+
+const timestampLikeToMillis = (value: any): number | null => {
     if (!value) return null;
-    if (typeof value.toDate === 'function') return value.toDate().toISOString();
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    if (typeof value.toMillis === 'function') {
+        const millis = value.toMillis();
+        return Number.isFinite(millis) ? millis : null;
+    }
+    if (typeof value.toDate === 'function') {
+        const millis = value.toDate().getTime();
+        return Number.isFinite(millis) ? millis : null;
+    }
+    if (typeof value.seconds === 'number' && Number.isFinite(value.seconds)) return value.seconds * 1000;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') return canonicalIsoTimestampToMillis(value);
+    return null;
+};
+
+const toIsoString = (value: any): string | null => {
+    const millis = timestampLikeToMillis(value);
+    return millis === null ? null : new Date(millis).toISOString();
 };
 
 const toMillis = (value: any): number => {
-    if (!value) return 0;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.toDate === 'function') return value.toDate().getTime();
-    if (typeof value.seconds === 'number') return value.seconds * 1000;
-    const parsed = Date.parse(String(value));
-    return Number.isFinite(parsed) ? parsed : 0;
+    return timestampLikeToMillis(value) || 0;
 };
 
 const serializeActivityItem = (docSnapshot: FirebaseFirestore.QueryDocumentSnapshot) => {

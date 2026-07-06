@@ -6,6 +6,7 @@ import { secureError } from '@lib/security/secureLogger';
 import type { FirestoreSubscriptionDoc, PaymentStatus } from '@type/razorpay';
 import { revalidateTag } from 'next/cache';
 import { getBoundedRazorpayStringContext, getRazorpayFailureLogData } from './razorpayDiagnostics';
+import { normalizeBillingSubscriptionDocumentId } from './subscriptionDocumentIdBoundary';
 
 export interface SubscriptionEntitlementSyncInput {
     id?: string;
@@ -78,8 +79,9 @@ export async function syncStorePlanEntitlementFromSubscription(
         }, { merge: true }),
     ]);
 
-    if (subscription.id) {
-        await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscription.id).set({
+    const subscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);
+    if (subscriptionId) {
+        await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({
             analyticsEntitlement: {
                 activePlanType,
                 status: subscription.status || null,

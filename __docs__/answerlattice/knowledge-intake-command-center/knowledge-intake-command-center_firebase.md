@@ -151,7 +151,11 @@ Published intake output flows through the existing KB, FAQ, product-surface, and
 
 Intake source metadata and usage-ledger metadata are bounded before write. Usage-ledger reservations fail closed unless the action is one of the supported Answerlattice intake actions (`answerlattice_intake_ocr`, `answerlattice_intake_transcription`, or `answerlattice_intake_embedding`), so a future caller cannot accidentally process paid intake work as a zero-unit unknown action. Active-license checks read the store subscription mirror first, then use a direct subscription doc or capped tenant/store subscription query only when the mirror is missing/stale. Canonical answer proposal review items must carry at least one related entity before acceptance/publish so downstream governance approval is never blocked by an entity-less proposal.
 
+Answerlattice App Billing Document ID Boundary: Knowledge Intake active-license checks and support-credit reservation, settlement, and refund code normalize subscription summary IDs and intake usage ledger IDs before Admin Firestore document refs. Malformed subscription summary IDs fall through to the scoped subscription query, and malformed ledger IDs return before finalize/refund document refs.
+
 Knowledge Intake routes that pass a `rateLimitKey` through `requireAnswerlatticeKnowledgeIntakeContext()` keep their existing workspace-scoped throttle values, but blocked requests now return private no-store retry metadata and write a bounded security event before any paid or mutating intake work continues.
+
+Knowledge Intake route ID admission is cost-neutral for valid traffic and fail-closed for malformed traffic. `src/lib/answerlattice/knowledgeIntakeIdBoundary.ts` accepts only Firestore auto-ID shaped job IDs for protected job routes, deterministic `kis_` source IDs for source refs, and deterministic `kii_` review item IDs for review-item updates or publish `itemIds`; malformed route/body IDs return fixed invalid job or invalid review item responses before Firestore reads/writes, Storage reads/writes, provider calls, AI-operation rows, support-credit ledgers, summary writes, or cache/source-version updates. The shared service ref helpers in `src/lib/answerlattice/knowledgeIntake.ts` enforce the same ID boundary before direct job/source/review document refs.
 
 Paid media extraction now writes both ledgers:
 
@@ -613,12 +617,15 @@ When implemented with this contract:
 
 Knowledge Intake client response validation and request-policy hardening add no Firestore reads, writes, deletes, listeners, API routes, provider calls, Storage operations, scheduler work, cache invalidations, or support-credit ledger changes. The browser calls now pin no-store cache, same-origin credentials, and manual redirect handling, then reject malformed, oversized, rejected, or wrong-shape responses before local intake state, entity-option cache, bundle refresh, or success copy advances.
 
+Knowledge Intake route ID admission and shared service ref helper normalization add no Firestore reads, writes, deletes, listeners, API routes, provider calls, Storage operations, scheduler work, cache invalidations, or support-credit ledger changes for valid traffic. Invalid job/source/review item IDs stop before the existing job/source/review reads and before any mutating/provider-backed intake work.
+
 ---
 
 ## 14. Version History
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-07-05 | 2.1.4 | Documented cost-neutral Knowledge Intake route and shared service ID admission for Firestore auto-ID shaped job params, deterministic `kis_` source IDs, and deterministic `kii_` review item IDs. |
 | 2026-06-30 | 2.1.3 | Documented shared Knowledge Intake browser request policy with no Firebase cost-shape change. |
 | 2026-06-30 | 2.1.2 | Documented bounded Knowledge Intake client response validation with no Firebase cost-shape change. |
 | 2026-06-20 | 2.1.1 | Added token count source and support-credit debit breakdown to media extraction accounting notes. |

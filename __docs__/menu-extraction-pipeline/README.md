@@ -1,7 +1,7 @@
 # Menu Extraction Pipeline
 
 **Status:** Implemented
-**Last Updated:** June 30, 2026
+**Last Updated:** July 5, 2026
 
 Menu extraction now uses one durable intake/job contract across owner upload, mobile upload, menu link import, public create-menu, and messaging onboarding.
 
@@ -34,6 +34,8 @@ Menu-intake identity preflight remains non-blocking. If an allowed preflight fil
 Menu-intake identity provider response parsing also remains non-blocking. If Gemini returns malformed or non-object JSON for the preflight identity check, the helper uses the existing low-confidence fallback analysis and logs bounded `menu_intake_identity_provider_response_parse_failed` diagnostics with response length, candidate length, parse-stage, fence/object-fragment booleans, and operation shape metadata only. It does not log raw provider response text, extracted menu text, file content, project IDs, tenant IDs, store IDs, user IDs, or exception text.
 
 Public `/create-menu` browser handoffs use same-origin credentials, no-store cache policy, and manual redirect handling before trusting upload/link acknowledgements, preview polling responses, or claim acknowledgements. Public preview polling still uses `statusOnly=1` while extraction is pending/processing and fetches the full extracted draft only after completion. This keeps the public create-menu preview path lightweight without changing Firestore ownership, auth, or claim behavior.
+
+Extraction review apply keeps MOL audit logging fire-and-forget after the acknowledged menu/project write and job completion update. If the non-blocking `EXTRACTION_APPLIED` MOL event fails, the apply flow now logs bounded `menu_review_apply_mol_event_log_failed` diagnostics with project/job presence-length context, actor/tenant/store presence-length context, applied-change count, review mode, MOL version, and normalized source error metadata only. The owner success path and valid MOL writes stay unchanged.
 
 ## Destination Contract
 

@@ -14,6 +14,7 @@ import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { compensateFailedTenantStoreOnboarding } from "@lib/onboarding/compensateFailedOnboarding";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
+import { requireOnboardingUserId } from "@lib/onboarding/onboardingUserId";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -386,7 +387,7 @@ export const POST = withAuth(async (request, session) => {
                         modifiedOn: core.now,
                     }));
                 } else {
-                    const userRef = db.collection(DB_COLLECTIONS.USERS).doc(authAccount.uid);
+                    const userRef = db.collection(DB_COLLECTIONS.USERS).doc(requireOnboardingUserId(authAccount.uid));
 
                     transaction.set(userRef, {
                         firebaseUid: authAccount.uid,

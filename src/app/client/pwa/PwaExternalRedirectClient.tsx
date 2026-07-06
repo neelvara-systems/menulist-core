@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import { detectAndTrackShortcutLaunch } from '@lib/pwa/shortcutSourceDetector';
+import { getSafePwaExternalHttpsUrl } from './shortcutHandoffUrl';
 
 interface Props {
     storeId: string | number;
@@ -34,19 +35,25 @@ export default function PwaExternalRedirectClient({
     locationTrackingEnabled = true,
 }: Props) {
     const [ready, setReady] = useState(false);
+    const safeTargetUrl = getSafePwaExternalHttpsUrl(targetUrl);
 
     useEffect(() => {
+        if (!safeTargetUrl) {
+            setReady(true);
+            return;
+        }
+
         // Fire-and-forget analytics; never block the redirect.
         void detectAndTrackShortcutLaunch(storeId, { tenantId, trackingEnabled, includeLocation: locationTrackingEnabled });
 
         // Small delay so the tracking write can leave before the navigation.
         const t = window.setTimeout(() => {
-            window.location.replace(targetUrl);
+            window.location.replace(safeTargetUrl);
         }, 80);
 
         setReady(true);
         return () => window.clearTimeout(t);
-    }, [storeId, tenantId, targetUrl, trackingEnabled, locationTrackingEnabled]);
+    }, [storeId, tenantId, safeTargetUrl, trackingEnabled, locationTrackingEnabled]);
 
     return (
         <div
@@ -65,13 +72,15 @@ export default function PwaExternalRedirectClient({
         >
             <h1 style={{ fontSize: 20, margin: '0 0 12px', fontWeight: 600 }}>{title}</h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-                {ready ? message : 'Preparing…'}
+                {ready ? (safeTargetUrl ? message : 'This shortcut is unavailable.') : 'Preparing…'}
             </p>
-            <noscript>
-                <p style={{ marginTop: 16 }}>
-                    <a href={targetUrl}>Continue</a>
-                </p>
-            </noscript>
+            {safeTargetUrl ? (
+                <noscript>
+                    <p style={{ marginTop: 16 }}>
+                        <a href={safeTargetUrl}>Continue</a>
+                    </p>
+                </noscript>
+            ) : null}
         </div>
     );
 }

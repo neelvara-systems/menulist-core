@@ -2,9 +2,11 @@
 
 **Feature:** Visual Menu Data Editor  
 **Status:** Implemented source evidence; not current launch certification
-**Last Updated:** January 2026
+**Last Updated:** July 5, 2026
 
 **Launch boundary:** This implementation note documents the menu data editor. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, browser/mobile editor QA, publish/cache evidence for edited public truth, and deploy evidence for the target environment.
+
+MOL no-session diagnostics update (July 5, 2026): the Menu Observation Layer remains fire-and-forget and non-blocking for editor saves, but enabled calls without an active tenant/store session, explicit-scope calls without scope, and flushes without session now log bounded `menu_change_log_session_missing`, `menu_change_log_scope_missing`, or `menu_change_log_flush_session_missing` diagnostics. Valid debounced writes, scoped writes, query helpers, owner UI behavior, and feature-flag disabled no-ops are unchanged.
 
 ---
 

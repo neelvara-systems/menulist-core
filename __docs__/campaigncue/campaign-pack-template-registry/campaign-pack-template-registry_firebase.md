@@ -62,8 +62,8 @@ campaigncue/templates/workspaces/{workspaceId}/{templateId}/preview.webp
 | Choose Campaign Proof Deck intent | 0 | 0 | 0 | 0 | Uses the same in-memory output picker and existing output-pack proof deck field. |
 | Open platform template | 0 | 0 | 1-2 downloads | 0 | Downloads pack payload and optional editor document from Storage. |
 | Load saved workspace templates | 1 | 0 | 0 | 0 | Reads `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` only when saved templates are shown. |
-| Save workspace template | 1 | 1 | 1-3 uploads | 0 | Reads current index, writes bounded summary array, uploads payload/editor/optional preview, and cleans up newly-created uploaded artifacts if the index write fails. |
-| Delete workspace template | 1 | 1 | Up to 3 deletes | 0 | Rewrites index without summary and deletes workspace payloads. |
+| Save workspace template | 1 | 1 | 1-3 uploads | 0 | Reads current index, writes bounded summary array, uploads payload/editor/optional preview, and cleans up newly-created uploaded artifacts if the index write fails. Unexpected cleanup failures log bounded diagnostics; missing Storage objects are expected no-ops. |
+| Delete workspace template | 1 | 1 | Up to 3 deletes | 0 | Rewrites index without summary and deletes workspace payloads. Unexpected cleanup failures log bounded diagnostics after the visible index removal; missing Storage objects are expected no-ops. |
 | Load overflow templates | 1 | 0 | 0 | 0 | Only after explicit owner action such as "More templates". |
 | Admin seed platform category | 1 | 1 | N uploads | 0 | Platform/admin tooling only; validates soft limits before write. |
 

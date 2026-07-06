@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import {
   LuActivity,
@@ -18,12 +19,20 @@ const proofCards = [
     Icon: LuMessageCircle,
     href: '/ai-menu-manager',
     accent: 'message',
+    imageAltKey: 'aiImageAlt',
+    imageSrc: '/images/website/product-proof/ai-menu-manager-approval-card.webp',
+    imageWidth: 1280,
+    imageHeight: 900,
   },
   {
     key: 'health',
     Icon: LuActivity,
     href: '/features/business-health',
     accent: 'health',
+    imageAltKey: 'healthImageAlt',
+    imageSrc: '/images/website/product-proof/business-health-stable-check.webp',
+    imageWidth: 1280,
+    imageHeight: 900,
   },
 ] as const;
 
@@ -66,6 +75,17 @@ export default function OwnerProofSection() {
               </div>
 
               <p className="ws-owner-proof__desc">{t(`OwnerProof.${card.key}Desc`)}</p>
+
+              <figure className="ws-owner-proof__image">
+                <Image
+                  src={card.imageSrc}
+                  alt={t(`OwnerProof.${card.imageAltKey}`)}
+                  width={card.imageWidth}
+                  height={card.imageHeight}
+                  sizes="(min-width: 860px) 520px, 100vw"
+                  unoptimized
+                />
+              </figure>
 
               <div className="ws-owner-proof__points">
                 {points.map((point) => (

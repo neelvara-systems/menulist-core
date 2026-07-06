@@ -24,6 +24,10 @@ This Firebase cost document is customer-facing menu-output cost evidence; it is 
 
 Public menu external link normalization is Firebase-cost neutral. It normalizes already-loaded store `publicPresence`, `socialMedia`, and `reviewUrl` fields in browser render paths before customer-facing footer, recovery, and feedback links are emitted. It adds no Firestore read/write/delete, Storage operation, Cloud Function, API route, rule, index, cache invalidation, or deploy requirement.
 
+### Menu Cache Revalidation Rate-Limit Boundary
+
+Menu cache revalidation rate-limit boundary: `/api/revalidate/menu` now applies the shared `MENU_CACHE_REVALIDATION` limiter before bounded body parsing, cache-tag validation, `revalidateTag()` calls, or Owner Business Assistant packet invalidation. Authenticated app callers are keyed by hashed session actor material; `x-revalidate-secret` callers are keyed by hashed caller-source material after the secret is validated. The limit is intentionally generous at 600 requests per minute per source so normal owner save bursts and Cloud Function public-cache invalidations continue to pass while runaway loops or leaked-secret churn are bounded. This adds no Firestore read/write/delete and does not change valid cache tags, store-access checks, explicit tag handling, screen-data invalidation, or assistant-cache invalidation behavior.
+
 ---
 
 ## Firestore Operations
@@ -153,3 +157,5 @@ Public menu external link normalization is Firebase-cost neutral. It normalizes 
 | `/client/sitemap.ts` | GET | 2+ cached reads depending on outlet/project count | No (public) | Reads store seed, project summaries, and outlet summaries. Weak, blocked, starter, or incomplete records stay out of sitemap. |
 | `/client/robots.ts` | GET | 0R | No (public) | Static response, no Firestore |
 | `/api/revalidate/menu` | POST | 0 Firestore reads/writes | Yes for app callers; secret for server callers | Validates numeric `storeId`/cache-tag shape, checks authenticated store access for app callers, revalidates `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data`, and clears Owner Business Assistant packet cache when a `storeId` or single-store explicit tag array is present. Live Digital Screen content-version touches stay in the public-truth caller helpers. |
+
+**Public client store lookup scope document ID boundary:** Direct public store-ID reads and legacy tenant-block fallback reads are admitted by `src/lib/firestore/clientStoreLookup.ts` only after the shared Firestore document ID guard and exact positive numeric check pass. Valid subdomain, custom-domain, outlet-slug, and public store-ID lookup behavior is unchanged; malformed store IDs return no store, and malformed tenant IDs on returned store records fail closed before public output.

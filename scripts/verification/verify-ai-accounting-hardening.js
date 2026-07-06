@@ -2093,11 +2093,68 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
 });
 
 {
+  const route = 'src/lib/ai/imageBatchIdBoundary.ts';
+  const source = read(route);
+  [
+    "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
+    'IMAGE_BATCH_JOB_ID_PATTERN = /^[A-Za-z0-9]{20}$/',
+    'IMAGE_BATCH_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{3,160}$/',
+    'export function normalizeImageBatchScopeDocumentId',
+    'Number.isSafeInteger(numericId)',
+    'String(numericId) !== documentId',
+    'export function normalizeImageBatchProjectId',
+    "const parts = projectId.split('-');",
+    'const tenantScope = normalizeImageBatchScopeDocumentId(parts[0]);',
+    'const storeScope = normalizeImageBatchScopeDocumentId(parts[2]);',
+    'export function normalizeImageBatchJobId',
+  ].forEach((token) => {
+    assert(source.includes(token), `${route} includes image batch ID boundary token ${token}`);
+  });
+}
+
+{
+  const route = 'src/lib/validation/apiSchemas.ts';
+  const source = read(route);
+  [
+    "import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from '@lib/ai/imageBatchIdBoundary';",
+    'projectId: z.string().max(160).refine((value) => normalizeImageBatchProjectId(value)?.projectId === value)',
+    'jobId: z.string().max(100).refine((value) => normalizeImageBatchJobId(value) === value)',
+  ].forEach((token) => {
+    assert(source.includes(token), `${route} validates image batch IDs with shared boundary: ${token}`);
+  });
+  assert(!source.includes('projectId: z.string().max(100),\n    itemsList:'), `${route} batch trigger schema must not use loose project IDs`);
+  assert(!source.includes('projectId: z.string().max(100),\n    businessType:'), `${route} batch worker schema must not use loose project IDs`);
+  assert(!source.includes('jobId: z.string().max(100)\n});'), `${route} batch schemas must not use loose job IDs`);
+}
+
+{
   const route = 'src/app/api/image-generation/batch-trigger/route.ts';
   const source = read(route);
   const taskStartLogStart = source.indexOf("logType: 'BATCH_GENERATION_TASK_STARTED'");
   const taskStartLogEnd = source.indexOf('await updateImageBatchProcessingJobAdmin', taskStartLogStart);
   const taskStartLog = source.slice(taskStartLogStart, taskStartLogEnd);
+  [
+    "import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from '@lib/ai/imageBatchIdBoundary';",
+    'projectId: requestedProjectId',
+    'jobId: requestedJobId',
+    'const projectScope = normalizeImageBatchProjectId(requestedProjectId);',
+    'const jobId = normalizeImageBatchJobId(requestedJobId);',
+    'const projectId = projectScope.projectId;',
+  ].forEach((token) => {
+    assert(source.includes(token), `${route} normalizes batch trigger IDs: ${token}`);
+  });
+  assertOrder(
+    source,
+    route,
+    [
+      'const validation = validateAPIInput(BatchImageGenerationRequestSchema, rawData);',
+      'const projectScope = normalizeImageBatchProjectId(requestedProjectId);',
+      'const jobId = normalizeImageBatchJobId(requestedJobId);',
+      'const projectId = projectScope.projectId;',
+      'const permissionError = await requireAnyStorePermission(',
+    ],
+    'normalizes project/job IDs before permission, policy, capacity, and task fanout work',
+  );
   assert(source.includes("'Image generation could not start.'"), `${route} uses owner-safe all-task enqueue failure reason`);
   assert(source.includes("'Some image generation tasks could not start.'"), `${route} uses owner-safe partial enqueue failure reason`);
   assert(source.includes("'Could not start the image batch. Please try again.'"), `${route} returns generic catch response`);
@@ -2137,6 +2194,25 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
 {
   const route = 'src/app/api/image-generation/batch-generation/route.ts';
   const source = read(route);
+  [
+    'checkRateLimit',
+    'getRateLimitForFeature',
+    'hashPublicRateLimitValue',
+    "const BATCH_IMAGE_WORKER_RATE_LIMIT_KEY = 'batch-image-worker';",
+    'async function applyBatchImageWorkerRateLimit',
+    "getRateLimitForFeature('BATCH_IMAGE_WORKER')",
+    'key: `${BATCH_IMAGE_WORKER_RATE_LIMIT_KEY}:${tenantRateLimitHash}:${storeRateLimitHash}`',
+    "logger.security('Rate Limit Exceeded - Batch Image Worker'",
+    'normalizeImageBatchJobId',
+    'normalizeImageBatchProjectId',
+    'projectId: requestedProjectId',
+    'jobId: requestedJobId',
+    'const projectScope = normalizeImageBatchProjectId(requestedProjectId);',
+    'const jobId = normalizeImageBatchJobId(requestedJobId);',
+    'const { projectId, sId, tId } = projectScope;',
+  ].forEach((token) => {
+    assert(source.includes(token), `${route} normalizes batch worker IDs: ${token}`);
+  });
   assert(source.includes('readBoundedJsonBody'), `${route} uses bounded JSON body reader`);
   assert(source.includes('BATCH_IMAGE_WORKER_MAX_BODY_BYTES'), `${route} declares explicit worker request body cap`);
   assert(source.includes('getBatchWorkerLogContext'), `${route} uses bounded worker diagnostic context`);
@@ -2152,11 +2228,20 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
       'hasValidWorkerSecret(request)',
       'readBoundedJsonBody(request, BATCH_IMAGE_WORKER_MAX_BODY_BYTES',
       'validateAPIInput(BatchImageGenerationWorkerRequestSchema, rawData)',
+      'const projectScope = normalizeImageBatchProjectId(requestedProjectId);',
+      'const jobId = normalizeImageBatchJobId(requestedJobId);',
+      'const rateLimitResponse = await applyBatchImageWorkerRateLimit({ jobId, sId, tId });',
       'getImageBatchProcessingJobByIdAdmin',
       'checkAICapacity(',
     ],
-    'verifies worker secret and bounds JSON before job reads and provider work',
+    'verifies worker secret, bounds JSON, normalizes IDs, and rate-limits before job reads and provider work',
   );
+  const rateLimitConfigs = read('src/lib/rateLimit/configs.ts');
+  assert(rateLimitConfigs.includes('BATCH_IMAGE_WORKER: {'), 'rate limit configs include batch image worker profile');
+  assert(rateLimitConfigs.includes("description: 'Batch image worker - 600 per minute per store'"), 'rate limit configs document batch image worker profile');
+  assert(!source.includes('key: `batch-image-worker:${tId'), `${route} must not store raw tenant IDs in worker limiter keys`);
+  assert(!source.includes('key: `batch-image-worker:${sId'), `${route} must not store raw store IDs in worker limiter keys`);
+  assert(!source.includes('const [tId, , sId] = projectId.split("-")'), `${route} must not split worker project IDs directly`);
   assert(source.includes("const ownerSafeError = 'Image generation failed for this item.'"), `${route} uses generic persisted item error`);
   assert(source.includes("const ownerSafeReason = 'Image generation failed for this item.'"), `${route} uses generic owner-visible item reason`);
   assert(source.includes('image_batch_worker_generation_failed'), `${route} codes worker generation failures`);
@@ -2248,6 +2333,9 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
   const route = 'src/database/imageBatchProcessing/index.tsx';
   const source = read(route);
   [
+    'normalizeImageBatchJobId',
+    'normalizeImageBatchProjectId',
+    'normalizeImageBatchScopeDocumentId',
     'export function assertImageBatchJobCreateSucceeded',
     'export function assertImageBatchJobUpdateSucceeded',
     'isImageBatchJobUpdateResult',
@@ -2256,15 +2344,26 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     'expiresAt',
     'IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES',
     'satisfies ImageBatchJobUpdateResult',
+    'where("projectId", "==", projectScope.projectId)',
+    'const jobId = normalizeImageBatchJobId(data.id);',
+    'const docRef = await getDocRef(jobId, { tId: projectScope.tId, sId: projectScope.sId });',
   ].forEach((token) => {
     assert(source.includes(token), `${route} includes batch job acknowledgement token ${token}`);
   });
+  assert(!source.includes('const [tId, _, sId] = projectId.split("-")'), `${route} must not split image batch project IDs directly`);
 }
 
 {
   const route = 'src/database/imageBatchProcessing/server.ts';
   const source = read(route);
   [
+    'normalizeImageBatchJobId',
+    'normalizeImageBatchProjectId',
+    'normalizeImageBatchScopeDocumentId',
+    'function requireImageBatchJobId',
+    'function requireImageBatchProjectScope',
+    'const jobId = requireImageBatchJobId(id);',
+    'const projectScope = requireImageBatchProjectScope(projectId);',
     'getImageBatchRetentionFields',
     'itemsExpiresAt',
     'expiresAt',
@@ -2272,6 +2371,34 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     'value instanceof Timestamp',
   ].forEach((token) => {
     assert(source.includes(token), `${route} includes server batch job retention token ${token}`);
+  });
+  assert(!source.includes('const [tId, , sId] = projectId.split("-")'), `${route} must not split image batch project IDs directly`);
+}
+
+{
+  [
+    ['AI image implementation docs', '__docs__/projects/ai-image-generation/ai-image-generation_impl.md'],
+    ['AI image Firebase docs', '__docs__/projects/ai-image-generation/ai-image-generation_firebase.md'],
+    ['AI System implementation docs', '__docs__/ai-system-layer/ai-system-layer_impl.md'],
+    ['AI System Firebase docs', '__docs__/ai-system-layer/ai-system-layer_firebase.md'],
+    ['Production-readiness audit', '__docs__/audits/menulist-production-readiness-audit.md'],
+    ['Changelog', '__docs__/CHANGELOG.md'],
+    ['Lowercase changelog', '__docs__/changelog.md'],
+  ].forEach(([label, filePath]) => {
+    const content = read(filePath);
+    assert(content.includes('Batch image project/job ID boundary') || content.includes('Batch Image Project/Job ID Boundary'), `${label} documents batch image project/job ID boundary`);
+    assert(content.includes('src/lib/ai/imageBatchIdBoundary.ts'), `${label} cites the image batch ID boundary helper`);
+  });
+  [
+    ['AI image implementation docs', '__docs__/projects/ai-image-generation/ai-image-generation_impl.md'],
+    ['AI image Firebase docs', '__docs__/projects/ai-image-generation/ai-image-generation_firebase.md'],
+    ['Production-readiness audit', '__docs__/audits/menulist-production-readiness-audit.md'],
+    ['Changelog', '__docs__/CHANGELOG.md'],
+    ['Lowercase changelog', '__docs__/changelog.md'],
+  ].forEach(([label, filePath]) => {
+    const content = read(filePath);
+    assert(content.includes('Batch Image Worker Rate-Limit Boundary') || content.includes('Batch image worker rate-limit boundary'), `${label} documents batch image worker rate-limit boundary`);
+    assert(content.includes('BATCH_IMAGE_WORKER'), `${label} cites the batch image worker limiter profile`);
   });
 }
 
@@ -2317,6 +2444,8 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     'image_batch_result_discard_update_rejected',
     'image_batch_result_retry_failed',
     'image_batch_result_retry_update_rejected',
+    'IMAGE_BATCH_JOB_FAILED_OWNER_COPY',
+    'Image generation could not finish. Try again with fewer items or start a new batch.',
     'getBatchResultLogContext',
     "getBoundedRuntimeStringContext('jobId'",
     "getBoundedRuntimeStringContext('projectId'",
@@ -2332,8 +2461,24 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
   assert(!source.includes("import { logger }"), `${route} must not import raw logger diagnostics`);
   assert(!source.includes("logger.error('Error cancelling batch job', error"), `${route} must not raw-log cancel failures`);
   assert(!source.includes("logger.error('Error updating batch job status', error"), `${route} must not raw-log batch status failures`);
+  assert(!source.includes('activeJobData.error'), `${route} must not render stored batch job error text`);
   assert(!/jobId:\s*activeJobData/.test(source), `${route} must not log raw active job IDs`);
   assert(!/projectId:\s*activeJobData/.test(source), `${route} must not log raw active project IDs`);
+
+  const aiImageImpl = read('__docs__/projects/ai-image-generation/ai-image-generation_impl.md');
+  const aiImageFirebase = read('__docs__/projects/ai-image-generation/ai-image-generation_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
+  const systemLedger = read('__docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md');
+  [
+    ['AI image implementation docs', aiImageImpl],
+    ['AI image Firebase docs', aiImageFirebase],
+    ['Production-readiness audit', productionAudit],
+    ['Changelog', changelog],
+    ['System data-flow audit', systemLedger],
+  ].forEach(([label, content]) => {
+    assert(content.includes('Batch image result stored-error display boundary'), `${label} documents batch image result stored-error display boundary`);
+  });
 }
 
 {
@@ -2425,6 +2570,13 @@ assert(aiOperationsApi.includes("'realCostPaise'"), 'AI operations API keeps act
 assert(aiOperationsApi.includes("'ourChargePaise'"), 'AI operations API keeps configured owner charge platform-only');
 assert(aiOperationsApi.includes("'marginPaise'"), 'AI operations API keeps margin platform-only');
 assert(aiOperationsApi.includes('getActionFilteredDocs'), 'AI operations API supports action filtering without relying on dynamic collection composite indexes');
+assert(aiOperationsApi.includes("import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';"), 'AI operations API uses the shared Firestore document ID guard for history scope');
+assert(aiOperationsApi.includes('function normalizeAiOperationHistoryScopeDocumentId(value: unknown): AiOperationHistoryScopeDocumentId | null'), 'AI operations API exposes a history scope document ID normalizer');
+assert(aiOperationsApi.includes('Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId'), 'AI operations API requires exact positive numeric tenant/store scope');
+assert(aiOperationsApi.includes('const tenantScope = normalizeAiOperationHistoryScopeDocumentId(session.tId || session.user?.tenantId);'), 'AI operations API normalizes tenant scope before reads');
+assert(aiOperationsApi.includes('const storeScope = normalizeAiOperationHistoryScopeDocumentId(session.sId || session.user?.storeId);'), 'AI operations API normalizes store scope before reads');
+assert(aiOperationsApi.includes('const tenantId = tenantScope.documentId;'), 'AI operations API reads tenant history through normalized document ID');
+assert(aiOperationsApi.includes('const storeId = storeScope.documentId;'), 'AI operations API reads store history through normalized document ID');
 assert(aiOperationsApi.includes("platformRole === 'PLATFORM'"), 'AI operations API detects platform role before response shaping');
 assert(aiOperationsApi.includes('? sanitizePlatformOperation(doc.id, doc.data())'), 'AI operations API filters platform rows through the bounded platform allowlist');
 assert(aiOperationsApi.includes("withAuth"), 'AI operations API is protected by auth middleware');
@@ -2444,6 +2596,13 @@ assert(aiOperationsApi.includes('...getAiOperationsReadLogContext(request, sessi
 assert(!aiOperationsApi.includes("secureError('[ai-operations] Failed to load operations'"), 'AI operations API does not log read failures through the legacy raw secureError path');
 assert(!aiOperationsApi.includes('secureError('), 'AI operations API does not pass raw read exceptions into secureError');
 assert(!aiOperationsApi.includes('key: `ai-operations:${userId}:${tenantId}:${storeId}`'), 'AI operations API must not store raw user/tenant/store IDs in rate-limit keys');
+assert(!aiOperationsApi.includes('.doc(String(tenantId))'), 'AI operations API must not build history refs from raw tenant IDs');
+assert(!aiOperationsApi.includes('.collection(String(storeId))'), 'AI operations API must not build history refs from raw store IDs');
+assert(read('__docs__/ai-system-layer/ai-system-layer_impl.md').includes('AI Operations History Scope Document ID Boundary'), 'AI System implementation docs must record AI operations history scope boundary');
+assert(read('__docs__/ai-system-layer/ai-system-layer_firebase.md').includes('AI Operations History Scope Document ID Boundary'), 'AI System Firebase docs must record AI operations history scope boundary');
+assert(read('__docs__/audits/menulist-production-readiness-audit.md').includes('AI Operations History Scope Document ID Boundary checkpoint'), 'Production audit must record AI operations history scope boundary');
+assert(read('__docs__/CHANGELOG.md').includes('AI Operations History Scope Document ID Boundary'), 'Changelog must record AI operations history scope boundary');
+assert(read('__docs__/changelog.md').includes('AI Operations History Scope Document ID Boundary'), 'Lowercase changelog must record AI operations history scope boundary');
 const platformVisibleFieldsMatch = aiOperationsApi.match(/const PLATFORM_VISIBLE_FIELDS = new Set\(\[([\s\S]*?)\]\);/);
 assert(Boolean(platformVisibleFieldsMatch), 'AI operations API declares platform-visible fields in one allowlist');
 const platformVisibleFields = platformVisibleFieldsMatch ? platformVisibleFieldsMatch[1] : '';
@@ -2497,11 +2656,50 @@ for (const actionKey of explicitlyFreeActions) {
 }
 
 const capacityCheck = read('src/lib/ai/capacityCheck.ts');
+const aiEnhancementPacksImpl = read('__docs__/ai-enhancement-packs/ai-enhancement-packs_impl.md');
+const aiEnhancementPacksFirebase = read('__docs__/ai-enhancement-packs/ai-enhancement-packs_firebase.md');
+const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+const changelog = read('__docs__/CHANGELOG.md');
 assert(
   capacityCheck.indexOf('if (isFreeTierAction(actionType))') !== -1
     && capacityCheck.indexOf('if (isFreeTierAction(actionType))') < capacityCheck.indexOf('if (!FEATURE_FLAGS.ENABLE_AI_ENHANCEMENTS)'),
   'free actions short-circuit before paid enhancement kill switch and subscription lookup'
 );
+[
+  "import { normalizeBillingSubscriptionDocumentId } from \"@lib/billing/subscriptionDocumentIdBoundary\";",
+  'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);',
+  'if (!normalizedSubscriptionId || subscription.monthlyCreditsAllowance <= 0) {',
+  'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);',
+  'throw new Error("Billing subscription is not available.");',
+].forEach((token) => {
+  assert(capacityCheck.includes(token), `AI capacity check includes subscription document ID boundary token ${token}`);
+});
+assert(!capacityCheck.includes('.doc(subscription.id)'), 'AI capacity check must not build raw subscription document refs');
+[
+  'Subscription document refs use `src/lib/billing/subscriptionDocumentIdBoundary.ts`',
+  'paid consumption fails closed through the shared AI accounting finalizer',
+].forEach((token) => {
+  assert(aiEnhancementPacksImpl.includes(token), `AI enhancement packs implementation doc includes subscription document ID boundary token ${token}`);
+});
+[
+  'MenuList Billing Subscription Document ID Boundary',
+  'capacity-check lazy reset and consumption normalize subscription document IDs',
+  'malformed IDs return before reset refs or fail paid credit consumption before debit refs',
+].forEach((token) => {
+  assert(aiEnhancementPacksFirebase.includes(token), `AI enhancement packs Firebase doc includes subscription document ID boundary token ${token}`);
+});
+[
+  'MenuList Billing Subscription Document ID Boundary checkpoint',
+  '`npm run verify:ai-accounting`',
+].forEach((token) => {
+  assert(productionReadinessAudit.includes(token), `production readiness audit includes subscription document ID boundary token ${token}`);
+});
+[
+  'MenuList Billing Subscription Document ID Boundary',
+  'Paid AI credit consumption fails closed for malformed subscription IDs',
+].forEach((token) => {
+  assert(changelog.includes(token), `changelog includes subscription document ID boundary token ${token}`);
+});
 {
   const apiSchemas = read('src/lib/validation/apiSchemas.ts');
   const newItemMetadataRoute = read('src/app/api/new-item-metadata/route.ts');

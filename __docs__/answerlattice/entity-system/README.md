@@ -82,6 +82,10 @@ The Entity System is **Pillar 1** of Answerlattice — the foundation layer that
 | Multi-pass Extraction | ❌ Not built | **DEFER** — single-pass sufficient |
 | Article Summarization/Chunking | ❌ Not built | **DEFER** — valuable but not critical |
 
+Answerlattice App Entity Candidate ID Boundary: candidate review actions normalize candidate document IDs through `src/lib/answerlattice/entityCandidateIdBoundary.ts` before approval, rejection, promotion, merge refs, promotion audit state, and promotion return metadata. Malformed, reserved, empty, or path-shaped candidate IDs fail before Firestore access while valid generated candidate IDs keep the existing human-review flow.
+
+Answerlattice App Entity DAL ID Boundary: entity, relation, and entity search-index document refs normalize IDs through `src/lib/answerlattice/governanceIdBoundary.ts` before entity update/deprecate refs, relation delete refs, search-index writes, alias sync, merge reads/writes, merge audit state, and compiled-context source-version IDs. Malformed, reserved, empty, path-shaped, or unresolved entity IDs fail before Firestore access while valid entity governance behavior is unchanged.
+
 ---
 
 ## Document Index

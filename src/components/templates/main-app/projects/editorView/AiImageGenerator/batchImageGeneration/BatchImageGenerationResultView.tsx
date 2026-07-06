@@ -23,6 +23,7 @@ const IMAGE_BATCH_RESULT_CANCEL_FAILED = 'image_batch_result_cancel_failed';
 const IMAGE_BATCH_RESULT_UPLOAD_FAILED = 'image_batch_result_upload_failed';
 const IMAGE_BATCH_RESULT_DISCARD_FAILED = 'image_batch_result_discard_failed';
 const IMAGE_BATCH_RESULT_RETRY_FAILED = 'image_batch_result_retry_failed';
+const IMAGE_BATCH_JOB_FAILED_OWNER_COPY = 'Image generation could not finish. Try again with fewer items or start a new batch.';
 
 function normalizeItemImages(images: unknown): UserUploadedFileType[] {
     return Array.isArray(images) ? images : [];
@@ -394,7 +395,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                                     status="error"
                                     title={<Flex align="center" gap={8} vertical>
                                         <Text strong style={{ fontSize: 20, color: "black" }}>Batch Job Failed</Text>
-                                        <Text style={{ fontSize: 14, color: "black" }}>{`The job failed on ${activeJobData.modifiedOn ? formatTimeOnly(new Date(activeJobData.modifiedOn)) : 'N/A'}. ${activeJobData.error || 'An unexpected error occurred.'}`}</Text>
+                                        <Text style={{ fontSize: 14, color: "black" }}>{`The job failed on ${activeJobData.modifiedOn ? formatTimeOnly(new Date(activeJobData.modifiedOn)) : 'N/A'}. ${IMAGE_BATCH_JOB_FAILED_OWNER_COPY}`}</Text>
                                     </Flex>}
                                 />
                             )}

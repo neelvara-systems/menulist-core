@@ -1,8 +1,10 @@
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { secureError } from '@lib/security/secureLogger';
 
 const VERCEL_API_BASE = 'https://api.vercel.com';
 const VERCEL_DOMAIN_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 const VERCEL_DOMAIN_PROVIDER_TIMEOUT_MS = 10_000;
+const VERCEL_DOMAIN_PROVIDER_RESPONSE_PARSE_FAILED = 'vercel_domain_provider_response_parse_failed';
 
 const getVercelToken = () => process.env.VERCEL_TOKEN;
 const getVercelProjectId = () => process.env.VERCEL_PROJECT_ID;
@@ -32,6 +34,40 @@ function encodeVercelPathSegment(value: string): string {
         throw new Error('Vercel API path segment is required.');
     }
     return encodeURIComponent(normalized);
+}
+
+const getVercelProviderPathContext = (
+    path: string,
+    options: RequestInit,
+    response: Response,
+) => ({
+    maxBytes: VERCEL_DOMAIN_RESPONSE_JSON_MAX_BYTES,
+    method: String(options.method || 'GET').slice(0, 16),
+    pathHasQuery: path.includes('?'),
+    pathLength: path.length,
+    pathPresent: path.trim().length > 0,
+    responseOk: response.ok,
+    responseStatus: response.status,
+});
+
+async function readVercelDomainResponseData<T>(
+    response: Response,
+    path: string,
+    options: RequestInit,
+): Promise<T> {
+    try {
+        return await readJsonResponseWithLimit<T>(response, VERCEL_DOMAIN_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        secureError(
+            '[Vercel Domain] Provider response parse failed',
+            new Error(VERCEL_DOMAIN_PROVIDER_RESPONSE_PARSE_FAILED),
+            {
+                ...getVercelProviderPathContext(path, options, response),
+                sourceErrorName: error instanceof Error ? error.name : typeof error,
+            },
+        );
+        return {} as T;
+    }
 }
 
 export async function vercelDomainFetch<T = any>(
@@ -68,7 +104,7 @@ export async function vercelDomainFetch<T = any>(
         clearTimeout(timeout);
     }
 
-    const data = await readJsonResponseWithLimit<T>(response, VERCEL_DOMAIN_RESPONSE_JSON_MAX_BYTES).catch(() => ({} as T));
+    const data = await readVercelDomainResponseData<T>(response, path, options);
     return { ok: response.ok, status: response.status, data };
 }
 

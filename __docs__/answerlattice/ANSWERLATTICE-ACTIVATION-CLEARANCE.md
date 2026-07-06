@@ -267,6 +267,8 @@ INTEGRATION POINTS (existing system):
 6. Release status set to `active` regardless of drift evaluation outcome
 7. Drift is **advisory** — it flags answers for review, never blocks releases
 
+Answerlattice App Release ID Boundary: release activation and processing normalize the release document ID before Firestore refs, drift-audit entity IDs, bounded diagnostics, and compiled-context source invalidation. Malformed release IDs fail before release document access.
+
 **Files:** `src/database/answerlattice/releases.ts`, `src/lib/answerlattice/driftDetection.ts`
 
 ### 4.6 Mutation Proposal Review (Human-in-the-Loop)

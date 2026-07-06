@@ -63,7 +63,9 @@ const analyticsRoute = read('src/app/api/owner-business-assistant/analytics/rout
 const locationsRoute = read('src/app/api/owner-business-assistant/locations/route.ts');
 const answerRoute = read('src/app/api/owner-business-assistant/answer/route.ts');
 const feedbackRoute = read('src/app/api/owner-business-assistant/feedback/route.ts');
+const threadRoute = read('src/app/api/owner-business-assistant/thread/[threadId]/route.ts');
 const schemas = read('src/lib/ownerBusinessAssistant/schemas.ts');
+const threadIdBoundary = read('src/lib/ownerBusinessAssistant/threadIdBoundary.ts');
 const constants = read('src/lib/ownerBusinessAssistant/constants.ts');
 const clientResponses = read('src/lib/ownerBusinessAssistant/clientResponses.ts');
 const apiGuards = read('src/lib/ownerBusinessAssistant/server/apiGuards.ts');
@@ -71,6 +73,7 @@ const contextPacketCache = read('src/lib/ownerBusinessAssistant/server/contextPa
 const contextPacketBuilder = read('src/lib/ownerBusinessAssistant/server/buildOwnerBusinessAssistantContextPacket.ts');
 const domainMatrix = read('src/lib/ownerBusinessAssistant/server/domainCapabilityMatrix.ts');
 const answerResolver = read('src/lib/ownerBusinessAssistant/server/resolveOwnerBusinessAssistantAnswer.ts');
+const answerEventLogger = read('src/lib/ownerBusinessAssistant/server/answerEventLogger.ts');
 const threadStore = read('src/lib/ownerBusinessAssistant/server/threadStore.ts');
 const businessSignals = read('src/lib/ownerBusinessAssistant/businessSignals.ts');
 const ownerPublicTruthReadiness = read('src/lib/public-truth-tools/ownerPublicTruthReadiness.ts');
@@ -83,6 +86,7 @@ const feedbackHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessAssi
 const platformMonitorRoute = read('src/app/api/platform/owner-business-assistant/monitor/route.ts');
 const readme = read('__docs__/owner-business-assistant/README.md');
 const businessHealthDoc = read('__docs__/owner-business-assistant/owner-business-assistant_business-health.md');
+const implDoc = read('__docs__/owner-business-assistant/owner-business-assistant_impl.md');
 const mobileSupportDoc = read('__docs__/owner-business-assistant/owner-business-assistant_mobile-support.md');
 const firebaseDoc = read('__docs__/owner-business-assistant/owner-business-assistant_firebase.md');
 const validationDoc = read('__docs__/owner-business-assistant/owner-business-assistant_validation.md');
@@ -104,7 +108,8 @@ requireToken(
 
 [
   "import { BusinessHealthPage } from '@template/main-app/ownerBusinessAssistant/BusinessHealthPage';",
-  'trimmed.length <= 160',
+  "import { normalizeOwnerBusinessAssistantProjectId } from '@lib/ownerBusinessAssistant/projectIdBoundary';",
+  'return normalizeOwnerBusinessAssistantProjectId(raw) || undefined;',
   'FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH',
   'FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_PAGE',
   '<BusinessHealthPage projectId={normalizeProjectId(searchParams?.projectId)} />',
@@ -208,6 +213,12 @@ forbidToken(mobilePublicTruthOwnerCard, 'window.location', 'mobile public truth 
 ].forEach((token) => requireToken(locationsRoute, token, 'locations route'));
 
 [
+  'OWNER_BUSINESS_ASSISTANT_THREAD_ID_PATTERN',
+  'normalizeOwnerBusinessAssistantThreadId',
+  'isValidFirestoreDocumentId(threadId)',
+].forEach((token) => requireToken(threadIdBoundary, token, 'owner business thread ID boundary'));
+
+[
   'export const POST = withAuth(async (request: NextRequest, session) => {',
   'const OWNER_BUSINESS_ASSISTANT_ANSWER_MAX_BODY_BYTES = 32 * 1024;',
   'if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS) {',
@@ -228,11 +239,35 @@ forbidToken(answerRoute, 'request.json()', 'answer route raw request parsing');
 forbidToken(answerRoute, 'logger.warn', 'answer route raw warn logging');
 
 [
+  'OwnerBusinessAssistantThreadParamsSchema.safeParse(params)',
+  'applyOwnerBusinessAssistantRateLimit({',
+  "feature: 'DATA_READ'",
+  'OwnerBusinessAssistantScopeSchema',
+  'resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId)',
+  'requireAnyStorePermissionForStore(',
+  'DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS',
+  '.doc(parsed.data.threadId)',
+].forEach((token) => requireToken(threadRoute, token, 'thread route'));
+requireOrder(
+  threadRoute,
+  [
+    'OwnerBusinessAssistantThreadParamsSchema.safeParse(params)',
+    'applyOwnerBusinessAssistantRateLimit({',
+    'OwnerBusinessAssistantScopeSchema',
+    'resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId)',
+    '.doc(parsed.data.threadId)',
+  ],
+  'thread route validation and scope before Firestore read',
+);
+
+[
   'readBoundedJsonBody',
   'OWNER_BUSINESS_ASSISTANT_FEEDBACK_MAX_BODY_BYTES = 8 * 1024',
+  "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
   'OwnerBusinessAssistantFeedbackRequestSchema.safeParse(bodyResult.data)',
   'resolveOwnerAssistantSelectedStoreScope(request, session, parsed.data.storeId)',
   'requireAnyStorePermissionForStore',
+  'if (!isValidFirestoreDocumentId(docId)) {',
   'OWNER_BUSINESS_ASSISTANT_FEEDBACK',
 ].forEach((token) => requireToken(feedbackRoute, token, 'feedback route'));
 forbidToken(feedbackRoute, 'request.json()', 'feedback route raw request parsing');
@@ -278,11 +313,82 @@ forbidToken(contextPacketCache, 'catch {\n    return { attempted: true', 'owner 
 [
   'OwnerBusinessAssistantScopeSchema',
   'OwnerBusinessAssistantStoreIdSchema',
-  'projectId: z.string().min(1).max(160).optional()',
+  "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
+  "import { normalizeOwnerBusinessAssistantProjectId } from './projectIdBoundary';",
+  'const OwnerBusinessAssistantProjectIdSchema = z.preprocess',
+  'normalizeOwnerBusinessAssistantProjectId(value) === value',
+  'projectId: OwnerBusinessAssistantProjectIdSchema',
+  'selectedProjectId: OwnerBusinessAssistantProjectIdSchema',
+  'normalizeOwnerBusinessAssistantThreadId(value) === value',
+  'const OwnerBusinessAssistantAnswerIdSchema = z.string()',
+  ".refine((value) => value === value.trim() && isValidFirestoreDocumentId(value), 'Invalid answer ID')",
+  'answerId: OwnerBusinessAssistantAnswerIdSchema',
   'multi_location_summary',
 ].forEach((token) => requireToken(schemas, token, 'owner business schemas'));
+
+[
+  "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
+  'const normalizeAnswerEventDocumentId = (value: unknown): string | null => {',
+  'return documentId === value && isValidFirestoreDocumentId(documentId) ? documentId : null;',
+  'const answerId = normalizeAnswerEventDocumentId(params.answer.answerId);',
+  'if (!answerId) return;',
+  '.doc(answerId)',
+  'answerId,',
+].forEach((token) => requireToken(answerEventLogger, token, 'owner business answer event ID boundary'));
+requireOrder(
+  answerEventLogger,
+  [
+    'const answerId = normalizeAnswerEventDocumentId(params.answer.answerId);',
+    '.doc(answerId)',
+  ],
+  'owner business answer event ID boundary order',
+);
+forbidToken(answerEventLogger, '.doc(params.answer.answerId)', 'owner business answer event raw document ID');
+
+[
+  'OWNER_BUSINESS_ASSISTANT_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,160}$/',
+  'normalizeOwnerBusinessAssistantProjectId',
+  'projectId === value',
+  'isValidFirestoreDocumentId(projectId)',
+].forEach((token) => requireToken(read('src/lib/ownerBusinessAssistant/projectIdBoundary.ts'), token, 'owner business project ID boundary'));
+[
+  'OWNER_BUSINESS_ASSISTANT_THREAD_ID_PATTERN',
+  'threadId === value',
+  'isValidFirestoreDocumentId(threadId)',
+].forEach((token) => requireToken(read('src/lib/ownerBusinessAssistant/threadIdBoundary.ts'), token, 'owner business thread ID boundary'));
+requireToken(schemas, "if (typeof value === 'string') return value;", 'owner business project ID raw schema');
+forbidToken(schemas, "if (typeof value === 'string') return value.trim();", 'owner business project ID trim-before-validation schema');
+forbidToken(schemas, 'const OwnerBusinessAssistantThreadIdSchema = z.string()\n  .trim()', 'owner business thread ID trim-before-validation schema');
+requireToken(schemas, ".refine((value) => value === value.trim() && isValidFirestoreDocumentId(value), 'Invalid answer ID')", 'owner business feedback answer ID strict schema');
+forbidToken(schemas, 'projectId: z.string().min(1).max(160).optional()', 'owner business project ID loose schema');
+forbidToken(schemas, 'answerId: z.string().min(1).max(180)', 'owner business feedback answer ID loose schema');
 forbidToken(schemas, 'owner_question_actionable', 'owner business action schema');
 forbidToken(schemas, 'targetKind', 'owner business action target schema');
+
+[
+  'Business Health project ID boundary',
+  'src/lib/ownerBusinessAssistant/projectIdBoundary.ts',
+  'whitespace-mutated',
+  'does not trim before `normalizeOwnerBusinessAssistantProjectId(value) === value`',
+  'before selected project IDs can become read-model query scope, answer context-packet scope, browser/server cache keys, or thread message scope',
+].forEach((token) => requireToken(implDoc, token, 'owner business implementation project ID boundary docs'));
+[
+  'Business Health project ID admission is cost-neutral',
+  'src/lib/ownerBusinessAssistant/projectIdBoundary.ts',
+  'whitespace-mutated',
+  'does not trim before `normalizeOwnerBusinessAssistantProjectId(value) === value`',
+  'before those values can become current/analytics query scope, answer context-packet scope, browser/server cache keys, or thread message project scope',
+].forEach((token) => requireToken(firebaseDoc, token, 'owner business Firebase project ID boundary docs'));
+[
+  'Business Health Project ID Boundary checkpoint',
+  'src/lib/ownerBusinessAssistant/projectIdBoundary.ts',
+  'malformed selected `projectId` values can no longer become Business Health query scope, answer context-packet scope, browser/server cache keys, or thread message project scope',
+].forEach((token) => requireToken(audit, token, 'production audit owner business project ID boundary'));
+[
+  'Business Health Project ID Boundary',
+  'Business Health selected project IDs are validated before scope/cache use',
+  'Malformed selected project IDs fail closed',
+].forEach((token) => requireToken(changelog, token, 'changelog owner business project ID boundary'));
 
 [
   'getBoundedSecurityRouteContext',
@@ -312,6 +418,8 @@ forbidToken(contextPacketBuilder, 'actionCatalog', 'context packet action catalo
 
 [
   'MAX_MESSAGES_PER_THREAD = 20',
+  'normalizeOwnerBusinessAssistantThreadId(params.request.threadId)',
+  'if (!threadId) return undefined;',
   'messages: nextMessages',
   'params.request.projectId || params.request.clientContext?.selectedProjectId',
 ].forEach((token) => requireToken(threadStore, token, 'thread store'));
@@ -337,6 +445,8 @@ forbidToken(contextPacketBuilder, 'actionCatalog', 'context packet action catalo
   [analyticsHook, 'readOwnerBusinessAssistantAnalyticsResponse', 'analytics hook'],
   [answerHook, 'readJsonResponseWithLimit', 'answer hook'],
   [answerHook, 'OWNER_BUSINESS_ASSISTANT_ANSWER_RESPONSE_JSON_MAX_BYTES', 'answer hook'],
+  [answerHook, 'readStoredThreadId', 'answer hook'],
+  [answerHook, 'normalizeOwnerBusinessAssistantThreadId(answerData.threadId)', 'answer hook'],
   [threadHook, 'readOwnerBusinessAssistantThreadResponse', 'thread hook'],
   [locationsHook, 'readOwnerBusinessAssistantLocationsResponse', 'locations hook'],
   [feedbackHook, 'readOwnerBusinessAssistantFeedbackResponse', 'feedback hook'],
@@ -373,7 +483,16 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   'must not prepare action drafts',
   'public readiness fix list',
   'Browser read-model hooks parse current, analytics, locations, and thread responses through a shared 256KB bounded reader',
+  'Thread IDs must match the browser-generated `oba_` runtime ID shape',
 ].forEach((token) => requireToken(readme, token, 'owner business README'));
+
+[
+  'src/lib/ownerBusinessAssistant/threadIdBoundary.ts',
+  'answer requests, thread persistence, and thread-route reads accept only browser-generated `oba_` runtime thread IDs',
+  'thread route params and answer request thread IDs use the shared `oba_` runtime ID boundary',
+  'Business Health feedback answer ID boundary',
+  'Business Health answer-event ID boundary',
+].forEach((token) => requireToken(implDoc, token, 'implementation doc'));
 
 [
   'Owner Business Health boundary source gate',
@@ -400,6 +519,10 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   'No public truth writes',
   'Public Truth owner fix list is Firebase-cost neutral',
   'Server packet cache diagnostics are cost-neutral',
+  'Thread ID admission is shape-bound',
+  'Business Health feedback answer-ID admission is cost-neutral',
+  'Business Health answer-event ID admission is cost-neutral',
+  'fresh `oba_` ID before sending the answer request',
   'owner_business_assistant_packet_cache_read_failed',
   'owner_business_assistant_packet_cache_invalidate_failed',
 ].forEach((token) => requireToken(firebaseDoc, token, 'firebase doc'));
@@ -408,6 +531,8 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   '`npm run verify:owner-business-health-boundary`',
   'read-only boundary',
   'public readiness fix list',
+  'browser-generated `oba_` runtime thread IDs',
+  'discards malformed stored thread IDs',
 ].forEach((token) => requireToken(validationDoc, token, 'validation doc'));
 
 [
@@ -418,8 +543,16 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   ['audit', audit, 'Owner Business Health boundary checkpoint'],
   ['audit', audit, '`npm run verify:owner-business-health-boundary`'],
   ['audit', audit, 'Business Health packet-cache diagnostics checkpoint'],
+  ['audit', audit, 'Owner Business Assistant thread ID boundary checkpoint'],
+  ['audit', audit, 'Business Health feedback answer ID boundary checkpoint'],
+  ['audit', audit, 'Business Health answer-event ID boundary checkpoint'],
+  ['audit', audit, 'src/lib/ownerBusinessAssistant/threadIdBoundary.ts'],
   ['audit', audit, 'owner_business_assistant_packet_cache_read_failed'],
   ['changelog', changelog, 'Owner Business Health Boundary'],
+  ['changelog', changelog, 'Owner Business Assistant Thread ID Boundary'],
+  ['changelog', changelog, 'Business Health Feedback Answer ID Boundary'],
+  ['changelog', changelog, 'Business Health Answer-Event ID Boundary'],
+  ['changelog', changelog, 'Business Health thread IDs are shape-checked before reads/writes'],
   ['changelog', changelog, '`npm run verify:owner-business-health-boundary`'],
   ['changelog', changelog, 'Business Health Packet Cache Diagnostics'],
   ['changelog', changelog, 'owner_business_assistant_packet_cache_*_failed'],

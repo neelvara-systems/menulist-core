@@ -88,10 +88,14 @@ function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
     'requireAnyStorePermission(',
     'readBoundedJsonBody(request, POS_SYNC_ACTION_MAX_BODY_BYTES',
     'validateAPIInput(schema, body)',
+    'const tenantScope = normalizePosSyncNumericDocumentId(tenantId);',
+    'const storeScope = normalizePosSyncNumericDocumentId(storeId);',
     'verifyTenantAccess(session, tenantId, storeId, request)',
-    'hashPublicRateLimitValue(storeId)',
+    'hashPublicRateLimitValue(storeDocumentId)',
     expectedRateLimitKey,
     'checkRateLimit({ key:',
+    'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);',
+    'const storeDoc = await storeRef.get();',
     'requireAnyStorePermissionForStoreData(',
     'validatePosSyncWebhookUrl(String(posSync.webhookUrl))',
     'validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl)',
@@ -108,11 +112,14 @@ function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
     [
       'readBoundedJsonBody(request, POS_SYNC_ACTION_MAX_BODY_BYTES',
       'validateAPIInput(schema, body)',
+      'const tenantScope = normalizePosSyncNumericDocumentId(tenantId);',
+      'const storeScope = normalizePosSyncNumericDocumentId(storeId);',
       'verifyTenantAccess(session, tenantId, storeId, request)',
-      'hashPublicRateLimitValue(storeId)',
+      'hashPublicRateLimitValue(storeDocumentId)',
       'checkRateLimit({ key:',
       'admin.firestore()',
-      'db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get()',
+      'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);',
+      'const storeDoc = await storeRef.get();',
       'requireAnyStorePermissionForStoreData(',
       'validatePosSyncWebhookUrl(String(posSync.webhookUrl))',
       'validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl)',
@@ -134,8 +141,13 @@ function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
 
 function verifyDeliveryRoute(deliverRoute) {
   [
+    'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+    'import { normalizePosSyncNumericDocumentId } from "@lib/posSync/posSyncDocumentId";',
+    'storeId: z.number().int().positive()',
+    'tenantId: z.number().int().positive()',
+    "projectId: z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),",
     'PERMISSIONS.MANAGE_INTEGRATIONS, PERMISSIONS.PUBLISH_MENU',
-    'getScopedProjectData(db, tenantId, storeId, projectId)',
+    'getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId)',
     "const newVersion = await db.runTransaction(async (transaction) => {",
     "collection(DB_COLLECTIONS.POS_DELIVERY_LOGS)",
     "orderBy('sentAt', 'desc')",
@@ -146,22 +158,45 @@ function verifyDeliveryRoute(deliverRoute) {
     deliverRoute,
     [
       'validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl)',
-      'const projectData = await getScopedProjectData(db, tenantId, storeId, projectId);',
+      'const projectData = await getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId);',
       'const newVersion = await db.runTransaction(async (transaction) => {',
       'buildMenuSnapshot(',
       'fetch(webhookValidation.normalizedUrl, {',
     ],
     'POS delivery outbound order',
   );
+
+  assertNotIncludes(
+    deliverRoute,
+    'projectId: z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/),',
+    'POS delivery route loose project ID schema',
+  );
+  [
+    '.doc(String(tenantId))',
+    '.collection(String(storeId))',
+    '.doc(String(storeId))',
+    'hashPublicRateLimitValue(storeId)',
+    'storeId: z.number().positive()',
+    'tenantId: z.number().positive()',
+  ].forEach((token) => assertNotIncludes(deliverRoute, token, `POS delivery raw target ID boundary ${token}`));
 }
 
 function verifyTestRoute(testRoute) {
   [
+    'import { normalizePosSyncNumericDocumentId } from "@lib/posSync/posSyncDocumentId";',
+    'storeId: z.number().int().positive()',
+    'tenantId: z.number().int().positive()',
     'PERMISSIONS.MANAGE_INTEGRATIONS',
     'buildTestPayload(storeId, tenantId, store?.currencyCode || store?.currency || \'INR\')',
     "'posSync.status': 'connection_issue'",
     "'posSync.lastStatus': 'failed'",
   ].forEach((token) => assertIncludes(testRoute, token, 'POS test route boundary'));
+  [
+    '.doc(String(storeId))',
+    'hashPublicRateLimitValue(storeId)',
+    'storeId: z.number().positive()',
+    'tenantId: z.number().positive()',
+  ].forEach((token) => assertNotIncludes(testRoute, token, `POS test raw target ID boundary ${token}`));
 
   assertOrder(
     testRoute,
@@ -354,7 +389,7 @@ function verifyMobileShellBoundary(mobileShell, mobileMore, mobileShare) {
   assertNotIncludes(mobileShare, "window.location", 'Mobile Share POS sync must not bypass shell via window.location');
 }
 
-function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebaseDoc, auditDoc) {
+function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebaseDoc, auditDoc, changelogDoc, lowercaseChangelogDoc) {
   assert(
     packageJson.scripts?.['verify:pos-sync-boundary'] === 'node scripts/verification/verify-pos-sync-boundary.js',
     'package.json must expose verify:pos-sync-boundary',
@@ -383,6 +418,9 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
   [
     'POS Sync boundary source gate: `npm run verify:pos-sync-boundary`',
     'source-only and does not call an external POS provider',
+    'Target document-ID boundary',
+    'normalizePosSyncNumericDocumentId',
+    'POS delivery project ID boundary',
     'Delivery failure threshold',
     'First and second failed live deliveries stay owner-quiet',
     'Active docs no longer present Cloud Function delivery/retry workers or `pos_delivery_queue` as current runtime scope',
@@ -398,11 +436,17 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
     'POS Sync boundary source gate: `npm run verify:pos-sync-boundary`',
     'performs no Firestore reads/writes/deletes',
     'does not call an external POS provider',
+    'POS Sync target document-ID boundary',
+    'normalizePosSyncNumericDocumentId',
+    'POS delivery project ID boundary',
     'Delivery failure threshold',
     'posSync.consecutiveFailures',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'POS Firebase boundary docs'));
 
   [
+    'POS Sync Target Document ID Boundary checkpoint',
+    'normalizePosSyncNumericDocumentId',
+    'POS Delivery Project ID Boundary checkpoint',
     'POS Sync live-delivery failure-threshold checkpoint',
     'Failed live deliveries one and two are logged',
     'third failed live delivery in a row marks `connection_issue`',
@@ -412,6 +456,16 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
     'source-only public-HTTPS/DNS/auth/tenant/mobile-shell gate',
     'Real external webhook provider smoke remains pending',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit POS source gate evidence'));
+
+  [
+    'POS Sync Target Document ID Boundary',
+    'Malformed POS scope fails closed',
+    'POS Delivery Project ID Boundary',
+    'Malformed project IDs fail during request validation',
+  ].forEach((token) => {
+    assertIncludes(changelogDoc, token, 'POS changelog project ID boundary');
+    assertIncludes(lowercaseChangelogDoc, token, 'POS lowercase changelog project ID boundary');
+  });
 }
 
 function verifyPosSyncBoundary() {
@@ -435,6 +489,8 @@ function verifyPosSyncBoundary() {
   const mobileDoc = read('__docs__/pos-webhook-sync/pos-webhook-sync_mobile-support.md');
   const firebaseDoc = read('__docs__/pos-webhook-sync/pos-webhook-sync_firebase.md');
   const auditDoc = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelogDoc = read('__docs__/CHANGELOG.md');
+  const lowercaseChangelogDoc = read('__docs__/changelog.md');
 
   verifyWebhookUrlGuard(webhookUrl, serverWebhookTarget);
   verifyProtectedPosRoute(deliverRoute, 'POS delivery route boundary', 'pos-deliver:${storeRateLimitHash}');
@@ -445,7 +501,7 @@ function verifyPosSyncBoundary() {
   verifyDebouncedDeliveryBoundary(eventBuilder);
   verifyDeliveryFailureThreshold(deliverRoute, testRoute, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync);
   verifyMobileShellBoundary(mobileShell, mobileMore, mobileShare);
-  verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebaseDoc, auditDoc);
+  verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebaseDoc, auditDoc, changelogDoc, lowercaseChangelogDoc);
 }
 
 verifyPosSyncBoundary();

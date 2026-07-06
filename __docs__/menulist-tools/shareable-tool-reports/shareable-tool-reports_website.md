@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Website Copy Rules
 
 **Status:** Public copy guidance
-**Last Updated:** July 4, 2026
+**Last Updated:** July 5, 2026
 
 ---
 

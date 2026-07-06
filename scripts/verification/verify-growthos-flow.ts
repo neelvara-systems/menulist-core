@@ -367,6 +367,16 @@ const unsafeReply = guardGrowthOSReviewReply({
     reviewText: "I got food poisoning after dinner.",
     tone: "apology",
 });
+const growthOSSchemas = fs.readFileSync(path.resolve("src/lib/validation/growthosSchemas.ts"), "utf8");
+const growthOSServerDal = fs.readFileSync(path.resolve("src/database/growthos/server.ts"), "utf8");
+const growthOSKitReadBlock = growthOSServerDal.slice(
+    growthOSServerDal.indexOf("export async function readGrowthOSKitServer"),
+    growthOSServerDal.indexOf("function statusForExportMethod"),
+);
+const growthOSImplDoc = fs.readFileSync(path.resolve("__docs__/growthos-addon/growthos-addon_impl.md"), "utf8");
+const growthOSFirebaseDoc = fs.readFileSync(path.resolve("__docs__/growthos-addon/growthos-addon_firebase.md"), "utf8");
+const productionAudit = fs.readFileSync(path.resolve("__docs__/audits/menulist-production-readiness-audit.md"), "utf8");
+const changelog = fs.readFileSync(path.resolve("__docs__/CHANGELOG.md"), "utf8");
 const updatedFacts = buildGrowthOSSourceFacts({
     projectData: {
         ...projectData,
@@ -580,6 +590,49 @@ assertCheck(retiredGlobalTodayPollingMatches.length === 0, "retired global Today
 assertCheck(retiredCampaignDalExports.length === 0, "retired campaign generation DAL exports are absent", retiredCampaignDalExports.join(", "));
 assertCheck(growthOSApiJsonGuardFailures.length === 0, "GrowthOS APIs return 400 for invalid JSON instead of generic 500", growthOSApiJsonGuardFailures.join(", "));
 assertCheck(growthOSApiDiagnosticFailures.length === 0, "GrowthOS APIs use bounded fixed-code diagnostics", growthOSApiDiagnosticFailures.join(", "));
+assertCheck(growthOSSchemas.includes('import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";'), "GrowthOS schemas import shared Firestore document ID guard");
+assertCheck(growthOSSchemas.includes('const growthOSProjectIdSchema = z.string()'), "GrowthOS schemas define shared project ID schema");
+assertCheck(growthOSSchemas.includes('.refine(isValidFirestoreDocumentId, "Invalid project ID")'), "GrowthOS project IDs use shared Firestore document ID guard");
+assertCheck(growthOSSchemas.includes('const growthOSKitIdSchema = z.string()'), "GrowthOS schemas define shared kit ID schema");
+assertCheck(growthOSSchemas.includes('.refine(isValidFirestoreDocumentId, "Invalid kit ID")'), "GrowthOS kit IDs use shared Firestore document ID guard");
+assertCheck(growthOSSchemas.includes('projectId: growthOSProjectIdSchema'), "GrowthOS refresh/generate requests use project ID boundary");
+assertCheck(growthOSSchemas.includes('kitId: growthOSKitIdSchema'), "GrowthOS export requests use kit ID boundary");
+assertCheck(!growthOSSchemas.includes('projectId: z.string().min(1).max(100)'), "GrowthOS project IDs must not keep max-only validation");
+assertCheck(!growthOSSchemas.includes('kitId: z.string().min(1).max(200)'), "GrowthOS kit IDs must not keep max-only validation");
+assertCheck(growthOSServerDal.includes('function normalizeGrowthOSDocumentId(value: unknown): string | null'), "GrowthOS server DAL defines a shared document ID normalizer");
+assertCheck(growthOSServerDal.includes('const documentId = value.trim();'), "GrowthOS server DAL trims document IDs before Firestore refs");
+assertCheck(growthOSServerDal.includes('return isValidFirestoreDocumentId(documentId) ? documentId : null;'), "GrowthOS server DAL rejects malformed normalized document IDs");
+assertCheck(growthOSServerDal.includes('function normalizeGrowthOSScopeDocumentId(value: unknown): string | null'), "GrowthOS server DAL defines a scope document ID normalizer");
+assertCheck(growthOSServerDal.includes('function requireGrowthOSScopeDocumentId(value: unknown, label: string): string'), "GrowthOS server DAL requires scope document IDs before writes");
+assertCheck(growthOSServerDal.includes('const projectId = normalizeGrowthOSDocumentId(params.projectId);'), "GrowthOS project reads normalize project IDs before Firestore reads");
+assertCheck(growthOSServerDal.includes('const tenantDocumentId = normalizeGrowthOSScopeDocumentId(params.tId);'), "GrowthOS project reads normalize tenant scope IDs before scoped reads");
+assertCheck(growthOSServerDal.includes('const storeDocumentId = normalizeGrowthOSScopeDocumentId(params.sId);'), "GrowthOS project reads normalize store scope IDs before scoped reads");
+assertTextOrder(
+    growthOSServerDal,
+    'const projectId = normalizeGrowthOSDocumentId(params.projectId);',
+    '.doc(projectId)',
+    "GrowthOS project ID guard runs before project document reads",
+);
+assertCheck(growthOSServerDal.includes('const kitId = requireGrowthOSDocumentId(kit.id, "kit");'), "GrowthOS kit writes require normalized kit IDs before Firestore writes");
+assertCheck(growthOSServerDal.includes('const tenantDocumentId = requireGrowthOSScopeDocumentId(kit.tId, "tenant");'), "GrowthOS kit writes require tenant scope IDs before Firestore writes");
+assertCheck(growthOSServerDal.includes('const storeDocumentId = requireGrowthOSScopeDocumentId(kit.sId, "store");'), "GrowthOS kit writes require store scope IDs before Firestore writes");
+assertCheck(growthOSServerDal.includes('sanitizeForAdminFirestore({ ...kit, id: kitId })'), "GrowthOS kit writes persist the normalized kit ID");
+assertCheck(growthOSServerDal.includes('const kitId = normalizeGrowthOSDocumentId(params.kitId);'), "GrowthOS kit reads normalize kit IDs before Firestore reads");
+assertTextOrder(
+    growthOSKitReadBlock,
+    'const kitId = normalizeGrowthOSDocumentId(params.kitId);',
+    '.doc(kitId)',
+    "GrowthOS kit ID guard runs before kit document reads",
+);
+assertCheck(growthOSServerDal.includes('const kitId = requireGrowthOSDocumentId(params.kit.id, "kit");'), "GrowthOS export recording requires normalized kit IDs before export writes");
+assertCheck(!growthOSServerDal.includes('.doc(params.projectId)'), "GrowthOS project reads must not pass params.projectId directly to Firestore doc refs");
+assertCheck(!growthOSServerDal.includes('.doc(params.kitId)'), "GrowthOS kit reads must not pass params.kitId directly to Firestore doc refs");
+assertCheck(!growthOSServerDal.includes('.doc(kit.id)'), "GrowthOS kit writes must not pass kit.id directly to Firestore doc refs");
+assertCheck(!growthOSServerDal.includes('.doc(params.kit.id)'), "GrowthOS export writes must not pass params.kit.id directly to Firestore doc refs");
+assertCheck(growthOSImplDoc.includes("GrowthOS project, kit, and scope ID boundary"), "GrowthOS implementation docs record project/kit/scope ID boundary");
+assertCheck(growthOSFirebaseDoc.includes("GrowthOS project/kit/scope ID admission is cost-neutral"), "GrowthOS Firebase docs record project/kit/scope ID boundary");
+assertCheck(productionAudit.includes("GrowthOS project, kit, and scope ID boundary checkpoint"), "Production audit records GrowthOS project/kit/scope ID boundary");
+assertCheck(changelog.includes("GrowthOS Project And Kit ID Boundary"), "Changelog records GrowthOS project/kit ID boundary");
 assertCheck(growthOSReviewSuggestRoute.includes("hashPublicRateLimitValue"), "GrowthOS review guard hashes rate-limit key segments");
 assertCheck(growthOSReviewSuggestRoute.includes("userRateLimitHash"), "GrowthOS review guard computes hashed user limiter segment");
 assertCheck(growthOSReviewSuggestRoute.includes("tenantRateLimitHash"), "GrowthOS review guard computes hashed tenant limiter segment");

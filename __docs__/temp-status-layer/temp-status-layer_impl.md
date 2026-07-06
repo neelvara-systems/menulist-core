@@ -5,7 +5,7 @@
 **Date:** February 19, 2026
 **Audience:** Developers
 **Feature Flag:** `ENABLE_TEMP_STATUS`
-**Last Source Gate Update:** July 2, 2026
+**Last Source Gate Update:** July 6, 2026
 
 ---
 
@@ -15,7 +15,7 @@ This implementation doc is source-gated by `npm run verify:temporary-status-boun
 
 Current source contract:
 
-- `POST /api/store/temp-status` is dynamic, authenticated with `withAuth()`, feature-gated by `ENABLE_TEMP_STATUS`, scoped to the session tenant/store, and requires `MANAGE_STORE` or `MANAGE_PUBLIC_PRESENCE`.
+- `POST /api/store/temp-status` is dynamic, authenticated with `withAuth()`, feature-gated by `ENABLE_TEMP_STATUS`, scoped to the session tenant/store, and requires `MANAGE_STORE` or `MANAGE_PUBLIC_PRESENCE`. Session tenant/store IDs pass through the shared Firestore document-ID guard with an exact raw-value check and a 160-character ceiling before permission checks, limiter keys, store writes, public cache tags, Digital Screens invalidation, Owner Business Assistant cache invalidation, or diagnostics. The optional session actor ID is normalized through the same boundary before limiter material or `tempStatus.createdBy` metadata is written.
 - The route uses the `DATA_WRITE` limiter with hashed owner/store key segments, reads at most 4KB of JSON, validates with Zod, rejects past expiries, writes only the existing store document `tempStatus` field, and returns fixed owner-safe failure copy.
 - Successful set/clear writes revalidate `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data`, touch the Digital Screens content version with `storeTempStatus`, and invalidate the Owner Business Assistant packet cache.
 - Desktop Business Settings, Mobile Temporary Status, and Mobile Today/Hours shortcuts call the route through `AUTH_BROWSER_REQUEST_POLICY`, parse responses with the shared 8KB bounded parser, and roll back optimistic local state unless `{ success: true }` is confirmed.
@@ -98,7 +98,7 @@ const TempStatusSchema = z.object({
 **Security:**
 
 - `withAuth()` plus `MANAGE_STORE` or `MANAGE_PUBLIC_PRESENCE` — Only authorized store users can set status
-- Tenant/store identity comes from the authenticated session, not from request body fields
+- Tenant/store identity comes from the authenticated session, not from request body fields, and oversized or whitespace-mutated session document IDs fail before route-local limiter/ref material
 - 4KB bounded JSON body before Zod validation
 - Zod validation before any DB operation
 - Rate limit: `DATA_WRITE` (50 req/min)
@@ -205,4 +205,4 @@ Digital Screens content-version touch and Owner Business Assistant cache invalid
 
 ---
 
-**Last Updated:** July 2, 2026
+**Last Updated:** July 6, 2026

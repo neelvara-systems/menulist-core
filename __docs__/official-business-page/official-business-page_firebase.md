@@ -27,6 +27,8 @@
 
 **Key optimization:** Both reads are wrapped in `unstable_cache` with 60s TTL and per-store tags. At 60s cache, 1000 page views/hour = ~60 actual Firestore reads/hour (not 1000).
 
+**Public client store lookup scope document ID boundary:** The shared public store resolver validates direct store-ID lookups and legacy tenant-block fallback tenant IDs with the shared Firestore document ID guard plus an exact positive numeric check before `stores/{storeId}` or `tenants/{tenantId}` refs. Malformed direct store IDs return no public store. Malformed tenant IDs on a returned store fail closed as blocked output before public OBP/menu/customer-app rendering.
+
 ### Writes
 
 | Operation              | Collection  | Trigger                                  | Frequency                   | Docs Written | Fields       | Notes                                                                                                                         |
@@ -42,7 +44,7 @@
 | Track OBP share action | `analytics` | Owner shares official business link from settings | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPShares` and `obpShares.{whatsapp,copy_link,copy_message}`. |
 | Track OBP language adoption | `analytics` | Customer switches language on a multi-language OBP and stays after the dwell window | Per accepted switch | 1 | merge update | Same daily doc. Tracks `obpLanguageAdoptions.{language}`. Single-language OBPs do not track language usage. Quick taps before dwell are ignored. |
 | Apply extraction-derived business attribute defaults | `stores` | First extraction auto-save or owner-approved re-extraction | Once per applicable extraction | 0-1 | merge update | Only fills missing `businessAttributes` keys. Existing owner-set `true`/`false` values are never overwritten. First extraction runs in Cloud Functions; re-extraction approval runs through desktop/mobile client paths, which require `assertStoreUpdateSucceeded()` before local public attribute state changes. |
-| Connect custom domain | `stores` | Owner connects or removes custom domain | Rare | 1 | `customDomain`, `domainVerified`, domain timestamps | `/api/domain` owns the Firestore write and revalidates `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`. Desktop and mobile UI call the route with same-origin credentials, no-store cache policy, and manual redirect handling, then update local domain state only after the existing route response shape is acknowledged. |
+| Connect custom domain | `stores` | Owner connects or removes custom domain | Rare | 1 | `customDomain`, `domainVerified`, domain timestamps | `/api/domain` owns the Firestore write and revalidates `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`. It validates session tenant/store IDs with the shared Firestore document-ID guard before permission checks, limiter keys, store refs, Vercel-flow diagnostics, and cache invalidation. Desktop and mobile UI call the route with same-origin credentials, no-store cache policy, and manual redirect handling, then update local domain state only after the existing route response shape is acknowledged. |
 
 **Key point:** OBP settings are saved as part of the existing store document update. OBP analytics use the same `analytics` collection as digital menu with virtual `projectId='obp'`. Rate limiting prevents abuse.
 
@@ -60,7 +62,9 @@
 
 **Custom attribute icons:** Desktop and mobile settings use the shared category icon/emoji picker for owner-defined custom attributes. This changes only the value stored in `publicPresence.customAttributes[].icon`; it adds no reads, writes, listeners, indexes, Storage operations, or Cloud Functions beyond the existing OBP settings save.
 
-**Language usage:** Multi-language OBP page views attach `obpViewsByLanguage`, `obpSessionsByLanguage`, and `obpLanguageNames` to the existing page-view write. Language switch links stay URL-based for SEO/AEO, preserve `entry_source` plus intentional `utm_source`, `utm_medium`, and `utm_campaign` parameters, and de-dupe accepted adoption counters by store-local analytics day. Legacy `src` / `source` query parameters are not preserved or consumed by analytics.
+**Language usage:** Multi-language OBP page views attach `obpViewsByLanguage`, `obpSessionsByLanguage`, and `obpLanguageNames` to the existing page-view write. Language switch links stay URL-based for SEO/AEO, preserve `entry_source` plus intentional `utm_source`, `utm_medium`, `utm_campaign`, and `utm_content` parameters, and de-dupe accepted adoption counters by store-local analytics day. Legacy `src` / `source` query parameters are not preserved or consumed by analytics. UTM campaign counters remain on the same OBP page-view write and each UTM value is normalized through the analytics map-key guard before it becomes a Firestore map-key suffix.
+
+**OBP aggregation map-key guard:** Late-correction rollups in `functions/src/analytics/obpAnalyticsAggregation.ts` normalize recovered daily/dashboard map keys before writing `lifetime.*` summary field paths. This protects legacy/raw map keys without changing live OBP analytics writes, read counts, write counts, collections, indexes, rules, Storage operations, API routes, or owner-facing settings.
 
 **Language switch attribution diagnostics:** Failed language-link attribution preservation logs bounded `obp_language_switcher_attribution_preserve_failed` diagnostics only. The language URL fallback still renders, and this adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
@@ -204,9 +208,9 @@ Failed best-effort cleanup deletes in `deleteOBPPhotos()` are diagnostics-only. 
 | Route                        | Method    | Firebase Ops  | Rate Limited? | Notes                                       |
 | ---------------------------- | --------- | ------------- | ------------- | ------------------------------------------- |
 | `client/[[...slug]]/` (OBP) | GET (SSR) | 1-2R (cached) | CDN cache     | Public page, no API route                   |
-| `POST /api/domain`           | POST      | 1 store write + Vercel call | Auth + permission guarded | Adds custom domain routing fields and revalidates public store tags |
-| `GET /api/domain`            | GET       | 1 store read, 0-1 store write + Vercel call | Auth + permission guarded | Writes `domainVerified` only when verification flips true |
-| `DELETE /api/domain`         | DELETE    | 1 store read + 1 store write + Vercel call | Auth + permission guarded | Removes local custom-domain routing fields even if Vercel cleanup fails |
+| `POST /api/domain`           | POST      | 1 store write + Vercel call | Auth + session document-ID + permission guarded | Adds custom domain routing fields and revalidates public store tags |
+| `GET /api/domain`            | GET       | 1 store read, 0-1 store write + Vercel call | Auth + session document-ID + permission guarded | Writes `domainVerified` only when verification flips true |
+| `DELETE /api/domain`         | DELETE    | 1 store read + 1 store write + Vercel call | Auth + session document-ID + permission guarded | Removes local custom-domain routing fields even if Vercel cleanup fails |
 
 ---
 

@@ -202,8 +202,12 @@ function verifyWebsiteAnalyticsBoundary() {
   const websiteLayout = read('src/app/(website)/layout.tsx');
   const websiteAnalyticsConsent = read('src/components/website/WebsiteAnalyticsConsent.tsx');
   const publicCookieConsentBanner = read('src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx');
+  const googleAnalytics = read('src/components/website/GoogleAnalytics.tsx');
   const plausibleHelper = read('src/lib/website/plausible.ts');
   const clarityAnalytics = read('src/components/website/ClarityAnalytics.tsx');
+  const resourceAnalytics = read('src/components/website/resources/ResourceAnalytics.tsx');
+  const resourceTrackedLink = read('src/components/website/resources/ResourceTrackedLink.tsx');
+  const resourceArticleSection = read('src/components/website/resources/ArticleSection.tsx');
   const mainWebsiteImpl = read('__docs__/main-website/main-website_impl.md');
   const mainWebsiteContent = read('__docs__/main-website/main-website_content.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -235,6 +239,25 @@ function verifyWebsiteAnalyticsBoundary() {
     websiteAnalyticsConsent,
     '<ClarityAnalytics />',
     'Main website analytics consent children',
+  );
+  [
+    "process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || ''",
+    'const IS_CONFIGURED_GA_MEASUREMENT_ID = /^G-[A-Z0-9]+$/i.test(GA_MEASUREMENT_ID);',
+    'if (!IS_CONFIGURED_GA_MEASUREMENT_ID) return null;',
+    'function getMenulistAnalyticsPageLocation()',
+    "url.search = '';",
+    "url.hash = '';",
+    'page_location: getMenulistAnalyticsPageLocation(),',
+  ].forEach((token) => assertIncludes(googleAnalytics, token, 'Main website Google Analytics page-location boundary'));
+  assertNotIncludes(
+    googleAnalytics,
+    'page_location: window.location.href',
+    'Main website Google Analytics raw page-location boundary',
+  );
+  assertNotIncludes(
+    googleAnalytics,
+    'process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;',
+    'Main website Google Analytics permissive env fallback',
   );
   assertIncludes(
     publicCookieConsentBanner,
@@ -286,6 +309,27 @@ function verifyWebsiteAnalyticsBoundary() {
     '} catch {\n        return false;\n    }',
     'Public website Plausible consent read silent catch',
   );
+  [
+    'MARKETING_EVENT_PARAM_MAX_LENGTH_BY_KEY',
+    'stripAnalyticsControlCharacters',
+    'getBoundedMarketingEventParams',
+    'const boundedParams = getBoundedMarketingEventParams(params);',
+    "analyticsWindow.gtag('event', normalizedEventName, boundedParams);",
+  ].forEach((token) => assertIncludes(plausibleHelper, token, 'Public website Google marketing event payload boundary'));
+  assertNotIncludes(
+    plausibleHelper,
+    "analyticsWindow.gtag('event', normalizedEventName, params);",
+    'Public website Google marketing event unbounded payload call',
+  );
+  [
+    [resourceAnalytics, 'ResourceAnalytics'],
+    [resourceTrackedLink, 'ResourceTrackedLink'],
+    [resourceArticleSection, 'ArticleSection'],
+  ].forEach(([source, label]) => {
+    assertIncludes(source, 'trackGoogleMarketingEvent', `${label} bounded Google marketing event helper`);
+    assertNotIncludes(source, "gtag('event'", `${label} direct Google event call`);
+    assertNotIncludes(source, 'analyticsWindow.gtag', `${label} direct Google analytics window call`);
+  });
   assertIncludes(
     clarityAnalytics,
     "process.env.NEXT_PUBLIC_CLARITY_ID?.trim() || ''",
@@ -328,6 +372,26 @@ function verifyWebsiteAnalyticsBoundary() {
     'Main website content public consent storage diagnostics',
   );
   assertIncludes(
+    mainWebsiteImpl,
+    'Resource GA4 custom-event payloads are bounded through `trackGoogleMarketingEvent`',
+    'Main website implementation resource analytics payload boundary',
+  );
+  assertIncludes(
+    mainWebsiteContent,
+    'Resource GA4 custom-event payloads are bounded through `trackGoogleMarketingEvent`',
+    'Main website content resource analytics payload boundary',
+  );
+  assertIncludes(
+    mainWebsiteImpl,
+    'Google Analytics page views strip query strings and hash fragments',
+    'Main website implementation Google Analytics page-location boundary',
+  );
+  assertIncludes(
+    mainWebsiteContent,
+    'Google Analytics page views strip query strings and hash fragments',
+    'Main website content Google Analytics page-location boundary',
+  );
+  assertIncludes(
     productionAudit,
     'Website analytics Clarity configuration checkpoint',
     'Production readiness audit website analytics Clarity checkpoint',
@@ -338,6 +402,16 @@ function verifyWebsiteAnalyticsBoundary() {
     'Production readiness audit website analytics consent storage diagnostics checkpoint',
   );
   assertIncludes(
+    productionAudit,
+    'Website resource analytics custom-event payload boundary checkpoint',
+    'Production readiness audit website resource analytics payload boundary',
+  );
+  assertIncludes(
+    productionAudit,
+    'Website Google Analytics page-location boundary checkpoint',
+    'Production readiness audit website Google Analytics page-location boundary',
+  );
+  assertIncludes(
     changelog,
     'Website Analytics Clarity Configuration Boundary',
     'Changelog website analytics Clarity boundary entry',
@@ -346,6 +420,16 @@ function verifyWebsiteAnalyticsBoundary() {
     changelog,
     'Website Analytics Consent Storage Diagnostics',
     'Changelog website analytics consent storage diagnostics entry',
+  );
+  assertIncludes(
+    changelog,
+    'Website Resource Analytics Payload Boundary',
+    'Changelog website resource analytics payload boundary entry',
+  );
+  assertIncludes(
+    changelog,
+    'Website Google Analytics Page-Location Boundary',
+    'Changelog website Google Analytics page-location boundary entry',
   );
 }
 

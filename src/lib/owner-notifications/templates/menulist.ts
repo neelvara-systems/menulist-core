@@ -12,6 +12,12 @@ const PUBLISH_FAILURE_OWNER_COPY: Record<string, string> = {
     WARNING: 'The public menu check needs review.',
 };
 const DEFAULT_PUBLISH_FAILURE_OWNER_COPY = 'The public menu check could not be completed.';
+const MENU_STALE_REASON_OWNER_COPY: Record<string, string> = {
+    MENU_INFORMATION_STALE: 'Menu information may be older than expected.',
+    MENU_STALE: 'Menu information may be older than expected.',
+    STALE_DETECTED: 'Menu information may be older than expected.',
+};
+const DEFAULT_MENU_STALE_REASON_OWNER_COPY = 'Menu information may be older than expected.';
 
 const S = {
     body: 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 560px; margin: 0 auto; padding: 24px;',
@@ -63,6 +69,11 @@ function publishFailureReasonText(value: unknown): string {
     return PUBLISH_FAILURE_OWNER_COPY[code] || DEFAULT_PUBLISH_FAILURE_OWNER_COPY;
 }
 
+function menuStaleReasonText(value: unknown): string {
+    const code = textValue(value, '').toUpperCase();
+    return MENU_STALE_REASON_OWNER_COPY[code] || DEFAULT_MENU_STALE_REASON_OWNER_COPY;
+}
+
 function wrap(content: string): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="${S.body}">${content}<div style="${S.foot}"><p>MenuList — Your menu, always ready.</p><p>This is an automated system message. Do not reply to this email.</p></div></body></html>`;
 }
@@ -90,6 +101,7 @@ export function renderMenuListOwnerNotification(
     const publicUrl = urlValue(metadata.publicUrl);
     const dashboardUrl = urlValue(metadata.dashboardUrl) || 'https://menulist.ai';
     const publishFailureReason = publishFailureReasonText(metadata.failureReason);
+    const menuStaleReason = menuStaleReasonText(metadata.reason);
 
     switch (templateKey) {
         case 'menulist.menu_published':
@@ -178,8 +190,8 @@ export function renderMenuListOwnerNotification(
             return template(
                 templateKey,
                 `Menu review suggested — ${storeNameText}`,
-                `<h2 style="${S.h2}">Menu review suggested</h2><p style="${S.p}">The public menu for <strong>${storeName}</strong> may need review.</p><div style="${S.info}"><strong>Reason:</strong> ${escapeHtml(textValue(metadata.reason, 'Menu information may be older than expected.'))}</div><p style="${S.p}">Open the dashboard when convenient and confirm the menu is still current.</p>`,
-                `Menu review suggested for ${storeNameText}. ${textValue(metadata.reason, 'Menu information may be older than expected.')}`,
+                `<h2 style="${S.h2}">Menu review suggested</h2><p style="${S.p}">The public menu for <strong>${storeName}</strong> may need review.</p><div style="${S.info}"><strong>Reason:</strong> ${escapeHtml(menuStaleReason)}</div><p style="${S.p}">Open the dashboard when convenient and confirm the menu is still current.</p>`,
+                `Menu review suggested for ${storeNameText}. ${menuStaleReason}`,
             );
         default:
             return null;

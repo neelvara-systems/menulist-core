@@ -120,6 +120,8 @@ async function main() {
     });
 
     const exportService = fs.readFileSync(path.join(root, 'src/lib/export/exportService.ts'), 'utf8');
+    const productionAudit = fs.readFileSync(path.join(root, '__docs__/audits/menulist-production-readiness-audit.md'), 'utf8');
+    const changelog = fs.readFileSync(path.join(root, '__docs__/CHANGELOG.md'), 'utf8');
     [
         'menu_export_clipboard_copy_failed',
         'menu_export_web_share_failed',
@@ -128,10 +130,18 @@ async function main() {
         'contentLength',
         'hasClipboardWrite',
         'hasCopyFallback',
+        "import { escapeCSVValue } from '@util/exportUtils';",
+        'const csvRow = (values: unknown[]): string => values.map(escapeCSVValue).join',
+        "csvRow([q.question, q.count, q.category || 'N/A'])",
+        "csvRow([gap.question, gap.count, gap.severity || 'N/A', examples])",
     ].forEach((token) => {
         assert(exportService.includes(token), `Expected export service diagnostic token ${token}`);
     });
     assert(!exportService.includes('await navigator.clipboard.writeText(content);'), 'Export service copy must not use unguarded Clipboard API success');
+    assert(!exportService.includes('lines.push(`"${q.question}",${q.count},${q.category ||'), 'Export service must not hand-roll top-question CSV cells.');
+    assert(!exportService.includes('lines.push(`"${gap.question}",${gap.count},${gap.severity ||'), 'Export service must not hand-roll knowledge-gap CSV cells.');
+    assert(productionAudit.includes('Analytics export service CSV spreadsheet formula boundary checkpoint: fixed in source.'), 'Production readiness audit must document analytics export service CSV hardening.');
+    assert(changelog.includes('Analytics Export Service CSV Spreadsheet Formula Boundary'), 'Changelog must document analytics export service CSV hardening.');
     [
         "console.error('Failed to copy to clipboard:'",
         "console.error('Failed to share:'",

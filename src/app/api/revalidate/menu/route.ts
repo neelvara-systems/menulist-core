@@ -23,13 +23,18 @@ export const dynamic = 'force-dynamic';
  * - authenticated app callers may use their normal NextAuth session
  */
 
+import { logger } from "@lib/monitoring/logger";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "../../../../middleware/auth";
+import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 
 // Valid tags for customer-facing invalidation.
 const STORE_ID_PATTERN = /^\d{1,20}$/;
@@ -50,6 +55,9 @@ const RevalidateMenuRequestSchema = z.object({
     { message: "Provide storeId or tags" },
 );
 const MENU_REVALIDATE_MAX_BODY_BYTES = 4 * 1024;
+const MENU_REVALIDATE_RATE_LIMIT_KEY = 'menu-cache-revalidate';
+
+type MenuRevalidationAuthMode = 'secret' | 'session';
 
 function getMenuRevalidationLogContext({
     endpoint,
@@ -127,11 +135,75 @@ function canRevalidateStore(session: any | null, storeId: string): boolean {
     return getSessionStoreIds(session).has(storeId);
 }
 
-async function handleRevalidateMenuCache(request: NextRequest, session: any | null) {
+function getMenuRevalidationRateLimitIdentity(
+    request: NextRequest,
+    session: any | null,
+    authMode: MenuRevalidationAuthMode,
+): string {
+    if (authMode === 'session') {
+        return String(session?.uId || session?.user?.id || session?.user?.email || 'session-unknown');
+    }
+
+    return String(
+        request.headers.get('x-forwarded-for')
+        || request.headers.get('x-real-ip')
+        || request.headers.get('user-agent')
+        || 'secret-unknown',
+    );
+}
+
+async function applyMenuRevalidationRateLimit(
+    request: NextRequest,
+    session: any | null,
+    authMode: MenuRevalidationAuthMode,
+): Promise<NextResponse | null> {
+    const rateLimitConfig = getRateLimitForFeature('MENU_CACHE_REVALIDATION');
+    const sourceRateLimitHash = hashPublicRateLimitValue(
+        getMenuRevalidationRateLimitIdentity(request, session, authMode),
+    );
+    const rateLimit = await checkRateLimit({
+        key: `${MENU_REVALIDATE_RATE_LIMIT_KEY}:${authMode}:${sourceRateLimitHash}`,
+        ...rateLimitConfig,
+    });
+
+    if (rateLimit.allowed) {
+        return null;
+    }
+
+    const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+    logger.security('Rate Limit Exceeded - Menu Cache Revalidation', {
+        ...getBoundedSecurityRouteContext(session, request),
+        ...getBoundedRuntimeStringContext('endpoint', request.nextUrl.pathname),
+        authMode,
+        feature: 'MENU_CACHE_REVALIDATION',
+    }, 'medium');
+
+    return NextResponse.json(
+        { error: "Too many requests. Please try again later.", retryAfter: waitSeconds },
+        {
+            status: 429,
+            headers: {
+                'Retry-After': String(waitSeconds),
+                'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': String(rateLimit.resetAt),
+            },
+        },
+    );
+}
+
+async function handleRevalidateMenuCache(
+    request: NextRequest,
+    session: any | null,
+    authMode: MenuRevalidationAuthMode,
+) {
     let requestedStoreId: string | undefined;
     let tagCount = 0;
 
     try {
+        const rateLimitResponse = await applyMenuRevalidationRateLimit(request, session, authMode);
+        if (rateLimitResponse) return rateLimitResponse;
+
         const bodyResult = await readBoundedJsonBody(request, MENU_REVALIDATE_MAX_BODY_BYTES, {
             invalidJsonMessage: "Invalid revalidation request",
         });
@@ -213,7 +285,7 @@ async function handleRevalidateMenuCache(request: NextRequest, session: any | nu
 }
 
 const authenticatedRevalidateMenuCache = withAuth(async (request: NextRequest, session) => {
-    return handleRevalidateMenuCache(request, session);
+    return handleRevalidateMenuCache(request, session, 'session');
 });
 
 export async function POST(request: NextRequest) {
@@ -221,7 +293,7 @@ export async function POST(request: NextRequest) {
     const hasValidSecret = Boolean(process.env.REVALIDATION_SECRET) && secret === process.env.REVALIDATION_SECRET;
 
     if (hasValidSecret) {
-        return handleRevalidateMenuCache(request, null);
+        return handleRevalidateMenuCache(request, null, 'secret');
     }
 
     return authenticatedRevalidateMenuCache(request);

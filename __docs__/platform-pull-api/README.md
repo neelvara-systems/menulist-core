@@ -2,7 +2,7 @@
 
 > **External systems read business and menu data FROM MenuList — the pull counterpart to POS Webhook push.**
 
-**Status:** ✅ IMPLEMENTED (v1.9 — desktop key-management source gate aligned Jul 2, 2026)
+**Status:** ✅ IMPLEMENTED (v1.10 — target document-ID boundary aligned Jul 6, 2026)
 **Feature Flag:** `ENABLE_PUBLIC_API: true`
 **Date:** February 22, 2026
 
@@ -29,7 +29,7 @@ npm run verify:platform-pull-api-boundary
 
 Source gate: `npm run verify:platform-pull-api-boundary`.
 
-The gate checks API-key generation/revocation, the Business Settings Integrations tab key UI, hashed key storage, 1KB key-action body cap, `MANAGE_INTEGRATIONS` permission, business/menu pull route live key/target revalidation, private response cache headers, API-key `Vary`, bounded diagnostics, menu summary selection, active temporary-status output, and this doc set.
+The gate checks API-key generation/revocation, the Business Settings Integrations tab key UI, hashed key storage, strict key-management session document-ID admission, 1KB key-action body cap, `MANAGE_INTEGRATIONS` permission, business/menu pull route live key/target revalidation, target document-ID and MenuList numeric-ID admission, private response cache headers, API-key `Vary`, bounded diagnostics, menu summary selection, active temporary-status output, and this doc set.
 
 ---
 
@@ -71,9 +71,10 @@ MenuList is the **upstream menu authority** (Doc 15 Rule 1). POS Webhook Sync pu
 - **Private response cache** — API-key-gated business/menu responses keep ETag/304 behavior but use `private` cache control plus `Vary: X-API-Key` so shared caches do not store one key's response for another key.
 - **Live key and target validation** — MenuList pull endpoints recheck the API key and store/tenant eligibility on every request instead of using a process-local validation cache.
 - **Desktop key management** — Business Settings Integrations tab exposes generate/regenerate/revoke controls and shows the raw key only once after generation.
+- **Target document-ID admission** — validated MenuList pull keys now normalize credential store document IDs, require exact positive numeric MenuList tenant/store IDs before response construction, and normalize menu project IDs before project document refs.
 
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
 **Created:** February 22, 2026  
-**Last Updated:** July 2, 2026
+**Last Updated:** July 6, 2026

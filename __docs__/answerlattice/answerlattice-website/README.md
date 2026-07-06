@@ -153,7 +153,7 @@
 | `src/app/sites/answerlattice/resources/ResourceArticlePage.tsx` | Shared static renderer for AnswerLattice resource article routes |
 | `src/app/sites/answerlattice/resources/ResourceStructuredData.tsx` | WebPage, Article, BreadcrumbList, ItemList, and FAQPage JSON-LD for the resources hub and resource articles |
 | `src/app/sites/answerlattice/resources/*/page.tsx` | Explicit resource article route wrappers backed by `ANSWERLATTICE_RESOURCE_ARTICLES` |
-| `src/app/sites/answerlattice/components/AnswerlatticeResourceAnalytics.tsx` | Client-only resource page analytics/referrer event helper with no Firestore writes |
+| `src/app/sites/answerlattice/components/AnswerlatticeResourceAnalytics.tsx` | Client-only resource page analytics/referrer event helper with bounded GA4 URL fields and no Firestore writes |
 | `src/app/sites/answerlattice/developers/page.tsx` | Public developer docs hub backed by `src/content/answerlatticePublic/` |
 | `src/app/sites/answerlattice/developers/DeveloperDocPage.tsx` | Shared developer-doc renderer |
 | `src/app/sites/answerlattice/developers/safe-page-context/page.tsx` | Safe page-context developer doc |
@@ -212,7 +212,8 @@
 | `src/app/sites/answerlattice/components/Header.tsx` | Shared header with Product, Demo, Install, Use Cases, Resources, Pricing, compact Product/Resources dropdowns, and right-side mobile drawer |
 | `src/app/sites/answerlattice/components/Footer.tsx` | Shared footer with broad public-route link columns and bottom theme control |
 | `src/app/sites/answerlattice/components/AnswerlatticeLink.tsx` | Dev/production-aware Link component |
-| `src/app/sites/answerlattice/components/AnswerlatticeAnalytics.tsx` | Optional GA/measurement-id conversion event tracker, gated by shared public cookie consent, with no Firestore writes |
+| `src/app/sites/answerlattice/components/AnswerlatticeAnalytics.tsx` | Optional GA/measurement-id conversion event tracker, gated by shared public cookie consent, with GA4 measurement-id shape validation and no Firestore writes |
+| `src/app/sites/answerlattice/components/answerlatticeAnalyticsUtils.ts` | Shared Answerlattice website analytics URL/text minimizer for GA4 page, click, and resource payloads |
 | `src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx` | Shared compact public-site cookie banner used for AnswerLattice optional analytics consent |
 | `src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` | Shared footer-level AI summary shortcut used with an AnswerLattice-specific prompt and product-boundary guardrails |
 | `src/app/sites/answerlattice/components/AnswerlatticeScrollReveal.tsx` | Layout-level client island that applies restrained viewport reveal effects across AnswerLattice public pages |
@@ -283,6 +284,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-07-05 | Answerlattice website analytics URL minimization boundary: stripped query strings and fragments from GA4 page-location, click-link, resource target, referrer, and entry-page URL fields while bounding analytics text fields |
 | 2026-06-29 | Added a compact category-switch strip inside the homepage Support Suite so buyers can compare AnswerLattice by official answer source before opening the full `/comparisons` pages |
 | 2026-06-27 | Replaced static Prism-glass card hover glows with a pointer-tracked AnswerLattice spotlight controller so eligible card highlights follow the mouse while preserving existing theme tokens, layouts, and public product claims |
 | 2026-06-26 | Converted the homepage Product Overview feature cards into a priority bento and merged AI-built founder fit with category-boundary messaging so the lower page keeps all content with less repeated card-grid weight |

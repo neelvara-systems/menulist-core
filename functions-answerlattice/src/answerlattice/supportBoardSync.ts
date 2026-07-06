@@ -13,6 +13,7 @@ import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 
 const PRODUCT_ID = 'AL';
 const ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED = 'ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED';
@@ -184,7 +185,11 @@ function getEntityLabel(entityId: string, entities: Map<string, EntityInfo>): st
 }
 
 async function loadEntityInfo(tId: number, sId: number, entityIds: string[]): Promise<Map<string, EntityInfo>> {
-    const uniqueIds = Array.from(new Set(entityIds.filter(Boolean)));
+    const uniqueIds = Array.from(new Set(
+        entityIds
+            .map(entityId => normalizeAnswerlatticeResolvedFunctionEntityId(entityId))
+            .filter((entityId): entityId is string => Boolean(entityId)),
+    ));
     const result = new Map<string, EntityInfo>();
 
     for (let i = 0; i < uniqueIds.length; i += 30) {
@@ -213,27 +218,28 @@ function buildFallbackCandidates(
     const groups = new Map<string, {
         missCount: number;
         lowConfidenceCount: number;
-        samples: string[];
+        exampleCount: number;
         contextKeys: Set<string>;
     }>();
 
     for (const doc of historyDocs) {
         const data = doc.data();
         const entityIds: string[] = Array.isArray(data.matchedEntityIds) ? data.matchedEntityIds : [];
-        const safeEntityIds = entityIds.filter(entityId => entityId && entityId !== 'unresolved');
+        const safeEntityIds = entityIds
+            .map(entityId => normalizeAnswerlatticeResolvedFunctionEntityId(entityId))
+            .filter((entityId): entityId is string => Boolean(entityId));
         if (safeEntityIds.length === 0) continue;
 
         for (const entityId of safeEntityIds) {
             const group = groups.get(entityId) || {
                 missCount: 0,
                 lowConfidenceCount: 0,
-                samples: [],
+                exampleCount: 0,
                 contextKeys: new Set<string>(),
             };
             group.missCount++;
             if (data.confidence === 'low' || data.confidence === 'none') group.lowConfidenceCount++;
-            const sample = truncateText(data.query || data.searchQuery || data.prompt, 160);
-            if (sample && group.samples.length < 3) group.samples.push(sample);
+            if (truncateText(data.query || data.searchQuery || data.prompt, 1)) group.exampleCount++;
             const contextKeys = Array.isArray(data.contextKeys) ? data.contextKeys : [];
             contextKeys.forEach((key: unknown) => {
                 const cleaned = truncateText(key, 48);
@@ -260,7 +266,7 @@ function buildFallbackCandidates(
                 title: `Repeated misses for ${entityName}`,
                 description: [
                     `${group.missCount} non-canonical or low-confidence answer${group.missCount === 1 ? '' : 's'} were detected for ${entityName} in the last ${SUPPORT_BOARD_SYNC_LIMITS.windowDays} days.`,
-                    group.samples.length > 0 ? `Examples: ${group.samples.join(' | ')}` : '',
+                    group.exampleCount > 0 ? `${group.exampleCount} source example${group.exampleCount === 1 ? '' : 's'} remain in search history; this derived card stores counts and context only.` : '',
                     'Review whether this needs a canonical answer, FAQ, or article update.',
                 ].filter(Boolean).join(' '),
                 status: SUPPORT_BOARD_STATUS.NEEDS_ANSWER,
@@ -281,28 +287,27 @@ function buildSignalClusterCandidates(
     const groups = new Map<string, {
         chatNegative: number;
         escalation: number;
-        samples: string[];
+        exampleCount: number;
         contextKeys: Set<string>;
     }>();
 
     for (const doc of signalDocs) {
         const data = doc.data();
-        const entityId = typeof data.entityId === 'string' ? data.entityId : '';
-        if (!entityId || entityId === 'unresolved') continue;
+        const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
+        if (!entityId) continue;
         if (data.type !== 'chat_negative' && data.type !== 'escalation') continue;
 
         const group = groups.get(entityId) || {
             chatNegative: 0,
             escalation: 0,
-            samples: [],
+            exampleCount: 0,
             contextKeys: new Set<string>(),
         };
 
         if (data.type === 'chat_negative') group.chatNegative++;
         if (data.type === 'escalation') group.escalation++;
         const metadata = data.metadata || {};
-        const sample = truncateText(metadata.query || metadata.subject || metadata.reason || metadata.message, 160);
-        if (sample && group.samples.length < 3) group.samples.push(sample);
+        if (truncateText(metadata.query || metadata.subject || metadata.reason || metadata.message, 1)) group.exampleCount++;
         const contextKeys = Array.isArray(metadata.contextKeys) ? metadata.contextKeys : [];
         contextKeys.forEach((key: unknown) => {
             const cleaned = truncateText(key, 48);
@@ -326,7 +331,7 @@ function buildSignalClusterCandidates(
                 title: `Support friction on ${entityName}`,
                 description: [
                     `${totalSignals} negative feedback or escalation signal${totalSignals === 1 ? '' : 's'} were detected for ${entityName} in the last ${SUPPORT_BOARD_SYNC_LIMITS.windowDays} days.`,
-                    group.samples.length > 0 ? `Examples: ${group.samples.join(' | ')}` : '',
+                    group.exampleCount > 0 ? `${group.exampleCount} source example${group.exampleCount === 1 ? '' : 's'} remain in signal history; this derived card stores counts and context only.` : '',
                     'Review the existing approved answer and related help content.',
                 ].filter(Boolean).join(' '),
                 status: group.escalation > 0 ? SUPPORT_BOARD_STATUS.NEW_SIGNALS : SUPPORT_BOARD_STATUS.NEEDS_TRIAGE,
@@ -347,7 +352,11 @@ function buildDriftCandidates(
 ): SupportBoardCandidate[] {
     return driftAnswerDocs.map(doc => {
         const data = doc.data();
-        const entityIds: string[] = Array.isArray(data.scope?.entityIds) ? data.scope.entityIds : [];
+        const entityIds: string[] = Array.isArray(data.scope?.entityIds)
+            ? data.scope.entityIds
+                .map((entityId: unknown) => normalizeAnswerlatticeResolvedFunctionEntityId(entityId))
+                .filter((entityId: string | null): entityId is string => Boolean(entityId))
+            : [];
         const driftReason = truncateText(data.governance?.driftReason || 'Drift review is required.', 500);
         return {
             sourceType: SUPPORT_BOARD_SOURCE_TYPE.CANONICAL_ANSWER,
@@ -442,19 +451,21 @@ async function loadSupportBoardSourceDocs(tId: number, sId: number): Promise<Sup
     for (const doc of historySnap.docs) {
         const ids = Array.isArray(doc.data().matchedEntityIds) ? doc.data().matchedEntityIds : [];
         ids.forEach((id: unknown) => {
-            if (typeof id === 'string' && id && id !== 'unresolved') entityIds.add(id);
+            const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(id);
+            if (entityId) entityIds.add(entityId);
         });
     }
 
     for (const doc of signalSnap.docs) {
-        const id = doc.data().entityId;
-        if (typeof id === 'string' && id && id !== 'unresolved') entityIds.add(id);
+        const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(doc.data().entityId);
+        if (entityId) entityIds.add(entityId);
     }
 
     for (const doc of driftSnap.docs) {
         const ids = Array.isArray(doc.data().scope?.entityIds) ? doc.data().scope.entityIds : [];
         ids.forEach((id: unknown) => {
-            if (typeof id === 'string' && id && id !== 'unresolved') entityIds.add(id);
+            const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(id);
+            if (entityId) entityIds.add(entityId);
         });
     }
 

@@ -12,6 +12,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { normalizeAnswerlatticeEntityCandidateId } from "@lib/answerlattice/entityCandidateIdBoundary";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { AnswerlatticeEntityCandidate } from "@type/answerlattice";
@@ -20,7 +21,11 @@ const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_ENTITY_CANDIDATES;
 const PENDING_CANDIDATES_LIMIT = 200;
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
-const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
+const getDocRef = (docId: string) => {
+    const normalizedDocId = normalizeAnswerlatticeEntityCandidateId(docId);
+    if (!normalizedDocId) throw new Error("Invalid Answerlattice entity candidate id");
+    return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);
+};
 
 /**
  * Get all entity candidates for a tenant+store
@@ -93,13 +98,15 @@ export const addEntityCandidate = async (data: Omit<AnswerlatticeEntityCandidate
  * Approve a candidate (moves to entities collection separately)
  */
 export const approveCandidateStatus = async (candidateId: string) => {
+    const normalizedCandidateId = normalizeAnswerlatticeEntityCandidateId(candidateId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedCandidateId) throw new Error("Invalid Answerlattice entity candidate id");
             const composedData = await answerlatticeRequestBodyComposer({ status: 'approved' });
-            await setDoc(getDocRef(candidateId), composedData, { merge: true });
+            await setDoc(getDocRef(normalizedCandidateId), composedData, { merge: true });
             return composedData;
         },
-        { candidateId },
+        { candidateId: normalizedCandidateId },
         "approveCandidateStatus"
     );
 };
@@ -108,13 +115,15 @@ export const approveCandidateStatus = async (candidateId: string) => {
  * Reject a candidate
  */
 export const rejectCandidateStatus = async (candidateId: string) => {
+    const normalizedCandidateId = normalizeAnswerlatticeEntityCandidateId(candidateId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedCandidateId) throw new Error("Invalid Answerlattice entity candidate id");
             const composedData = await answerlatticeRequestBodyComposer({ status: 'rejected' });
-            await setDoc(getDocRef(candidateId), composedData, { merge: true });
+            await setDoc(getDocRef(normalizedCandidateId), composedData, { merge: true });
             return composedData;
         },
-        { candidateId },
+        { candidateId: normalizedCandidateId },
         "rejectCandidateStatus"
     );
 };
@@ -137,12 +146,14 @@ const ONTOLOGY_AUTHORITY_RULES = {
 };
 
 export const promoteCandidate = async (candidateId: string, tId: number, sId: number) => {
+    const normalizedCandidateId = normalizeAnswerlatticeEntityCandidateId(candidateId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedCandidateId) throw new Error("Invalid Answerlattice entity candidate id");
             // 1. Fetch candidate
-            const candidateSnap = await getDoc(getDocRef(candidateId));
+            const candidateSnap = await getDoc(getDocRef(normalizedCandidateId));
             if (!candidateSnap.exists()) {
-                throw new Error(`Candidate ${candidateId} not found`);
+                throw new Error("Candidate not found");
             }
             const candidate = candidateSnap.data() as AnswerlatticeEntityCandidate;
 
@@ -206,7 +217,7 @@ export const promoteCandidate = async (candidateId: string, tId: number, sId: nu
 
             // 4. Mark candidate as approved
             const composedData = await answerlatticeRequestBodyComposer({ status: 'approved' });
-            await setDoc(getDocRef(candidateId), composedData, { merge: true });
+            await setDoc(getDocRef(normalizedCandidateId), composedData, { merge: true });
 
             // 5. Audit log
             const { addAuditLog } = await import('@database/answerlattice/auditLogs');
@@ -217,15 +228,15 @@ export const promoteCandidate = async (candidateId: string, tId: number, sId: nu
                 action: 'entity_promoted_from_candidate',
                 entityType: 'entity',
                 entityId: entity.id,
-                previousState: { candidateId, candidateStatus: candidate.status },
+                previousState: { candidateId: normalizedCandidateId, candidateStatus: candidate.status },
                 newState: { entityId: entity.id, name: candidate.name, type: candidate.type },
                 performedBy: 'admin',
                 timestamp: Timestamp.now(),
             });
 
-            return { entity, candidateId, promoted: true };
+            return { entity, candidateId: normalizedCandidateId, promoted: true };
         },
-        { candidateId, tId, sId },
+        { candidateId: normalizedCandidateId, tId, sId },
         "promoteCandidate"
     );
 };
@@ -234,13 +245,15 @@ export const promoteCandidate = async (candidateId: string, tId: number, sId: nu
  * Mark a candidate as merged (duplicate merged into existing entity)
  */
 export const mergeCandidateStatus = async (candidateId: string) => {
+    const normalizedCandidateId = normalizeAnswerlatticeEntityCandidateId(candidateId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedCandidateId) throw new Error("Invalid Answerlattice entity candidate id");
             const composedData = await answerlatticeRequestBodyComposer({ status: 'merged' });
-            await setDoc(getDocRef(candidateId), composedData, { merge: true });
+            await setDoc(getDocRef(normalizedCandidateId), composedData, { merge: true });
             return composedData;
         },
-        { candidateId },
+        { candidateId: normalizedCandidateId },
         "mergeCandidateStatus"
     );
 };

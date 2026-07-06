@@ -2,6 +2,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { getUnitCost, isFreeTierAction, OVERDRAFT_BUFFER_PERCENT } from "@constant/AI/unitCosts";
 import { DB_COLLECTIONS } from "@constant/database";
 import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
+import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
@@ -28,7 +29,8 @@ export interface CapacityCheckResult {
 async function refreshMonthlyCreditsIfNeeded(
     subscription: FirestoreSubscriptionDoc,
 ): Promise<FirestoreSubscriptionDoc> {
-    if (!subscription.id || subscription.monthlyCreditsAllowance <= 0) {
+    const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription.id);
+    if (!normalizedSubscriptionId || subscription.monthlyCreditsAllowance <= 0) {
         return subscription;
     }
 
@@ -39,7 +41,7 @@ async function refreshMonthlyCreditsIfNeeded(
 
     const subscriptionRef = firestoreAdmin
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-        .doc(subscription.id);
+        .doc(normalizedSubscriptionId);
 
     return firestoreAdmin.runTransaction(async (tx) => {
         const subscriptionSnap = await tx.get(subscriptionRef);
@@ -47,7 +49,7 @@ async function refreshMonthlyCreditsIfNeeded(
 
         const current = {
             ...(subscriptionSnap.data() as FirestoreSubscriptionDoc),
-            id: subscription.id,
+            id: subscriptionSnap.id,
         };
         const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
 
@@ -170,11 +172,16 @@ export async function consumeAICapacity(
     subscription: FirestoreSubscriptionDoc,
     unitsToConsume: number,
 ): Promise<RemainingBalance | null> {
-    if (!subscription?.id || unitsToConsume <= 0) return null;
+    if (unitsToConsume <= 0) return null;
+
+    const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);
+    if (!normalizedSubscriptionId) {
+        throw new Error("Billing subscription is not available.");
+    }
 
     const subscriptionRef = firestoreAdmin
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-        .doc(subscription.id);
+        .doc(normalizedSubscriptionId);
 
     const updatedBalance = await firestoreAdmin.runTransaction(async (tx) => {
         const subscriptionSnap = await tx.get(subscriptionRef);

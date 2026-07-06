@@ -17,6 +17,7 @@ import {
     getPredictiveTriggers,
     updatePredictiveTrigger,
 } from '@database/answerlattice/predictiveTriggers';
+import { normalizeAnswerlatticePredictiveTriggerId } from '@lib/answerlattice/predictiveTriggerIdBoundary';
 import { AnswerlatticePredictiveTrigger } from '@type/answerlattice';
 import { message } from 'antd';
 import { Timestamp } from 'firebase/firestore';
@@ -91,12 +92,15 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
 
     const update = useCallback(async (data: Partial<AnswerlatticePredictiveTrigger> & { id: string }) => {
         try {
-            await updatePredictiveTrigger(data);
+            const triggerId = normalizeAnswerlatticePredictiveTriggerId(data.id);
+            if (!triggerId) throw new Error('Invalid predictive trigger id');
+
+            await updatePredictiveTrigger({ ...data, id: triggerId });
             await addAuditLog({
                 tId, sId,
                 action: 'predictive_trigger_updated',
                 entityType: 'predictiveTrigger',
-                entityId: data.id,
+                entityId: triggerId,
                 previousState: undefined,
                 newState: { fields: Object.keys(data).filter(k => k !== 'id') },
                 performedBy: 'admin',
@@ -111,12 +115,15 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
 
     const activate = useCallback(async (triggerId: string) => {
         try {
-            await activateTrigger(triggerId);
+            const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
+            if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
+
+            await activateTrigger(normalizedTriggerId);
             await addAuditLog({
                 tId, sId,
                 action: 'predictive_trigger_activated',
                 entityType: 'predictiveTrigger',
-                entityId: triggerId,
+                entityId: normalizedTriggerId,
                 previousState: undefined,
                 newState: { status: 'active' },
                 performedBy: 'admin',
@@ -131,12 +138,15 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
 
     const disable = useCallback(async (triggerId: string) => {
         try {
-            await disableTrigger(triggerId);
+            const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
+            if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
+
+            await disableTrigger(normalizedTriggerId);
             await addAuditLog({
                 tId, sId,
                 action: 'predictive_trigger_disabled',
                 entityType: 'predictiveTrigger',
-                entityId: triggerId,
+                entityId: normalizedTriggerId,
                 previousState: undefined,
                 newState: { status: 'disabled' },
                 performedBy: 'admin',
@@ -151,12 +161,15 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
 
     const remove = useCallback(async (triggerId: string) => {
         try {
-            await deletePredictiveTrigger(triggerId);
+            const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
+            if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
+
+            await deletePredictiveTrigger(normalizedTriggerId);
             await addAuditLog({
                 tId, sId,
                 action: 'predictive_trigger_deleted',
                 entityType: 'predictiveTrigger',
-                entityId: triggerId,
+                entityId: normalizedTriggerId,
                 previousState: undefined,
                 newState: { deleted: true },
                 performedBy: 'admin',

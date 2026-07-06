@@ -658,6 +658,10 @@ MODE 2: Email + Password (no session required)
 
 **July 1 Platform Users verification note:** `/api/auth/create-staff` compatibility responses are still parsed through the shared bounded staff client, but successful verification now must match a create-staff mode (`new_user_created` or `existing_user_added_to_store`) and return user identity before Platform Users marks the user verified. The existing `EMAIL_EXISTS` compatibility fallback remains allowlisted. Staff creation, Firebase Auth lookup, platform user document updates, and owner-facing behavior are unchanged.
 
+**July 5 onboarding user-ID boundary note:** Shared onboarding helpers now route `users/{userId}` document refs through `src/lib/onboarding/onboardingUserId.ts`. `updateUserWithTenantStore()` normalizes the supplied user ID before normal website-onboarding user updates, `compensateFailedTenantStoreOnboarding()` normalizes `params.userId` before provider-failure cleanup reads/writes, and reseller onboarding normalizes Firebase Auth-generated UIDs before creating a new owner user doc. This preserves valid onboarding, reseller onboarding, and provider-failure compensation behavior while rejecting whitespace-mutated, path-shaped, reserved, empty, or oversized user IDs before user document path composition.
+
+**July 6 claim-account tenant/store scope note:** `POST /api/auth/claim-account` now normalizes the messaging user's tenant/store IDs as exact positive numeric Firestore document IDs before Firebase Auth user mutation, tenant/store email sync, subscription relinking, cache revalidation, custom claims, or success acknowledgement. The final one-time-claim transaction repeats the same scope guard after re-reading the messaging user document.
+
 ### Key Decisions (see `__docs__/auth/auth_audit-decisions.md` for full reasoning)
 
 - `isVerified` — KEPT (login gate: false = no Firebase Auth account)

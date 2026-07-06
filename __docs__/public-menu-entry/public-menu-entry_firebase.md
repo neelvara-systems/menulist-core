@@ -47,6 +47,8 @@ June 29 preview response-parse hardening is Firebase-cost neutral. `src/app/(web
 
 July 2 upload validation and mobile camera hardening is Firebase-cost neutral. `POST /api/public/create-menu` now runs server-side magic-byte validation for JPEG, PNG, and WebP uploads before draft creation, Storage writes, or extraction job creation, and `/create-menu` adds the rear-camera capture hint to the existing image input. This rejects spoofed or unverifiable files earlier and adds no Firestore reads/writes/deletes, Storage operations, provider calls, route calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
+July 6 Public create-menu claim target document-ID boundary hardening is Firebase-cost neutral. `POST /api/public/create-menu/claim` now validates existing-account and newly-created tenant/store IDs with the shared Firestore document-ID guard and exact positive numeric MenuList ID guard before `stores/{storeId}`, `tenants/{tenantId}`, `platformSummary/projects_{storeId}`, or `projects/{tId}/{sId}/{projectId}` refs are built. This changes no valid reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, schema fields, Cloud Function logic, Firebase deploy requirement, Vercel deploy action, or valid claim/publish behavior.
+
 ### 2.2 Preview (Authenticated Owner Polling)
 
 | Operation | Collection | Type | Count | Trigger |

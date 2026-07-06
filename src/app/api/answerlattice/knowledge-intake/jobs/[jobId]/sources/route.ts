@@ -4,6 +4,7 @@ import {
     addKnowledgeSource,
     serializeIntakeValue,
 } from '@lib/answerlattice/knowledgeIntake';
+import { normalizeAnswerlatticeKnowledgeIntakeJobId } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import {
     getAnswerlatticeKnowledgeIntakeLogContext,
     logAnswerlatticeKnowledgeIntakeFailure,
@@ -34,6 +35,11 @@ const SourceSchema = z.object({
 const KNOWLEDGE_INTAKE_SOURCE_MAX_BODY_BYTES = 128 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
+    const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
+    if (!jobId) {
+        return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
+    }
+
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
         rateLimitKey: 'answerlattice-intake:add-source',
         rateLimit: 40,
@@ -55,9 +61,9 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
         }
 
         const parsed = SourceSchema.parse(bodyResult.data);
-        const source = await addKnowledgeSource(access.context.scope, params.jobId, parsed, access.context.actor);
+        const source = await addKnowledgeSource(access.context.scope, jobId, parsed, access.context.actor);
         secureLog('[Answerlattice Intake] Source added', getAnswerlatticeKnowledgeIntakeLogContext({
-            jobId: params.jobId,
+            jobId,
             scope: access.context.scope,
             sourceId: source.id,
             sourceType: source.type,

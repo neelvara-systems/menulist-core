@@ -228,6 +228,8 @@ Use API routes only for operations that need server-side auth, paid capacity che
 | `POST /api/growthos/kits/export` | Record copy/share/download/print execution signal. |
 | `POST /api/growthos/reviews/suggest` | Optional deterministic guard around owner-pasted review text. No review ingestion and no provider call in V1. |
 
+GrowthOS project, kit, and scope ID boundary: refresh and generate requests validate `projectId` with the shared Firestore document-ID guard before `readGrowthOSProjectDataServer()` can read either `projects/{tId}/{sId}/{projectId}` or legacy `projects/{projectId}`. Export requests validate `kitId` with the same guard before `readGrowthOSKitServer()` can read `growthosKits/{tId}/{sId}/{kitId}`. The server DAL also trims and normalizes project/kit document IDs before Firestore refs, validates session-derived tenant/store scope IDs before `stores/{sId}`, `platformSummary/growthos_{sId}`, `projects/{tId}/{sId}/{projectId}`, `growthosKits/{tId}/{sId}/{kitId}`, or `growthosExports/{tId}/{sId}` refs, returns `null` before Firestore access if a persisted project, kit, or scope ID is malformed, and throws before summary/kit/export writes when an internal caller supplies malformed generated or scope IDs.
+
 Each route must:
 
 - use `withAuth()`

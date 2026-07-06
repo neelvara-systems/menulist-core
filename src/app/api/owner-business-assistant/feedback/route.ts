@@ -5,6 +5,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { OwnerBusinessAssistantFeedbackRequestSchema } from '@lib/ownerBusinessAssistant/schemas';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -58,6 +59,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   if (permissionError) return permissionError;
 
   const docId = `${parsed.data.answerId}_${scope.userId || 'unknown'}`;
+  if (!isValidFirestoreDocumentId(docId)) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+
   await firestoreAdmin.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK).doc(docId).set({
     ...parsed.data,
     tId: String(scope.tId),

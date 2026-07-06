@@ -4,6 +4,7 @@ import {
     analyzeKnowledgeIntakeJob,
     serializeIntakeValue,
 } from '@lib/answerlattice/knowledgeIntake';
+import { normalizeAnswerlatticeKnowledgeIntakeJobId } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import {
     getAnswerlatticeKnowledgeIntakeLogContext,
     logAnswerlatticeKnowledgeIntakeFailure,
@@ -18,6 +19,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
+    const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
+    if (!jobId) {
+        return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
+    }
+
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
         rateLimitKey: 'answerlattice-intake:analyze',
         rateLimit: 8,
@@ -27,10 +33,10 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
     if (access.response) return access.response;
 
     try {
-        const result = await analyzeKnowledgeIntakeJob(access.context.scope, params.jobId, access.context.actor);
+        const result = await analyzeKnowledgeIntakeJob(access.context.scope, jobId, access.context.actor);
         secureLog('[Answerlattice Intake] Job analyzed', getAnswerlatticeKnowledgeIntakeLogContext({
             createdCount: result.created,
-            jobId: params.jobId,
+            jobId,
             scope: access.context.scope,
         }));
         return NextResponse.json({ result: serializeIntakeValue(result) });

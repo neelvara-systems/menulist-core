@@ -1,8 +1,3 @@
-//////add handling for past_due statuses to show your payment failed
-//////add handling for cancelled statuses to show your subscription has been cancelled
-//////add handling for expired statuses to show your subscription has expired
-
-
 'use client'
 
 import { helpCenterTabRouting } from '@constant/navigations';
@@ -14,7 +9,7 @@ import usePaymentHandler from '@hook/usePaymentHandler';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { formatDateTime } from '@util/dateTime';
-import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
+import { getGracePeriodDisplayInfo, hasValidSubscriptionAccess } from '@util/razorpay';
 import { Button, Card, Col, Divider, Flex, message, Progress, Row, Space, Statistic, Tag, theme, Tooltip, Typography } from 'antd';
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -93,6 +88,15 @@ function ActiveSubscriptionCard({
         ? activeSubscription.amount
         : activeSubscription.amount * (activeSubscription.quantity || 1);
     const formatBillingDate = (value: any, fallback = 'N/A') => value ? formatDateTime(value, "date", formatter) : fallback;
+    const getPastDueGracePeriodDisplay = () => {
+        const gracePeriodDisplay = getGracePeriodDisplayInfo(activeSubscription.pastDueSinceAt);
+        return {
+            ...gracePeriodDisplay,
+            value: gracePeriodDisplay.hasKnownGracePeriod
+                ? formatDateTime(gracePeriodDisplay.graceEndsTimestamp, "date", formatter)
+                : 'Grace period unavailable',
+        };
+    };
 
     const cardStyle = {
         borderRadius: '16px',
@@ -289,11 +293,11 @@ function ActiveSubscriptionCard({
             />
         }
         if (activeSubscription.status === 'past_due') {
-            const { remainingDays, graceEndsTimestamp } = getGracePeriodInfo(activeSubscription.pastDueSinceAt);
+            const gracePeriodDisplay = getPastDueGracePeriodDisplay();
             return <Statistic
                 valueStyle={{ fontSize: 14 }}
-                title={`Grace period (${remainingDays} day${remainingDays > 1 ? 's' : ''} left)`}
-                value={formatDateTime(graceEndsTimestamp, "date", formatter)}
+                title={gracePeriodDisplay.title}
+                value={gracePeriodDisplay.value}
             />
         }
         if (activeSubscription.status === 'active') {
@@ -314,10 +318,11 @@ function ActiveSubscriptionCard({
     }
 
     const renderGracePeriodInfo = () => {
-        const { remainingDays } = getGracePeriodInfo(activeSubscription.pastDueSinceAt);
+        const gracePeriodDisplay = getPastDueGracePeriodDisplay();
         return <Text type="warning">
-            ⚠️ Your last payment attempt failed.
-            Your subscription is currently in a grace period. Please update your payment method within {remainingDays} day{remainingDays > 1 ? 's' : ''} to avoid service interruption.
+            ⚠️ Your last payment attempt failed. {gracePeriodDisplay.hasKnownGracePeriod
+                ? `Complete the payment update within ${gracePeriodDisplay.dayLabel} to avoid service interruption.`
+                : 'Grace-period details are unavailable. Retry the payment or contact support to recover billing.'}
         </Text>
     }
 

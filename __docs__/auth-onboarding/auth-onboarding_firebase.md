@@ -42,7 +42,7 @@ The local source gate does not create Firebase Auth users, mint live custom toke
 | Create user doc | `users` | First-time signup | Per new user | 1 | User profile, role, tenant/store assignment. |
 | Create tenant doc | `tenants` | New tenant onboarding | Per new tenant | 1 | Billing entity, subscription info. |
 | Create store doc | `stores` | New store setup | Per new store | 1 | Full store config with defaults. |
-| Provider-failure compensation | `users`, `tenants`, `stores`, `platformSummary/storesSummary` | Razorpay plan/subscription setup fails after local onboarding transaction | Failure only | 3-4 | Marks tenant/store inactive, clears failed user mapping when it matches the just-created scope, and hides the store from summary-backed public reads. |
+| Provider-failure compensation | `users`, `tenants`, `stores`, `platformSummary/storesSummary` | Razorpay plan/subscription setup fails after local onboarding transaction | Failure only | 3-4 | Marks tenant/store inactive, clears failed user mapping when it matches the just-created scope, and hides the store from summary-backed public reads. User document refs pass through the onboarding user-ID boundary first. |
 | Update last login | `users/{userId}` | Each login | Per login | 1 | `lastLoginAt` timestamp. |
 | Session management | NextAuth (JWT) | Login/logout | Per session | 0 | JWT-based — no Firestore session writes. |
 
@@ -68,6 +68,7 @@ The local source gate does not create Firebase Auth users, mint live custom toke
 ### Current Optimizations
 - **JWT sessions**: No Firestore session storage — JWT tokens are stateless
 - **Session caching**: User/tenant/store data loaded once at login, embedded in JWT
+- **Onboarding user-ID boundary**: Normal onboarding user updates, provider-failure compensation, and reseller-created owner user docs normalize user IDs through `src/lib/onboarding/onboardingUserId.ts` before `users/{userId}` refs. This adds no reads or writes for valid requests; malformed, whitespace-mutated, path-shaped, reserved, empty, or oversized user IDs fail before user document path composition.
 - **No per-request auth reads**: `getActiveSession()` reads from JWT, not Firestore
 
 ### Warnings

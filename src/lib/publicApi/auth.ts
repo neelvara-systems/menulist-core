@@ -15,6 +15,7 @@ import { getAnswerlatticeWidgetKeyRecordByHash } from "@lib/answerlattice/widget
 import { answerlatticeFirestoreAdmin } from "@lib/firebase/answerlatticeFirebaseAdmin";
 import { shouldUseSharedAnswerlatticeFirebase } from "@lib/firebase/answerlatticeConfig";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { getBoundedSecurityStringContext } from "@lib/security/securityDiagnostics";
 import { secureLog } from "@lib/security/secureLogger";
@@ -27,6 +28,22 @@ export const PULL_API_SCHEMA_VERSION = "1.0";
 export const PULL_API_RESPONSE_CACHE_CONTROL = "private, max-age=60, stale-while-revalidate=300";
 export const PULL_API_RESPONSE_VARY = "X-API-Key";
 const PUBLIC_API_KEY_PATTERN = /^(ml|cn|al)_[A-Za-z0-9_-]{20,128}$/;
+
+export function normalizePublicApiDocumentId(value: unknown): string | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+export function normalizeMenuListPublicApiNumericId(value: unknown): number | null {
+    const documentId = normalizePublicApiDocumentId(value);
+    if (!documentId) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? numericId
+        : null;
+}
 
 function normalizePublicApiKey(apiKey: string | null): string | null {
     const normalizedApiKey = apiKey?.trim();
@@ -96,10 +113,13 @@ export async function isMenuListPublicApiTargetAllowed(storeData: any): Promise<
 
     const tenantId = storeData.tenantId ?? storeData.tId;
     if (tenantId == null || tenantId === '') return false;
+    const tenantNumericId = normalizeMenuListPublicApiNumericId(tenantId);
+    if (tenantNumericId == null) return false;
+    const tenantDocumentId = String(tenantNumericId);
 
     const tenantSnap = await admin.firestore()
         .collection(DB_COLLECTIONS.TENANTS)
-        .doc(String(tenantId))
+        .doc(tenantDocumentId)
         .get();
 
     return tenantSnap.exists && !isPlatformEntityBlocked(tenantSnap.data());
@@ -288,6 +308,11 @@ export async function validatePublicApiKey(
         const widgetSnapshot = await queryAnswerlatticeWidgetApi();
         if (!widgetSnapshot.empty) {
             const doc = widgetSnapshot.docs[0];
+            const storeDocumentId = normalizePublicApiDocumentId(doc.id);
+            if (!storeDocumentId) {
+                rememberValidationCache(cacheKey, cacheTtl, null);
+                return null;
+            }
             const storeData = doc.data();
             const widgetCredential = getAnswerlatticeWidgetKeyRecordByHash(storeData.answerlatticeWidgetApi, keyHash)
                 || storeData.answerlatticeWidgetApi;
@@ -295,7 +320,7 @@ export async function validatePublicApiKey(
                 credential: widgetCredential,
                 credentialSource: 'answerlatticeWidgetApi',
                 storeData,
-                storeId: doc.id,
+                storeId: storeDocumentId,
             };
             rememberValidationCache(cacheKey, cacheTtl, result);
             return result;
@@ -339,6 +364,11 @@ export async function validatePublicApiKey(
     }
 
     const doc = snapshot.docs[0];
+    const storeDocumentId = normalizePublicApiDocumentId(doc.id);
+    if (!storeDocumentId) {
+        rememberValidationCache(cacheKey, cacheTtl, null);
+        return null;
+    }
     const storeData = doc.data();
     const widgetCredential = credentialSource === 'answerlatticeWidgetApi'
         ? getAnswerlatticeWidgetKeyRecordByHash(storeData.answerlatticeWidgetApi, keyHash) || storeData.answerlatticeWidgetApi
@@ -349,7 +379,7 @@ export async function validatePublicApiKey(
             : widgetCredential,
         credentialSource,
         storeData,
-        storeId: doc.id,
+        storeId: storeDocumentId,
     };
 
     rememberValidationCache(cacheKey, cacheTtl, result);

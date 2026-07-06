@@ -1,7 +1,7 @@
 # Temporary Status Layer — Firebase Cost Tracking
 
 **Date:** June 26, 2026
-**Last Source Gate Update:** July 2, 2026
+**Last Source Gate Update:** July 6, 2026
 
 ---
 
@@ -26,7 +26,7 @@ Extremely lightweight — single field on existing store document.
 
 No new collections. `tempStatus` is a field on existing store document.
 
-Admission guard: `POST /api/store/temp-status` checks `ENABLE_TEMP_STATUS`, applies the existing store permission helper, uses the `DATA_WRITE` limiter with hashed owner/store key segments, and applies a 4KB bounded JSON cap before validating or writing. Rejected disabled, oversized, or rate-limited requests add no Firestore writes.
+Admission guard: `POST /api/store/temp-status` checks `ENABLE_TEMP_STATUS`, validates session tenant/store IDs through the shared Firestore document-ID guard with an exact raw-value check and a 160-character ceiling, normalizes the optional session actor ID before limiter material or `tempStatus.createdBy`, applies the existing store permission helper, uses the `DATA_WRITE` limiter with hashed owner/store key segments, and applies a 4KB bounded JSON cap before validating or writing. Rejected disabled, invalid-session, oversized, or rate-limited requests add no Firestore writes.
 
 Failure diagnostics use the shared runtime diagnostics helper with stable `store_temp_status_update_failed` code, action/type/message-presence metadata, bounded tenant/store/user/expiry presence-length metadata, and source error name/code/status only. The owner response remains generic and public cache invalidation behavior is unchanged.
 
@@ -49,4 +49,4 @@ The same successful write touches the Digital Screens content version with `stor
 
 ---
 
-**Last Updated:** July 2, 2026
+**Last Updated:** July 6, 2026

@@ -6,10 +6,13 @@ import { appendImageBatchItemResultAdmin, getImageBatchProcessingJobByIdAdmin, u
 import { uploadBase64MediaImageAdmin } from "@database/storage/uploadBase64MediaImageAdmin";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from "@lib/ai/imageBatchIdBoundary";
 import { copyCachedImagePromptToStore, isImagePromptCacheEligible, writeImagePromptCacheSource } from "@lib/ai/imageGenerationPromptCache";
 import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { mapWithConcurrency } from "@lib/async/boundedConcurrency";
 import { logger } from "@lib/monitoring/logger";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { createUppercaseRandomIdSegment } from "@lib/runtime/randomId";
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -22,10 +25,12 @@ import { AI_MODEL_TYPE, GeneratedImagePayload, runImageGenerationPrompts } from 
 import { getImagePrompts } from "../prompt";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { BatchImageGenerationWorkerRequestSchema } from "@lib/validation/apiSchemas";
+import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 
 const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
 const LOG_FILE = "batch-image-generation.log"
 const BATCH_IMAGE_WORKER_MAX_BODY_BYTES = 16 * 1024 * 1024;
+const BATCH_IMAGE_WORKER_RATE_LIMIT_KEY = 'batch-image-worker';
 const IMAGE_UPLOAD_CONCURRENCY = 3;
 const IMAGE_BATCH_WORKER_JOB_NOT_FOUND = 'image_batch_worker_job_not_found';
 const TERMINAL_JOB_STATUSES = new Set([
@@ -155,6 +160,46 @@ function hasValidWorkerSecret(request: Request) {
     return expected.length === provided.length && timingSafeEqual(expected, provided);
 }
 
+async function applyBatchImageWorkerRateLimit({
+    jobId,
+    sId,
+    tId,
+}: {
+    jobId: string;
+    sId: string;
+    tId: string;
+}): Promise<Response | null> {
+    const rateLimitConfig = getRateLimitForFeature('BATCH_IMAGE_WORKER');
+    const tenantRateLimitHash = hashPublicRateLimitValue(tId);
+    const storeRateLimitHash = hashPublicRateLimitValue(sId);
+    const rateLimit = await checkRateLimit({
+        key: `${BATCH_IMAGE_WORKER_RATE_LIMIT_KEY}:${tenantRateLimitHash}:${storeRateLimitHash}`,
+        ...rateLimitConfig,
+    });
+
+    if (rateLimit.allowed) return null;
+
+    const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+    logger.security('Rate Limit Exceeded - Batch Image Worker', {
+        endpoint: '/api/image-generation/batch-generation',
+        feature: 'BATCH_IMAGE_WORKER',
+        ...getBatchWorkerLogContext({ jobId, sId, tId }),
+    }, 'medium');
+
+    return NextResponse.json(
+        { error: 'Too many requests. Please try again later.', retryAfter: waitSeconds },
+        {
+            status: 429,
+            headers: {
+                'Retry-After': String(waitSeconds),
+                'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': String(rateLimit.resetAt),
+            },
+        },
+    );
+}
+
 export async function POST(request: Request) {
     // 🛡️ SAFE_MODE: Block expensive AI operations during system maintenance
     try {
@@ -203,9 +248,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
     }
 
-    const { generationConfig, projectId, itemDetails, businessType, jobId } = validation.data as unknown as GenerateImageViaApiPayloadBatchType & { itemDetails: GenerateImageViaApiPayloadItemDetailsType & { id: string; name: string } };
+    const { generationConfig, projectId: requestedProjectId, itemDetails, businessType, jobId: requestedJobId } = validation.data as unknown as GenerateImageViaApiPayloadBatchType & { itemDetails: GenerateImageViaApiPayloadItemDetailsType & { id: string; name: string } };
+    const projectScope = normalizeImageBatchProjectId(requestedProjectId);
+    const jobId = normalizeImageBatchJobId(requestedJobId);
+    if (!projectScope || !jobId) {
+        return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    }
 
-    const [tId, , sId] = projectId.split("-");
+    const { projectId, sId, tId } = projectScope;
     const workerLogContext = getBatchWorkerLogContext({
         itemId: itemDetails.id,
         itemName: itemDetails.name,
@@ -217,6 +267,9 @@ export async function POST(request: Request) {
     if (!tId || !sId) {
         return NextResponse.json({ error: 'Invalid project scope' }, { status: 400 });
     }
+
+    const rateLimitResponse = await applyBatchImageWorkerRateLimit({ jobId, sId, tId });
+    if (rateLimitResponse) return rateLimitResponse;
 
     const currentJobData = await getImageBatchProcessingJobByIdAdmin(jobId, { tId, sId });
 

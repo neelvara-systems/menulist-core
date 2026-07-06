@@ -15,8 +15,15 @@ interface GoogleAnalyticsProps {
     storeDetails?: StoreDataType;
 }
 
+const GA4_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/;
+
+const getSafeGoogleAnalyticsId = (value?: string | null): string | null => {
+    const normalized = String(value || '').trim().toUpperCase();
+    return GA4_MEASUREMENT_ID_PATTERN.test(normalized) ? normalized : null;
+};
+
 const GoogleAnalytics = ({ storeDetails }: GoogleAnalyticsProps) => {
-    const gaId = storeDetails?.analytics?.googleAnalyticsId;
+    const gaId = getSafeGoogleAnalyticsId(storeDetails?.analytics?.googleAnalyticsId);
 
     useEffect(() => {
         if (!gaId) return;

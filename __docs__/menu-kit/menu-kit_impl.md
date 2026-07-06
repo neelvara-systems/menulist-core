@@ -115,6 +115,7 @@ export interface MenuKitResult {
   assets: MenuKitAsset[];
   staffScript: string; // Text only, not a file
   zipBlob: Blob;
+  zipFilename: string;
 }
 ```
 
@@ -182,11 +183,18 @@ export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResul
   zip.file("PRINT_INSTRUCTIONS.txt", buildPrintInstructions(input.storeName, labels));
   const zipBlob = await zip.generateAsync({ type: "blob" });
 
-  return { assets, staffScript: labels.staffScript, zipBlob };
+  return {
+    assets,
+    staffScript: labels.staffScript,
+    zipBlob,
+    zipFilename: buildMenuKitZipFilename(input.storeName, input.templateFamilyId),
+  };
 }
 ```
 
 Use `generateMenuKitAsset()` for single file actions. Use `generateMenuKit()` only for the complete ZIP. This prevents a table card, social image, or counter sticker action from rendering every Menu Kit file first.
+
+Menu Kit ZIP filename boundary: `generateMenuKit()` returns `result.zipFilename` for the complete ZIP, built through the shared Menu Kit filename helpers. Desktop Use MenuList, mobile Share, project Share Modal, and printable-template complete ZIP paths must pass `result.zipFilename` to `downloadBlob()` instead of using hand-rolled store-name filename derivation.
 
 `PRINT_INSTRUCTIONS.txt` is business-type aware. Food businesses keep menu/table language, while service, retail, professional, and wellness businesses get matching staff and placement copy.
 

@@ -36,16 +36,26 @@ Every missed support question becomes visible work, every card can hold private 
 | Private board collection | Implemented | `answerlattice_supportBoardCards` |
 | Tenant/store isolation | Implemented | Firestore rules require Answerlattice support-control permission |
 | Manual cards | Implemented | `AnswerlatticeSupportBoard.tsx` |
+| Card ID boundary | Implemented | Answerlattice App Support Board Card ID Boundary validates card document IDs before update, status transaction, or note document refs are built |
 | Bounded ticket sync | Implemented, gated | `useSupportBoard.ts` reads recent unresolved tickets and creates cards only when source sync is enabled |
 | Bounded signal sync | Implemented, gated | `useSupportBoard.ts` reads recent actionable signals and creates cards only when source sync is enabled |
 | Source customer display | Implemented | Ticket, feedback, and signal source cards preserve available requester name, email, phone, source path, and widget session metadata when present |
 | Nightly signal-quality sync | Implemented, gated | `functions-answerlattice/src/answerlattice/supportBoardSync.ts` creates deduped cards for repeated misses, negative feedback, drift, and release impact only when enabled |
 | Compact board summary | Implemented, gated | `platformSummary/supportBoardSummary_{tId}_{sId}` is written by nightly sync only when enabled; UI summary-read failures log a bounded diagnostic and do not block the board |
 | Nightly diagnostics | Implemented | Support Board nightly success/failure logs use fixed codes, scope booleans, and source error name/code/status only |
+| Nightly derived-card source-text boundary | Implemented | Support Board nightly derived-card source-text duplication boundary: recurring-miss and signal-cluster cards store source example counts and context only, not raw query/subject/reason/message text |
+| Nightly entity ID boundary | Implemented | Answerlattice Functions signal-source entity ID boundary: nightly sync normalizes stored signal/search/drift entity IDs before entity document reads or derived-card grouping, skipping malformed values |
+| App related entity ID boundary | Implemented | Answerlattice App Support Board Related Entity ID Boundary normalizes card `relatedEntityId` writes, ticket/signal source-card links, card proposal eligibility, and mutation proposal `relatedEntityIds` through the shared resolved-entity helper |
 | Private internal notes | Implemented | Embedded capped notes on board cards |
 | Status history | Implemented | Top-level `status` plus capped `statuses[]` activity history |
 | Answer proposal action | Implemented | Creates pending mutation proposal when card has a related entity |
 | Auto-publish | Not allowed | Drafts/proposals still require human approval |
+
+Answerlattice Functions signal-source entity ID boundary: nightly sync normalizes stored entity IDs from search-history misses, signal events, and drifted-answer scopes through the Functions entity ID boundary before entity document reads, derived-card grouping, release-impact matching, or related-entity assignment. Malformed or unresolved entity IDs are skipped so scheduler work continues without creating path-shaped entity refs.
+
+Answerlattice App Support Board Card ID Boundary: app-side Support Board card detail updates, status moves, and note writes validate card document IDs through `src/lib/answerlattice/supportBoardCardIdBoundary.ts` before building Firestore refs. Malformed, reserved, empty, or path-shaped IDs fail through the existing fixed action copy before document access.
+
+Answerlattice App Support Board Related Entity ID Boundary: app-side Support Board card create/update, ticket/signal source sync, card badges, proposal eligibility, and mutation proposal creation use the shared resolved-entity helper before treating `relatedEntityId` as a real entity. Malformed or unresolved IDs are skipped so Support Board cards do not persist placeholder entity links or create governance proposals from them.
 
 ## Document Index
 

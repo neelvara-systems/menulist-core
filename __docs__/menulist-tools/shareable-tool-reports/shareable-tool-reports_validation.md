@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Validation
 
 **Status:** V0 validation evidence; not production launch certification
-**Last Updated:** July 4, 2026
+**Last Updated:** July 5, 2026
 
 ---
 
@@ -36,14 +36,17 @@ The V0 verifier checks:
 - hash-fragment payload is used
 - payload caps exist
 - decode diagnostics are bounded and content-free
+- strict ISO timestamp guard exists for decoded `generatedAt`
+- decoded display strings strip control characters before rendering
 - safe internal href guard exists
 - no report API route exists
 - no Firestore/report storage path is introduced
 - consented follow-up uses only `/api/public/contact`
 - follow-up request uses no-store, same-origin credentials, manual redirect, Turnstile, and bounded response parsing
 - follow-up request includes bounded `shareable_tool_report` source metadata
+- follow-up source metadata stores canonical ISO `reportGeneratedAt` or `null`
 - setup job list is derived from visible report gaps and included in report text, source metadata, and Report Leads triage
-- contact route validates, sanitizes, and stores report lead metadata on the existing enquiry write
+- contact route validates, sanitizes, normalizes source timestamps, and stores report lead metadata on the existing enquiry write
 - Report Leads ops monitor is platform-admin only, manual-refresh, response-bounded, and read-only
 - Social Bio tool exposes Copy public report link
 - all current public tools expose Copy public report link

@@ -13,8 +13,10 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { requireAnyStorePermission, requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { buildMenuSnapshot } from "@lib/posSync/payloadFormatter";
+import { normalizePosSyncNumericDocumentId } from "@lib/posSync/posSyncDocumentId";
 import { validatePosSyncWebhookNetworkTarget } from "@lib/posSync/serverWebhookTarget";
 import { generateDeliveryId, signPayload } from "@lib/posSync/signature";
 import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
@@ -29,9 +31,9 @@ import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 
 const schema = z.object({
-    storeId: z.number().positive(),
-    tenantId: z.number().positive(),
-    projectId: z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/),
+    storeId: z.number().int().positive(),
+    tenantId: z.number().int().positive(),
+    projectId: z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),
 });
 
 const WEBHOOK_TIMEOUT_MS = 5_000;
@@ -62,14 +64,14 @@ function buildPosSyncSecurityContext(
 
 async function getScopedProjectData(
     db: FirebaseFirestore.Firestore,
-    tenantId: number,
-    storeId: number,
+    tenantDocumentId: string,
+    storeDocumentId: string,
     projectId: string,
 ): Promise<Project | null> {
     const projectDoc = await db
         .collection(DB_COLLECTIONS.PROJECTS)
-        .doc(String(tenantId))
-        .collection(String(storeId))
+        .doc(tenantDocumentId)
+        .collection(storeDocumentId)
         .doc(projectId)
         .get();
 
@@ -118,12 +120,19 @@ export const POST = withAuth(async (request, session) => {
     }
 
     const { storeId, tenantId, projectId } = validation.data;
+    const tenantScope = normalizePosSyncNumericDocumentId(tenantId);
+    const storeScope = normalizePosSyncNumericDocumentId(storeId);
+    if (!tenantScope || !storeScope) {
+        return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    }
+    const tenantDocumentId = tenantScope.documentId;
+    const storeDocumentId = storeScope.documentId;
 
     if (!verifyTenantAccess(session, tenantId, storeId, request)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
+    const storeRateLimitHash = hashPublicRateLimitValue(storeDocumentId);
     const rlResult = await checkRateLimit({ key: `pos-deliver:${storeRateLimitHash}`, limit: 20, window: 60 });
     if (!rlResult.allowed) {
         return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -132,8 +141,9 @@ export const POST = withAuth(async (request, session) => {
     try {
         const db = admin.firestore();
         const now = admin.firestore.Timestamp.now();
+        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);
 
-        const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
+        const storeDoc = await storeRef.get();
         if (!storeDoc.exists) {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
@@ -161,7 +171,7 @@ export const POST = withAuth(async (request, session) => {
                 ...buildPosSyncSecurityContext(storeId, tenantId, projectId),
                 ...getBoundedSecurityStringContext('validationError', webhookValidation.error),
             });
-            await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).update({
+            await storeRef.update({
                 'posSync.status': 'connection_issue',
                 'posSync.lastStatus': 'failed',
                 'posSync.lastError': POS_SYNC_CONNECTION_ISSUE_MESSAGE,
@@ -178,7 +188,7 @@ export const POST = withAuth(async (request, session) => {
                 ...getBoundedSecurityStringContext('networkError', networkValidation.error),
                 ...getBoundedSecurityStringContext('networkErrorName', networkValidation.errorName),
             });
-            await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).update({
+            await storeRef.update({
                 'posSync.status': 'connection_issue',
                 'posSync.lastStatus': 'failed',
                 'posSync.lastError': POS_SYNC_CONNECTION_ISSUE_MESSAGE,
@@ -187,14 +197,13 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
-        const projectData = await getScopedProjectData(db, tenantId, storeId, projectId);
+        const projectData = await getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId);
         if (!projectData) {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
         // Atomic version increment via transaction to prevent duplicate versions
         // on concurrent deliveries (ChatGPT feedback: menuVersion must be atomic)
-        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
         const newVersion = await db.runTransaction(async (transaction) => {
             const freshDoc = await transaction.get(storeRef);
             const current = freshDoc.data()?.posSync?.menuVersion || 0;
@@ -293,13 +302,13 @@ export const POST = withAuth(async (request, session) => {
 
         await db
             .collection(DB_COLLECTIONS.STORES)
-            .doc(String(storeId))
+            .doc(storeDocumentId)
             .collection(DB_COLLECTIONS.POS_DELIVERY_LOGS)
             .add(logEntry);
 
         const logsSnapshot = await db
             .collection(DB_COLLECTIONS.STORES)
-            .doc(String(storeId))
+            .doc(storeDocumentId)
             .collection(DB_COLLECTIONS.POS_DELIVERY_LOGS)
             .orderBy('sentAt', 'desc')
             .offset(20)
@@ -312,7 +321,7 @@ export const POST = withAuth(async (request, session) => {
         }
 
         if (success) {
-            await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).update({
+            await storeRef.update({
                 'posSync.status': 'healthy',
                 'posSync.lastSentAt': now,
                 'posSync.lastStatus': 'success',
@@ -330,7 +339,7 @@ export const POST = withAuth(async (request, session) => {
             const reachedConnectionIssue = nextConsecutiveFailures >= POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD
                 || posSync?.status === 'connection_issue';
 
-            await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).update({
+            await storeRef.update({
                 'posSync.status': reachedConnectionIssue ? 'connection_issue' : 'healthy',
                 'posSync.lastStatus': 'failed',
                 'posSync.lastError': reachedConnectionIssue ? POS_SYNC_CONNECTION_ISSUE_MESSAGE : '',

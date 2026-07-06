@@ -102,7 +102,7 @@ requireToken(
 [
   'import { assertProjectUpdateSucceeded, updateProject, updateProjectMetadata } from "@database/projects";',
   'const PUBLISH_GATE_FALLBACK_ERROR = "Menu check needs review before continuing.";',
-  'getSafeUiErrorMessage(error.message, PUBLISH_GATE_FALLBACK_ERROR)',
+  'getSafeUiErrorMessage(error.message, PUBLISH_GATE_FALLBACK_ERROR, { allowTrustedPlainText: true })',
   'menu_editor_publish_gate_validation_failed',
   'menu_editor_quality_signals_publish_intercept_failed',
   'const getProjectForPersistence = useCallback((data: Project) => (',

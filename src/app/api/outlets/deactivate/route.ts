@@ -16,6 +16,7 @@ import {
 } from "@lib/billing/subscriptionProviderSync";
 import { logger } from "@lib/monitoring/logger";
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
+import { getOutletSessionScope, normalizeOutletDocumentId } from "@lib/multiOutlet/outletSessionScope";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -51,9 +52,9 @@ const isInvalidOutletTargetError = (error: unknown): error is InvalidOutletTarge
 );
 
 const getOutletDeactivateLogContext = (
-    tenantId: number,
-    storeId: number,
-    outletStoreId?: number,
+    tenantId: string | number,
+    storeId: string | number,
+    outletStoreId?: string | number,
     extra: Record<string, boolean | number | string | null | undefined> = {},
 ) => ({
     ...getBoundedMultiOutletStringContext("tenantId", tenantId),
@@ -66,15 +67,17 @@ export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_OUTLET_DEACTIVATE) {
         return NextResponse.json({ error: "Disabled" }, { status: 403 });
     }
-    const { tId: tenantId, sId: storeId } = session;
-    if (!tenantId || !storeId) return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
+    const scope = getOutletSessionScope(session);
+    if (!scope) return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
+    const { tenantId, storeId, tenantDocumentId, storeDocumentId } = scope;
     if (!verifyTenantAccess(session, tenantId, storeId, request)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantDocumentId);
     const rlResult = await checkRateLimit({ key: `outlet-deactivate:${tenantRateLimitHash}`, limit: 10, window: 3600 });
     if (!rlResult.allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
     let parsedOutletStoreId: number | undefined;
+    let parsedOutletStoreDocumentId: string | undefined;
 
     try {
         const bodyResult = await readBoundedJsonBody(request, OUTLET_ACTION_MAX_BODY_BYTES, {
@@ -86,12 +89,15 @@ export const POST = withAuth(async (request, session) => {
         if (!v.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         const { outletStoreId } = v.data;
         parsedOutletStoreId = outletStoreId;
+        const outletStoreDocumentId = normalizeOutletDocumentId(outletStoreId);
+        if (!outletStoreDocumentId) return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
+        parsedOutletStoreDocumentId = outletStoreDocumentId;
 
         const db = admin.firestore();
         const now = admin.firestore.Timestamp.now();
 
         // Caller must be master store
-        const callerSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${storeId}`).get();
+        const callerSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`).get();
         const callerStore = callerSnap.data();
         const permissionError = requireAnyStorePermissionForStoreData(
             request,
@@ -111,13 +117,13 @@ export const POST = withAuth(async (request, session) => {
         // canonical store doc before writing because this server route runs
         // with Admin privileges and cannot trust a stale tenant storesList
         // entry as its only tenant boundary.
-        const tenantSnap = await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get();
+        const tenantSnap = await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`).get();
         const storesList = tenantSnap.data()?.storesList || [];
         const target = storesList.find((s: any) => Number(s.storeId) === Number(outletStoreId));
         if (!target || target.isMaster) {
             return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
         }
-        const targetStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreId}`);
+        const targetStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreDocumentId}`);
         const targetStoreSnap = await targetStoreRef.get();
         const targetStore = targetStoreSnap.data();
         if (
@@ -138,7 +144,7 @@ export const POST = withAuth(async (request, session) => {
         )).length);
         await db.runTransaction(async (tx) => {
             const [freshTenantSnap, freshTargetSnap] = await Promise.all([
-                tx.get(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`)),
+                tx.get(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`)),
                 tx.get(targetStoreRef),
             ]);
             const freshTarget = freshTargetSnap.data();
@@ -165,13 +171,13 @@ export const POST = withAuth(async (request, session) => {
             tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), {
                 lastUpdated: now,
                 stores: {
-                    [outletStoreId]: {
+                    [outletStoreDocumentId]: {
                         active: false,
                         modifiedOn: now,
                     },
                 },
             }, { merge: true });
-            tx.update(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`), { storesList: updatedStoresList });
+            tx.update(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`), { storesList: updatedStoresList });
         });
 
         // Immediate billing removal for Razorpay-managed subscriptions only.
@@ -180,7 +186,7 @@ export const POST = withAuth(async (request, session) => {
         let billingReduced = false;
         if (FEATURE_FLAGS.ENABLE_BILLING_REMOVAL_IMMEDIATE && FEATURE_FLAGS.ENABLE_OUTLET_BILLING) {
             try {
-                const sub = await getActiveSubscriptionForStore(tenantId, storeId);
+                const sub = await getActiveSubscriptionForStore(tenantId as number, storeId as number);
                 if (sub && (sub.quantity || 1) > activeStoresAfterDeactivation) {
                     const providerSubId = getRazorpayManagedSubscriptionId(sub);
                     if (providerSubId) {
@@ -195,7 +201,7 @@ export const POST = withAuth(async (request, session) => {
                 logMultiOutletFailure(
                     "multi_outlet_billing_reduction_failed",
                     billingErr,
-                    getOutletDeactivateLogContext(tenantId, storeId, outletStoreId, {
+                    getOutletDeactivateLogContext(tenantDocumentId, storeDocumentId, outletStoreDocumentId, {
                         activeStoresAfterDeactivation,
                     }),
                 );
@@ -205,19 +211,19 @@ export const POST = withAuth(async (request, session) => {
         // Security Audit: Log outlet deactivation
         logger.security('Outlet Deactivated', {
             action: 'DEACTIVATE_OUTLET',
-            ...getOutletDeactivateLogContext(tenantId, storeId, outletStoreId, {
+            ...getOutletDeactivateLogContext(tenantDocumentId, storeDocumentId, outletStoreDocumentId, {
                 activeStoresAfterDeactivation,
                 billingReduced,
             }),
         }, 'medium');
-        revalidateTag(`menu-store-${outletStoreId}`);
-        revalidateTag(`store-${outletStoreId}`);
+        revalidateTag(`menu-store-${outletStoreDocumentId}`);
+        revalidateTag(`store-${outletStoreDocumentId}`);
         revalidateTag('client-stores');
         revalidateTag('screen-data');
-        await touchDigitalScreenContentVersionForStoreServer(outletStoreId, 'outletDeactivate');
+        await touchDigitalScreenContentVersionForStoreServer(outletStoreDocumentId, 'outletDeactivate');
         await invalidateOwnerBusinessAssistantPacketCache({
-            tId: tenantId,
-            sId: outletStoreId,
+            tId: tenantDocumentId,
+            sId: outletStoreDocumentId,
         });
 
         return NextResponse.json({ success: true, outletStoreId, deactivatedAt: now, billingReduced });
@@ -228,7 +234,7 @@ export const POST = withAuth(async (request, session) => {
         logMultiOutletFailure(
             "multi_outlet_deactivate_failed",
             error,
-            getOutletDeactivateLogContext(tenantId, storeId, parsedOutletStoreId),
+            getOutletDeactivateLogContext(tenantDocumentId, storeDocumentId, parsedOutletStoreDocumentId || parsedOutletStoreId),
         );
         return NextResponse.json({ error: "Deactivation failed" }, { status: 500 });
     }

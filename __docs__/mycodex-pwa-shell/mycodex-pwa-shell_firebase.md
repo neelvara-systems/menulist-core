@@ -21,4 +21,6 @@ Safe-area handling, private reader auth, and browser-local reader state are CSS,
 
 The MyCodex login route rate-limits by request IP before parsing the form body and caps login form submissions at 8 KB. This adds no Firebase, Storage, Cloud Function, product-account, billing, or durable event behavior.
 
+Client navigation path guard: malformed browser-local reader paths, including protocol-relative `//...` values, collapse to `/` inside `MyCodexClientContainer.buildUrl()` before any favorite, queue, recent, continue-reading, or document-tree navigation. This is browser-local URL normalization only and adds no Firebase, Storage, Cloud Function, product-account, billing, or durable event behavior.
+
 Do not add `MYCODEX_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_MYCODEX_FIREBASE_PROJECT_ID`, `MC_FIREBASE_PROJECT_ID`, or `NEXT_PUBLIC_MC_*` env keys. MyCodex setup only needs `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET` on Vercel.

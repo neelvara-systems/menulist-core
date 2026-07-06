@@ -67,6 +67,7 @@ function verifyRoute(route) {
     "withAuth(async (request, session) =>",
     "requiredPlatformRole: 'PLATFORM'",
     '!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING_DASHBOARD',
+    "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
     "const HEALTH_CONTROL_DOC = 'messaging_onboarding_control';",
     'const EVENT_WINDOW_HOURS = 24;',
     'const RECENT_EVENT_LIMIT = 12;',
@@ -79,6 +80,8 @@ function verifyRoute(route) {
     'BOUNDED_METADATA_KEYS',
     'buildMessagingOpsResponseId',
     "createHash('sha256')",
+    'function normalizeMessagingHealthSnapshotId(value: unknown): string | null',
+    'return isValidFirestoreDocumentId(snapshotId) ? snapshotId : null;',
     'sanitizeMetadata(data.metadata)',
     'maskDisplayId(data.providerDisplayId)',
     'buildMessagingAlertTitle(severity)',
@@ -90,6 +93,7 @@ function verifyRoute(route) {
     "'Cache-Control': 'no-store'",
     "'Retry-After': String(waitSeconds)",
     'healthCollection.doc(HEALTH_CONTROL_DOC).get()',
+    'const lastSnapshotId = normalizeMessagingHealthSnapshotId(control.data()?.lastSnapshotId);',
     'healthCollection.doc(lastSnapshotId).get()',
     'INBOUND_STATUSES.map',
     'WATCHED_STATES.map',
@@ -118,9 +122,16 @@ function verifyRoute(route) {
     'return NextResponse.json(',
   ], 'Messaging onboarding route feature/rate/read order');
 
+  assertOrder(route, [
+    'const lastSnapshotId = normalizeMessagingHealthSnapshotId(control.data()?.lastSnapshotId);',
+    'healthCollection.doc(lastSnapshotId).get()',
+  ], 'Messaging onboarding health snapshot ID guard order');
+
   [
     'request.json()',
     '__name__',
+    'const lastSnapshotId = control.data()?.lastSnapshotId;',
+    "typeof lastSnapshotId === 'string' && lastSnapshotId.trim()",
     'id: doc.id,',
     "sessionId: String(data.sessionId || '-')",
     'alerts: Array.isArray(data.alerts) ? data.alerts : []',
@@ -216,7 +227,7 @@ function verifyMobileSurface(mobileShell, mobileMore, mobilePlatformInternal) {
   ].forEach((token) => assertIncludes(mobilePlatformInternal, token, 'Mobile platform internal messaging onboarding screen'));
 }
 
-function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, docs) {
+function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, docs, changelogDoc) {
   assertIncludes(
     packageJson,
     '"verify:messaging-onboarding-monitor-boundary": "node scripts/verification/verify-messaging-onboarding-monitor-boundary.js"',
@@ -230,12 +241,16 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, docs) {
     'DATA_READ limiter',
     'systemHealth/messaging_onboarding_control.lastSnapshotId',
     'avoiding document-id prefix scans or a `__name__` index dependency',
+    'July 6 follow-up: `systemHealth/messaging_onboarding_control.lastSnapshotId` now passes through the shared Firestore document-ID guard',
+    'existing unknown-health state',
     'Source gate: `npm run verify:messaging-onboarding-monitor-boundary`',
   ].forEach((token) => assertIncludes(opsDoc, token, 'Ops docs messaging onboarding monitor source gate'));
 
   [
+    'Messaging Onboarding Health Snapshot Document ID Boundary checkpoint',
     'Messaging onboarding monitor boundary source gate: `npm run verify:messaging-onboarding-monitor-boundary`',
     'source-only platform monitor route, bounded Admin SDK reads, masked event/session rows, desktop/mobile, and docs gate',
+    'raw stored-ID fallback exclusion',
     'Messaging Onboarding active-provider source-contract checkpoint',
     'providerRegistry.ts` registers WhatsApp only',
     'reserved extension candidates only',
@@ -253,6 +268,20 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, docs) {
     'record the exact scoped `menulist-qa` target list and reason in the production-readiness audit before deploy retry',
     'Production deploys require QA evidence and explicit production deploy approval.',
   ].forEach((token) => assertIncludes(docs.firebase, token, 'Messaging onboarding Firebase deploy retry boundary'));
+
+  [
+    'July 6, 2026 ops health snapshot ID boundary note',
+    '`/api/ops/messaging-onboarding` now validates `systemHealth/messaging_onboarding_control.lastSnapshotId` with the shared Firestore document-ID guard',
+    'malformed, reserved, empty, or path-shaped values return the existing unknown health state',
+  ].forEach((token) => assertIncludes(docs.firebase, token, 'Messaging onboarding Firebase health snapshot ID boundary'));
+
+  [
+    'Messaging Onboarding Health Snapshot Document ID Boundary',
+    '`/api/ops/messaging-onboarding` validates `systemHealth/messaging_onboarding_control.lastSnapshotId` with the shared Firestore document-ID guard',
+    'malformed, reserved, empty, or path-shaped `lastSnapshotId` values return the existing unknown-health state',
+    '`npm run verify:messaging-onboarding-monitor-boundary` now guards the stored snapshot ID normalizer',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Messaging onboarding changelog health snapshot ID boundary'));
+
   [
     'firebase deploy --only functions:',
     'PATH="$HOME/.nvm/versions/node/v20.20.2/bin:$PATH" firebase deploy --only functions',
@@ -316,6 +345,7 @@ function verifyMessagingOnboardingMonitorBoundary() {
     validationDoc: read('__docs__/messaging-onboarding/messaging-onboarding_validation.md'),
     marketingDoc: read('__docs__/messaging-onboarding/messaging-onboarding_marketing.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
+    changelogDoc: read('__docs__/CHANGELOG.md'),
   };
 
   verifyProviderRuntimeBoundary(files.providerRegistry, files.constants, files.stagingEnv, files.productionEnv);
@@ -330,7 +360,7 @@ function verifyMessagingOnboardingMonitorBoundary() {
     firebase: files.firebaseDoc,
     validation: files.validationDoc,
     marketing: files.marketingDoc,
-  });
+  }, files.changelogDoc);
 
   console.log('Messaging onboarding monitor boundary verifier passed');
 }

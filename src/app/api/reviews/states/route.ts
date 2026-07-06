@@ -12,11 +12,45 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { withAuth } from "../../../../middleware/auth";
+
+type ReviewsSessionDocumentId = {
+    value: string | number;
+    documentId: string;
+};
+
+function normalizeReviewsSessionDocumentId(value: unknown): ReviewsSessionDocumentId | null {
+    const typedValue = typeof value === "string" || typeof value === "number" ? value : null;
+    if (typedValue === null) return null;
+    const raw = String(typedValue);
+    const documentId = raw.trim();
+    return documentId === raw && isValidFirestoreDocumentId(documentId)
+        ? { value: typedValue, documentId }
+        : null;
+}
+
+function getReviewsSessionScope(session: any): {
+    tenantId: string | number;
+    storeId: string | number;
+    tenantDocumentId: string;
+    storeDocumentId: string;
+} | null {
+    const tenantId = normalizeReviewsSessionDocumentId(session?.tId);
+    const storeId = normalizeReviewsSessionDocumentId(session?.sId);
+    return tenantId && storeId
+        ? {
+            tenantId: tenantId.value,
+            storeId: storeId.value,
+            tenantDocumentId: tenantId.documentId,
+            storeDocumentId: storeId.documentId,
+        }
+        : null;
+}
 
 /**
  * GET /api/reviews/states
@@ -28,14 +62,16 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Feature disabled" }, { status: 404 });
     }
 
-    const { tId: tenantId, sId: storeId } = session;
-    if (!tenantId || !storeId) {
+    const scope = getReviewsSessionScope(session);
+    if (!scope) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
+    const { tenantId, storeId, tenantDocumentId, storeDocumentId } = scope;
+    const userId = session.uId || session.user?.id || "unknown";
 
-    const userRateLimitHash = hashPublicRateLimitValue(session.uId);
-    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
-    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
+    const tenantRateLimitHash = hashPublicRateLimitValue(tenantDocumentId);
+    const storeRateLimitHash = hashPublicRateLimitValue(storeDocumentId);
     const rateLimit = await checkRateLimit({
         key: `review-states:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
         limit: 30,
@@ -84,7 +120,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         logRuntimeFailure("reviews_states_fetch_failed", error, {
             ...getBoundedRuntimeStringContext("tenantId", tenantId),
             ...getBoundedRuntimeStringContext("storeId", storeId),
-            ...getBoundedRuntimeStringContext("userId", session.uId || session.user?.id),
+            ...getBoundedRuntimeStringContext("userId", userId),
         });
         return NextResponse.json(
             { error: "Failed to fetch review states" },

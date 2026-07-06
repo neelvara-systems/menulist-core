@@ -7,6 +7,8 @@
 
 ---
 
+July 6 follow-up: Batch image project/job ID boundary. `/api/image-generation/batch-trigger`, `/api/image-generation/batch-generation`, and `src/database/imageBatchProcessing/server.ts` now use `src/lib/ai/imageBatchIdBoundary.ts` before composing `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` refs. Batch project IDs must remain simple Firestore document IDs with exact positive numeric tenant/store scope in the existing first/third segments, and batch job IDs must remain Firestore auto-ID shaped. Malformed, reserved, whitespace-mutated, path-shaped, or nonnumeric batch scope fails before trigger status writes, worker job reads, capacity/accounting work, Storage upload, or job-progress writes. Valid batch trigger, Cloud Tasks worker, prompt-cache, provider, accounting, and owner result flows remain unchanged.
+
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
@@ -346,6 +348,7 @@ Worker requirements:
 - `x-menulist-task-secret` must match `BATCH_IMAGE_GENERATION_WORKER_SECRET`.
 - Worker request bodies are capped at 16MB after the secret/header check and before job reads or provider work.
 - Payload is validated with `BatchImageGenerationWorkerRequestSchema`.
+- Batch image worker rate-limit boundary: after secret/header admission, bounded body parsing, worker schema validation, and project/job scope normalization, the worker applies the shared `BATCH_IMAGE_WORKER` limiter with a hashed tenant/store key before reading the batch job, checking capacity, calling the provider, uploading Storage objects, writing AI accounting, or updating job progress. The 600-per-minute per-store ceiling preserves normal Cloud Tasks bursts from valid 50-item batches and retries while bounding retry storms or worker-secret abuse.
 - Worker reads the batch job through Admin SDK, verifies project/job match and requested item id, and skips duplicate item tasks that already have generated images.
 - Worker builds deterministic prompts before provider work and checks AI capacity using the prompt/image quantity.
 - Shared `runImageGenerationPrompts()` executes one prompt directly and caps multi-prompt execution at a small concurrency limit.
@@ -1351,6 +1354,8 @@ June 29 follow-up: accept/upload, discard, cancel, and retry failure diagnostics
 June 30 follow-up: batch job create and owner result-action updates now require explicit acknowledgement before the UI advances. `ImageUploadModal` fails closed when `addImageBatchProcessingJob()` does not return a job ID and requires failed-start status marking to acknowledge `failed`. `BatchImageGenerationResultView` requires matching `cancelled`, `finished`, `discarded`, or `queued` acknowledgements before success copy or `onComplete()` runs. Rejected acknowledgement codes are `image_upload_batch_job_create_rejected`, `image_upload_batch_job_mark_failed_rejected`, `image_batch_result_cancel_update_rejected`, `image_batch_result_upload_update_rejected`, `image_batch_result_discard_update_rejected`, and `image_batch_result_retry_update_rejected`.
 
 July 1 follow-up: terminal batch jobs now receive `itemsExpiresAt` and `expiresAt` retention markers from both browser and Admin SDK status-update paths. `menulistMaintenanceScheduler` runs `image_batch_job_retention_cleanup` inside the existing leased scheduler, pruning `itemsList` after seven days and deleting terminal job docs after 30 days. Old `completed`, `failed`, and `discarded` jobs attempt same-tenant/store `media/menuItem/{tId}/{sId}/` Storage cleanup before item URL pruning; `finished` and `cancelled` jobs skip Storage deletion to avoid deleting owner-accepted project images.
+
+July 5 follow-up: Batch image result stored-error display boundary. Failed batch result owner copy no longer renders stored `imageBatchProcessingJobs.error` / `activeJobData.error` text. `BatchImageGenerationResultView` uses fixed recovery copy from source so legacy or raw stored job-error strings cannot become owner-visible, while worker/trigger writes, result actions, listener reads, and diagnostics remain unchanged.
 
 | What Works                                            | What Doesn't                                                       |
 | ----------------------------------------------------- | ------------------------------------------------------------------ |

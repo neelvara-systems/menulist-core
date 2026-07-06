@@ -15,9 +15,15 @@ import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
 import { shouldUseSharedAnswerlatticeFirebase } from '@lib/firebase/answerlatticeConfig';
 import { answerlatticeAdminApp, answerlatticeAuthAdmin, answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { authAdmin } from '@lib/firebase/firebaseAdmin';
+import { logger } from '@lib/monitoring/logger';
+import { normalizeStorePermissionScopeDocumentId, type StorePermissionScopeDocumentId } from '@lib/permissions/server';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
+import { getBoundedSecurityRouteContext } from '@lib/security/securityDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
@@ -31,6 +37,7 @@ import { withAuth } from '../../../../middleware/auth';
  */
 
 const SET_CLAIMS_MAX_BODY_BYTES = 2 * 1024;
+const SET_CLAIMS_RATE_LIMIT_KEY = 'auth-set-claims';
 
 const getSetClaimsEmailLogContext = (email: unknown) => getBoundedAuthStringContext('email', email);
 const getSetClaimsUidLogContext = (uid: unknown) => getBoundedAuthStringContext('uid', uid);
@@ -134,10 +141,12 @@ const getStoreIdsClaim = (dbUser: any): string[] => {
 
     const storeIds = rawStoreIds
         .filter((storeId: unknown) => storeId !== null && storeId !== undefined && storeId !== '')
-        .map((storeId: unknown) => String(storeId));
+        .map((storeId: unknown) => normalizeStorePermissionScopeDocumentId(storeId)?.documentId)
+        .filter((storeId: string | undefined): storeId is string => Boolean(storeId));
 
-    if (dbUser?.storeId !== null && dbUser?.storeId !== undefined && dbUser?.storeId !== '') {
-        storeIds.push(String(dbUser.storeId));
+    const primaryStoreScope = normalizeStorePermissionScopeDocumentId(dbUser?.storeId);
+    if (primaryStoreScope) {
+        storeIds.push(primaryStoreScope.documentId);
     }
 
     return Array.from(new Set(storeIds));
@@ -146,8 +155,11 @@ const getStoreIdsClaim = (dbUser: any): string[] => {
 const normalizeEmail = (value: unknown) => String(value || '').toLowerCase().trim();
 
 const canAccessStore = (dbUser: any, targetStoreId: number): boolean => {
+    const targetStoreScope = normalizeStorePermissionScopeDocumentId(targetStoreId);
+    if (!targetStoreScope) return false;
+
     const storeIds = getStoreIdsClaim(dbUser);
-    return storeIds.some((storeId) => Number(storeId) === Number(targetStoreId));
+    return storeIds.some((storeId) => storeId === targetStoreScope.documentId);
 };
 
 const buildAnswerlatticeScopedFallbackUser = (
@@ -191,13 +203,15 @@ const buildAnswerlatticeScopedFallbackUser = (
     };
 };
 
-const resolveClaimStoreId = (dbUser: any, targetStoreId?: number): number => {
-    const baseStoreId = Number(dbUser?.storeId);
-    if (!targetStoreId || Number(targetStoreId) === baseStoreId) {
-        return baseStoreId;
+const resolveClaimStoreScope = (dbUser: any, targetStoreId?: number): StorePermissionScopeDocumentId | null => {
+    const baseStoreScope = normalizeStorePermissionScopeDocumentId(dbUser?.storeId);
+    const targetStoreScope = targetStoreId ? normalizeStorePermissionScopeDocumentId(targetStoreId) : null;
+
+    if (!targetStoreScope || targetStoreScope.numericId === baseStoreScope?.numericId) {
+        return baseStoreScope;
     }
 
-    return Number(targetStoreId);
+    return targetStoreScope;
 };
 
 const hasTenantAdminClaim = (role: unknown, platformRole: unknown): boolean => {
@@ -219,7 +233,7 @@ const buildAnswerlatticePermissionClaims = (permissions: Partial<Record<Answerla
 const resolveAnswerlatticePermissionClaims = async (params: {
     productId: ProductId;
     roleId: unknown;
-    storeId: number;
+    storeScope: StorePermissionScopeDocumentId;
     platformRole: unknown;
 }) => {
     if (params.productId !== PRODUCT_IDS.ANSWERLATTICE) return {};
@@ -234,8 +248,8 @@ const resolveAnswerlatticePermissionClaims = async (params: {
     let rolePermissions = defaultRole?.permissions || {};
 
     const db = answerlatticeFirestoreAdmin as any;
-    if (db && typeof db.collection === 'function' && params.storeId) {
-        const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(params.storeId)).get();
+    if (db && typeof db.collection === 'function' && params.storeScope.numericId) {
+        const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(params.storeScope.documentId).get();
         const roles = Array.isArray(storeSnap.data()?.answerlatticeRoles) ? storeSnap.data()?.answerlatticeRoles : [];
         const storeRole = roles.find((role: any) => String(role?.id || '').trim().toLowerCase() === normalizedRoleId);
         if (storeRole?.active === false) {
@@ -269,6 +283,37 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json(
                 { error: 'Missing email in session' },
                 { status: 400 }
+            );
+        }
+
+        const rateLimitConfig = getRateLimitForFeature('AUTH_CLAIM_SYNC');
+        const setClaimsUserRateLimitHash = hashPublicRateLimitValue(session.uId || session.user.id || session.user.email);
+        const rateLimit = await checkRateLimit({
+            key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${setClaimsUserRateLimitHash}`,
+            ...rateLimitConfig,
+        });
+        if (!rateLimit.allowed) {
+            const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+            logger.security('Rate Limit Exceeded - Set Claims', {
+                ...getBoundedSecurityRouteContext(session, request),
+                endpoint: request.nextUrl.pathname,
+                feature: 'AUTH_CLAIM_SYNC',
+                limit: rateLimitConfig.limit,
+                waitSeconds,
+                window: rateLimitConfig.window,
+            }, 'medium');
+
+            return NextResponse.json(
+                { error: 'Too many attempts. Please wait before trying again.', retryAfter: waitSeconds },
+                {
+                    status: 429,
+                    headers: {
+                        'Retry-After': String(waitSeconds),
+                        'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                        'X-RateLimit-Remaining': String(rateLimit.remaining),
+                        'X-RateLimit-Reset': String(rateLimit.resetAt),
+                    },
+                },
             );
         }
 
@@ -378,21 +423,31 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        const claimStoreId = effectiveTargetStoreId && (hasDefaultPlatformAccess || canAccessStore(dbUser, effectiveTargetStoreId))
-            ? Number(effectiveTargetStoreId)
-            : resolveClaimStoreId(dbUser, effectiveTargetStoreId);
+        const claimStoreScope = effectiveTargetStoreId && (hasDefaultPlatformAccess || canAccessStore(dbUser, effectiveTargetStoreId))
+            ? normalizeStorePermissionScopeDocumentId(effectiveTargetStoreId)
+            : resolveClaimStoreScope(dbUser, effectiveTargetStoreId);
+        const claimTenantScope = normalizeStorePermissionScopeDocumentId(dbUser.tenantId ?? dbUser.tId);
+        if (!claimStoreScope || !claimTenantScope) {
+            logAuthDiagnostic('set_claims_invalid_workspace_scope_rejected', {
+                ...getSetClaimsEmailLogContext(session.user.email),
+                ...getSetClaimsTenantLogContext(dbUser.tenantId ?? dbUser.tId),
+                ...getSetClaimsStoreLogContext(claimStoreScope?.documentId ?? dbUser.storeId),
+                ...getSetClaimsUserLogContext(dbUser.id),
+            });
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         // Get user's current-store role. Older/platform records may still carry
         // a top-level role, so keep that as the compatibility fallback.
         const storeRole = Array.isArray(dbUser.stores)
-            ? dbUser.stores.find((store: any) => Number(store.storeId) === claimStoreId)?.role
+            ? dbUser.stores.find((store: any) => Number(store.storeId) === claimStoreScope.numericId)?.role
             : undefined;
         const userRole = storeRole || dbUser.role;
         const productId = normalizeProductId(dbUser.pId || dbUser.productId);
         const answerlatticePermissionClaims = await resolveAnswerlatticePermissionClaims({
             productId,
             roleId: userRole,
-            storeId: claimStoreId,
+            storeScope: claimStoreScope,
             platformRole: dbUser.platformRole,
         });
 
@@ -400,8 +455,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             pId: productId,
             role: userRole || 'OWNER',
             platformRole: dbUser.platformRole || 'USER',
-            tenantId: String(dbUser.tenantId),
-            storeId: String(claimStoreId),
+            tenantId: claimTenantScope.documentId,
+            storeId: claimStoreScope.documentId,
             uId: dbUser.id,
             admin: hasTenantAdminClaim(userRole, dbUser.platformRole),
             storeIds: getStoreIdsClaim(dbUser),
@@ -421,7 +476,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         productId,
                         role: customClaims.role,
                         platformRole: customClaims.platformRole,
-                        storeId: claimStoreId,
+                        storeId: claimStoreScope.documentId,
                         tenantId: customClaims.tenantId,
                         userId: customClaims.uId,
                     }),

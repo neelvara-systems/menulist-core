@@ -933,8 +933,7 @@ export default function MobileShareScreen({
         setGeneratingDownload('menu_kit');
         try {
             const result = await generateMenuKit(input);
-            const safeName = input.storeName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') || 'Menu';
-            downloadBlob(result.zipBlob, `${safeName}_MenuKit.zip`);
+            downloadBlob(result.zipBlob, result.zipFilename);
             void trackMenuKitDownload('zip_download');
             recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
             Toast.show({ content: t('menuKitDownloaded'), duration: 1400, icon: 'success' });

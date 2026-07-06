@@ -27,6 +27,10 @@ import {
     logAnswerlatticeFailure,
 } from '@lib/answerlattice/diagnostics';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
+import {
+    normalizeAnswerlatticeStaffUserId,
+    requireAnswerlatticeStaffUserId,
+} from '@lib/answerlattice/staffUserIdBoundary';
 import { answerlatticeAuthAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, authAdmin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
@@ -98,8 +102,13 @@ const CreateAnswerlatticeStaffSchema = z.object({
     phoneNumber: optionalTrimmedStringSchema(32),
 });
 
+const AnswerlatticeStaffUserIdSchema = z.string()
+    .trim()
+    .max(160)
+    .refine((value) => normalizeAnswerlatticeStaffUserId(value) === value, 'Invalid user ID');
+
 const UpdateAnswerlatticeStaffSchema = z.object({
-    userId: z.string().trim().min(1).max(160),
+    userId: AnswerlatticeStaffUserIdSchema,
     name: optionalTrimmedStringSchema(160),
     active: z.boolean().optional(),
     roleId: optionalTrimmedStringSchema(120),
@@ -109,7 +118,7 @@ const UpdateAnswerlatticeStaffSchema = z.object({
 });
 
 const UserIdSchema = z.object({
-    userId: z.string().trim().min(1).max(160),
+    userId: AnswerlatticeStaffUserIdSchema,
 });
 
 const SaveAnswerlatticeRoleSchema = z.object({
@@ -469,7 +478,9 @@ const getAnswerlatticeUserByEmail = async (email: string) => {
 const getAnswerlatticeUserById = async (userId: string) => {
     const db = getAnswerlatticeDb();
     if (!db) return null;
-    const doc = await db.collection(DB_COLLECTIONS.USERS).doc(userId).get();
+    const normalizedUserId = normalizeAnswerlatticeStaffUserId(userId);
+    if (!normalizedUserId) return null;
+    const doc = await db.collection(DB_COLLECTIONS.USERS).doc(normalizedUserId).get();
     return doc.exists ? { id: doc.id, ref: doc.ref, data: doc.data() || {} } : null;
 };
 
@@ -489,7 +500,8 @@ const syncDefaultAuthProductAccount = async (params: {
 }) => {
     const now = admin.firestore.Timestamp.now();
     const existingDefaultUser = await getDefaultAuthUserByEmail(params.email);
-    const defaultUserId = existingDefaultUser?.id || params.userId;
+    const userId = requireAnswerlatticeStaffUserId(params.userId);
+    const defaultUserId = requireAnswerlatticeStaffUserId(existingDefaultUser?.id || userId);
     const shouldSetRootAnswerlatticeScope = !existingDefaultUser?.tenantId || !existingDefaultUser?.storeId || existingDefaultUser?.pId === PRODUCT_IDS.ANSWERLATTICE;
     const productAccount = sanitizeFirestoreValue({
         active: params.active !== false,
@@ -523,7 +535,7 @@ const syncDefaultAuthProductAccount = async (params: {
             storeId: params.storeId,
             tId: params.tenantId,
             sId: params.storeId,
-            uId: params.userId,
+            uId: userId,
             role: params.roleId,
             stores: [{
                 storeId: params.storeId,
@@ -547,7 +559,9 @@ const updateDefaultAuthProductAccountStatus = async (params: {
     userId: string;
 }) => {
     const existingDefaultUser = params.email ? await getDefaultAuthUserByEmail(params.email) : null;
-    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(existingDefaultUser?.id || params.userId);
+    const userId = requireAnswerlatticeStaffUserId(params.userId);
+    const defaultUserId = requireAnswerlatticeStaffUserId(existingDefaultUser?.id || userId);
+    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(defaultUserId);
     const userSnap = await userRef.get();
     if (!userSnap.exists) return;
     const userData = userSnap.data() || {};
@@ -837,7 +851,7 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
         password: tempPassword,
     });
     const existingDefaultUser = await getDefaultAuthUserByEmail(loginEmail);
-    const userId = existingAnswerlatticeUser?.id || existingDefaultUser?.id || defaultFirebaseUser.uid;
+    const userId = requireAnswerlatticeStaffUserId(existingAnswerlatticeUser?.id || existingDefaultUser?.id || defaultFirebaseUser.uid);
     const now = admin.firestore.Timestamp.now();
     const phoneUsername = normalizedPhone.phoneUsername;
     const stores = [{

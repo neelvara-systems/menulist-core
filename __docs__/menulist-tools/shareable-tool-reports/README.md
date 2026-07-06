@@ -1,9 +1,9 @@
 # Shareable Tool Reports - Documentation Hub
 
 > **Feature:** Shareable public report layer for MenuList Tools
-> **Status:** Implemented V0 for public report viewing, all current public MenuList Tools, setup job lists, structured consented report follow-up capture, and internal Report Leads triage
-> **Last Updated:** July 4, 2026
-> **Version:** 0.7
+> **Status:** Implemented V0 for public report viewing, all current public MenuList Tools, setup job lists, structured consented report follow-up capture with canonical source timestamps, and internal Report Leads triage
+> **Last Updated:** July 5, 2026
+> **Version:** 0.8
 
 ---
 
@@ -40,7 +40,7 @@ The V0 implementation is intentionally light:
 - invalid, oversized, or malformed report hashes keep the invalid-report state and use bounded decode diagnostics only
 - all current public MenuList Tools can copy a public report link
 - each report carries a bounded setup job list derived from its visible gaps
-- optional report follow-up form reuses the existing consented `/api/public/contact` path and stores bounded `sourceContext` metadata on that existing enquiry
+- optional report follow-up form reuses the existing consented `/api/public/contact` path and stores bounded `sourceContext` metadata with canonical ISO `reportGeneratedAt` on that existing enquiry
 - internal platform route: `/ops/report-leads` for manual triage of consented report leads
 
 The URL hash fragment is not sent to the server during normal HTTP requests. This keeps the first public report layer useful for sharing while avoiding a new report-storage system.
@@ -48,6 +48,8 @@ The URL hash fragment is not sent to the server during normal HTTP requests. Thi
 Malformed report-link payloads are not stored or sent to a server. The browser decoder logs bounded decode diagnostics with payload shape and failure stage only; it does not log the report hash, decoded JSON, business names, evidence rows, setup jobs, or contact details.
 
 If a visitor submits the follow-up form, MenuList stores one existing public contact enquiry with a bounded report summary and structured report metadata after consent and security checks. That is lead capture, not report storage.
+
+Direct follow-up submissions store `sourceContext.reportGeneratedAt` only when it is the canonical ISO timestamp shape produced by source tools. Invalid or malformed values are stored as `null` and returned as `null` by Report Leads.
 
 Report Leads at `/ops/report-leads` reads those existing enquiries for platform-admin triage. It is not public, not an owner surface, and not a report history system.
 
@@ -107,6 +109,7 @@ Future tools must adopt the shared payload contract when their report cards are 
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 0.8 | July 5, 2026 | Added canonical ISO `reportGeneratedAt` normalization for consented report follow-up metadata and Report Leads triage |
 | 0.7 | July 5, 2026 | Added bounded decode diagnostics for invalid, oversized, malformed, or wrong-shape report hash payloads without storing or logging report content |
 | 0.6 | July 4, 2026 | Added bounded setup job lists to shareable report payloads, public viewer output, consented source metadata, and Report Leads triage |
 | 0.5 | July 3, 2026 | Added internal Report Leads monitor at `/ops/report-leads` for bounded platform-admin triage of consented report follow-ups |

@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { normalizeAuthClaimToken } from "@lib/auth/claimTokenBoundary";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
@@ -55,9 +56,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const token = searchParams.get("token");
+    const token = normalizeAuthClaimToken(searchParams.get("token"));
 
-    if (!token || token.length < 20) {
+    if (!token) {
       return NextResponse.json({ valid: false, error: "Invalid or expired claim link." }, { status: 400 });
     }
 

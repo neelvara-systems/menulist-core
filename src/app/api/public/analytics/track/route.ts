@@ -8,6 +8,7 @@ import { getResolvedAnalyticsPreferences, type ResolvedAnalyticsPreferences } fr
 import { filterAnalyticsUpdateData } from '@lib/analytics/writePolicy';
 import { writePublicAnalyticsEventAdmin } from '@lib/analytics/serverWrite';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -27,7 +28,7 @@ const AnalyticsValueSchema = z.union([
 const AnalyticsTrackSchema = z.object({
     tenantId: z.union([z.string().regex(/^\d{1,20}$/), z.number().int().positive()]),
     storeId: z.union([z.string().regex(/^\d{1,20}$/), z.number().int().positive()]),
-    projectId: z.string().trim().regex(/^[A-Za-z0-9_-]{1,120}$/),
+    projectId: z.string().trim().regex(/^[A-Za-z0-9_-]{1,120}$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),
     dateString: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     storeTimeZone: z.string().trim().max(80).optional(),
     businessDayEndTime: z.string().trim().regex(/^\d{2}:\d{2}$/).optional(),
@@ -41,6 +42,22 @@ const AnalyticsTrackSchema = z.object({
 
 const RESERVED_PROJECT_IDS = new Set(['obp', 'customerApp']);
 const PUBLIC_ANALYTICS_TRACK_MAX_BODY_BYTES = 64 * 1024;
+
+type PublicAnalyticsNumericDocumentId = {
+    documentId: string;
+    numericId: number;
+};
+
+function normalizePublicAnalyticsNumericDocumentId(value: unknown): PublicAnalyticsNumericDocumentId | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (documentId !== raw || !/^\d+$/.test(documentId) || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { documentId, numericId }
+        : null;
+}
 
 type ValidatedAnalyticsTarget = {
     analyticsPreferences: ResolvedAnalyticsPreferences;
@@ -165,8 +182,13 @@ async function postAnalyticsTrack(req: NextRequest) {
     }
 
     const data = validation.data;
-    const tenantId = String(data.tenantId);
-    const storeId = String(data.storeId);
+    const tenantScope = normalizePublicAnalyticsNumericDocumentId(data.tenantId);
+    const storeScope = normalizePublicAnalyticsNumericDocumentId(data.storeId);
+    if (!tenantScope || !storeScope) {
+        return NextResponse.json({ success: false, error: 'Validation failed.' }, { status: 400 });
+    }
+    const tenantId = tenantScope.documentId;
+    const storeId = storeScope.documentId;
 
     try {
         const validTarget = await validateAnalyticsTarget(tenantId, storeId, data.projectId);

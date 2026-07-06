@@ -186,6 +186,10 @@ All existing Answerlattice indexes remain unchanged:
 | promoteCandidate | READ+WRITE | 2 | 4 |
 | mergeCandidateStatus | WRITE | 0 | 1 |
 
+Answerlattice App Entity Candidate ID Boundary: candidate status and promotion actions validate candidate document IDs before Firestore refs or promotion audit metadata. This adds no reads/writes for valid candidate IDs and fails before Firestore access for malformed, reserved, empty, or path-shaped IDs.
+
+Answerlattice App Entity DAL ID Boundary: entity update/deprecate, relation delete, search-index upsert, alias sync, and entity merge validate entity, relation, and search-index document IDs before Firestore refs or query keys. This adds no reads/writes for valid IDs and fails before Firestore access for malformed, reserved, empty, path-shaped, or unresolved entity IDs.
+
 ### entityExtraction.ts (3 functions — 1 new)
 
 | Function | Type | Reads | Writes |

@@ -292,7 +292,7 @@ export async function renderPrintableAsset(input: PrintableAssetRenderInput): Pr
         const result = await generateMenuKit(menuKitInput);
         return {
             blob: result.zipBlob,
-            filename: `${safeName(input.storeName)}_MenuKit_${input.templateFamilyId}.zip`,
+            filename: result.zipFilename,
             label: assetType.title,
             mimeType: 'application/zip',
             outputFormat: 'zip',

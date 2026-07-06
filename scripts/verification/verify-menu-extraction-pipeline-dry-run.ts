@@ -339,7 +339,9 @@ const publicClaimRoute = read('src/app/api/public/create-menu/claim/route.ts');
 assertCheck(
   'public claim creates renderer-parseable project IDs',
   publicClaimRoute.includes('const projectId = `${tenantId}-${Date.now().toString(36)}-${storeId}`')
-    && publicClaimRoute.includes('const projectRef = db.collection(projectCollectionPath).doc(projectId)')
+    && publicClaimRoute.includes('.doc(tenantDocumentId)')
+    && publicClaimRoute.includes('.collection(storeDocumentId)')
+    && publicClaimRoute.includes('.doc(projectId)')
     && publicClaimRoute.includes('revalidateTag(`menu-store-${result.storeId}`)'),
 );
 

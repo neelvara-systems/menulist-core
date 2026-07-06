@@ -72,6 +72,8 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `TicketHistoryView.tsx`      | —     | Ticket detail with messages                                                           |
 | Governance components        | —     | Not mounted in Help Center. `AnswerlatticeCoverageKPI`, `MutationProposalReview`, `EntityCandidateReview`, and `GovernanceHub` belong to Answerlattice owner/admin routes. |
 
+Answerlattice FAQ article reference ID boundary: FAQ-linked article references in `src/lib/answerlattice/faqRetrieval.ts` are normalized through the KB article ID boundary before related-article output or full-article Firestore reads. Invalid linked article IDs are skipped rather than becoming article document refs.
+
 **Landing subcomponents:** `landing/`
 
 | File                   | Purpose                          |

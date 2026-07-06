@@ -40,6 +40,7 @@ const REPORT_LEAD_STATUS_FILTERS: [ReportLeadReportStatusFilter, ...ReportLeadRe
   ...REPORT_LEAD_STATUSES,
 ];
 const REPORT_LEAD_OPS_RATE_LIMIT_KEY = 'report-leads-ops';
+const REPORT_LEAD_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 const ReportLeadQuerySchema = z.object({
   reportStatus: z.enum(REPORT_LEAD_STATUS_FILTERS).default('all'),
@@ -77,6 +78,17 @@ function cleanCount(value: unknown): number {
   const numberValue = Number(value || 0);
   if (!Number.isFinite(numberValue)) return 0;
   return Math.max(0, Math.min(999, Math.floor(numberValue)));
+}
+
+function cleanReportLeadGeneratedAt(value: unknown): string | null {
+  const timestamp = cleanOpsText(value, 80);
+  if (!timestamp || !REPORT_LEAD_ISO_TIMESTAMP_PATTERN.test(timestamp)) return null;
+
+  const timestampMs = Date.parse(timestamp);
+  if (!Number.isFinite(timestampMs)) return null;
+
+  const normalizedTimestamp = new Date(timestampMs).toISOString();
+  return normalizedTimestamp === timestamp ? normalizedTimestamp : null;
 }
 
 function cleanSetupJobList(value: unknown) {
@@ -163,7 +175,7 @@ function serializeLead(doc: FirebaseFirestore.QueryDocumentSnapshot): ReportLead
     sourcePrimaryNumber: primaryNumber === null || primaryNumber === undefined ? null : cleanCount(primaryNumber),
     businessName: cleanOpsText(sourceContext.businessName, 140) || null,
     businessContext: cleanOpsText(sourceContext.businessContext, 160) || null,
-    reportGeneratedAt: cleanOpsText(sourceContext.reportGeneratedAt, 80) || null,
+    reportGeneratedAt: cleanReportLeadGeneratedAt(sourceContext.reportGeneratedAt),
     missingCount: cleanCount(sourceContext.missingCount),
     unclearCount: cleanCount(sourceContext.unclearCount),
     notCheckedCount: cleanCount(sourceContext.notCheckedCount),

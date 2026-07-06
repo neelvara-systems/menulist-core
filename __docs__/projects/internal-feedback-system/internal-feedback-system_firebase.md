@@ -1,7 +1,7 @@
 # Internal Feedback System - Firebase Contract
 
 **Status:** Implemented
-**Last Updated:** July 2, 2026
+**Last Updated:** July 6, 2026
 **Audience:** Developers, Firebase operators, production readiness reviewers
 
 ---
@@ -14,6 +14,10 @@
 | `feedbackEvents` | Server/admin and client DAL event helpers | No public/client read path | Compact internal MOL event trail |
 
 Client-created `guestFeedback` documents are denied in `firestore.rules`. Public submissions must pass the API route so body caps, Zod validation, honeypot, Turnstile, project/store/tenant checks, store field-default enforcement, and safe review URL normalization run before a write.
+
+Guest Feedback project ID admission is cost-neutral for valid public feedback pages and submissions. `src/lib/feedback/guestFeedbackProjectIdBoundary.ts` preserves the supported project-ID character rule while rejecting malformed, whitespace-mutated, path-shaped, or reserved Firestore document IDs before the public QR page reads `projects/{tId}/{sId}/{projectId}` and before `POST /api/public/feedback/submit` reaches honeypot, Turnstile verification, project/store/tenant reads, `guestFeedback` writes, or MOL event logging. The submit schema no longer trims project IDs before validation. The submit route repeats the normalizer before `.doc(projectId)`, the `guestFeedback` write payload, MOL event logging, and bounded diagnostics, so malformed helper-local values fail before Firestore work and `.doc(data.projectId)` remains excluded. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache tags, rules, indexes, owner settings, Firebase deploy requirement, or Vercel deploy action.
+
+Guest Feedback target document-ID admission is cost-neutral for valid public feedback submissions. `normalizeGuestFeedbackNumericDocumentId()` in `src/lib/feedback/guestFeedbackProjectIdBoundary.ts` requires exact positive numeric MenuList tenant/store IDs plus the shared Firestore document-ID boundary before `/api/public/feedback/submit` builds `projects/{tId}/{sId}/{projectId}`, `stores/{sId}`, or `tenants/{tId}` refs. Invalid whitespace-mutated, path-shaped, reserved, zero, negative, decimal, unsafe, or nonnumeric tenant/store IDs fail as validation errors before Turnstile, Firestore reads, `guestFeedback` writes, MOL event logging, or bounded diagnostics. This changes no valid Firestore read/write/delete counts, Storage operations, Cloud Functions, cache tags, rules, indexes, owner settings, Firebase deploy requirement, or Vercel deploy action.
 
 ---
 
@@ -30,6 +34,8 @@ Guest feedback writes do not invalidate public menu/OBP cache because feedback i
 Feedback nudge storage diagnostics: the public menu inline feedback nudge uses browser-local sessionStorage only to avoid repeating the nudge in one tab session. Failed read/write paths log bounded `public_menu_feedback_nudge_storage_read_failed` / `public_menu_feedback_nudge_storage_write_failed` diagnostics only and add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
 Review URL parse diagnostics are cost-neutral. Malformed configured review URLs still resolve to absent guest-facing review links, while `guest_feedback_review_url_parse_failed` logs bounded source/value-shape metadata with fixed `omit_review_url` fallback policy only. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache tags, rules, indexes, owner settings, Firebase deploy requirement, or Vercel deploy action.
+
+Feedback QR download filename boundary is Firebase-cost neutral. Desktop Use MenuList and mobile Share now pass feedback QR filenames through `getQrCodeFilename(data.storeName)` before browser download instead of raw store-name whitespace replacement. This changes only the local filename string used by `downloadQrCode()`: no Firestore reads/writes/deletes, Storage operations, Cloud Functions, API routes, provider calls, cache invalidations, rules, indexes, Firebase deploy requirement, Vercel deploy action, or owner setting changes are added.
 
 ---
 

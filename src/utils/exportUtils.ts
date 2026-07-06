@@ -19,17 +19,24 @@ export interface ExportOptions {
 /**
  * Escape CSV values to handle special characters
  */
-const escapeCSVValue = (value: any): string => {
+const CSV_FORMULA_INJECTION_PREFIXES = /^[=+\-@\t\r\n]/;
+
+const shouldEscapeCSVFormula = (value: unknown): value is string => (
+    typeof value === 'string' && CSV_FORMULA_INJECTION_PREFIXES.test(value.trimStart())
+);
+
+export const escapeCSVValue = (value: any): string => {
     if (value === null || value === undefined) return 'N/A';
 
     const stringValue = String(value);
+    const safeValue = shouldEscapeCSVFormula(value) ? `'${stringValue}` : stringValue;
 
     // If value contains comma, newline, or quotes, wrap in quotes and escape existing quotes
-    if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
-        return `"${stringValue.replace(/"/g, '""')}"`;
+    if (safeValue.includes(',') || safeValue.includes('\n') || safeValue.includes('\r') || safeValue.includes('"')) {
+        return `"${safeValue.replace(/"/g, '""')}"`;
     }
 
-    return stringValue;
+    return safeValue;
 };
 
 /**
@@ -55,7 +62,7 @@ export const exportToCSV = <T = any>(
 
     try {
         // Extract headers
-        const headers = columns.map(col => col.header);
+        const headers = columns.map(col => escapeCSVValue(col.header));
 
         // Extract rows using column accessors
         const rows = data.map(item => {
@@ -126,7 +133,7 @@ export const exportToExcel = <T = any>(
     } = options;
 
     try {
-        const headers = columns.map(col => col.header);
+        const headers = columns.map(col => escapeCSVValue(col.header));
         const rows = data.map(item => {
             return columns.map(col => {
                 const value = col.accessor(item);

@@ -10,6 +10,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { normalizeMessagingPreviewSessionId } from "@lib/messaging-onboarding/previewRouteBoundary";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import crypto from "crypto";
@@ -45,13 +46,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { sessionId: string } },
 ) {
-  const { sessionId } = params;
-  let failureContext = getPreviewGetLogContext(sessionId);
+  const rawSessionId = params?.sessionId;
+  let failureContext = getPreviewGetLogContext(rawSessionId);
 
   try {
-    if (!sessionId || sessionId.length < 10) {
+    const sessionId = normalizeMessagingPreviewSessionId(rawSessionId);
+    if (!sessionId) {
       return NextResponse.json({ error: "Invalid session" }, { status: 400 });
     }
+    failureContext = getPreviewGetLogContext(sessionId);
 
     const ip = getClientIp(request);
     const ipHash = hashPublicRateLimitValue(ip);

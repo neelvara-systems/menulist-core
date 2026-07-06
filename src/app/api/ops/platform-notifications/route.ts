@@ -17,6 +17,7 @@ import {
   type PlatformNotificationSeverity,
 } from '@data/shared/platformNotificationRegistry';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { logger } from '@lib/monitoring/logger';
 import { createAlert } from '@lib/ops/alerts';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
@@ -74,22 +75,28 @@ const BOUNDED_METADATA_PREVIEW_KEYS = new Set([
   'tenantId',
 ]);
 
+const PlatformNotificationEventIdSchema = z.string()
+  .trim()
+  .min(6)
+  .max(120)
+  .refine(isValidFirestoreDocumentId, 'Invalid event ID');
+
 const GetQuerySchema = z.object({
   status: z.enum(STATUS_FILTERS as [PlatformNotificationStatusFilter, ...PlatformNotificationStatusFilter[]]).default('active'),
   severity: z.enum(SEVERITY_FILTERS as [PlatformNotificationSeverityFilter, ...PlatformNotificationSeverityFilter[]]).default('all'),
   triggerType: z.string().trim().max(120).optional().default('all'),
   limit: z.coerce.number().int().min(5).max(100).default(50),
-  eventId: z.string().trim().min(6).max(120).optional(),
+  eventId: PlatformNotificationEventIdSchema.optional(),
 });
 
 const PostActionSchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('acknowledge'),
-    eventId: z.string().trim().min(6).max(120),
+    eventId: PlatformNotificationEventIdSchema,
   }),
   z.object({
     action: z.literal('manualHandoff'),
-    eventId: z.string().trim().min(6).max(120),
+    eventId: PlatformNotificationEventIdSchema,
     channel: z.enum(['email', 'whatsapp_web']),
     destination: z.string().trim().max(254).optional(),
     note: z.string().trim().max(600).optional(),
@@ -294,6 +301,12 @@ async function getDetail(eventId?: string, cost?: PlatformNotificationOpsCost): 
   return snap.exists ? serializeAlertDoc(snap) : undefined;
 }
 
+async function getExistingAlertRef(eventId: string) {
+  const ref = firestoreAdmin.collection(DB_COLLECTIONS.SYSTEM_ALERTS).doc(eventId);
+  const snap = await ref.get();
+  return snap.exists ? ref : null;
+}
+
 export const GET = withAuth(async (request, session) => {
   if (!FEATURE_FLAGS.ENABLE_PLATFORM_NOTIFICATION_DASHBOARD) {
     return NextResponse.json({ error: 'Platform notification dashboard is disabled' }, { status: 404 });
@@ -410,12 +423,17 @@ export const POST = withAuth(async (request, session) => {
 
   try {
     if (validation.data.action === 'acknowledge') {
-      await firestoreAdmin.collection(DB_COLLECTIONS.SYSTEM_ALERTS).doc(validation.data.eventId).set({
+      const alertRef = await getExistingAlertRef(validation.data.eventId);
+      if (!alertRef) {
+        return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
+      }
+
+      await alertRef.update({
         acknowledged: true,
         acknowledgedAt: Timestamp.now(),
         acknowledgedBy: operatorId,
         updatedAt: Timestamp.now(),
-      }, { merge: true });
+      });
 
       return NextResponse.json({
         ok: true,
@@ -431,7 +449,12 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ error: destinationError }, { status: 400 });
       }
 
-      await firestoreAdmin.collection(DB_COLLECTIONS.SYSTEM_ALERTS).doc(validation.data.eventId).set({
+      const alertRef = await getExistingAlertRef(validation.data.eventId);
+      if (!alertRef) {
+        return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
+      }
+
+      await alertRef.update({
         actionTaken: true,
         manualHandoffAt: Timestamp.now(),
         manualHandoffBy: operatorId,
@@ -441,7 +464,7 @@ export const POST = withAuth(async (request, session) => {
           : null,
         manualHandoffNote: validation.data.note || null,
         updatedAt: Timestamp.now(),
-      }, { merge: true });
+      });
 
       return NextResponse.json({
         ok: true,

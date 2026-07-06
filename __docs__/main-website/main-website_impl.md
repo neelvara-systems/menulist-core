@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.102 Business Facts Copy Pack
-**Last Updated:** July 4, 2026
+**Status:** IMPLEMENTED — v3.6.107 Website Google Analytics Page-Location Boundary
+**Last Updated:** July 5, 2026
 **Audience:** Developers
 
 ---
@@ -11,6 +11,10 @@
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
 
 The latest analytics pass adds consent-gated Plausible Cloud support for the MenuList and Answerlattice public marketing websites only. The scripts mount only after analytics consent and only when the product-specific Plausible domain env var is configured. GA4 remains available for paid-ad/conversion continuity, Microsoft Clarity remains MenuList-only and env-gated by `NEXT_PUBLIC_CLARITY_ID` for visual behavior observation, and product analytics plus owner-facing business truth stay in the existing MenuList-owned analytics pipeline.
+
+Google Analytics page views strip query strings and hash fragments from `page_location`, and the GA script fails closed unless `NEXT_PUBLIC_GA_MEASUREMENT_ID` matches the GA4 `G-...` measurement-id shape. Public utility-route query strings, report hash payloads, and success-page URLs should not enter default GA page-view URLs.
+
+Resource GA4 custom-event payloads are bounded through `trackGoogleMarketingEvent`: resource page, CTA, AI/referrer, create-menu/pricing, and checklist-copy event strings strip control characters and cap URL/referrer/UTM-style values before GA4 receives them. Resource Plausible events remain property-free.
 
 ```
 Route Group: src/app/(website)/

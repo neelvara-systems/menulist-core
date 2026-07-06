@@ -17,11 +17,13 @@ const requiredFiles = [
   'src/lib/ai-menu-manager/domainConversationRouter.ts',
   'src/lib/ai-menu-manager/modelRouter/routerOutcomeSchema.ts',
   'src/lib/ai-menu-manager/patchPolicy.ts',
+  'src/lib/ai-menu-manager/routeIds.ts',
   'src/lib/ai-menu-manager/actions/projectPatches.ts',
   'src/database/aiMenuManager/server.ts',
   'src/database/aiMenuManager/index.ts',
   'src/app/api/ai-menu-manager/command/route.ts',
   'src/app/api/ai-menu-manager/inbox/route.ts',
+  'src/app/api/ai-menu-manager/sessions/[sessionId]/route.ts',
   'src/app/api/ai-menu-manager/proposals/[proposalId]/actions/route.ts',
   'src/app/api/ai-menu-manager/proposals/[proposalId]/complete/route.ts',
   'src/app/(main)/menu-manager/page.tsx',
@@ -136,6 +138,17 @@ assert(aiMenuManagerSpec.includes('## Website Claim Guard'), 'AMM spec must keep
 assert(aiMenuManagerSpec.includes('Website and launch copy may say AI Menu Manager handles verified daily menu operations'), 'AMM spec must define allowed website claim scope');
 assert(aiMenuManagerSpec.includes('full speech-to-command is verified for launch use'), 'AMM spec must require verification before full speech-to-command launch claims');
 assert(!/full speech-to-command is production-ready/i.test(aiMenuManagerSpec), 'AMM spec must not use unqualified production-ready wording for speech claims');
+const aiMenuManagerImplDoc = read('__docs__/ai-menu-manager/ai-menu-manager_impl.md');
+const aiMenuManagerFirebaseDoc = read('__docs__/ai-menu-manager/ai-menu-manager_firebase.md');
+const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+const changelogUpper = read('__docs__/CHANGELOG.md');
+const changelogLower = read('__docs__/changelog.md');
+assert(aiMenuManagerImplDoc.includes('GET /api/ai-menu-manager/sessions/{sessionId}'), 'AMM implementation doc must describe the session route fallback');
+assert(aiMenuManagerImplDoc.includes('route `proposalId` must match the deterministic `amm_prop_` proposal ID shape before proposal reads'), 'AMM implementation doc must document proposal route ID admission');
+assert(aiMenuManagerFirebaseDoc.includes('AMM route ID boundary'), 'AMM Firebase doc must document route ID admission before reads');
+assert(productionReadinessAudit.includes('AI Menu Manager route ID boundary checkpoint'), 'Production readiness audit must record the AMM route ID boundary checkpoint');
+assert(changelogUpper.includes('AI Menu Manager Route ID Boundary'), 'Primary changelog must record the AMM route ID boundary');
+assert(changelogLower.includes('AI Menu Manager Route ID Boundary'), 'Lowercase changelog must record the AMM route ID boundary');
 
 const actionTypes = read('src/lib/ai-menu-manager/actionTypes.ts');
 for (const actionType of requiredActionTypes) {
@@ -203,6 +216,17 @@ assert(apiGuards.includes('key: `${params.keyPrefix}:${userRateLimitHash}:${tena
 assert(!apiGuards.includes('buildSecurityContext'), 'AMM API guards must not spread raw security context into guard security logs');
 assert(!apiGuards.includes('key: `${params.keyPrefix}:${userId'), 'AMM API guards must not store raw user IDs in limiter keys');
 
+const routeIds = read('src/lib/ai-menu-manager/routeIds.ts');
+assert(routeIds.includes('isValidFirestoreDocumentId'), 'AMM route ID boundary must use the shared Firestore document ID guard');
+assert(routeIds.includes('AI_MENU_MANAGER_SESSION_ID_PATTERN = /^amm_[a-f0-9]{24}$/'), 'AMM route ID boundary must preserve deterministic session ID shape');
+assert(routeIds.includes('AI_MENU_MANAGER_PROPOSAL_ID_PATTERN = /^amm_prop_[a-f0-9]{28}$/'), 'AMM route ID boundary must preserve deterministic proposal ID shape');
+assert(routeIds.includes('AI_MENU_MANAGER_PROJECT_ID_MAX_LENGTH = 160'), 'AMM route ID boundary must keep selected project IDs bounded');
+assert(routeIds.includes('normalizeAiMenuManagerSessionId') && routeIds.includes('normalizeAiMenuManagerProposalId') && routeIds.includes('normalizeAiMenuManagerProjectId'), 'AMM route ID normalizers missing');
+assert(routeIds.includes('normalizeAiMenuManagerScopeDocumentId'), 'AMM route ID boundary must expose a tenant/store scope document ID normalizer');
+assert(routeIds.includes('documentId !== documentId.trim()'), 'AMM route/session/project IDs must reject whitespace-mutated values');
+assert(routeIds.includes('raw !== raw.trim() || !isValidFirestoreDocumentId(raw)'), 'AMM scope document IDs must reject whitespace-mutated or invalid Firestore IDs');
+assert(routeIds.includes('Number.isSafeInteger(numericId)') && routeIds.includes('String(numericId) !== raw'), 'AMM scope document IDs must be exact positive MenuList numeric document IDs');
+
 const clientDal = read('src/database/aiMenuManager/index.ts');
 const sendCommandBlock = (clientDal.split('export async function sendAiMenuManagerCommand')[1] || '').split('export async function getAiMenuManagerClientInbox')[0] || '';
 const completionBlock = (clientDal.split('export async function completeAiMenuManagerClientOperation')[1] || '').split('export async function submitAiMenuManagerProposalAction')[0] || '';
@@ -263,6 +287,8 @@ const actionRoute = read('src/app/api/ai-menu-manager/proposals/[proposalId]/act
 assert(actionRoute.includes('readBoundedJsonBody'), 'Proposal action route must use bounded JSON body parsing');
 assert(actionRoute.includes('AI_MENU_MANAGER_PROPOSAL_ACTION_MAX_BODY_BYTES'), 'Proposal action route must define an explicit request body cap');
 assert(!actionRoute.includes('request.json()'), 'Proposal action route must not use raw request.json() parsing');
+assert(actionRoute.includes('normalizeAiMenuManagerProposalId(params?.proposalId)'), 'Proposal action route must normalize route proposal ID before reads');
+assert(actionRoute.indexOf('normalizeAiMenuManagerProposalId(params?.proposalId)') < actionRoute.indexOf('getAiMenuManagerProposal(proposalId)'), 'Proposal action route must reject malformed proposal IDs before Firestore proposal reads');
 assert(actionRoute.includes('ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES'), 'Proposal approval must be guarded by confirmed-write flag');
 assert(actionRoute.includes('client_project_mutation'), 'Proposal approval must restrict executable client project mutations');
 assert(actionRoute.includes('parsed.data.projectId') && actionRoute.includes('parsed.data.actionType'), 'Proposal approval must verify selected project/action scope');
@@ -702,7 +728,10 @@ for (const coverageConst of [
 
 const schemas = read('src/lib/ai-menu-manager/schemas.ts');
 assert(schemas.includes('AI_MENU_MANAGER_ACTION_TYPES') && schemas.includes('knownActionTypes.has'), 'Proposal schemas must reject unknown action types');
-assert(schemas.includes('projectId: idSchema'), 'AMM inbox requests must require selected project context');
+assert(schemas.includes('projectId: projectIdSchema'), 'AMM inbox requests must require selected project context through the project ID boundary');
+assert(schemas.includes('sessionId: sessionIdSchema.optional()'), 'AMM command/inbox schemas must validate deterministic session IDs');
+assert(schemas.includes('normalizeAiMenuManagerProjectId(value) === value'), 'AMM schemas must reject path-shaped selected project IDs');
+assert(schemas.includes('normalizeAiMenuManagerSessionId(value) === value'), 'AMM schemas must reject malformed session IDs');
 assert(schemas.includes('commandContextTargetSchema') && schemas.includes('selectedEntityIds'), 'AMM command schema must validate composer context selection');
 assert(schemas.includes('replaceOperationId: idSchema.optional()'), 'AMM server command schema must support replacing clarification/follow-up cards');
 
@@ -710,8 +739,16 @@ const completeRoute = read('src/app/api/ai-menu-manager/proposals/[proposalId]/c
 assert(completeRoute.includes('readBoundedJsonBody'), 'Completion route must use bounded JSON body parsing');
 assert(completeRoute.includes('AI_MENU_MANAGER_PROPOSAL_COMPLETE_MAX_BODY_BYTES'), 'Completion route must define an explicit request body cap');
 assert(!completeRoute.includes('request.json()'), 'Completion route must not use raw request.json() parsing');
+assert(completeRoute.includes('normalizeAiMenuManagerProposalId(params?.proposalId)'), 'Completion route must normalize route proposal ID before reads');
+assert(completeRoute.indexOf('normalizeAiMenuManagerProposalId(params?.proposalId)') < completeRoute.indexOf('getAiMenuManagerProposal(proposalId)'), 'Completion route must reject malformed proposal IDs before Firestore proposal reads');
 assert(completeRoute.includes('parsed.data.projectId') && completeRoute.includes('parsed.data.actionType'), 'Completion route must verify selected project/action scope');
 assert(!completeRoute.includes("error?.message || 'Completion failed'"), 'Completion route must not echo internal error messages');
+
+const sessionRoute = read('src/app/api/ai-menu-manager/sessions/[sessionId]/route.ts');
+assert(sessionRoute.includes('normalizeAiMenuManagerSessionId(params?.sessionId)'), 'Session route must normalize route session ID before reads');
+assert(sessionRoute.includes("normalizeAiMenuManagerProjectId(request.nextUrl.searchParams.get('projectId'))"), 'Session route must normalize selected project ID before reads');
+assert(sessionRoute.indexOf('normalizeAiMenuManagerSessionId(params?.sessionId)') < sessionRoute.indexOf('getAiMenuManagerInbox({'), 'Session route must reject malformed session IDs before Firestore inbox reads');
+assert(sessionRoute.indexOf("normalizeAiMenuManagerProjectId(request.nextUrl.searchParams.get('projectId'))") < sessionRoute.indexOf('getAiMenuManagerInbox({'), 'Session route must reject malformed selected project IDs before Firestore inbox reads');
 
 const ownerRoute = read('src/app/(main)/menu-manager/page.tsx');
 assert(ownerRoute.includes('AiMenuManagerRoute'), 'AMM owner route must be mounted at /menu-manager');
@@ -727,11 +764,36 @@ assert(serverRepo.includes('MAX_COMPACT_MESSAGES = 20'), 'Compact message cap mu
 assert(serverRepo.includes('MAX_PENDING_SUMMARIES = 25'), 'Pending summary cap must be explicit');
 assert(serverRepo.includes('MAX_RECEIPTS = 20'), 'Receipt cap must be explicit');
 assert(serverRepo.includes('MAX_IDEMPOTENCY_KEYS = 10'), 'Idempotency cap must be explicit');
+assert(serverRepo.includes('normalizeAiMenuManagerSessionId(sessionId)'), 'AMM server DAL must normalize session IDs before session document refs');
+assert(serverRepo.includes('normalizeAiMenuManagerProposalId(proposalId)'), 'AMM server DAL must normalize proposal IDs before proposal document refs');
+assert(serverRepo.includes('normalizeAiMenuManagerProjectId(params.projectId)'), 'AMM server DAL must normalize selected project IDs before project document refs');
+assert(serverRepo.includes('normalizeAiMenuManagerScopeDocumentId(params.tId)'), 'AMM server DAL must normalize tenant scope before scoped project refs');
+assert(serverRepo.includes('normalizeAiMenuManagerScopeDocumentId(params.sId)'), 'AMM server DAL must normalize store scope before scoped project refs');
+assert(serverRepo.includes('requireAiMenuManagerScopeDocumentIds(params)'), 'AMM server DAL mutations must fail closed before invalid tenant/store scope refs');
+assert(serverRepo.includes('.doc(scope.tId)') && serverRepo.includes('.collection(scope.sId)'), 'AMM server DAL scoped project refs must use normalized tenant/store scope');
+assert(serverRepo.includes('requireSessionRef(params.sessionId)'), 'AMM command persistence must fail closed before invalid session document refs');
+assert(serverRepo.includes('requireProposalRef(params.proposal.proposalId)'), 'AMM command persistence must fail closed before invalid proposal document refs');
+assert(serverRepo.includes('.map((entry) => normalizeAiMenuManagerProposalId(entry.proposalId))'), 'AMM inbox hydration must filter stored proposal summary IDs before proposal refs');
+assert(serverRepo.includes('const sessionSnap = sessionRef ? await transaction.get(sessionRef) : null;'), 'AMM proposal mutation paths must skip invalid stored session refs');
+assert(!serverRepo.includes('.doc(sessionId)'), 'AMM server DAL must not directly pass sessionId into Firestore doc refs');
+assert(!serverRepo.includes('.doc(proposalId)'), 'AMM server DAL must not directly pass proposalId into Firestore doc refs');
+assert(!serverRepo.includes('.doc(params.projectId)'), 'AMM server DAL must not directly pass params.projectId into Firestore doc refs');
+assert(!serverRepo.includes('collection(`${DB_COLLECTIONS.PROJECTS}/${params.tId}/${params.sId}`)'), 'AMM server DAL must not build scoped project paths from raw tenant/store params');
 assert(serverRepo.includes('if (proposalSnap.exists) return;'), 'Command persistence must avoid duplicate proposal/session writes on retry');
 assert(serverRepo.includes('params.replaceOperationId') && serverRepo.includes('entry.proposalId !== params.replaceOperationId'), 'Server-backed command persistence must replace clarification/follow-up cards');
 assert(serverRepo.includes('Execution directive expired'), 'Execution directives must expire');
 assert(serverRepo.includes('projectContainsAiMenuManagerPatch'), 'Completion must verify the existing project mutation landed');
 assert(serverRepo.includes('String(session.projectId) !== String(params.projectId)'), 'Inbox reads must reject sessions from a different selected project');
+assert(aiMenuManagerImplDoc.includes('AMM server DAL ID boundary'), 'AMM implementation doc must document the server DAL ID boundary');
+assert(aiMenuManagerImplDoc.includes('AMM scope document-ID boundary'), 'AMM implementation doc must document the tenant/store scope document-ID boundary');
+assert(aiMenuManagerFirebaseDoc.includes('AMM server DAL ID boundary'), 'AMM Firebase doc must document the server DAL ID boundary');
+assert(aiMenuManagerFirebaseDoc.includes('AMM scope document-ID admission'), 'AMM Firebase doc must document the scope document-ID cost boundary');
+assert(productionReadinessAudit.includes('AI Menu Manager server DAL ID boundary checkpoint'), 'Production readiness audit must record the AMM server DAL ID boundary checkpoint');
+assert(productionReadinessAudit.includes('AI Menu Manager Scope Document ID Boundary checkpoint'), 'Production readiness audit must record the AMM scope document-ID boundary checkpoint');
+assert(changelogUpper.includes('AI Menu Manager Server DAL ID Boundary'), 'Primary changelog must record the AMM server DAL ID boundary');
+assert(changelogUpper.includes('AI Menu Manager Scope Document ID Boundary'), 'Primary changelog must record the AMM scope document-ID boundary');
+assert(changelogLower.includes('AI Menu Manager Server DAL ID Boundary'), 'Lowercase changelog must record the AMM server DAL ID boundary');
+assert(changelogLower.includes('AI Menu Manager Scope Document ID Boundary'), 'Lowercase changelog must record the AMM scope document-ID boundary');
 
 const desktopRoute = read('src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx');
 const desktopProposalCard = read('src/components/templates/main-app/aiMenuManager/cards/AiMenuProposalCard.tsx');

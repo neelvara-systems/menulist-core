@@ -2,8 +2,8 @@
 
 > **Document Type:** Technical Blueprint (Developers)
 > **Status:** Implemented (Feature flag: `ENABLE_POS_SYNC: true`)
-> **Last Updated:** July 2, 2026
-> **Version:** 2.13
+> **Last Updated:** July 6, 2026
+> **Version:** 2.14
 
 ---
 
@@ -54,6 +54,10 @@ Frontend (menu edit in Editor.tsx)
 > **Route security note (June 30, 2026):** `/api/pos-sync/test` and `/api/pos-sync/deliver` validate the configured public HTTPS URL, resolve the target host server-side, and use manual redirect handling. A 3xx provider response is treated as a failed provider response instead of being followed to a new target.
 
 > **Target-store note (July 1, 2026):** Both POS API routes re-run `requireAnyStorePermissionForStoreData()` against the canonical `stores/{storeId}` document after body validation and the store read. Inactive, soft-deleted, platform-blocked, cross-tenant, or unauthorized target stores fail before webhook URL validation, project reads, menu-version writes, delivery logs, POS status writes, or outbound fetches.
+
+> **Target document-ID boundary (July 6, 2026):** `/api/pos-sync/test` and `/api/pos-sync/deliver` validate caller-supplied tenant/store IDs through `normalizePosSyncNumericDocumentId()` before rate-limit key material, `stores/{storeId}` refs, `projects/{tenantId}/{storeId}/{projectId}` refs, menu-version transactions, delivery logs, POS status writes, or webhook provider work. The guard requires an exact positive numeric MenuList ID and the shared Firestore document-ID boundary, so whitespace-mutated, path-shaped, reserved, zero, negative, decimal, or nonnumeric IDs fail as invalid input before Firestore or outbound work. Valid permissions, tenant access, public HTTPS/DNS checks, signed payloads, delivery-log retention, failure threshold, test ping, and response shape are unchanged.
+
+> **Project ID boundary (July 5, 2026):** POS delivery project ID boundary validation uses the shared Firestore document-ID guard after the existing POS project-ID character rule. Malformed, path-shaped, or reserved project IDs fail during request validation before store config reads, scoped project reads, menu-version writes, delivery logs, POS status writes, or outbound fetches.
 
 > **Source gate (July 2, 2026):** POS Sync boundary source gate: `npm run verify:pos-sync-boundary` locks the public-HTTPS and DNS target guard, route auth/tenant/rate-limit order, debounced delivery URL+secret admission, desktop/mobile shared test request policy, MobileShell More routing, and docs/audit parity. The gate is source-only and does not call an external POS provider.
 

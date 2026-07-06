@@ -4,6 +4,10 @@ import {
     serializeIntakeValue,
     updateKnowledgeIntakeReviewItem,
 } from '@lib/answerlattice/knowledgeIntake';
+import {
+    normalizeAnswerlatticeKnowledgeIntakeJobId,
+    normalizeAnswerlatticeKnowledgeIntakeReviewItemId,
+} from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import { logAnswerlatticeKnowledgeIntakeFailure } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
@@ -31,6 +35,12 @@ const ReviewItemPatchSchema = z.object({
 const KNOWLEDGE_INTAKE_REVIEW_ITEM_MAX_BODY_BYTES = 32 * 1024;
 
 export const PATCH = withAuth(async (request: NextRequest, session, params: { jobId: string; itemId: string }) => {
+    const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
+    const itemId = normalizeAnswerlatticeKnowledgeIntakeReviewItemId(params.itemId);
+    if (!jobId || !itemId) {
+        return NextResponse.json({ error: 'Invalid review item.' }, { status: 400 });
+    }
+
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
         rateLimitKey: 'answerlattice-intake:update-review-item',
         rateLimit: 80,
@@ -52,7 +62,7 @@ export const PATCH = withAuth(async (request: NextRequest, session, params: { jo
         }
 
         const parsed = ReviewItemPatchSchema.parse(bodyResult.data);
-        const item = await updateKnowledgeIntakeReviewItem(access.context.scope, params.jobId, params.itemId, parsed as any, access.context.actor);
+        const item = await updateKnowledgeIntakeReviewItem(access.context.scope, jobId, itemId, parsed as any, access.context.actor);
         return NextResponse.json({ item: serializeIntakeValue(item) });
     } catch (error) {
         if (error instanceof z.ZodError) {

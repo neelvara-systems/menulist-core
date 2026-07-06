@@ -16,6 +16,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { getBoundedGuestFeedbackStringContext, logGuestFeedbackFailure } from '@database/guestFeedback/guestFeedbackDiagnostics';
 import { logFeedbackMOLEventAdmin, submitGuestFeedbackAdmin } from '@database/guestFeedback/server';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { normalizeGuestFeedbackReviewUrl } from '@lib/feedback/guestFeedbackSubmitResponse';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -109,6 +110,22 @@ async function postGuestFeedback(req: NextRequest) {
     }
 
     const data = validation.data;
+    const projectId = normalizeGuestFeedbackProjectId(data.projectId);
+    const tenantScope = normalizeGuestFeedbackNumericDocumentId(data.tId);
+    const storeScope = normalizeGuestFeedbackNumericDocumentId(data.sId);
+    if (!projectId || !tenantScope || !storeScope) {
+        return NextResponse.json(
+            {
+                success: false,
+                error: 'Validation failed.',
+            },
+            { status: 400 }
+        );
+    }
+    const tenantDocumentId = tenantScope.documentId;
+    const storeDocumentId = storeScope.documentId;
+    const tenantId = tenantScope.numericId;
+    const storeId = storeScope.numericId;
 
     // 5. Honeypot check (bot detection)
     if (!validateHoneypot(data.website)) {
@@ -138,15 +155,15 @@ async function postGuestFeedback(req: NextRequest) {
     try {
         const projectRef = firestoreAdmin
             .collection(DB_COLLECTIONS.PROJECTS)
-            .doc(String(data.tId))
-            .collection(String(data.sId))
-            .doc(data.projectId);
+            .doc(tenantDocumentId)
+            .collection(storeDocumentId)
+            .doc(projectId);
         const storeRef = firestoreAdmin
             .collection(DB_COLLECTIONS.STORES)
-            .doc(String(data.sId));
+            .doc(storeDocumentId);
         const tenantRef = firestoreAdmin
             .collection(DB_COLLECTIONS.TENANTS)
-            .doc(String(data.tId));
+            .doc(tenantDocumentId);
 
         const [projectDoc, storeDoc, tenantDoc] = await Promise.all([
             projectRef.get(),
@@ -186,7 +203,7 @@ async function postGuestFeedback(req: NextRequest) {
 
         const storeData = storeDoc.data();
         const storeTenantId = Number(storeData?.tenantId ?? storeData?.tId ?? 0);
-        if (storeTenantId !== Number(data.tId)) {
+        if (storeTenantId !== tenantId) {
             return NextResponse.json(
                 { success: false, error: 'Invalid store.' },
                 { status: 400 }
@@ -220,9 +237,9 @@ async function postGuestFeedback(req: NextRequest) {
             || null;
     } catch (error) {
         logGuestFeedbackFailure('public_guest_feedback_scope_verification_failed', error, {
-            ...getBoundedGuestFeedbackStringContext('tenantId', data.tId),
-            ...getBoundedGuestFeedbackStringContext('storeId', data.sId),
-            ...getBoundedGuestFeedbackStringContext('projectId', data.projectId),
+            ...getBoundedGuestFeedbackStringContext('tenantId', tenantDocumentId),
+            ...getBoundedGuestFeedbackStringContext('storeId', storeDocumentId),
+            ...getBoundedGuestFeedbackStringContext('projectId', projectId),
             source: data.source,
             rating: data.rating,
             hasCaptchaToken: Boolean(data.captchaToken),
@@ -254,9 +271,9 @@ async function postGuestFeedback(req: NextRequest) {
     // 9. Submit feedback
     try {
         const feedback = await submitGuestFeedbackAdmin({
-            tId: data.tId,
-            sId: data.sId,
-            projectId: data.projectId,
+            tId: tenantId,
+            sId: storeId,
+            projectId,
             rating: data.rating as 1 | 2 | 3 | 4 | 5,
             source: data.source,
             message: effectiveMessage,
@@ -264,7 +281,7 @@ async function postGuestFeedback(req: NextRequest) {
             customerPhone: effectivePhone,
             customerEmail: effectiveEmail,
         });
-        void logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', data.tId, data.sId, data.projectId, data.rating);
+        void logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', tenantId, storeId, projectId, data.rating);
 
         return NextResponse.json(
             {
@@ -276,9 +293,9 @@ async function postGuestFeedback(req: NextRequest) {
         );
     } catch (error) {
         logGuestFeedbackFailure('public_guest_feedback_submit_failed', error, {
-            ...getBoundedGuestFeedbackStringContext('tenantId', data.tId),
-            ...getBoundedGuestFeedbackStringContext('storeId', data.sId),
-            ...getBoundedGuestFeedbackStringContext('projectId', data.projectId),
+            ...getBoundedGuestFeedbackStringContext('tenantId', tenantDocumentId),
+            ...getBoundedGuestFeedbackStringContext('storeId', storeDocumentId),
+            ...getBoundedGuestFeedbackStringContext('projectId', projectId),
             source: data.source,
             rating: data.rating,
             hasComment: Boolean(effectiveMessage),

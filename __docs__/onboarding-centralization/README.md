@@ -76,6 +76,8 @@ Two exports:
 2. **`createTenantStoreInTransaction(transaction, db, config)`** — Run INSIDE a transaction. Creates tenant + store + syncs storesSummary + updates counts.
 3. **`updateUserWithTenantStore(transaction, db, userId, result)`** — Optional helper for the common user update pattern.
 
+July 5 user-ID boundary: shared onboarding helpers use `src/lib/onboarding/onboardingUserId.ts` before composing `users/{userId}` refs. `updateUserWithTenantStore()` normalizes the supplied user ID before the user update ref, provider-failure compensation normalizes `params.userId` before cleanup reads/writes, and reseller onboarding normalizes Firebase Auth-generated UIDs before creating a new owner user doc. Malformed, whitespace-mutated, path-shaped, reserved, empty, or oversized user IDs fail before user document path composition.
+
 ### How Callers Use It
 
 ```typescript

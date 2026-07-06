@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -19,9 +20,17 @@ import { withAuth } from '../../../../../middleware/auth';
 const MARK_DONE_MAX_BODY_BYTES = 6 * 1024;
 const MAX_OWNER_ACTION_RECEIPTS = 20;
 const RESULT_CHECK_DELAY_DAYS = 7;
+const OWNER_ACTION_RECEIPT_ID_PATTERN = /^[a-f0-9]{32}$/;
+
+const MarkDoneProjectIdSchema = z.string()
+    .trim()
+    .min(1)
+    .max(120)
+    .regex(/^[A-Za-z0-9_-]+$/)
+    .refine(isValidFirestoreDocumentId, 'Invalid project ID');
 
 const MarkDoneSchema = z.object({
-    projectId: z.string().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/),
+    projectId: MarkDoneProjectIdSchema,
     actionId: z.string().min(1).max(160),
     actionType: z.string().min(1).max(80),
     actionTitle: z.string().min(1).max(180),
@@ -38,6 +47,10 @@ function addDaysToDateKey(dateKey: string, days: number): string {
 
 function buildReceiptId(projectId: string, actionId: string): string {
     return createHash('sha256').update(`${projectId}:${actionId}`).digest('hex').slice(0, 32);
+}
+
+function isOwnerActionReceiptId(value: unknown): value is string {
+    return typeof value === 'string' && OWNER_ACTION_RECEIPT_ID_PATTERN.test(value);
 }
 
 function pickBaselineMetrics(data: Record<string, any>) {
@@ -58,14 +71,15 @@ function getReceiptEntries(data: Record<string, any>) {
 }
 
 function getOldestReceiptId(data: Record<string, any>): string | null {
-    const entries = getReceiptEntries(data);
+    const entries = getReceiptEntries(data).filter(([receiptId]) => isOwnerActionReceiptId(receiptId));
     if (entries.length < MAX_OWNER_ACTION_RECEIPTS) return null;
     const sorted = entries.sort(([, a], [, b]) => {
         const aTime = new Date((a as any).markedDoneAt || 0).getTime() || 0;
         const bTime = new Date((b as any).markedDoneAt || 0).getTime() || 0;
         return aTime - bTime;
     });
-    return sorted[0]?.[0] || null;
+    const receiptId = sorted[0]?.[0] || null;
+    return isOwnerActionReceiptId(receiptId) ? receiptId : null;
 }
 
 export const POST = withAuth(async (request: NextRequest, session) => {
@@ -81,6 +95,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const storeId = String(session.sId || session.user?.storeId || '');
     const userId = String(session.uId || session.user?.id || 'unknown');
     if (!tenantId || !storeId) {
+        return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+    }
+    if (!isValidFirestoreDocumentId(tenantId) || !isValidFirestoreDocumentId(storeId)) {
+        logAnalyticsFailure('owner_action_mark_done_invalid_session_scope', undefined, {
+            ...getBoundedAnalyticsStringContext('endpoint', '/api/analytics/owner-action/mark-done'),
+            ...getBoundedAnalyticsStringContext('tenantId', tenantId),
+            ...getBoundedAnalyticsStringContext('storeId', storeId),
+        });
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
 
@@ -112,6 +134,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const { projectId, actionId, actionType, actionTitle, actionLabel, metricLabel } = validation.data;
     const receiptId = buildReceiptId(projectId, actionId);
     const dashboardDocId = `${tenantId}_${storeId}_${projectId}_dashboard_summary`;
+    if (!isValidFirestoreDocumentId(dashboardDocId)) {
+        logAnalyticsFailure('owner_action_mark_done_invalid_dashboard_doc_id', undefined, {
+            ...getBoundedAnalyticsStringContext('endpoint', '/api/analytics/owner-action/mark-done'),
+            ...getBoundedAnalyticsStringContext('tenantId', tenantId),
+            ...getBoundedAnalyticsStringContext('storeId', storeId),
+            ...getBoundedAnalyticsStringContext('projectId', projectId),
+        });
+        return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    }
     const dashboardRef = admin.firestore().collection(DB_COLLECTIONS.ANALYTICS).doc(dashboardDocId);
 
     try {

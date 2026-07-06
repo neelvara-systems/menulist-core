@@ -15,6 +15,7 @@ import { PRODUCT_IDS } from "@constant/product";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from "@firebase/firestore";
 import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { normalizeAnswerlatticePredictiveTriggerId } from '@lib/answerlattice/predictiveTriggerIdBoundary';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import {
@@ -26,7 +27,11 @@ const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS;
 const SUMMARY_COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
-const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
+const getDocRef = (docId: string) => {
+    const normalizedDocId = normalizeAnswerlatticePredictiveTriggerId(docId);
+    if (!normalizedDocId) throw new Error('Invalid predictive trigger id');
+    return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);
+};
 const getSummaryDocRef = (tId: number, sId: number) => doc(answerlatticeFirebaseClient, SUMMARY_COLLECTION, `predictiveTriggers_${tId}_${sId}`);
 
 const assertScope = (tId: unknown, sId: unknown) => {
@@ -48,8 +53,9 @@ const resolveTriggerScope = async (
         return { tId: dataTId, sId: dataSId };
     }
 
-    if (triggerId) {
-        const snap = await getDoc(getDocRef(triggerId));
+    const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
+    if (normalizedTriggerId) {
+        const snap = await getDoc(getDocRef(normalizedTriggerId));
         if (snap.exists()) {
             const existing = snap.data() as Partial<AnswerlatticePredictiveTrigger>;
             return assertScope(existing.tId, existing.sId);
@@ -149,7 +155,10 @@ export const getSuggestedTriggers = async (tId: number, sId: number) => {
 export const getPredictiveTriggerById = async (triggerId: string) => {
     return await apiCallComposer(
         async () => {
-            const docSnap = await getDoc(getDocRef(triggerId));
+            const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
+            if (!normalizedTriggerId) return null;
+
+            const docSnap = await getDoc(getDocRef(normalizedTriggerId));
             if (docSnap.exists()) {
                 return { ...docSnap.data(), id: docSnap.id } as AnswerlatticePredictiveTrigger;
             }
@@ -192,10 +201,14 @@ export const addPredictiveTrigger = async (data: Omit<AnswerlatticePredictiveTri
 export const updatePredictiveTrigger = async (data: Partial<AnswerlatticePredictiveTrigger> & { id: string }) => {
     return await apiCallComposer(
         async () => {
-            const scope = await resolveTriggerScope(data, data.id);
-            const composedData = await answerlatticeRequestBodyComposer(data);
-            await setDoc(getDocRef(data.id), composedData, { merge: true });
-            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_update', data.id);
+            const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(data.id);
+            if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
+
+            const scopedData = { ...data, id: normalizedTriggerId };
+            const scope = await resolveTriggerScope(scopedData, normalizedTriggerId);
+            const composedData = await answerlatticeRequestBodyComposer(scopedData);
+            await setDoc(getDocRef(normalizedTriggerId), composedData, { merge: true });
+            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_update', normalizedTriggerId);
             return composedData;
         },
         data,
@@ -210,8 +223,11 @@ export const updatePredictiveTrigger = async (data: Partial<AnswerlatticePredict
 export const activateTrigger = async (triggerId: string) => {
     return await apiCallComposer(
         async () => {
-            const docSnap = await getDoc(getDocRef(triggerId));
-            if (!docSnap.exists()) throw new Error(`Trigger ${triggerId} not found`);
+            const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
+            if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
+
+            const docSnap = await getDoc(getDocRef(normalizedTriggerId));
+            if (!docSnap.exists()) throw new Error(`Trigger ${normalizedTriggerId} not found`);
 
             const current = docSnap.data() as AnswerlatticePredictiveTrigger;
             const scope = assertScope(current.tId, current.sId);
@@ -220,8 +236,8 @@ export const activateTrigger = async (triggerId: string) => {
             }
 
             const composedData = await answerlatticeRequestBodyComposer({ status: 'active' });
-            await setDoc(getDocRef(triggerId), composedData, { merge: true });
-            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_activate', triggerId);
+            await setDoc(getDocRef(normalizedTriggerId), composedData, { merge: true });
+            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_activate', normalizedTriggerId);
             return composedData;
         },
         { triggerId },
@@ -235,10 +251,13 @@ export const activateTrigger = async (triggerId: string) => {
 export const disableTrigger = async (triggerId: string) => {
     return await apiCallComposer(
         async () => {
-            const scope = await resolveTriggerScope(null, triggerId);
+            const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
+            if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
+
+            const scope = await resolveTriggerScope(null, normalizedTriggerId);
             const composedData = await answerlatticeRequestBodyComposer({ status: 'disabled' });
-            await setDoc(getDocRef(triggerId), composedData, { merge: true });
-            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_disable', triggerId);
+            await setDoc(getDocRef(normalizedTriggerId), composedData, { merge: true });
+            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_disable', normalizedTriggerId);
             return composedData;
         },
         { triggerId },
@@ -252,9 +271,12 @@ export const disableTrigger = async (triggerId: string) => {
 export const deletePredictiveTrigger = async (triggerId: string) => {
     return await apiCallComposer(
         async () => {
-            const scope = await resolveTriggerScope(null, triggerId);
-            await deleteDoc(getDocRef(triggerId));
-            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_delete', triggerId);
+            const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);
+            if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
+
+            const scope = await resolveTriggerScope(null, normalizedTriggerId);
+            await deleteDoc(getDocRef(normalizedTriggerId));
+            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_delete', normalizedTriggerId);
             return { deleted: true };
         },
         { triggerId },

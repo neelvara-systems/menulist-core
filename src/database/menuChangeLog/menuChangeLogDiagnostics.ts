@@ -1,4 +1,4 @@
-import { secureError } from '@lib/security/secureLogger';
+import { secureError, secureLog } from '@lib/security/secureLogger';
 import type { MenuChangeLogInput } from '@type/menuObservation';
 
 type MenuChangeLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -58,5 +58,15 @@ export const logMenuChangeLogFailure = (
         sourceErrorName: getMenuChangeLogErrorName(error),
         sourceErrorCode: getMenuChangeLogErrorCode(error),
         sourceStatusCode: getMenuChangeLogErrorStatus(error),
+    });
+};
+
+export const logMenuChangeLogDiagnostic = (
+    diagnosticCode: string,
+    context: MenuChangeLogContext = {},
+): void => {
+    secureLog('[Menu Change Log] Diagnostic', {
+        diagnosticCode,
+        ...context,
     });
 };

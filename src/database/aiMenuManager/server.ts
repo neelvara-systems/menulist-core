@@ -2,6 +2,12 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { buildAiMenuManagerReceipt } from '@lib/ai-menu-manager/receiptBuilder';
 import { sanitizeAiMenuManagerFirestoreValue } from '@lib/ai-menu-manager/firestoreSanitize';
+import {
+    normalizeAiMenuManagerProjectId,
+    normalizeAiMenuManagerProposalId,
+    normalizeAiMenuManagerScopeDocumentId,
+    normalizeAiMenuManagerSessionId,
+} from '@lib/ai-menu-manager/routeIds';
 import type { Project } from '@template/main-app/projects/types';
 import type {
     AiMenuManagerCardPayload,
@@ -33,15 +39,55 @@ function ttlDate(days: number) {
 }
 
 function getSessionRef(sessionId: string) {
-    return firestoreAdmin.collection(DB_COLLECTIONS.AI_MENU_MANAGER_SESSIONS).doc(sessionId);
+    const documentId = normalizeAiMenuManagerSessionId(sessionId);
+    return documentId
+        ? firestoreAdmin.collection(DB_COLLECTIONS.AI_MENU_MANAGER_SESSIONS).doc(documentId)
+        : null;
 }
 
 function getProposalRef(proposalId: string) {
-    return firestoreAdmin.collection(DB_COLLECTIONS.AI_MENU_MANAGER_PROPOSALS).doc(proposalId);
+    const documentId = normalizeAiMenuManagerProposalId(proposalId);
+    return documentId
+        ? firestoreAdmin.collection(DB_COLLECTIONS.AI_MENU_MANAGER_PROPOSALS).doc(documentId)
+        : null;
+}
+
+function getAiMenuManagerScopeDocumentIds(params: { tId: string | number; sId: string | number }) {
+    const tenantScope = normalizeAiMenuManagerScopeDocumentId(params.tId);
+    const storeScope = normalizeAiMenuManagerScopeDocumentId(params.sId);
+    return tenantScope && storeScope
+        ? { tId: tenantScope.documentId, sId: storeScope.documentId }
+        : null;
+}
+
+function requireAiMenuManagerScopeDocumentIds(params: { tId: string | number; sId: string | number }) {
+    const scope = getAiMenuManagerScopeDocumentIds(params);
+    if (!scope) throw new Error('Invalid scope');
+    return scope;
 }
 
 function getProjectRef(params: { tId: string | number; sId: string | number; projectId: string }) {
-    return firestoreAdmin.collection(`${DB_COLLECTIONS.PROJECTS}/${params.tId}/${params.sId}`).doc(params.projectId);
+    const documentId = normalizeAiMenuManagerProjectId(params.projectId);
+    const scope = getAiMenuManagerScopeDocumentIds(params);
+    return documentId && scope
+        ? firestoreAdmin
+            .collection(DB_COLLECTIONS.PROJECTS)
+            .doc(scope.tId)
+            .collection(scope.sId)
+            .doc(documentId)
+        : null;
+}
+
+function requireSessionRef(sessionId: string) {
+    const ref = getSessionRef(sessionId);
+    if (!ref) throw new Error('Invalid session ID');
+    return ref;
+}
+
+function requireProposalRef(proposalId: string) {
+    const ref = getProposalRef(proposalId);
+    if (!ref) throw new Error('Invalid proposal ID');
+    return ref;
 }
 
 function timestampToDate(value: unknown): Date | null {
@@ -57,6 +103,10 @@ function timestampToDate(value: unknown): Date | null {
 }
 
 function legacyProjectMatchesScope(project: Partial<Project>, params: { tId: string | number; sId: string | number; projectId: string }) {
+    const scope = getAiMenuManagerScopeDocumentIds(params);
+    const projectId = normalizeAiMenuManagerProjectId(params.projectId);
+    if (!scope || !projectId) return false;
+
     const data = project as any;
     const tenantCandidates = [data.tId, data.tenantId, data.tenantID]
         .filter((value) => value !== undefined && value !== null)
@@ -65,12 +115,11 @@ function legacyProjectMatchesScope(project: Partial<Project>, params: { tId: str
         .filter((value) => value !== undefined && value !== null)
         .map(String);
 
-    if (tenantCandidates.length && !tenantCandidates.includes(String(params.tId))) return false;
-    if (storeCandidates.length && !storeCandidates.includes(String(params.sId))) return false;
+    if (tenantCandidates.length && !tenantCandidates.includes(scope.tId)) return false;
+    if (storeCandidates.length && !storeCandidates.includes(scope.sId)) return false;
     if (tenantCandidates.length || storeCandidates.length) return true;
 
-    const projectId = String(params.projectId);
-    return projectId.startsWith(`${params.tId}-`) && projectId.endsWith(`-${params.sId}`);
+    return projectId.startsWith(`${scope.tId}-`) && projectId.endsWith(`-${scope.sId}`);
 }
 
 function isTerminalProposalStatus(status: AiMenuManagerProposalStatus) {
@@ -87,12 +136,17 @@ export async function getAiMenuManagerProject(params: {
     sId: string | number;
     projectId: string;
 }): Promise<Project | null> {
-    const scopedSnap = await getProjectRef(params).get();
+    const projectId = normalizeAiMenuManagerProjectId(params.projectId);
+    const scope = getAiMenuManagerScopeDocumentIds(params);
+    const scopedRef = getProjectRef(params);
+    if (!projectId || !scope || !scopedRef) return null;
+
+    const scopedSnap = await scopedRef.get();
     if (scopedSnap.exists) {
         return { ...(scopedSnap.data() as Project), projectId: scopedSnap.id };
     }
 
-    const legacySnap = await firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(params.projectId).get();
+    const legacySnap = await firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(projectId).get();
     if (legacySnap.exists) {
         const legacyProject = { ...(legacySnap.data() as Project), projectId: legacySnap.id };
         return legacyProjectMatchesScope(legacyProject, params) ? legacyProject : null;
@@ -102,12 +156,18 @@ export async function getAiMenuManagerProject(params: {
 }
 
 export async function getAiMenuManagerSession(sessionId: string) {
-    const snap = await getSessionRef(sessionId).get();
+    const sessionRef = getSessionRef(sessionId);
+    if (!sessionRef) return null;
+
+    const snap = await sessionRef.get();
     return snap.exists ? snap.data() as AiMenuManagerSessionDoc : null;
 }
 
 export async function getAiMenuManagerProposal(proposalId: string) {
-    const snap = await getProposalRef(proposalId).get();
+    const proposalRef = getProposalRef(proposalId);
+    if (!proposalRef) return null;
+
+    const snap = await proposalRef.get();
     return snap.exists ? snap.data() as AiMenuManagerProposalDoc : null;
 }
 
@@ -160,8 +220,12 @@ export async function persistAiMenuManagerCommand(params: {
     proposal: AiMenuManagerProposalDoc;
     replaceOperationId?: string;
 }) {
-    const sessionRef = getSessionRef(params.sessionId);
-    const proposalRef = getProposalRef(params.proposal.proposalId);
+    const projectId = normalizeAiMenuManagerProjectId(params.projectId);
+    if (!projectId) throw new Error('Invalid project ID');
+    const scope = requireAiMenuManagerScopeDocumentIds(params);
+
+    const sessionRef = requireSessionRef(params.sessionId);
+    const proposalRef = requireProposalRef(params.proposal.proposalId);
 
     await firestoreAdmin.runTransaction(async (transaction) => {
         const sessionSnap = await transaction.get(sessionRef);
@@ -181,9 +245,9 @@ export async function persistAiMenuManagerCommand(params: {
 
         const sessionPayload: Partial<AiMenuManagerSessionDoc> = sanitizeAiMenuManagerFirestoreValue({
             sessionId: params.sessionId,
-            tId: params.tId,
-            sId: params.sId,
-            projectId: params.projectId,
+            tId: scope.tId,
+            sId: scope.sId,
+            projectId,
             sessionDate: params.sessionDate,
             storageMode: params.storageMode,
             status: 'active',
@@ -209,6 +273,24 @@ export async function persistAiMenuManagerCommand(params: {
         transaction.set(sessionRef, sessionPayload, { merge: true });
         transaction.set(proposalRef, sanitizeAiMenuManagerFirestoreValue({
             ...params.proposal,
+            tId: scope.tId,
+            sId: scope.sId,
+            projectId,
+            scope: {
+                ...params.proposal.scope,
+                tId: scope.tId,
+                sId: scope.sId,
+                projectId: params.proposal.scope.projectId ? projectId : params.proposal.scope.projectId,
+            },
+            cardPayload: {
+                ...params.proposal.cardPayload,
+                scope: {
+                    ...params.proposal.cardPayload.scope,
+                    tId: scope.tId,
+                    sId: scope.sId,
+                    projectId: params.proposal.cardPayload.scope.projectId ? projectId : params.proposal.cardPayload.scope.projectId,
+                },
+            },
             expiresAt: admin.firestore.Timestamp.fromDate(ttlDate(PROPOSAL_TTL_DAYS)),
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -222,21 +304,30 @@ export async function getAiMenuManagerInbox(params: {
     sId: string | number;
     projectId: string;
 }) {
+    const scope = getAiMenuManagerScopeDocumentIds(params);
+    if (
+        !normalizeAiMenuManagerSessionId(params.sessionId)
+        || !normalizeAiMenuManagerProjectId(params.projectId)
+        || !scope
+    ) {
+        return { session: null, cards: [], receipts: [] };
+    }
+
     const session = await getAiMenuManagerSession(params.sessionId);
     if (
         !session
-        || String(session.tId) !== String(params.tId)
-        || String(session.sId) !== String(params.sId)
+        || String(session.tId) !== scope.tId
+        || String(session.sId) !== scope.sId
         || String(session.projectId) !== String(params.projectId)
     ) {
         return { session: null, cards: [], receipts: [] };
     }
 
     const proposalIds = (session.pendingCardSummaries || [])
-        .map((entry) => entry.proposalId)
-        .filter(Boolean)
+        .map((entry) => normalizeAiMenuManagerProposalId(entry.proposalId))
+        .filter((proposalId): proposalId is string => Boolean(proposalId))
         .slice(0, MAX_PENDING_SUMMARIES);
-    const proposalRefs = proposalIds.map((proposalId) => getProposalRef(proposalId));
+    const proposalRefs = proposalIds.map((proposalId) => requireProposalRef(proposalId));
     const proposalSnaps = proposalRefs.length ? await firestoreAdmin.getAll(...proposalRefs) : [];
 
     const cards = proposalSnaps
@@ -260,16 +351,17 @@ export async function updateAiMenuManagerProposalStatus(params: {
     idempotencyKey: string;
     userId: string | number;
 }) {
-    const proposalRef = getProposalRef(params.proposalId);
+    const scope = requireAiMenuManagerScopeDocumentIds(params);
+    const proposalRef = requireProposalRef(params.proposalId);
 
     return firestoreAdmin.runTransaction(async (transaction) => {
         const proposalSnap = await transaction.get(proposalRef);
         if (!proposalSnap.exists) throw new Error('Proposal not found');
         const proposal = proposalSnap.data() as AiMenuManagerProposalDoc;
         const sessionRef = getSessionRef(proposal.sessionId);
-        const sessionSnap = await transaction.get(sessionRef);
-        const session = sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
-        if (String(proposal.tId) !== String(params.tId) || String(proposal.sId) !== String(params.sId)) {
+        const sessionSnap = sessionRef ? await transaction.get(sessionRef) : null;
+        const session = sessionSnap && sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
+        if (String(proposal.tId) !== scope.tId || String(proposal.sId) !== scope.sId) {
             throw new Error('Forbidden');
         }
 
@@ -327,7 +419,7 @@ export async function updateAiMenuManagerProposalStatus(params: {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }), { merge: true });
 
-        if (session) {
+        if (session && sessionRef) {
             transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
                 pendingCardSummaries: (session.pendingCardSummaries || [])
                     .filter((entry) => entry.proposalId !== params.proposalId),
@@ -352,7 +444,8 @@ export async function approveAiMenuManagerProposal(params: {
     idempotencyKey: string;
     userId: string | number;
 }) {
-    const proposalRef = getProposalRef(params.proposalId);
+    const scope = requireAiMenuManagerScopeDocumentIds(params);
+    const proposalRef = requireProposalRef(params.proposalId);
     const executionId = buildExecutionId(params.proposalId, params.idempotencyKey);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
@@ -361,9 +454,9 @@ export async function approveAiMenuManagerProposal(params: {
         if (!proposalSnap.exists) throw new Error('Proposal not found');
         const proposal = proposalSnap.data() as AiMenuManagerProposalDoc;
         const sessionRef = getSessionRef(proposal.sessionId);
-        const sessionSnap = await transaction.get(sessionRef);
-        const session = sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
-        if (String(proposal.tId) !== String(params.tId) || String(proposal.sId) !== String(params.sId)) {
+        const sessionSnap = sessionRef ? await transaction.get(sessionRef) : null;
+        const session = sessionSnap && sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
+        if (String(proposal.tId) !== scope.tId || String(proposal.sId) !== scope.sId) {
             throw new Error('Forbidden');
         }
         if (proposal.executionDirective && ['approved', 'executing'].includes(proposal.status)) {
@@ -423,7 +516,7 @@ export async function approveAiMenuManagerProposal(params: {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }), { merge: true });
 
-        if (session) {
+        if (session && sessionRef) {
             transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
                 counters: {
                     commands: session.counters?.commands || 0,
@@ -451,9 +544,10 @@ export async function completeAiMenuManagerProposal(params: {
     message?: string;
     idempotencyKey: string;
 }) {
+    const scope = requireAiMenuManagerScopeDocumentIds(params);
     const proposal = await getAiMenuManagerProposal(params.proposalId);
     if (!proposal) throw new Error('Proposal not found');
-    if (String(proposal.tId) !== String(params.tId) || String(proposal.sId) !== String(params.sId)) {
+    if (String(proposal.tId) !== scope.tId || String(proposal.sId) !== scope.sId) {
         throw new Error('Forbidden');
     }
     if (proposal.projectId && String(proposal.projectId) !== String(params.projectId || '')) {
@@ -503,11 +597,11 @@ export async function completeAiMenuManagerProposal(params: {
         message: params.message || (nextStatus === 'executed' ? 'Change applied.' : 'The approved change could not be verified.'),
     });
 
-    const proposalRef = getProposalRef(params.proposalId);
+    const proposalRef = requireProposalRef(params.proposalId);
     const sessionRef = getSessionRef(proposal.sessionId);
     await firestoreAdmin.runTransaction(async (transaction) => {
-        const sessionSnap = await transaction.get(sessionRef);
-        const session = sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
+        const sessionSnap = sessionRef ? await transaction.get(sessionRef) : null;
+        const session = sessionSnap && sessionSnap.exists ? sessionSnap.data() as AiMenuManagerSessionDoc : null;
         const currentProposalSnap = await transaction.get(proposalRef);
         const currentProposal = currentProposalSnap.exists ? currentProposalSnap.data() as AiMenuManagerProposalDoc : null;
         if (currentProposal?.receipt && ['executed', 'failed', 'manual_task'].includes(currentProposal.status)) return;
@@ -529,7 +623,7 @@ export async function completeAiMenuManagerProposal(params: {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }), { merge: true });
 
-        if (session) {
+        if (session && sessionRef) {
             transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
                 pendingCardSummaries: (session.pendingCardSummaries || [])
                     .filter((entry) => entry.proposalId !== params.proposalId),

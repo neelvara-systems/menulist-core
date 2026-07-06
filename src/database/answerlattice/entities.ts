@@ -20,6 +20,11 @@ import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { buildAnswerlatticeEntityPrefixTokens } from '@lib/answerlattice/entitySearchTokens';
+import {
+    normalizeAnswerlatticeEntityRelationId,
+    normalizeAnswerlatticeEntitySearchIndexId,
+    normalizeAnswerlatticeResolvedEntityId,
+} from "@lib/answerlattice/governanceIdBoundary";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { markAnswerlatticeTenantHasEntities } from '@lib/answerlattice/tenantSummaryClient';
@@ -35,11 +40,23 @@ const RELATION_COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS;
 const SEARCH_INDEX_COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX;
 
 const getEntityCollectionRef = () => collection(answerlatticeFirebaseClient, ENTITY_COLLECTION);
-const getEntityDocRef = (docId: string) => doc(answerlatticeFirebaseClient, ENTITY_COLLECTION, docId);
+const getEntityDocRef = (docId: string) => {
+    const normalizedDocId = normalizeAnswerlatticeResolvedEntityId(docId);
+    if (!normalizedDocId) throw new Error("Invalid Answerlattice entity id");
+    return doc(answerlatticeFirebaseClient, ENTITY_COLLECTION, normalizedDocId);
+};
 const getRelationCollectionRef = () => collection(answerlatticeFirebaseClient, RELATION_COLLECTION);
-const getRelationDocRef = (docId: string) => doc(answerlatticeFirebaseClient, RELATION_COLLECTION, docId);
+const getRelationDocRef = (docId: string) => {
+    const normalizedDocId = normalizeAnswerlatticeEntityRelationId(docId);
+    if (!normalizedDocId) throw new Error("Invalid Answerlattice entity relation id");
+    return doc(answerlatticeFirebaseClient, RELATION_COLLECTION, normalizedDocId);
+};
 const getSearchIndexCollectionRef = () => collection(answerlatticeFirebaseClient, SEARCH_INDEX_COLLECTION);
-const getSearchIndexDocRef = (docId: string) => doc(answerlatticeFirebaseClient, SEARCH_INDEX_COLLECTION, docId);
+const getSearchIndexDocRef = (docId: string) => {
+    const normalizedDocId = normalizeAnswerlatticeEntitySearchIndexId(docId);
+    if (!normalizedDocId) throw new Error("Invalid Answerlattice entity search index id");
+    return doc(answerlatticeFirebaseClient, SEARCH_INDEX_COLLECTION, normalizedDocId);
+};
 
 const resolveEntityScope = async (
     data?: Partial<AnswerlatticeEntity> | null,
@@ -51,8 +68,9 @@ const resolveEntityScope = async (
         return { tId: dataTId, sId: dataSId };
     }
 
-    if (entityId) {
-        const docSnap = await getDoc(getEntityDocRef(entityId));
+    const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
+    if (normalizedEntityId) {
+        const docSnap = await getDoc(getEntityDocRef(normalizedEntityId));
         if (docSnap.exists()) {
             const existing = docSnap.data() as Partial<AnswerlatticeEntity>;
             const existingTId = Number(existing.tId);
@@ -119,7 +137,9 @@ export const getEntitiesByType = async (tId: number, sId: number, type: string) 
 export const getEntityById = async (entityId: string) => {
     return await apiCallComposer(
         async () => {
-            const docSnap = await getDoc(getEntityDocRef(entityId));
+            const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
+            if (!normalizedEntityId) return null;
+            const docSnap = await getDoc(getEntityDocRef(normalizedEntityId));
             if (docSnap.exists()) {
                 return { ...docSnap.data(), id: docSnap.id } as AnswerlatticeEntity;
             }
@@ -179,23 +199,25 @@ export const addEntity = async (data: Omit<AnswerlatticeEntity, 'id'>) => {
  * Update an entity (type field is protected — cannot be changed)
  */
 export const updateEntity = async (data: Partial<AnswerlatticeEntity> & { id: string }) => {
+    const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(data.id);
     return await apiCallComposer(
         async () => {
+            if (!normalizedEntityId) throw new Error("Invalid Answerlattice entity id");
             // Protect immutable type field
-            const { type, ...updateData } = data;
-            const composedData = await answerlatticeRequestBodyComposer(updateData);
-            await setDoc(getEntityDocRef(data.id), composedData, { merge: true });
-            const scope = await resolveEntityScope(composedData as Partial<AnswerlatticeEntity>, data.id);
+            const { type, id: _id, ...updateData } = data;
+            const composedData = await answerlatticeRequestBodyComposer({ ...updateData, id: normalizedEntityId });
+            await setDoc(getEntityDocRef(normalizedEntityId), composedData, { merge: true });
+            const scope = await resolveEntityScope(composedData as Partial<AnswerlatticeEntity>, normalizedEntityId);
             if (scope) {
                 await markAnswerlatticeCompiledContextSourceChanged('entities', scope.tId, scope.sId, {
                     reason: 'entity_update',
-                    sourceId: data.id,
+                    sourceId: normalizedEntityId,
                     sourceType: ENTITY_COLLECTION,
                 });
             }
             return composedData;
         },
-        data,
+        { ...data, id: normalizedEntityId },
         "updateEntity"
     );
 };
@@ -210,36 +232,38 @@ export const updateEntity = async (data: Partial<AnswerlatticeEntity> & { id: st
  * at write-time is the correct invariant enforcement.
  */
 export const deprecateEntity = async (entityId: string) => {
+    const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedEntityId) throw new Error("Invalid Answerlattice entity id");
             // 1. Fetch entity to get tenant context
-            const entitySnap = await getDoc(getEntityDocRef(entityId));
+            const entitySnap = await getDoc(getEntityDocRef(normalizedEntityId));
             if (!entitySnap.exists()) {
-                throw new Error(`Entity ${entityId} not found`);
+                throw new Error("Entity not found");
             }
             const entity = entitySnap.data() as AnswerlatticeEntity;
 
             // 2. Check for active canonical answers bound to this entity
             const { getActiveAnswersForEntity } = await import('@database/answerlattice/canonicalAnswers');
-            const boundAnswers = await getActiveAnswersForEntity(entity.tId, entity.sId, entityId);
+            const boundAnswers = await getActiveAnswersForEntity(entity.tId, entity.sId, normalizedEntityId);
             if (boundAnswers && boundAnswers.length > 0) {
                 throw new Error(
-                    `Cannot deprecate entity "${entityId}" — ${boundAnswers.length} active canonical answer(s) still reference it. ` +
+                    `Cannot deprecate entity with ${boundAnswers.length} active canonical answer(s) still referencing it. ` +
                     `Reassign or retire those answers first.`
                 );
             }
 
             // 3. Safe to deprecate
             const composedData = await answerlatticeRequestBodyComposer({ status: 'deprecated' });
-            await setDoc(getEntityDocRef(entityId), composedData, { merge: true });
+            await setDoc(getEntityDocRef(normalizedEntityId), composedData, { merge: true });
             await markAnswerlatticeCompiledContextSourceChanged('entities', entity.tId, entity.sId, {
                 reason: 'entity_deprecate',
-                sourceId: entityId,
+                sourceId: normalizedEntityId,
                 sourceType: ENTITY_COLLECTION,
             });
             return composedData;
         },
-        { entityId },
+        { entityId: normalizedEntityId },
         "deprecateEntity"
     );
 };
@@ -277,11 +301,13 @@ export const getEntityRelations = async (tId: number, sId: number) => {
 export const getRelationsForEntity = async (tId: number, sId: number, entityId: string) => {
     return await apiCallComposer(
         async () => {
+            const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
+            if (!normalizedEntityId) return [];
             const q = query(
                 getRelationCollectionRef(),
                 where('tId', '==', tId),
                 where('sId', '==', sId),
-                where('fromEntityId', '==', entityId),
+                where('fromEntityId', '==', normalizedEntityId),
                 limit(500)
             );
             const snapshot = await getDocs(q);
@@ -301,7 +327,10 @@ export const getRelationsForEntity = async (tId: number, sId: number, entityId: 
 export const addEntityRelation = async (data: Omit<AnswerlatticeEntityRelation, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await answerlatticeRequestBodyComposer(data);
+            const fromEntityId = normalizeAnswerlatticeResolvedEntityId(data.fromEntityId);
+            const toEntityId = normalizeAnswerlatticeResolvedEntityId(data.toEntityId);
+            if (!fromEntityId || !toEntityId) throw new Error("Invalid Answerlattice entity relation endpoint id");
+            const submitData = await answerlatticeRequestBodyComposer({ ...data, fromEntityId, toEntityId });
             const docRef = await addDoc(getRelationCollectionRef(), submitData);
             await markAnswerlatticeCompiledContextSourceChanged('entityRelations', data.tId, data.sId, {
                 reason: 'entity_relation_create',
@@ -319,21 +348,23 @@ export const addEntityRelation = async (data: Omit<AnswerlatticeEntityRelation, 
  * Delete an entity relation
  */
 export const deleteEntityRelation = async (relationId: string) => {
+    const normalizedRelationId = normalizeAnswerlatticeEntityRelationId(relationId);
     return await apiCallComposer(
         async () => {
-            const relationSnap = await getDoc(getRelationDocRef(relationId));
+            if (!normalizedRelationId) throw new Error("Invalid Answerlattice entity relation id");
+            const relationSnap = await getDoc(getRelationDocRef(normalizedRelationId));
             const relation = relationSnap.exists() ? (relationSnap.data() as AnswerlatticeEntityRelation) : null;
-            await deleteDoc(getRelationDocRef(relationId));
+            await deleteDoc(getRelationDocRef(normalizedRelationId));
             if (relation) {
                 await markAnswerlatticeCompiledContextSourceChanged('entityRelations', relation.tId, relation.sId, {
                     reason: 'entity_relation_delete',
-                    sourceId: relationId,
+                    sourceId: normalizedRelationId,
                     sourceType: RELATION_COLLECTION,
                 });
             }
-            return { id: relationId };
+            return { id: normalizedRelationId };
         },
-        { relationId },
+        { relationId: normalizedRelationId },
         "deleteEntityRelation"
     );
 };
@@ -369,8 +400,12 @@ export const getEntitySearchIndex = async (tId: number, sId: number) => {
  * Add or update a search index entry for an entity
  */
 export const upsertEntitySearchIndex = async (data: Omit<AnswerlatticeEntitySearchIndex, 'id'> & { id?: string }) => {
+    const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(data.entityId);
+    const searchIndexId = data.id ? normalizeAnswerlatticeEntitySearchIndexId(data.id) : null;
     return await apiCallComposer(
         async () => {
+            if (!normalizedEntityId) throw new Error("Invalid Answerlattice entity id");
+            if (data.id && !searchIndexId) throw new Error("Invalid Answerlattice entity search index id");
             const prefixTokens = data.prefixTokens?.length
                 ? data.prefixTokens
                 : buildAnswerlatticeEntityPrefixTokens({
@@ -378,16 +413,21 @@ export const upsertEntitySearchIndex = async (data: Omit<AnswerlatticeEntitySear
                     normalizedTokens: data.normalizedTokens,
                     synonyms: data.synonyms,
                 });
-            const submitData = await answerlatticeRequestBodyComposer({ ...data, prefixTokens });
-            if (data.id) {
-                await setDoc(getSearchIndexDocRef(data.id), submitData, { merge: true });
-                return { ...submitData, id: data.id } as AnswerlatticeEntitySearchIndex;
+            const submitData = await answerlatticeRequestBodyComposer({
+                ...data,
+                entityId: normalizedEntityId,
+                ...(searchIndexId ? { id: searchIndexId } : {}),
+                prefixTokens,
+            });
+            if (searchIndexId) {
+                await setDoc(getSearchIndexDocRef(searchIndexId), submitData, { merge: true });
+                return { ...submitData, id: searchIndexId } as AnswerlatticeEntitySearchIndex;
             } else {
                 const docRef = await addDoc(getSearchIndexCollectionRef(), submitData);
                 return { ...submitData, id: docRef.id } as AnswerlatticeEntitySearchIndex;
             }
         },
-        data,
+        { ...data, entityId: normalizedEntityId, ...(searchIndexId ? { id: searchIndexId } : {}) },
         "upsertEntitySearchIndex"
     );
 };
@@ -403,13 +443,15 @@ export const upsertEntitySearchIndex = async (data: Omit<AnswerlatticeEntitySear
  * Entity.aliases is the source of truth; search index.synonyms is the derived copy.
  */
 export const syncAliasesToSearchIndex = async (entityId: string, aliases: string[], tId: number, sId: number) => {
+    const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedEntityId) return null;
             const q = query(
                 getSearchIndexCollectionRef(),
                 where('tId', '==', tId),
                 where('sId', '==', sId),
-                where('entityId', '==', entityId),
+                where('entityId', '==', normalizedEntityId),
                 limit(1)
             );
             const snapshot = await getDocs(q);
@@ -420,7 +462,7 @@ export const syncAliasesToSearchIndex = async (entityId: string, aliases: string
             await setDoc(getSearchIndexDocRef(indexDoc.id), composedData, { merge: true });
             return { id: indexDoc.id, synonyms: aliases };
         },
-        { entityId, aliases },
+        { entityId: normalizedEntityId, aliases },
         "syncAliasesToSearchIndex"
     );
 };
@@ -447,13 +489,16 @@ export const mergeEntities = async (
     tId: number,
     sId: number
 ) => {
+    const normalizedSurvivorId = normalizeAnswerlatticeResolvedEntityId(survivorId);
+    const normalizedMergedId = normalizeAnswerlatticeResolvedEntityId(mergedId);
     return await apiCallComposer(
         async () => {
+            if (!normalizedSurvivorId || !normalizedMergedId) throw new Error("Invalid Answerlattice entity id");
             // 1. Fetch both entities
-            const survivorSnap = await getDoc(getEntityDocRef(survivorId));
-            const mergedSnap = await getDoc(getEntityDocRef(mergedId));
-            if (!survivorSnap.exists()) throw new Error(`Survivor entity ${survivorId} not found`);
-            if (!mergedSnap.exists()) throw new Error(`Merged entity ${mergedId} not found`);
+            const survivorSnap = await getDoc(getEntityDocRef(normalizedSurvivorId));
+            const mergedSnap = await getDoc(getEntityDocRef(normalizedMergedId));
+            if (!survivorSnap.exists()) throw new Error("Survivor entity not found");
+            if (!mergedSnap.exists()) throw new Error("Merged entity not found");
 
             const survivor = { ...survivorSnap.data(), id: survivorSnap.id } as AnswerlatticeEntity;
             const merged = { ...mergedSnap.data(), id: mergedSnap.id } as AnswerlatticeEntity;
@@ -467,9 +512,9 @@ export const mergeEntities = async (
             const answers = await getCanonicalAnswers(tId, sId);
             let transferred = 0;
             for (const answer of (answers || [])) {
-                if (answer.scope.entityIds.includes(mergedId)) {
+                if (answer.scope.entityIds.includes(normalizedMergedId)) {
                     const newEntityIds = answer.scope.entityIds
-                        .map((id: string) => id === mergedId ? survivorId : id)
+                        .map((id: string) => id === normalizedMergedId ? normalizedSurvivorId : id)
                         .filter((id: string, i: number, arr: string[]) => arr.indexOf(id) === i);
                     await updateCanonicalAnswer({
                         id: answer.id,
@@ -482,9 +527,9 @@ export const mergeEntities = async (
             // 3. Transfer relations (delete old, create with survivor)
             const relations = await getEntityRelations(tId, sId);
             for (const rel of (relations || [])) {
-                if (rel.fromEntityId === mergedId || rel.toEntityId === mergedId) {
-                    const newFrom = rel.fromEntityId === mergedId ? survivorId : rel.fromEntityId;
-                    const newTo = rel.toEntityId === mergedId ? survivorId : rel.toEntityId;
+                if (rel.fromEntityId === normalizedMergedId || rel.toEntityId === normalizedMergedId) {
+                    const newFrom = rel.fromEntityId === normalizedMergedId ? normalizedSurvivorId : rel.fromEntityId;
+                    const newTo = rel.toEntityId === normalizedMergedId ? normalizedSurvivorId : rel.toEntityId;
                     // Skip self-referencing relations after merge
                     if (newFrom === newTo) {
                         await deleteEntityRelation(rel.id);
@@ -507,22 +552,22 @@ export const mergeEntities = async (
             const combinedAliases = Array.from(new Set(allAliases)).slice(0, 20);
 
             const survivorUpdate = await answerlatticeRequestBodyComposer({ aliases: combinedAliases });
-            await setDoc(getEntityDocRef(survivorId), survivorUpdate, { merge: true });
+            await setDoc(getEntityDocRef(normalizedSurvivorId), survivorUpdate, { merge: true });
 
             // 5. Sync combined aliases to search index
-            await syncAliasesToSearchIndex(survivorId, combinedAliases, tId, sId);
+            await syncAliasesToSearchIndex(normalizedSurvivorId, combinedAliases, tId, sId);
 
             // 6. Deprecate merged entity
             const deprecateData = await answerlatticeRequestBodyComposer({ status: 'deprecated' });
-            await setDoc(getEntityDocRef(mergedId), deprecateData, { merge: true });
+            await setDoc(getEntityDocRef(normalizedMergedId), deprecateData, { merge: true });
             await markAnswerlatticeCompiledContextSourceChanged('entities', tId, sId, {
                 reason: 'entity_merge',
-                sourceId: survivorId,
+                sourceId: normalizedSurvivorId,
                 sourceType: ENTITY_COLLECTION,
             });
             await markAnswerlatticeCompiledContextSourceChanged('entityRelations', tId, sId, {
                 reason: 'entity_merge_relations',
-                sourceId: survivorId,
+                sourceId: normalizedSurvivorId,
                 sourceType: RELATION_COLLECTION,
             });
 
@@ -533,16 +578,16 @@ export const mergeEntities = async (
                 tId, sId,
                 action: 'entity_merged',
                 entityType: 'entity',
-                entityId: survivorId,
-                previousState: { mergedEntityId: mergedId, mergedName: merged.name },
-                newState: { survivorId, combinedAliases, transferredAnswers: transferred },
+                entityId: normalizedSurvivorId,
+                previousState: { mergedEntityId: normalizedMergedId, mergedName: merged.name },
+                newState: { survivorId: normalizedSurvivorId, combinedAliases, transferredAnswers: transferred },
                 performedBy: 'admin',
                 timestamp: Timestamp.now(),
             });
 
             return { success: true, transferredRefs: transferred, combinedAliases };
         },
-        { survivorId, mergedId, tId, sId },
+        { survivorId: normalizedSurvivorId, mergedId: normalizedMergedId, tId, sId },
         "mergeEntities"
     );
 };

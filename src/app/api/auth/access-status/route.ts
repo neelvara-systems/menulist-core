@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -13,6 +14,7 @@ import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { withAuth } from "../../../../middleware/auth";
 
 const ACCESS_STATUS_RATE_LIMIT_KEY = "auth-access-status";
+const CANONICAL_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 const noStoreJson = (body: Record<string, unknown>, status = 200, headers: Record<string, string> = {}) => NextResponse.json(body, {
     headers: {
@@ -22,23 +24,35 @@ const noStoreJson = (body: Record<string, unknown>, status = 200, headers: Recor
     status,
 });
 
+const canonicalIsoTimestampToMillis = (value: string): number => {
+    const normalized = value.trim();
+    if (!CANONICAL_ISO_TIMESTAMP_PATTERN.test(normalized)) return 0;
+    const millis = new Date(normalized).getTime();
+    return Number.isFinite(millis) && new Date(millis).toISOString() === normalized ? millis : 0;
+};
+
 const timestampToMillis = (value: any): number => {
     if (!value) return 0;
     if (typeof value === "number") return value < 1_000_000_000_000 ? value * 1000 : value;
-    if (typeof value === "string") {
-        const parsed = Date.parse(value);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
+    if (typeof value === "string") return canonicalIsoTimestampToMillis(value);
     if (typeof value?.toMillis === "function") return value.toMillis();
     if (typeof value?._seconds === "number") return (value._seconds * 1000) + Math.floor((value._nanoseconds || 0) / 1_000_000);
     if (value instanceof admin.firestore.Timestamp) return value.toMillis();
     return 0;
 };
 
+const normalizeOptionalDocumentId = (value?: string | number | null): string | null => {
+    if (value == null || value === "") return null;
+    const documentId = String(value).trim();
+    return isValidFirestoreDocumentId(documentId) ? documentId : null;
+};
+
 const getCurrentUserSnapshot = async (session: any) => {
     const userId = session?.uId || session?.user?.id;
     if (userId) {
-        const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(String(userId)).get();
+        const userDocumentId = normalizeOptionalDocumentId(userId);
+        if (!userDocumentId) return null;
+        const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(userDocumentId).get();
         if (snapshot.exists) return snapshot;
     }
 
@@ -55,9 +69,11 @@ const getCurrentUserSnapshot = async (session: any) => {
 };
 
 const getEntityData = async (collectionName: string, id?: string | number | null) => {
-    if (id == null || id === "") return null;
-    const snapshot = await firestoreAdmin.collection(collectionName).doc(String(id)).get();
-    return snapshot.exists ? snapshot.data() : null;
+    if (id == null || id === "") return { data: null, invalidId: false };
+    const documentId = normalizeOptionalDocumentId(id);
+    if (!documentId) return { data: null, invalidId: true };
+    const snapshot = await firestoreAdmin.collection(collectionName).doc(documentId).get();
+    return { data: snapshot.exists ? snapshot.data() : null, invalidId: false };
 };
 
 const checkAccessStatusRateLimit = async (request: NextRequest, session: any) => {
@@ -140,17 +156,29 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (userData.isVerified === false) return invalidAccess(request, session, "USER_UNVERIFIED");
     if (isPlatformEntityBlocked(userData)) return invalidAccess(request, session, "USER_BLOCKED");
 
-    const tenant = await getEntityData(DB_COLLECTIONS.TENANTS, userData.tenantId ?? session?.tId ?? session?.user?.tenantId);
-    if (isPlatformEntityBlocked(tenant)) {
+    const tenantId = userData.tenantId ?? session?.tId ?? session?.user?.tenantId;
+    const tenant = await getEntityData(DB_COLLECTIONS.TENANTS, tenantId);
+    if (tenant.invalidId) {
+        return invalidAccess(request, session, "TENANT_REFERENCE_INVALID", {
+            ...getBoundedRuntimeStringContext("tenantId", tenantId),
+        });
+    }
+    if (isPlatformEntityBlocked(tenant.data)) {
         return invalidAccess(request, session, "TENANT_BLOCKED", {
-            ...getBoundedRuntimeStringContext("tenantId", userData.tenantId ?? session?.tId ?? session?.user?.tenantId),
+            ...getBoundedRuntimeStringContext("tenantId", tenantId),
         });
     }
 
-    const store = await getEntityData(DB_COLLECTIONS.STORES, userData.storeId ?? session?.sId ?? session?.user?.storeId);
-    if (isPlatformEntityBlocked(store)) {
+    const storeId = userData.storeId ?? session?.sId ?? session?.user?.storeId;
+    const store = await getEntityData(DB_COLLECTIONS.STORES, storeId);
+    if (store.invalidId) {
+        return invalidAccess(request, session, "STORE_REFERENCE_INVALID", {
+            ...getBoundedRuntimeStringContext("storeId", storeId),
+        });
+    }
+    if (isPlatformEntityBlocked(store.data)) {
         return invalidAccess(request, session, "STORE_BLOCKED", {
-            ...getBoundedRuntimeStringContext("storeId", userData.storeId ?? session?.sId ?? session?.user?.storeId),
+            ...getBoundedRuntimeStringContext("storeId", storeId),
         });
     }
 

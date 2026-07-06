@@ -8,6 +8,7 @@ import { Button, Dropdown, message, theme } from 'antd';
 import { DownloadOutlined, FileTextOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { escapeCSVValue } from '@util/exportUtils';
 
 export type ExportFormat = 'csv' | 'json' | 'pdf';
 
@@ -40,16 +41,11 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     if (!jsonData || jsonData.length === 0) return '';
 
     const headers = Object.keys(jsonData[0]);
-    const csvHeaders = headers.join(',');
+    const csvHeaders = headers.map(escapeCSVValue).join(',');
     
     const csvRows = jsonData.map(row => {
       return headers.map(header => {
-        const value = row[header];
-        // Handle values with commas or quotes
-        const stringValue = String(value === null || value === undefined ? '' : value);
-        return stringValue.includes(',') || stringValue.includes('"')
-          ? `"${stringValue.replace(/"/g, '""')}"`
-          : stringValue;
+        return escapeCSVValue(row[header]);
       }).join(',');
     });
 

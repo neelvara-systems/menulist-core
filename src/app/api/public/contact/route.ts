@@ -18,6 +18,7 @@ import {
 } from 'src/middleware/publicApi';
 
 const MENULIST_PUBLIC_CONTACT_MAX_BODY_BYTES = 8 * 1024;
+const SHAREABLE_TOOL_REPORT_SOURCE_CONTEXT_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const ContactTopicSchema = z.enum(['general', 'demo', 'multi-location', 'pricing', 'other']);
 const ShareableToolReportStatusSchema = z.enum([
     'ready',
@@ -71,6 +72,17 @@ const cleanNumber = (value?: number | null): number | null => {
     return Math.max(0, Math.min(999, Math.floor(value)));
 };
 
+const cleanShareableToolReportTimestamp = (value?: string | null): string | null => {
+    const timestamp = clean(value, 80);
+    if (!timestamp || !SHAREABLE_TOOL_REPORT_SOURCE_CONTEXT_ISO_TIMESTAMP_PATTERN.test(timestamp)) return null;
+
+    const timestampMs = Date.parse(timestamp);
+    if (!Number.isFinite(timestampMs)) return null;
+
+    const normalizedTimestamp = new Date(timestampMs).toISOString();
+    return normalizedTimestamp === timestamp ? normalizedTimestamp : null;
+};
+
 const cleanShareableToolReportSetupJobList = (
     setupJobList?: ShareableToolReportSourceContext['setupJobList'],
 ) => {
@@ -97,7 +109,7 @@ const cleanShareableToolReportSourceContext = (
         reportStatus: sourceContext.reportStatus || null,
         businessName: clean(sourceContext.businessName, 140),
         businessContext: clean(sourceContext.businessContext, 160),
-        reportGeneratedAt: clean(sourceContext.reportGeneratedAt, 80),
+        reportGeneratedAt: cleanShareableToolReportTimestamp(sourceContext.reportGeneratedAt),
         missingCount: cleanNumber(sourceContext.missingCount),
         unclearCount: cleanNumber(sourceContext.unclearCount),
         notCheckedCount: cleanNumber(sourceContext.notCheckedCount),

@@ -11,6 +11,8 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, Timestamp, where, writeBatch } from '@firebase/firestore';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
+import { normalizeAnswerlatticeSupportBoardCardId } from '@lib/answerlattice/supportBoardCardIdBoundary';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import {
@@ -29,7 +31,11 @@ const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_SUPPORT_BOARD_CARDS;
 const SUMMARY_COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
-const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
+const getDocRef = (docId: string) => {
+    const normalizedDocId = normalizeAnswerlatticeSupportBoardCardId(docId);
+    if (!normalizedDocId) throw new Error('Invalid support board card id');
+    return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);
+};
 const getSummaryDocRef = (tId: number, sId: number) => doc(answerlatticeFirebaseClient, SUMMARY_COLLECTION, `supportBoardSummary_${tId}_${sId}`);
 const clampBoardLimit = (value: number) => {
     const normalized = Math.floor(Number(value));
@@ -128,6 +134,8 @@ const cleanNullableText = (value: unknown, maxLength: number) => {
     const cleaned = cleanText(value, maxLength);
     return cleaned || null;
 };
+
+const cleanRelatedEntityId = (value: unknown) => normalizeAnswerlatticeResolvedEntityId(value);
 
 const normalizePriority = (priority?: string): AnswerlatticeSupportBoardCard['priority'] => {
     if (priority === ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.HIGH) return ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.HIGH;
@@ -235,7 +243,7 @@ const normalizeCardInput = (data: CreateAnswerlatticeSupportBoardCardInput) => {
         relatedProposalId: cardData.relatedProposalId || null,
         relatedReleaseId: cardData.relatedReleaseId || null,
         relatedSurfaceId: cardData.relatedSurfaceId || null,
-        relatedEntityId: cardData.relatedEntityId || null,
+        relatedEntityId: cleanRelatedEntityId(cardData.relatedEntityId),
         relatedContextKeys: cleanTags(cardData.relatedContextKeys),
         notes: [],
         notesCount: 0,
@@ -276,7 +284,7 @@ const normalizeUpdatePatch = (patch: UpdateAnswerlatticeSupportBoardCardInput) =
             ...(cardPatch.relatedProposalId !== undefined ? { relatedProposalId: cardPatch.relatedProposalId || null } : {}),
             ...(cardPatch.relatedReleaseId !== undefined ? { relatedReleaseId: cardPatch.relatedReleaseId || null } : {}),
             ...(cardPatch.relatedSurfaceId !== undefined ? { relatedSurfaceId: cardPatch.relatedSurfaceId || null } : {}),
-            ...(cardPatch.relatedEntityId !== undefined ? { relatedEntityId: cardPatch.relatedEntityId || null } : {}),
+            ...(cardPatch.relatedEntityId !== undefined ? { relatedEntityId: cleanRelatedEntityId(cardPatch.relatedEntityId) } : {}),
         },
         statusMeta,
     };

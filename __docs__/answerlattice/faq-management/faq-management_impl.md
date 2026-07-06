@@ -24,6 +24,10 @@ During review, `ArticleModal` exposes a small FAQ editor only in the import revi
 
 When an existing KB article changes, `src/database/knowledgeBase/articles.ts` marks linked FAQs for review in the background. When an article is deleted, it archives linked FAQs in the background. Those maintenance calls stay non-blocking for article save/delete, but failures now log `answerlattice_article_faq_review_marker_failed` or `answerlattice_article_faq_archive_failed` with bounded tenant/store/article metadata only. The FAQ DAL prefers explicit article `tId/sId`; if an older caller omits them and session-scope fallback cannot resolve, it logs `answerlattice_faq_article_review_scope_resolve_failed` or `answerlattice_faq_article_archive_scope_resolve_failed` before returning the existing zero-update result.
 
+Answerlattice FAQ article reference ID boundary: `src/lib/answerlattice/faqRetrieval.ts` normalizes linked `faq.articleId` values through the KB article ID boundary before returning a related article reference or reading the full article document. Malformed linked article IDs are skipped before Firestore refs are built.
+
+Answerlattice App FAQ ID Boundary: `src/lib/answerlattice/faqContent.ts` validates optional saved/generated FAQ IDs, linked article IDs, generated-from article IDs, and canonical answer links before durable FAQ save payloads are composed. `src/database/answerlattice/faqs.ts` rechecks FAQ IDs and KB article IDs before FAQ document refs, linked article mirror refs, article-scoped FAQ queries, archive action refs, feedback transactions, and FAQ cache-version source IDs. Malformed FAQ or article IDs fail or return zero maintenance updates before Firestore document access.
+
 The shared `functions/src/logic/publishApprovedJob.ts` mirrors the FAQ publishing behavior for shared/local function use.
 
 ## Owner UI

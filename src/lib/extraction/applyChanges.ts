@@ -27,6 +27,8 @@ import {
     isLinkedOutletSaveResponse,
     readLinkedOutletSaveResponseJson,
 } from '@lib/multiOutlet/linkedOutletSaveResponse';
+import { normalizeMenuExtractionJobId } from '@lib/menu-extraction/jobIdBoundary';
+import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { logMOLEvent } from '@lib/pricing/molLogger';
 import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
@@ -72,6 +74,7 @@ export interface ApplyChangesResult {
 }
 
 const APPLY_CHANGES_GENERIC_ERROR = 'Could not apply changes. Please try again.';
+const MENU_REVIEW_APPLY_MOL_EVENT_LOG_FAILED = 'menu_review_apply_mol_event_log_failed';
 
 type LinkedOutletProjectSaveError = Error & { code?: string; status?: number };
 
@@ -551,7 +554,16 @@ function assertOwnedPreviewJob(jobData: any, session: Awaited<ReturnType<typeof 
 export async function applyExtractionChanges(
     params: ApplyChangesParams
 ): Promise<ApplyChangesResult> {
-    const { projectId, applyPlan, jobId, expectedChangeCount, primaryLang = 'en', molContext } = params;
+    const {
+        projectId: rawProjectId,
+        applyPlan,
+        jobId: rawJobId,
+        expectedChangeCount,
+        primaryLang = 'en',
+        molContext,
+    } = params;
+    const projectId = normalizeMenuExtractionProjectId(rawProjectId) || '';
+    const jobId = normalizeMenuExtractionJobId(rawJobId) || '';
 
     const stats = {
         categoriesAdded: 0,
@@ -563,6 +575,10 @@ export async function applyExtractionChanges(
     };
 
     try {
+        if (!projectId || !jobId) {
+            throw new Error(APPLY_CHANGES_GENERIC_ERROR);
+        }
+
         const session = await getActiveSession();
         const projectRef = doc(firebaseClient, `${DB_COLLECTIONS.PROJECTS}/${session.tId}/${session.sId}`, projectId);
         const jobRef = doc(firebaseClient, DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS, jobId);
@@ -823,7 +839,7 @@ export async function applyExtractionChanges(
         // STEP 3: MOL audit logging (fire-and-forget, non-blocking)
         // ═══════════════════════════════════════════════════════════
         if (molContext) {
-            logMOLEvent({
+            void logMOLEvent({
                 type: 'EXTRACTION_APPLIED',
                 projectId,
                 actorUserId: molContext.actorUserId,
@@ -834,7 +850,18 @@ export async function applyExtractionChanges(
                 version: molContext.version,
                 tId: molContext.tId,
                 sId: molContext.sId,
-            }).catch(() => { /* MOL should never block */ });
+            }).catch((error) => {
+                logMenuProcessingFailure(MENU_REVIEW_APPLY_MOL_EVENT_LOG_FAILED, error, {
+                    ...getMenuProcessingProjectLogContext(projectId),
+                    ...getMenuProcessingJobLogContext(jobId),
+                    ...getBoundedMenuProcessingStringContext('actorUserId', molContext.actorUserId),
+                    ...getBoundedMenuProcessingStringContext('tenantId', molContext.tId),
+                    ...getBoundedMenuProcessingStringContext('storeId', molContext.sId),
+                    appliedChangeCount: getAppliedExtractionChangeCount(stats),
+                    mode: applyPlan.mode,
+                    version: molContext.version,
+                });
+            });
         }
 
         return {
@@ -873,8 +900,13 @@ export async function applyExtractionChanges(
  * @param jobId - The job ID to discard
  */
 export async function discardExtractionChanges(jobId: string): Promise<void> {
+    const normalizedJobId = normalizeMenuExtractionJobId(jobId);
+    if (!normalizedJobId) {
+        throw new Error(APPLY_CHANGES_GENERIC_ERROR);
+    }
+
     const session = await getActiveSession();
-    const jobRef = doc(firebaseClient, DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS, jobId);
+    const jobRef = doc(firebaseClient, DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS, normalizedJobId);
     const jobSnap = await getDoc(jobRef);
     const jobData = jobSnap.exists() ? jobSnap.data() : null;
     assertOwnedPreviewJob(jobData, session);

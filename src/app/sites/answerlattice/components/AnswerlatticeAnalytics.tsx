@@ -5,8 +5,21 @@ import Script from 'next/script';
 import PublicCookieConsentBanner, { type PublicCookieConsentChoice } from '@/components/shared/publicCookieConsent/PublicCookieConsentBanner';
 import { trackPlausibleEvent } from '@lib/website/plausible';
 import AnswerlatticePlausibleAnalytics from './AnswerlatticePlausibleAnalytics';
+import {
+    cleanAnswerlatticeAnalyticsString,
+    getAnswerlatticeAnalyticsPagePath,
+    getAnswerlatticeAnalyticsUrl,
+} from './answerlatticeAnalyticsUtils';
 
-const ANSWERLATTICE_GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const ANSWERLATTICE_GA_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/;
+const RAW_ANSWERLATTICE_GA_MEASUREMENT_ID = (
+    process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID
+    || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+    || ''
+).trim();
+const ANSWERLATTICE_GA_MEASUREMENT_ID = ANSWERLATTICE_GA_MEASUREMENT_ID_PATTERN.test(RAW_ANSWERLATTICE_GA_MEASUREMENT_ID)
+    ? RAW_ANSWERLATTICE_GA_MEASUREMENT_ID
+    : '';
 const ANSWERLATTICE_PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN;
 const ANSWERLATTICE_ANALYTICS_CONSENT_STORAGE_KEY = 'answerlattice_website_analytics_consent_v1';
 
@@ -88,10 +101,10 @@ function AnswerlatticeConversionTracker() {
             if (typeof win.gtag !== 'function') return;
 
             win.gtag('event', eventName, {
-                event_category: target.dataset.answerlatticeCategory || 'answerlattice_website',
-                event_label: target.dataset.answerlatticeLabel || target.textContent?.trim().slice(0, 80) || undefined,
-                page_path: window.location.pathname,
-                link_url: target instanceof HTMLAnchorElement ? target.href : undefined,
+                event_category: cleanAnswerlatticeAnalyticsString(target.dataset.answerlatticeCategory, 80) || 'answerlattice_website',
+                event_label: cleanAnswerlatticeAnalyticsString(target.dataset.answerlatticeLabel || target.textContent, 80),
+                page_path: getAnswerlatticeAnalyticsPagePath(),
+                link_url: target instanceof HTMLAnchorElement ? getAnswerlatticeAnalyticsUrl(target.href) : undefined,
             });
         };
 
@@ -125,7 +138,14 @@ function AnswerlatticeGoogleAnalytics() {
                     gtag('js', new Date());
                     gtag('config', '${ANSWERLATTICE_GA_MEASUREMENT_ID}', {
                         page_title: document.title,
-                        page_location: window.location.href,
+                        page_location: (function getAnswerlatticeAnalyticsPageLocation() {
+                            try {
+                                var url = new URL(window.location.href);
+                                return url.origin + (url.pathname || '/');
+                            } catch (error) {
+                                return window.location.origin + (window.location.pathname || '/');
+                            }
+                        })(),
                     });
                 `}
             </Script>

@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -16,7 +17,11 @@ import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 const ACTIVE_MASTER_JOB_STATUSES = ["pending", "processing", "preview_ready"] as const;
 const MASTER_JOB_STATUS_RATE_LIMIT_KEY = "master-job-status";
 
-const projectIdSchema = z.string().min(1).max(200).regex(/^[a-zA-Z0-9_-]+$/);
+const projectIdSchema = z.string()
+    .min(1)
+    .max(200)
+    .regex(/^[a-zA-Z0-9_-]+$/)
+    .refine(isValidFirestoreDocumentId, "Invalid project ID");
 const querySchema = z.object({
     masterProjectId: projectIdSchema,
     outletProjectId: projectIdSchema.optional(),
@@ -125,7 +130,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         );
         if (permissionError) return permissionError;
 
-        if (sessionStoreId !== masterStoreId && sessionStore?.isMaster !== true) {
+        if (sessionStoreId !== masterStoreId) {
             if (!outletProjectId) {
                 return NextResponse.json({ error: "Outlet project required" }, { status: 400 });
             }

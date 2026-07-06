@@ -21,6 +21,7 @@ import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 
 const ANSWERLATTICE_FRICTION_AGGREGATION_FAILED = 'ANSWERLATTICE_FRICTION_AGGREGATION_FAILED';
 const ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED = 'ANSWERLATTICE_FRICTION_STATS_CLEANUP_FAILED';
@@ -177,8 +178,8 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
 
         for (const doc of signalsSnap.docs) {
             const data = doc.data();
-            const entityId = data.entityId;
-            if (!entityId || entityId === 'unresolved') continue;
+            const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
+            if (!entityId) continue;
 
             const counts = entitySignals.get(entityId) || {
                 entityId,
@@ -212,8 +213,9 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
             for (const doc of missesSnap.docs) {
                 const data = doc.data();
                 const matchedEntityIds: string[] = data.matchedEntityIds || [];
-                for (const entityId of matchedEntityIds) {
-                    if (entityId && entityId !== 'unresolved') {
+                for (const rawEntityId of matchedEntityIds) {
+                    const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(rawEntityId);
+                    if (entityId) {
                         entityMissCounts.set(entityId, (entityMissCounts.get(entityId) || 0) + 1);
                     }
                 }
@@ -318,7 +320,7 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
 
         for (const doc of historicalSnap.docs) {
             const data = doc.data();
-            const eid = data.entityId;
+            const eid = normalizeAnswerlatticeResolvedFunctionEntityId(data.entityId);
             if (!eid) continue;
 
             const agg = entityAgg.get(eid) || {

@@ -10,6 +10,7 @@ import {
     getAnswerlatticeSourceVersionsDocId,
     normalizeCompiledSourceVersions,
 } from './compiledContextVersions';
+import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 
 const SCHEMA_VERSION = 1;
 const BUNDLE_ROOT = 'answerlattice-context';
@@ -80,6 +81,20 @@ const toIso = (value: any): string | null => {
     if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
+const normalizeContextBundleEntityIds = (values: unknown, limit?: number): string[] => {
+    const source = Array.isArray(values) ? values : [];
+    const normalizedIds: string[] = [];
+    const seen = new Set<string>();
+    for (const value of source) {
+        const entityId = normalizeAnswerlatticeResolvedFunctionEntityId(value);
+        if (!entityId || seen.has(entityId)) continue;
+        seen.add(entityId);
+        normalizedIds.push(entityId);
+        if (typeof limit === 'number' && normalizedIds.length >= limit) break;
+    }
+    return normalizedIds;
 };
 
 const sanitizeSegment = (value: unknown, fallback: string): string => {
@@ -155,19 +170,24 @@ const compactEntity = (entity: any) => ({
     modifiedOn: toIso(entity.modifiedOn),
 });
 
-const compactRelation = (relation: any) => ({
-    id: relation.id,
-    fromEntityId: relation.fromEntityId,
-    toEntityId: relation.toEntityId,
-    relationType: relation.relationType,
-});
+const compactRelation = (relation: any) => {
+    const fromEntityId = normalizeAnswerlatticeResolvedFunctionEntityId(relation.fromEntityId);
+    const toEntityId = normalizeAnswerlatticeResolvedFunctionEntityId(relation.toEntityId);
+    if (!fromEntityId || !toEntityId) return null;
+    return {
+        id: relation.id,
+        fromEntityId,
+        toEntityId,
+        relationType: relation.relationType,
+    };
+};
 
 const compactAnswerLite = (answer: any) => ({
     id: answer.id,
     title: answer.title,
     slug: answer.slug,
     answerType: answer.answerType || 'explanation',
-    entityIds: answer.scope?.entityIds || [],
+    entityIds: normalizeContextBundleEntityIds(answer.scope?.entityIds),
     planIds: answer.scope?.planIds || [],
     roleIds: answer.scope?.roleIds || [],
     shortAnswer: answer.content?.structuredSummary || '',
@@ -202,7 +222,7 @@ const compactArticle = (article: any) => ({
     sectionId: article.sectionId || null,
     sectionTitle: article.sectionTitle || null,
     tags: Array.isArray(article.tags) ? article.tags.slice(0, 12) : [],
-    entityIds: Array.isArray(article.entityIds) ? article.entityIds.slice(0, 20) : [],
+    entityIds: normalizeContextBundleEntityIds(article.entityIds, 20),
     contextKeys: Array.isArray(article.contextKeys) ? article.contextKeys.slice(0, 20) : [],
     modifiedOn: toIso(article.modifiedOn),
 });
@@ -213,7 +233,7 @@ const compactFaq = (faq: any) => ({
     answer: faq.answer,
     articleId: faq.articleId || null,
     articleTitle: faq.articleTitle || null,
-    entityIds: Array.isArray(faq.entityIds) ? faq.entityIds.slice(0, 20) : [],
+    entityIds: normalizeContextBundleEntityIds(faq.entityIds, 20),
     contextKeys: Array.isArray(faq.contextKeys) ? faq.contextKeys.slice(0, 20) : [],
     tags: Array.isArray(faq.tags) ? faq.tags.slice(0, 12) : [],
     sortOrder: Number(faq.sortOrder || 0),
@@ -225,7 +245,7 @@ const compactRelease = (release: any) => ({
     versionLabel: release.versionLabel || release.title || '',
     versionNormalized: release.versionNormalized ?? null,
     releasedAt: toIso(release.releasedAt || release.createdOn),
-    entityChanges: Array.isArray(release.entityChanges) ? release.entityChanges.slice(0, 50) : [],
+    entityChanges: normalizeContextBundleEntityIds(release.entityChanges, 50),
     status: release.status,
 });
 
@@ -247,7 +267,7 @@ const safeSurface = (surface: any) => ({
     feature: surface.feature || '',
     page: surface.page || '',
     workflow: surface.workflow || '',
-    entityIds: Array.isArray(surface.entityIds) ? surface.entityIds.slice(0, 25) : [],
+    entityIds: normalizeContextBundleEntityIds(surface.entityIds, 25),
     entityHints: Array.isArray(surface.entityHints) ? surface.entityHints.slice(0, 12) : [],
     tags: Array.isArray(surface.tags) ? surface.tags.slice(0, 25) : [],
     articles: Array.isArray(surface.articles) ? surface.articles.slice(0, 8) : [],
@@ -397,7 +417,9 @@ const buildObjects = (params: {
         businessDayEndTime: (source.store as any).businessDayEndTime || '00:00',
     };
     const entities = source.entities.map(compactEntity);
-    const relations = source.relations.map(compactRelation);
+    const relations = source.relations
+        .map(compactRelation)
+        .filter((relation): relation is NonNullable<ReturnType<typeof compactRelation>> => Boolean(relation));
     const canonicalPrivate = source.answers.map(compactAnswerPrivate);
     const canonicalLite = source.answers.map(compactAnswerLite);
     const articles = source.articles.map(compactArticle);

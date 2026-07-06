@@ -2,9 +2,15 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import {
+    AI_OPERATION_DATE_FILTER_MAX_LENGTH,
+    isValidAiOperationCursorId,
+    normalizeAiOperationHistoryDateRange,
+} from '@lib/ai/operationHistoryQuery';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
@@ -20,10 +26,12 @@ const AI_OPERATIONS_ENDPOINT = '/api/ai-operations';
 
 const QuerySchema = z.object({
     action: z.string().trim().max(80).optional(),
-    cursorId: z.string().trim().max(160).optional(),
-    endDate: z.string().trim().optional(),
+    cursorId: z.string().trim().max(160)
+        .refine((value) => !value || isValidAiOperationCursorId(value), 'Invalid cursor ID')
+        .optional(),
+    endDate: z.string().trim().max(AI_OPERATION_DATE_FILTER_MAX_LENGTH).optional(),
     pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
-    startDate: z.string().trim().optional(),
+    startDate: z.string().trim().max(AI_OPERATION_DATE_FILTER_MAX_LENGTH).optional(),
 });
 
 const PLATFORM_ONLY_FIELDS = new Set([
@@ -88,6 +96,22 @@ const PLATFORM_VISIBLE_FIELDS = new Set([
     'transactionId',
 ]);
 
+type AiOperationHistoryScopeDocumentId = {
+    numericId: number;
+    documentId: string;
+};
+
+function normalizeAiOperationHistoryScopeDocumentId(value: unknown): AiOperationHistoryScopeDocumentId | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { numericId, documentId }
+        : null;
+}
+
 function getAiOperationsReadLogContext(
     request: NextRequest,
     session: any,
@@ -136,12 +160,6 @@ function serializeFirestoreValue(value: any): any {
     return value;
 }
 
-function getDateParam(value?: string): Date | null {
-    if (!value) return null;
-    const date = new Date(value);
-    return Number.isFinite(date.getTime()) ? date : null;
-}
-
 function sanitizeOwnerOperation(id: string, data: Record<string, any>) {
     const serialized = serializeFirestoreValue({ id, ...data });
     return Object.fromEntries(
@@ -157,16 +175,16 @@ function sanitizePlatformOperation(id: string, data: Record<string, any>) {
 }
 
 async function getCursorDoc(
-    tenantId: string | number,
-    storeId: string | number,
+    tenantId: string,
+    storeId: string,
     cursorId?: string,
 ) {
     if (!cursorId) return null;
 
     const cursorDoc = await firestoreAdmin
         .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
-        .doc(String(tenantId))
-        .collection(String(storeId))
+        .doc(tenantId)
+        .collection(storeId)
         .doc(cursorId)
         .get();
 
@@ -241,11 +259,13 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        const tenantId = session.tId || session.user?.tenantId;
-        const storeId = session.sId || session.user?.storeId;
-        if (!tenantId || !storeId) {
+        const tenantScope = normalizeAiOperationHistoryScopeDocumentId(session.tId || session.user?.tenantId);
+        const storeScope = normalizeAiOperationHistoryScopeDocumentId(session.sId || session.user?.storeId);
+        if (!tenantScope || !storeScope) {
             return NextResponse.json({ error: 'User not onboarded' }, { status: 400 });
         }
+        const tenantId = tenantScope.documentId;
+        const storeId = storeScope.documentId;
         const platformRole = session.platformRole || session.user?.platformRole;
         const isPlatform = platformRole === 'PLATFORM';
         const { action, cursorId, pageSize, startDate, endDate } = validation.data;
@@ -292,24 +312,22 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        const start = getDateParam(startDate);
-        const end = getDateParam(endDate);
-
-        if ((startDate && !start) || (endDate && !end)) {
+        const dateRange = normalizeAiOperationHistoryDateRange(startDate, endDate);
+        if (!dateRange) {
             return NextResponse.json({ error: 'Invalid date filter' }, { status: 400 });
         }
 
         let query: FirebaseFirestore.Query = firestoreAdmin
             .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
-            .doc(String(tenantId))
-            .collection(String(storeId))
+            .doc(tenantId)
+            .collection(storeId)
             .orderBy('createdOn', 'desc');
 
-        if (start) {
-            query = query.where('createdOn', '>=', start);
+        if (dateRange.start) {
+            query = query.where('createdOn', '>=', dateRange.start);
         }
-        if (end) {
-            query = query.where('createdOn', '<=', end);
+        if (dateRange.end) {
+            query = query.where('createdOn', '<=', dateRange.end);
         }
 
         const cursorDoc = await getCursorDoc(tenantId, storeId, cursorId);

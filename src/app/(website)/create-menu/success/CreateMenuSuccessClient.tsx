@@ -27,12 +27,16 @@ import { LuCheck, LuCopy, LuExternalLink, LuMapPin, LuMessageCircle, LuQrCode } 
 import AnimateOnScroll from '@/components/website/shared/AnimateOnScroll';
 
 const CREATE_MENU_SUCCESS_ERROR_FIELD_LIMIT = 80;
+const CREATE_MENU_SUCCESS_BUSINESS_NAME_MAX_LENGTH = 80;
 const CREATE_MENU_SUCCESS_URL_MAX_LENGTH = 2048;
+const CREATE_MENU_SUCCESS_INVALID_BUSINESS_NAME_REPORT_LIMIT = 100;
 const CREATE_MENU_SUCCESS_INVALID_URL_REPORT_LIMIT = 100;
 
 type CreateMenuSuccessUrlKind = 'menuUrl' | 'officialPageUrl';
+type CreateMenuSuccessBusinessNameInvalidReason = 'control_chars' | 'too_long';
 type CreateMenuSuccessUrlInvalidReason = 'too_long' | 'contains_whitespace' | 'parse_failed' | 'non_https' | 'credentialed';
 
+const reportedCreateMenuSuccessInvalidBusinessNames = new Set<string>();
 const reportedCreateMenuSuccessInvalidUrls = new Set<string>();
 
 function getBoundedCreateMenuSuccessStringContext(label: string, value: unknown) {
@@ -106,6 +110,58 @@ function logCreateMenuSuccessUrlNormalizationFailure(
         hasWhitespace: /\s/.test(trimmed),
         ...getBoundedCreateMenuSuccessStringContext(kind, value),
     });
+}
+
+function logCreateMenuSuccessBusinessNameNormalizationFailure(
+    value: string,
+    reason: CreateMenuSuccessBusinessNameInvalidReason,
+) {
+    if (!value) return;
+
+    const trimmed = value.trim();
+    const reportKey = [
+        'businessName',
+        reason,
+        value.length,
+        trimmed.length,
+    ].join(':');
+
+    if (reportedCreateMenuSuccessInvalidBusinessNames.has(reportKey)) return;
+    if (reportedCreateMenuSuccessInvalidBusinessNames.size >= CREATE_MENU_SUCCESS_INVALID_BUSINESS_NAME_REPORT_LIMIT) return;
+
+    reportedCreateMenuSuccessInvalidBusinessNames.add(reportKey);
+
+    logCreateMenuSuccessFailure('public_create_menu_success_business_name_invalid', undefined, {
+        businessNameInvalidReason: reason,
+        businessNameTrimmedLength: trimmed.length,
+        businessNameMaxLength: CREATE_MENU_SUCCESS_BUSINESS_NAME_MAX_LENGTH,
+        ...getBoundedCreateMenuSuccessStringContext('businessName', value),
+    });
+}
+
+function normalizeCreateMenuSuccessBusinessName(value: string, fallback: string) {
+    const trimmed = value.trim();
+
+    if (!trimmed) return fallback;
+
+    const withoutControl = trimmed.replace(/[\x00-\x1F\x7F]+/g, ' ');
+    const normalized = withoutControl.replace(/\s+/g, ' ').trim();
+
+    if (!normalized) {
+        logCreateMenuSuccessBusinessNameNormalizationFailure(value, 'control_chars');
+        return fallback;
+    }
+
+    if (withoutControl !== trimmed) {
+        logCreateMenuSuccessBusinessNameNormalizationFailure(value, 'control_chars');
+    }
+
+    if (normalized.length <= CREATE_MENU_SUCCESS_BUSINESS_NAME_MAX_LENGTH) {
+        return normalized;
+    }
+
+    logCreateMenuSuccessBusinessNameNormalizationFailure(value, 'too_long');
+    return `${normalized.slice(0, CREATE_MENU_SUCCESS_BUSINESS_NAME_MAX_LENGTH - 3).trimEnd()}...`;
 }
 
 function normalizeCreateMenuSuccessUrl(kind: CreateMenuSuccessUrlKind, value: string) {
@@ -203,14 +259,19 @@ async function copyCreateMenuSuccessLinkToClipboard(menuUrl: string) {
 export default function CreateMenuSuccessClient() {
     const t = useTranslations('Website');
     const searchParams = useSearchParams();
+    const defaultBusinessName = t('CreateMenuSuccess.defaultBusinessName');
     const rawMenuUrl = searchParams.get('menuUrl') || '';
     const rawOfficialPageUrl = searchParams.get('officialPageUrl') || '';
+    const rawBusinessName = searchParams.get('name') || '';
     const menuUrl = useMemo(() => normalizeCreateMenuSuccessUrl('menuUrl', rawMenuUrl), [rawMenuUrl]);
     const officialPageUrl = useMemo(
         () => normalizeCreateMenuSuccessUrl('officialPageUrl', rawOfficialPageUrl),
         [rawOfficialPageUrl],
     );
-    const businessName = searchParams.get('name') || t('CreateMenuSuccess.defaultBusinessName');
+    const businessName = useMemo(
+        () => normalizeCreateMenuSuccessBusinessName(rawBusinessName, defaultBusinessName),
+        [rawBusinessName, defaultBusinessName],
+    );
     const hasMenuUrl = Boolean(menuUrl);
     const hasOfficialPageUrl = Boolean(officialPageUrl);
 

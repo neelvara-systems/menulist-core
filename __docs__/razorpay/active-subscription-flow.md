@@ -2,7 +2,7 @@
 
 > **Purpose:** This document maps the entire `activeSubscription` data flow end-to-end — from Razorpay payment events through webhooks, Firestore, React providers, and every UI component that consumes it. Reading this gives you the full real picture of how subscription state moves through the application.
 >
-> **Last Updated:** February 11, 2026
+> **Last Updated:** July 5, 2026
 > **Scope:** Frontend + Backend + Database + External (Razorpay)
 
 ---
@@ -375,11 +375,12 @@ Math.abs(renewsOn.seconds - subscriptionEndDate.seconds) <= 86400
 
 If the next renewal date is within 1 day of the subscription end date → it's the final cycle. UI shows "Expires On" instead of "Renews On", and "Change Plan" instead of "Cancel".
 
-**Grace Period** (`src/utils/razorpay.ts` — `getGracePeriodInfo()`):
+**Grace Period** (`src/utils/razorpay.ts` — `getGracePeriodInfo()` / `getGracePeriodDisplayInfo()`):
 
 ```
 graceEndsDate = pastDueSinceAt + 7 days
 remainingDays = max(0, ceil((graceEndsDate - now) / (1 day)))
+display fallback = "Grace period details unavailable." when a malformed legacy past_due record has no pastDueSinceAt
 ```
 
 **Credit Carry-Forward** (`src/utils/razorpay.ts` — `calculateRemainingCredits()`):
@@ -499,7 +500,7 @@ User triggers AI operation (e.g., image generation)
 
 | File                             | Role                                                                                  |
 | -------------------------------- | ------------------------------------------------------------------------------------- |
-| `src/utils/razorpay.ts`          | `getGracePeriodInfo()`, `calculateRemainingCredits()`, `hasValidSubscriptionAccess()` |
+| `src/utils/razorpay.ts`          | `getGracePeriodInfo()`, `getGracePeriodDisplayInfo()`, `calculateRemainingCredits()`, `hasValidSubscriptionAccess()` |
 | `src/utils/dateTime/index.tsx`   | `formatDateTime()` — handles Timestamp → formatted string                             |
 | `src/utils/formatters.ts`        | `formatCurrency()` — amount in paise/cents → display string                           |
 | `src/services/ai/balanceSync.ts` | `syncBalanceFromResponse()` — dispatches credit update events                         |

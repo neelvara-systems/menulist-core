@@ -40,15 +40,23 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { logger } from '@lib/monitoring/logger';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
-import { getBoundedSecurityStringContext, logSecurityFailure } from '@lib/security/securityDiagnostics';
+import {
+    getBoundedSecurityRouteContext,
+    getBoundedSecurityStringContext,
+    logSecurityFailure,
+} from '@lib/security/securityDiagnostics';
 import { touchDigitalScreenContentVersionForStoreServer } from '@lib/screen/serverScreenInvalidation';
 import { slugify } from '@lib/utils/slugify';
 import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
 
@@ -56,6 +64,12 @@ const TWELVE_MONTHS_MS = 365 * 24 * 60 * 60 * 1000;
 const MAX_PREVIOUS_SUBDOMAINS = 10;
 const SUBDOMAIN_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
 const ADMIN_SUBDOMAIN_RENAME_MAX_BODY_BYTES = 8 * 1024;
+const ADMIN_SUBDOMAIN_RENAME_RATE_LIMIT_KEY = 'admin-subdomain-rename';
+
+type AdminSubdomainRenameScopeDocumentId = {
+    documentId: string;
+    numericId: number;
+};
 
 const schema = z.object({
     tenantId: z.number().int().positive(),
@@ -73,10 +87,70 @@ const getOperatorLogContext = (session: any): SubdomainRenameLogContext => ({
     ...getBoundedSecurityStringContext('operatorEmail', session?.user?.email),
 });
 
+function getAdminSubdomainRenameOperatorId(session: any): string {
+    return String(session?.uId || session?.user?.id || session?.user?.email || 'platform');
+}
+
+function normalizeAdminSubdomainRenameScopeDocumentId(value: unknown): AdminSubdomainRenameScopeDocumentId | null {
+    const documentId = typeof value === 'number'
+        ? String(value)
+        : typeof value === 'string'
+            ? value
+            : '';
+
+    if (
+        !documentId
+        || documentId !== documentId.trim()
+        || !isValidFirestoreDocumentId(documentId)
+    ) {
+        return null;
+    }
+
+    const numericId = Number(documentId);
+    if (!Number.isSafeInteger(numericId) || numericId <= 0 || String(numericId) !== documentId) {
+        return null;
+    }
+
+    return { documentId, numericId };
+}
+
 export const POST = withAuth(
     async (request, session) => {
         let failureContext: SubdomainRenameLogContext = getOperatorLogContext(session);
         try {
+            const rateLimitConfig = getRateLimitForFeature('ADMIN_SUBDOMAIN_RENAME_MUTATION');
+            const operatorRateLimitHash = hashPublicRateLimitValue(getAdminSubdomainRenameOperatorId(session));
+            const rateLimit = await checkRateLimit({
+                key: `${ADMIN_SUBDOMAIN_RENAME_RATE_LIMIT_KEY}:${operatorRateLimitHash}`,
+                ...rateLimitConfig,
+            });
+            if (!rateLimit.allowed) {
+                const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+                logger.security('Rate Limit Exceeded - Admin Subdomain Rename', {
+                    ...getBoundedSecurityRouteContext(session, request),
+                    ...failureContext,
+                    endpoint: '/api/admin/subdomains/rename',
+                    error: 'Too many admin subdomain rename attempts',
+                    feature: 'ADMIN_SUBDOMAIN_RENAME_MUTATION',
+                    limit: rateLimitConfig.limit,
+                    waitSeconds,
+                    window: rateLimitConfig.window,
+                }, 'high');
+
+                return NextResponse.json(
+                    { error: 'Too many subdomain rename attempts. Please try again later.', retryAfter: waitSeconds },
+                    {
+                        status: 429,
+                        headers: {
+                            'Retry-After': String(waitSeconds),
+                            'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                            'X-RateLimit-Remaining': String(rateLimit.remaining),
+                            'X-RateLimit-Reset': String(rateLimit.resetAt),
+                        },
+                    },
+                );
+            }
+
             const bodyResult = await readBoundedJsonBody(request, ADMIN_SUBDOMAIN_RENAME_MAX_BODY_BYTES, {
                 invalidJsonMessage: 'Invalid input',
             });
@@ -86,11 +160,18 @@ export const POST = withAuth(
             if (!v.success) {
                 return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
             }
-            const { tenantId, storeId, newSubdomain, reason, ackRef } = v.data;
+            const { tenantId: rawTenantId, storeId, newSubdomain, reason, ackRef } = v.data;
+            const tenantScope = normalizeAdminSubdomainRenameScopeDocumentId(rawTenantId);
+            const storeScope = normalizeAdminSubdomainRenameScopeDocumentId(storeId);
+            if (!tenantScope || !storeScope) {
+                return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+            }
+            const tenantId = tenantScope.numericId;
+            const storeIdStr = storeScope.documentId;
             failureContext = {
                 ...failureContext,
                 ...getBoundedSecurityStringContext('tenantId', tenantId),
-                ...getBoundedSecurityStringContext('storeId', storeId),
+                ...getBoundedSecurityStringContext('storeId', storeIdStr),
                 ...getBoundedSecurityStringContext('newSubdomainInput', newSubdomain),
                 reasonPresent: reason.length > 0,
                 reasonLength: reason.length,
@@ -118,14 +199,13 @@ export const POST = withAuth(
             }
 
             const db = admin.firestore();
-            const storeIdStr = String(storeId);
-            const storeRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeIdStr}`);
+            const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeIdStr);
             const storeSnap = await storeRef.get();
             if (!storeSnap.exists) {
                 return NextResponse.json({ error: 'Store not found' }, { status: 404 });
             }
             const store = storeSnap.data() as Record<string, any>;
-            if (Number(store?.tenantId) !== Number(tenantId)) {
+            if (String(store?.tenantId) !== tenantScope.documentId && String(store?.tId) !== tenantScope.documentId) {
                 return NextResponse.json(
                     { error: 'Store belongs to a different tenant' },
                     { status: 403 },

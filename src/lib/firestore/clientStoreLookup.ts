@@ -23,6 +23,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
@@ -32,7 +33,23 @@ export type ClientStoreLookupResult =
     | null;
 
 const buildStoreCollection = () => firestoreAdmin.collection(DB_COLLECTIONS.STORES);
-const buildTenantDocRef = (tenantId: string | number) => firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(String(tenantId));
+const buildTenantDocRef = (tenantId: string) => firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);
+
+type ClientStoreLookupScopeDocumentId = {
+    numericId: number;
+    documentId: string;
+};
+
+const normalizeClientStoreLookupScopeDocumentId = (value: unknown): ClientStoreLookupScopeDocumentId | null => {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { numericId, documentId }
+        : null;
+};
 
 async function isStoreOrTenantBlocked(store: Record<string, any>): Promise<boolean> {
     if (isPlatformEntityBlocked(store)) return true;
@@ -41,7 +58,10 @@ async function isStoreOrTenantBlocked(store: Record<string, any>): Promise<boole
     const tenantId = store?.tenantId ?? store?.tId;
     if (tenantId == null || tenantId === '') return false;
 
-    const tenantSnap = await buildTenantDocRef(tenantId).get();
+    const tenantScope = normalizeClientStoreLookupScopeDocumentId(tenantId);
+    if (!tenantScope) return true;
+
+    const tenantSnap = await buildTenantDocRef(tenantScope.documentId).get();
     if (!tenantSnap.exists) return false;
 
     return isPlatformEntityBlocked(tenantSnap.data());
@@ -120,10 +140,10 @@ export const getStoreByCustomDomain = cache(
 export const getPublicStoreById = cache(
     unstable_cache(
         async (storeId: string | number): Promise<ClientStoreLookupResult> => {
-            const normalizedStoreId = String(storeId || '').trim();
-            if (!/^\d{1,20}$/.test(normalizedStoreId)) return null;
+            const storeScope = normalizeClientStoreLookupScopeDocumentId(storeId);
+            if (!storeScope) return null;
 
-            const snap = await buildStoreCollection().doc(normalizedStoreId).get();
+            const snap = await buildStoreCollection().doc(storeScope.documentId).get();
             if (!snap.exists) return null;
 
             const data: Record<string, any> & { id: string } = { id: snap.id, ...(snap.data() || {}) };

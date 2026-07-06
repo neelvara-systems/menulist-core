@@ -1,5 +1,10 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from "@constant/AI";
 import { DB_COLLECTIONS } from "@constant/database";
+import {
+    normalizeImageBatchJobId,
+    normalizeImageBatchProjectId,
+    normalizeImageBatchScopeDocumentId,
+} from "@lib/ai/imageBatchIdBoundary";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { BatchImageGenerationJobType } from "@template/main-app/projects/types";
 import { Timestamp } from "firebase-admin/firestore";
@@ -17,8 +22,27 @@ const IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES = new Set<string>([
     BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
 ]);
 
+function requireImageBatchJobId(value: unknown): string {
+    const jobId = normalizeImageBatchJobId(value);
+    if (!jobId) throw new Error("Invalid image batch job ID.");
+    return jobId;
+}
+
+function requireImageBatchProjectScope(projectId: string) {
+    const scope = normalizeImageBatchProjectId(projectId);
+    if (!scope) throw new Error("Invalid project scope for image batch job.");
+    return scope;
+}
+
 function getScopedJobRef(id: string, tenantId: string | number, storeId: string | number) {
-    return firestoreAdmin.doc(`${COLLECTION}/${tenantId}/${storeId}/${id}`);
+    const jobId = requireImageBatchJobId(id);
+    const tenantScope = normalizeImageBatchScopeDocumentId(String(tenantId));
+    const storeScope = normalizeImageBatchScopeDocumentId(String(storeId));
+    if (!tenantScope || !storeScope) {
+        throw new Error("Invalid image batch tenant/store scope.");
+    }
+
+    return firestoreAdmin.doc(`${COLLECTION}/${tenantScope.documentId}/${storeScope.documentId}/${jobId}`);
 }
 
 function removeUndefined(value: unknown): unknown {
@@ -58,7 +82,8 @@ export async function getImageBatchProcessingJobByIdAdmin(
     id: string,
     scope: { sId: string | number; tId: string | number },
 ): Promise<BatchImageGenerationJobType | null> {
-    const snap = await getScopedJobRef(id, scope.tId, scope.sId).get();
+    const jobId = requireImageBatchJobId(id);
+    const snap = await getScopedJobRef(jobId, scope.tId, scope.sId).get();
     if (!snap.exists) return null;
     return { id: snap.id, ...snap.data() } as BatchImageGenerationJobType;
 }
@@ -67,13 +92,12 @@ export async function updateImageBatchProcessingJobAdmin(
     data: Partial<BatchImageGenerationJobType> & { id: string; incrementGeneratedCount?: boolean },
     projectId: string,
 ) {
-    const [tId, , sId] = projectId.split("-");
-    if (!tId || !sId) {
-        throw new Error("Invalid project scope for image batch job update.");
-    }
+    const projectScope = requireImageBatchProjectScope(projectId);
+    const jobId = requireImageBatchJobId(data.id);
 
     const processedData: Record<string, unknown> = {
         ...data,
+        id: jobId,
         ...getImageBatchRetentionFields(data.status),
     };
     const specialFields: Record<string, unknown> = {};
@@ -96,7 +120,7 @@ export async function updateImageBatchProcessingJobAdmin(
         modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    const jobRef = getScopedJobRef(data.id, tId, sId);
+    const jobRef = getScopedJobRef(jobId, projectScope.tId, projectScope.sId);
     if (latestStatusEntry) {
         await firestoreAdmin.runTransaction(async (transaction) => {
             const snap = await transaction.get(jobRef);
@@ -122,12 +146,10 @@ export async function appendImageBatchItemResultAdmin({
     item: BatchImageGenerationJobType['itemsList'][number];
     projectId: string;
 }) {
-    const [tId, , sId] = projectId.split("-");
-    if (!tId || !sId) {
-        throw new Error("Invalid project scope for image batch item update.");
-    }
+    const projectScope = requireImageBatchProjectScope(projectId);
+    const imageBatchJobId = requireImageBatchJobId(jobId);
 
-    const jobRef = getScopedJobRef(jobId, tId, sId);
+    const jobRef = getScopedJobRef(imageBatchJobId, projectScope.tId, projectScope.sId);
     return firestoreAdmin.runTransaction(async (transaction) => {
         const snap = await transaction.get(jobRef);
         if (!snap.exists) {

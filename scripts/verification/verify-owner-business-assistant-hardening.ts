@@ -5,6 +5,13 @@ import {
   OWNER_BUSINESS_ASSISTANT_CACHE,
   OWNER_BUSINESS_ASSISTANT_ENDPOINTS,
 } from '@lib/ownerBusinessAssistant/constants';
+import {
+  OWNER_BUSINESS_ASSISTANT_THREAD_ID_PATTERN,
+  normalizeOwnerBusinessAssistantThreadId,
+} from '@lib/ownerBusinessAssistant/threadIdBoundary';
+import {
+  normalizeOwnerBusinessAssistantProjectId,
+} from '@lib/ownerBusinessAssistant/projectIdBoundary';
 import { buildOwnerBusinessAssistantPacketCacheKey } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { buildOwnerBusinessDomainCapabilities } from '@lib/ownerBusinessAssistant/server/domainCapabilityMatrix';
 import { buildOwnerBusinessAssistantRefusal } from '@lib/ownerBusinessAssistant/server/refusals';
@@ -111,6 +118,16 @@ assert.equal(
 assert.equal(OWNER_BUSINESS_ASSISTANT_CACHE.browserLocationsPrefix, 'ownerBusinessAssistant-locations');
 assert.equal(OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs, 10 * 60 * 1000);
 assert.equal(OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketIndexPrefix, 'owner-business-assistant:packet-index:v1');
+assert.match('oba_12345678-1234-1234-1234-123456789abc', OWNER_BUSINESS_ASSISTANT_THREAD_ID_PATTERN);
+assert.equal(
+  normalizeOwnerBusinessAssistantThreadId('oba_12345678-1234-1234-1234-123456789abc'),
+  'oba_12345678-1234-1234-1234-123456789abc',
+);
+assert.equal(normalizeOwnerBusinessAssistantProjectId('menu_123'), 'menu_123');
+assert.equal(normalizeOwnerBusinessAssistantProjectId(' menu_123'), null);
+assert.equal(normalizeOwnerBusinessAssistantThreadId('__oba_bad__'), null);
+assert.equal(normalizeOwnerBusinessAssistantThreadId('oba_bad/path'), null);
+assert.equal(normalizeOwnerBusinessAssistantThreadId(' oba_12345678-1234-1234-1234-123456789abc'), null);
 assert.match(answerKey, new RegExp(`${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix}:1:2:p:project-a:profile:owner_question_basic`));
 assert.match(healthKey, new RegExp(`${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix}:1:2:p:_:profile:health_card`));
 assert.notEqual(answerKey, healthKey, 'packet profiles must create separate cache keys');
@@ -440,17 +457,71 @@ const mobileDashboardScreen = readFileSync(join(repoRoot, 'src/components/mobile
 assert.match(mobileDashboardScreen, /isBusinessHealthReady/);
 assert.match(mobileDashboardScreen, /enabled: canShowBusinessHealthAnalytics && isBusinessHealthReady/);
 const businessHealthRoute = readFileSync(join(repoRoot, 'src/app/(main)/business-health/page.tsx'), 'utf8');
-assert.match(businessHealthRoute, /normalizeProjectId/);
-assert.match(businessHealthRoute, /trimmed\.length <= 160/);
+assert.match(businessHealthRoute, /normalizeOwnerBusinessAssistantProjectId/);
+assert.match(businessHealthRoute, /return normalizeOwnerBusinessAssistantProjectId\(raw\) \|\| undefined;/);
 
 const requestSchemas = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/schemas.ts'), 'utf8');
+const projectIdBoundary = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/projectIdBoundary.ts'), 'utf8');
+const threadIdBoundary = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/threadIdBoundary.ts'), 'utf8');
+const threadStoreSource = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/server/threadStore.ts'), 'utf8');
+const answerEventLoggerSource = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/server/answerEventLogger.ts'), 'utf8');
+const answerHookSource = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer.ts'), 'utf8');
+const ownerBusinessAssistantImplDoc = readFileSync(join(repoRoot, '__docs__/owner-business-assistant/owner-business-assistant_impl.md'), 'utf8');
+const ownerBusinessAssistantFirebaseDoc = readFileSync(join(repoRoot, '__docs__/owner-business-assistant/owner-business-assistant_firebase.md'), 'utf8');
+const ownerBusinessAssistantValidationDoc = readFileSync(join(repoRoot, '__docs__/owner-business-assistant/owner-business-assistant_validation.md'), 'utf8');
+const productionReadinessAudit = readFileSync(join(repoRoot, '__docs__/audits/menulist-production-readiness-audit.md'), 'utf8');
+const changelog = readFileSync(join(repoRoot, '__docs__/CHANGELOG.md'), 'utf8');
 assert.doesNotMatch(requestSchemas, /owner_question_actionable/);
 assert.match(requestSchemas, /multi_location_summary/);
-assert.match(requestSchemas, /projectId: z\.string\(\)\.min\(1\)\.max\(160\)\.optional\(\)/);
+assert.match(requestSchemas, /import \{ isValidFirestoreDocumentId \} from '@lib\/firebase\/firestoreDocumentId';/);
+assert.match(projectIdBoundary, /OWNER_BUSINESS_ASSISTANT_PROJECT_ID_PATTERN = \/\^\[A-Za-z0-9_-\]\{1,160\}\$\/;/);
+assert.match(projectIdBoundary, /projectId === value/);
+assert.match(projectIdBoundary, /isValidFirestoreDocumentId\(projectId\)/);
+assert.match(requestSchemas, /normalizeOwnerBusinessAssistantProjectId\(value\) === value/);
+assert.match(requestSchemas, /projectId: OwnerBusinessAssistantProjectIdSchema/);
+assert.match(requestSchemas, /selectedProjectId: OwnerBusinessAssistantProjectIdSchema/);
+assert.doesNotMatch(requestSchemas, /if \(typeof value === 'string'\) return value\.trim\(\);/);
+assert.doesNotMatch(requestSchemas, /projectId: z\.string\(\)\.min\(1\)\.max\(160\)\.optional\(\)/);
+assert.match(requestSchemas, /const OwnerBusinessAssistantAnswerIdSchema = z\.string\(\)/);
+assert.match(requestSchemas, /\.refine\(\(value\) => value === value\.trim\(\) && isValidFirestoreDocumentId\(value\), 'Invalid answer ID'\)/);
+assert.match(requestSchemas, /answerId: OwnerBusinessAssistantAnswerIdSchema/);
+assert.doesNotMatch(requestSchemas, /answerId: z\.string\(\)\.min\(1\)\.max\(180\)/);
+assert.match(answerEventLoggerSource, /import \{ isValidFirestoreDocumentId \} from '@lib\/firebase\/firestoreDocumentId';/);
+assert.match(answerEventLoggerSource, /const normalizeAnswerEventDocumentId = \(value: unknown\): string \| null => \{/);
+assert.match(answerEventLoggerSource, /documentId === value && isValidFirestoreDocumentId\(documentId\)/);
+assert.match(answerEventLoggerSource, /const answerId = normalizeAnswerEventDocumentId\(params\.answer\.answerId\);/);
+assert.match(answerEventLoggerSource, /if \(!answerId\) return;/);
+assert.match(answerEventLoggerSource, /\.doc\(answerId\)/);
+assert.doesNotMatch(answerEventLoggerSource, /\.doc\(params\.answer\.answerId\)/);
 assert.match(requestSchemas, /OwnerBusinessAssistantStoreIdSchema/);
 assert.match(requestSchemas, /storeId: OwnerBusinessAssistantStoreIdSchema/);
+assert.match(threadIdBoundary, /OWNER_BUSINESS_ASSISTANT_THREAD_ID_PATTERN/);
+assert.match(threadIdBoundary, /threadId === value/);
+assert.match(threadIdBoundary, /isValidFirestoreDocumentId\(threadId\)/);
+assert.match(requestSchemas, /normalizeOwnerBusinessAssistantThreadId\(value\) === value/);
+assert.doesNotMatch(requestSchemas, /const OwnerBusinessAssistantThreadIdSchema = z\.string\(\)\s*\.trim\(\)/);
+assert.match(threadStoreSource, /normalizeOwnerBusinessAssistantThreadId\(params\.request\.threadId\)/);
+assert.match(threadStoreSource, /if \(!threadId\) return undefined;/);
+assert.match(answerHookSource, /const readStoredThreadId/);
+assert.match(answerHookSource, /normalizeOwnerBusinessAssistantThreadId\(window\.localStorage\.getItem\(storageKey\)\)/);
+assert.match(answerHookSource, /normalizeOwnerBusinessAssistantThreadId\(answerData\.threadId\)/);
 assert.doesNotMatch(requestSchemas, /OwnerBusinessAssistantAction/);
 assert.doesNotMatch(requestSchemas, /targetKind/);
+[
+  ownerBusinessAssistantImplDoc,
+  ownerBusinessAssistantFirebaseDoc,
+  ownerBusinessAssistantValidationDoc,
+  productionReadinessAudit,
+  changelog,
+].forEach((docSource) => {
+  assert.match(docSource, /whitespace-mutated/);
+});
+assert.match(ownerBusinessAssistantImplDoc, /does not trim before `normalizeOwnerBusinessAssistantProjectId\(value\) === value`/);
+assert.match(ownerBusinessAssistantImplDoc, /OwnerBusinessAssistantThreadIdSchema` does not trim before `normalizeOwnerBusinessAssistantThreadId\(value\) === value`/);
+assert.match(ownerBusinessAssistantFirebaseDoc, /does not trim before `normalizeOwnerBusinessAssistantProjectId\(value\) === value`/);
+assert.match(ownerBusinessAssistantFirebaseDoc, /Malformed, whitespace-mutated, path-shaped, or reserved IDs stop before the feedback write/);
+assert.match(productionReadinessAudit, /Owner Business Assistant strict document-ID boundary checkpoint/);
+assert.match(changelog, /Owner Business Assistant Strict Document ID Boundary/);
 const featureFlags = readFileSync(join(repoRoot, 'src/config/features.ts'), 'utf8');
 assert.doesNotMatch(featureFlags, /ENABLE_OWNER_BUSINESS_ACTION/);
 
@@ -495,6 +566,8 @@ assert.match(feedbackRoute, /applyOwnerBusinessAssistantRateLimit[\s\S]+readBoun
 assert.match(feedbackRoute, /OwnerBusinessAssistantFeedbackRequestSchema\.safeParse\(bodyResult\.data\)/);
 assert.match(feedbackRoute, /resolveOwnerAssistantSelectedStoreScope\(request, session, parsed\.data\.storeId\)/);
 assert.match(feedbackRoute, /requireAnyStorePermissionForStore/);
+assert.match(feedbackRoute, /import \{ isValidFirestoreDocumentId \} from '@lib\/firebase\/firestoreDocumentId';/);
+assert.match(feedbackRoute, /if \(!isValidFirestoreDocumentId\(docId\)\) \{/);
 assert.match(feedbackRoute, /OWNER_BUSINESS_ASSISTANT_FEEDBACK/);
 assert.match(clientResponses, /OWNER_BUSINESS_ASSISTANT_MUTATION_RESPONSE_JSON_MAX_BYTES = 16 \* 1024/);
 assert.match(clientResponses, /readOwnerBusinessAssistantFeedbackResponse/);

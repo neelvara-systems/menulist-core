@@ -8,6 +8,7 @@ export const SHAREABLE_TOOL_REPORT_MAX_ENCODED_LENGTH = 36000;
 export const SHAREABLE_TOOL_REPORT_MAX_CHECKS = 16;
 export const SHAREABLE_TOOL_REPORT_MAX_BOUNDARIES = 8;
 export const SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS = 6;
+export const SHAREABLE_TOOL_REPORT_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const MAX_SHAREABLE_TOOL_REPORT_DECODE_DIAGNOSTICS = 25;
 
 const reportedShareableToolReportDecodeFailures = new Set<string>();
@@ -141,12 +142,27 @@ function translateShareableToolReportText(
 
 function coerceString(value: unknown, maxLength: number): string {
   if (typeof value !== 'string') return '';
-  return value.replace(/\s+/g, ' ').trim().slice(0, maxLength);
+  return value
+    .replace(/[\x00-\x1F\x7F]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
 }
 
 function coerceNumber(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
   return Math.max(0, Math.floor(value));
+}
+
+function coerceIsoTimestamp(value: unknown): string {
+  const timestamp = coerceString(value, 80);
+  if (!SHAREABLE_TOOL_REPORT_ISO_TIMESTAMP_PATTERN.test(timestamp)) return '';
+
+  const timestampMs = Date.parse(timestamp);
+  if (!Number.isFinite(timestampMs)) return '';
+
+  const normalizedTimestamp = new Date(timestampMs).toISOString();
+  return normalizedTimestamp === timestamp ? normalizedTimestamp : '';
 }
 
 function coerceStatus(value: unknown): ShareableToolReportStatus {
@@ -259,7 +275,7 @@ function normalizeShareableToolReportPayload(value: unknown): ShareableToolRepor
     toolId: coerceString(source.toolId, 80),
     toolName: coerceString(source.toolName, 120),
     reportTitle: coerceString(source.reportTitle, 160),
-    generatedAt: coerceString(source.generatedAt, 80),
+    generatedAt: coerceIsoTimestamp(source.generatedAt),
     status: coerceStatus(source.status),
     statusTitle: coerceString(source.statusTitle, 160),
     statusDescription: coerceString(source.statusDescription, 360),

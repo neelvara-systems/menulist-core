@@ -1,9 +1,9 @@
 # Answerlattice — Predictive Support System
 
 > **Status:** ✅ IMPLEMENTED — Enabled with guards
-> **Version:** 1.1.0
+> **Version:** 1.1.2
 > **Created:** 2026-03-10
-> **Last Updated:** 2026-06-28
+> **Last Updated:** 2026-07-06
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT` (enabled)
 > **Expansion Item:** #12 (answerlattice-expansion-tracker.md)
 > **Dependencies:** #1 Context-Aware (DONE), #5 Friction Intelligence (DONE), #11 Knowledge Graph (DONE)
@@ -40,6 +40,8 @@ Suggestion Payload → Widget renders contextual help
 
 Nightly predictive trigger sync diagnostics use fixed failure codes with source error name/code/status metadata and tenant/store scope booleans. Auto-generation, summary rebuild, and effectiveness failures do not log raw exception text or raw tenant/store identifiers.
 
+Answerlattice App Predictive Trigger ID Boundary: owner/admin trigger actions normalize trigger document IDs through the shared Firestore document-ID guard before app-side get, update, activate, disable, delete, and audit-log writes. Malformed, reserved, empty, or path-shaped trigger IDs fail through the existing fixed action copy before Firestore document access.
+
 ---
 
 ## Document Index
@@ -75,6 +77,7 @@ Nightly predictive trigger sync diagnostics use fixed failure codes with source 
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-06 | 1.1.2 | Added app-side predictive trigger document-ID boundary for CRUD/action refs and audit IDs. |
 | 2026-06-28 | 1.1.1 | Bounded nightly predictive trigger sync diagnostics with fixed failure codes and source metadata. |
 | 2026-05-24 | 1.1.0 | Added capability gating, summary-backed resolved suggestions, targeted answer lookup, unchanged-write skip, and Redis fail-closed notes. |
 | 2026-03-10 | 1.0.0 | Initial predictive support documentation. |

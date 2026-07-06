@@ -2,10 +2,11 @@
 
 import Script from 'next/script';
 
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || '';
+const IS_CONFIGURED_GA_MEASUREMENT_ID = /^G-[A-Z0-9]+$/i.test(GA_MEASUREMENT_ID);
 
 export default function GoogleAnalytics() {
-  if (!GA_MEASUREMENT_ID) return null;
+  if (!IS_CONFIGURED_GA_MEASUREMENT_ID) return null;
 
   return (
     <>
@@ -26,9 +27,19 @@ export default function GoogleAnalytics() {
           });
           gtag('set', 'ads_data_redaction', true);
           gtag('js', new Date());
+          function getMenulistAnalyticsPageLocation() {
+            try {
+              var url = new URL(window.location.href);
+              url.search = '';
+              url.hash = '';
+              return url.toString();
+            } catch (error) {
+              return window.location.origin + window.location.pathname;
+            }
+          }
           gtag('config', '${GA_MEASUREMENT_ID}', {
             page_title: document.title,
-            page_location: window.location.href,
+            page_location: getMenulistAnalyticsPageLocation(),
           });
         `}
       </Script>

@@ -175,7 +175,7 @@ The Publish-Gate is a UX enforcement layer that reads `_mce` metadata to block c
 
 - **MCE core (CSR)** is silent — stamps metadata, no toasts, no popups, no notifications
 - **Publish-Gate** is the only place where the owner sees validation feedback
-- **Publish-Gate copy is bounded** — MCE validation messages pass through `getSafeUiErrorMessage()` with fixed fallback copy before owner display
+- **Publish-Gate copy is bounded** — locally generated MCE validation messages pass through `getSafeUiErrorMessage(..., { allowTrustedPlainText: true })` with fixed fallback copy before owner display
 - This separation ensures MCE authority rule #4 ("Silent authority, zero notifications") is preserved while still giving the owner actionable feedback at the right moment
 
 ```typescript

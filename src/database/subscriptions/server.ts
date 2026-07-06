@@ -7,9 +7,11 @@ import {
     ECOMSAI_PLATFORM_USER_ROLE,
 } from "@constant/user";
 import { DB_COLLECTIONS } from "@constant/database";
+import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { MinimalStoreDataType } from "@type/platform/store";
 import { getGracePeriodInfo } from "@util/razorpay";
@@ -18,7 +20,27 @@ const COLLECTION = DB_COLLECTIONS.SUBSCRIPTIONS;
 
 export const getSubscriptionsCollectionRefServer = () => firestoreAdmin.collection(COLLECTION);
 
-const getSubscriptionDocRefServer = (docId: string) => getSubscriptionsCollectionRefServer().doc(docId);
+type BillingSubscriptionScopeDocumentId = {
+    numericId: number;
+    documentId: string;
+};
+
+export function normalizeBillingSubscriptionScopeDocumentId(value: unknown): BillingSubscriptionScopeDocumentId | null {
+    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
+    const documentId = raw.trim();
+    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { numericId, documentId }
+        : null;
+}
+
+const getSubscriptionDocRefServer = (docId: string) => {
+    const normalizedDocId = normalizeBillingSubscriptionDocumentId(docId);
+    if (!normalizedDocId) throw new Error("Invalid billing subscription id.");
+    return getSubscriptionsCollectionRefServer().doc(normalizedDocId);
+};
 
 const isTimestampLike = (value: any) => (
     value
@@ -87,9 +109,12 @@ export const updateSubscriptionServer = async (
 };
 
 export const getSubscriptionByIdServer = async (id: string): Promise<FirestoreSubscriptionDoc | null> => {
-    const docSnap = await getSubscriptionDocRefServer(id).get();
+    const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(id);
+    if (!normalizedSubscriptionId) return null;
+
+    const docSnap = await getSubscriptionsCollectionRefServer().doc(normalizedSubscriptionId).get();
     if (!docSnap.exists) return null;
-    return { ...(docSnap.data() as FirestoreSubscriptionDoc), id };
+    return { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
 };
 
 const getMasterStoreIdFromList = (storesList?: MinimalStoreDataType[]): number | null => {
@@ -132,14 +157,18 @@ const fetchSubscriptionRawServer = async (
     tenantId: number,
     storeId: number,
 ): Promise<FirestoreSubscriptionDoc | null> => {
+    const tenantScope = normalizeBillingSubscriptionScopeDocumentId(tenantId);
+    const storeScope = normalizeBillingSubscriptionScopeDocumentId(storeId);
+    if (!tenantScope || !storeScope) return null;
+
     const now = admin.firestore.Timestamp.now();
     const collectionRef = getSubscriptionsCollectionRefServer();
 
     const activeSnapshot = await collectionRef
         .where("status", "in", ["active", "past_due", "cancelled", "paused"])
         .where("cycleEndDate", ">=", now)
-        .where("tenantId", "==", tenantId)
-        .where("storeId", "==", storeId)
+        .where("tenantId", "==", tenantScope.numericId)
+        .where("storeId", "==", storeScope.numericId)
         .limit(1)
         .get();
 
@@ -151,8 +180,8 @@ const fetchSubscriptionRawServer = async (
     for (const status of ["paused", "pending"]) {
         const fallbackSnapshot = await collectionRef
             .where("status", "==", status)
-            .where("tenantId", "==", tenantId)
-            .where("storeId", "==", storeId)
+            .where("tenantId", "==", tenantScope.numericId)
+            .where("storeId", "==", storeScope.numericId)
             .limit(1)
             .get();
 
@@ -213,7 +242,11 @@ export const getActiveSubscriptionForStoreServer = async (
     storeId: number,
     tenantStoresList?: MinimalStoreDataType[],
 ): Promise<FirestoreSubscriptionDoc | null> => {
-    const raw = await fetchSubscriptionRawServer(tenantId, storeId);
+    const tenantScope = normalizeBillingSubscriptionScopeDocumentId(tenantId);
+    const storeScope = normalizeBillingSubscriptionScopeDocumentId(storeId);
+    if (!tenantScope || !storeScope) return null;
+
+    const raw = await fetchSubscriptionRawServer(tenantScope.numericId, storeScope.numericId);
     if (raw) return await expireIfGracePeriodEndedServer(raw);
 
     let masterStoreId: number | null = null;
@@ -222,14 +255,14 @@ export const getActiveSubscriptionForStoreServer = async (
     } else {
         const tenantSnap = await firestoreAdmin
             .collection(DB_COLLECTIONS.TENANTS)
-            .doc(String(tenantId))
+            .doc(tenantScope.documentId)
             .get();
         masterStoreId = getMasterStoreIdFromList(tenantSnap.data()?.storesList);
     }
 
-    if (!masterStoreId || masterStoreId === storeId) return null;
+    if (!masterStoreId || masterStoreId === storeScope.numericId) return null;
 
-    const masterRaw = await fetchSubscriptionRawServer(tenantId, masterStoreId);
+    const masterRaw = await fetchSubscriptionRawServer(tenantScope.numericId, masterStoreId);
     if (!masterRaw) return null;
     return await expireIfGracePeriodEndedServer(masterRaw);
 };

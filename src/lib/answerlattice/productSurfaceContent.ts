@@ -6,6 +6,8 @@ import type {
     AnswerlatticeSurfaceContentItem,
     AnswerlatticeSurfaceContentSummary,
 } from '@type/answerlattice';
+import { normalizeAnswerlatticeResolvedEntityIds } from './governanceIdBoundary';
+import { normalizeAnswerlatticeProductSurfaceId } from './productSurfaceIdBoundary';
 import { z } from 'zod';
 
 export const ANSWERLATTICE_CONTEXT_CONTENT_SUMMARY_PREFIX = 'contextContent';
@@ -140,11 +142,13 @@ export type ProductSurfaceSaveInput = z.infer<typeof ProductSurfaceSaveSchema>;
 
 export function parseProductSurfaceSaveInput(value: unknown, scope: { tId: number; sId: number }): Omit<AnswerlatticeProductSurface, 'id'> & { id?: string } {
     const parsed = ProductSurfaceSaveSchema.parse(value);
+    const surfaceId = parsed.id ? normalizeAnswerlatticeProductSurfaceId(parsed.id) : null;
+    if (parsed.id && !surfaceId) throw new Error('Invalid product surface id.');
     const label = parsed.label.replace(CONTROL_TEXT_PATTERN, '').trim();
     const key = normalizeSurfaceKey(parsed.key) || buildSurfaceKeyFromLabel(label);
 
     return {
-        ...(parsed.id ? { id: parsed.id } : {}),
+        ...(surfaceId ? { id: surfaceId } : {}),
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: Number(scope.tId),
         sId: Number(scope.sId),
@@ -156,7 +160,7 @@ export function parseProductSurfaceSaveInput(value: unknown, scope: { tId: numbe
         page: normalizeSurfaceToken(parsed.page),
         workflow: normalizeSurfaceToken(parsed.workflow),
         entityHints: normalizeSurfaceList(parsed.entityHints, MAX_ENTITY_HINTS, 64),
-        entityIds: Array.from(new Set(parsed.entityIds.map(value => value.trim()).filter(Boolean))).slice(0, MAX_ENTITY_IDS),
+        entityIds: normalizeAnswerlatticeResolvedEntityIds(parsed.entityIds, MAX_ENTITY_IDS),
         tags: normalizeSurfaceList(parsed.tags, MAX_TAGS, 64),
         visibility: normalizeSurfaceVisibility(parsed.visibility),
         active: parsed.active !== false,

@@ -22,6 +22,12 @@ Cost impact: `$0.00`. This changes public compliance page observability only. It
 
 Cost impact: `$0.00` beyond the existing owner compliance load read. This changes owner compliance load failure handling and observability only. It adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, public page rendering, or public compliance output changes.
 
+## July 6, 2026 - Session Document-ID Boundary
+
+`/api/compliance` validates session tenant/store IDs with the shared Firestore document-ID guard before owner store lookup, override reads, permission checks, DATA_WRITE limiter keys, override writes, reset writes, or bounded diagnostics. The server compliance DAL also validates the `compliancePages/{sId}` document ID before building the Firestore ref, so malformed, reserved, empty, whitespace-mutated, or path-shaped IDs fail closed before compliance override refs.
+
+Cost impact: `$0.00` for valid requests. This changes app-side owner compliance session document-ID admission only. It adds no Firestore reads/writes/deletes for valid requests, Storage operations, Cloud Functions, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, public page rendering, or public compliance output changes.
+
 ## June 30, 2026 - Browser Request Boundary Hardening
 
 Desktop Official Page compliance, embedded Custom Domain compliance, and mobile compliance editor load/save/reset requests must call `/api/compliance` through the shared `AUTH_BROWSER_REQUEST_POLICY` from `src/lib/auth/browserRequestPolicy.ts`. That policy pins `cache: 'no-store'`, `credentials: 'same-origin'`, and `redirect: 'manual'` before bounded response parsing.
@@ -112,8 +118,8 @@ Only custom overrides are stored in Firestore. This eliminates:
 
 ```typescript
 interface ComplianceOverrideDoc {
-  sId: number;
-  tId: number;
+  sId: string | number;
+  tId: string | number;
   privacyOverride?: string; // Custom privacy text (only if overridden)
   termsOverride?: string; // Custom terms text (only if overridden)
   modifiedOn: Timestamp;

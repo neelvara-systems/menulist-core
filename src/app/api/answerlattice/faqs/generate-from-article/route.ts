@@ -14,6 +14,8 @@ import {
     ANSWERLATTICE_FAQ_GENERATED_PER_ARTICLE_LIMIT,
     normalizeGeneratedFaqs,
 } from '@lib/answerlattice/faqContent';
+import { normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
+import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -30,7 +32,7 @@ import { z, ZodError } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
 
 const GenerateFaqRequestSchema = z.object({
-    articleId: z.string().trim().min(1).max(180),
+    articleId: z.string().trim().refine((value) => normalizeAnswerlatticeKbArticleId(value) === value),
 });
 
 const GENERATE_FAQ_FROM_ARTICLE_MAX_BODY_BYTES = 4 * 1024;
@@ -277,7 +279,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 articleId,
                 articleTitle: article.title,
                 canonicalAnswerId: null,
-                entityIds: Array.from(new Set([...(article.entityIds || []), ...(faq.entityIds || [])])).slice(0, 25),
+                entityIds: normalizeAnswerlatticeResolvedEntityIds([...(article.entityIds || []), ...(faq.entityIds || [])], 25),
                 contextKeys: Array.from(new Set([...(article.contextKeys || []), ...(faq.contextKeys || [])])).slice(0, 20),
                 tags: Array.from(new Set([...(article.tags || []), ...(faq.tags || [])])).slice(0, 20),
                 likes: 0,

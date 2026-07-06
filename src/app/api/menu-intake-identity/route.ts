@@ -4,8 +4,10 @@ import {
   isSupportedMenuIntakeMimeType,
   MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE,
   MenuIntakeIdentityServerError,
+  normalizeMenuIntakeScopeDocumentId,
   runMenuIntakeIdentityCheck,
 } from "@lib/menu-extraction/menuIntakeIdentityServer";
+import { normalizeMenuExtractionProjectId } from "@lib/menu-extraction/projectIdBoundary";
 import { checkSafeMode } from "@lib/ops/safeMode";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -27,8 +29,12 @@ const IntakeFileSchema = z.object({
   url: z.string().min(1).max(4000),
 });
 
+const MenuExtractionProjectIdSchema = z.string()
+  .trim()
+  .refine((value) => normalizeMenuExtractionProjectId(value) === value);
+
 const IntakeRequestSchema = z.object({
-  projectId: z.string().min(3).max(160),
+  projectId: MenuExtractionProjectIdSchema,
   files: z.array(IntakeFileSchema).min(1).max(50),
 });
 
@@ -48,15 +54,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     sId: String(session.sId || ""),
     uId: String(session.uId || session.user?.id || ""),
   };
+  const tenantScope = normalizeMenuIntakeScopeDocumentId(ids.tId);
+  const storeScope = normalizeMenuIntakeScopeDocumentId(ids.sId);
+  if (!tenantScope || !storeScope) {
+    return NextResponse.json({ error: "Invalid menu." }, { status: 400 });
+  }
 
-  if (!verifyTenantAccess(session, ids.tId, ids.sId, request)) {
+  if (!verifyTenantAccess(session, tenantScope.documentId, storeScope.documentId, request)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const rateLimitConfig = getRateLimitForFeature("AI_OPERATION");
   const userRateLimitHash = hashPublicRateLimitValue(ids.uId);
-  const tenantRateLimitHash = hashPublicRateLimitValue(ids.tId);
-  const storeRateLimitHash = hashPublicRateLimitValue(ids.sId);
+  const tenantRateLimitHash = hashPublicRateLimitValue(tenantScope.documentId);
+  const storeRateLimitHash = hashPublicRateLimitValue(storeScope.documentId);
   const rateLimit = await checkRateLimit({
     key: `menu-intake:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
     ...rateLimitConfig,
@@ -95,8 +106,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       files,
       projectId,
       session,
-      sId: ids.sId,
-      tId: ids.tId,
+      sId: storeScope.documentId,
+      tId: tenantScope.documentId,
     });
 
     return NextResponse.json(result);

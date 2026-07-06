@@ -228,6 +228,7 @@ VERCEL_TEAM_ID=team_xxxxxxxxxxxx  # Optional
 | Check                          | Status | Notes                                                 |
 | ------------------------------ | ------ | ----------------------------------------------------- |
 | API routes auth-protected      | ✅     | `/api/domain` + `/api/subdomain/check` use `withAuth` |
+| Domain session IDs guarded     | ✅     | `/api/domain` validates session tenant/store IDs with the shared Firestore document-ID guard before permission checks, limiter keys, store refs, Vercel-flow diagnostics, and public cache invalidation |
 | Domain mutation body bounded   | ✅     | `/api/domain` rejects bodies above 4KB before validation or Vercel provider calls |
 | Domain management limiter      | ✅     | `/api/domain` hashes owner/store key material before storing the domain-management rate-limit key |
 | Subdomain check limiter        | ✅     | `/api/subdomain/check` hashes owner/tenant/store key material before storing the availability-check rate-limit key |

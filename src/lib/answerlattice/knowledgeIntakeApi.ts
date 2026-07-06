@@ -2,6 +2,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import {
     getAnswerlatticeSecurityLogContext,
     getBoundedAnswerlatticeStringContext,
@@ -244,8 +245,9 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
     }
 
     const summarySubscriptionId = String(storeSubscription.id || storeSubscription.providerSubscriptionId || '').trim();
-    if (summarySubscriptionId) {
-        const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(summarySubscriptionId).get();
+    const normalizedSummarySubscriptionId = normalizeAnswerlatticeSubscriptionId(summarySubscriptionId);
+    if (normalizedSummarySubscriptionId) {
+        const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSummarySubscriptionId).get();
         if (subscriptionSnap.exists) {
             const subscription = subscriptionSnap.data() || {};
             const subscriptionTenantId = Number(subscription.tId || subscription.tenantId);

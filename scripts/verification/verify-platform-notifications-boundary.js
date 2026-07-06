@@ -50,19 +50,38 @@ function verifyRegistryMirror(appRegistry, functionsRegistry) {
   ].forEach((token) => assertIncludes(appRegistry, token, 'Platform notification registry'));
 }
 
+function verifyFirestoreDocumentIdHelper(helper) {
+  [
+    'RESERVED_FIRESTORE_DOCUMENT_ID_PATTERN = /^__.*__$/',
+    'export function isValidFirestoreDocumentId(value: unknown): value is string',
+    "id !== '.'",
+    "id !== '..'",
+    "!id.includes('/')",
+    '!RESERVED_FIRESTORE_DOCUMENT_ID_PATTERN.test(id)',
+  ].forEach((token) => assertIncludes(helper, token, 'Firestore document ID helper'));
+}
+
 function verifyOpsRoute(route) {
   [
     "withAuth(async (request, session) =>",
     "requiredPlatformRole: 'PLATFORM'",
     '!FEATURE_FLAGS.ENABLE_PLATFORM_NOTIFICATION_DASHBOARD',
     'const PLATFORM_NOTIFICATION_OPS_ACTION_MAX_BODY_BYTES = 8 * 1024;',
+    "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
     'const STATUS_FILTERS: PlatformNotificationStatusFilter[]',
     'const SEVERITY_FILTERS: PlatformNotificationSeverityFilter[]',
+    'const PlatformNotificationEventIdSchema = z.string()',
+    ".refine(isValidFirestoreDocumentId, 'Invalid event ID')",
+    'eventId: PlatformNotificationEventIdSchema.optional()',
     'z.enum(CATEGORY_VALUES)',
     'limit: z.coerce.number().int().min(5).max(100).default(50)',
     "action: z.literal('acknowledge')",
+    'eventId: PlatformNotificationEventIdSchema',
     "action: z.literal('manualHandoff')",
     "action: z.literal('createManualAlert')",
+    'async function getExistingAlertRef(eventId: string)',
+    "return NextResponse.json({ error: 'Alert not found' }, { status: 404 });",
+    'await alertRef.update({',
     'Math.min(Math.max(limit * 3, 75), 150)',
     'countQueries: 5',
     'Manual refresh only. No realtime listener.',
@@ -97,6 +116,7 @@ function verifyOpsRoute(route) {
 
   [
     'request.json()',
+    '.doc(validation.data.eventId).set({',
     'title: String(data.title || classified.entry.title)',
     'message: String(data.message || classified.entry.description)',
     "logger.error('[API /ops/platform-notifications]",
@@ -162,6 +182,8 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc) {
     '/ops/platform-notifications',
     'manual refresh model',
     'bounded action body',
+    'simple Firestore document ID',
+    'actions update only existing alert documents',
     'hashed per-operator action limiter',
     'Rejected, oversized, malformed, or invalid responses use fixed platform failure copy',
     'Source gate: `npm run verify:platform-notifications-boundary`',
@@ -170,6 +192,7 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc) {
 
   [
     'Platform notification boundary source gate: `npm run verify:platform-notifications-boundary`',
+    'Platform notification event-id/action boundary checkpoint',
     'source-only platform-notification registry/API/monitor/docs gate',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit platform notification checkpoint'));
 }
@@ -179,6 +202,7 @@ function verifyPlatformNotificationsBoundary() {
     packageJson: read('package.json'),
     appRegistry: read('src/data/shared/platformNotificationRegistry.ts'),
     functionsRegistry: read('functions/src/sharedData/platformNotificationRegistry.ts'),
+    firestoreDocumentId: read('src/lib/firebase/firestoreDocumentId.ts'),
     route: read('src/app/api/ops/platform-notifications/route.ts'),
     monitor: read('src/components/templates/main-app/platform/platformNotificationMonitor/index.tsx'),
     responseHelper: read('src/lib/ops/platformNotificationClientResponse.ts'),
@@ -187,6 +211,7 @@ function verifyPlatformNotificationsBoundary() {
   };
 
   verifyRegistryMirror(files.appRegistry, files.functionsRegistry);
+  verifyFirestoreDocumentIdHelper(files.firestoreDocumentId);
   verifyOpsRoute(files.route);
   verifyMonitor(files.monitor, files.responseHelper);
   verifyDocsAndPackage(files.packageJson, files.opsDoc, files.auditDoc);

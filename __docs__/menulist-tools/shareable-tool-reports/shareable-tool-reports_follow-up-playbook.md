@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Follow-Up Playbook
 
 **Status:** Operational playbook for consented report leads
-**Last Updated:** July 4, 2026
+**Last Updated:** July 5, 2026
 **Audience:** Founder, support, sales, setup partners
 
 ---
@@ -41,7 +41,7 @@ The nested `sourceContext` object carries the same bounded details:
 | `reportStatus` | The report's overall status |
 | `businessName` | Owner-entered business name when present |
 | `businessContext` | Owner-entered city/context when present |
-| `reportGeneratedAt` | Source-tool timestamp |
+| `reportGeneratedAt` | Canonical ISO source-tool timestamp; invalid direct submissions are `null` |
 | `missingCount` | Number of missing rows in the shared report |
 | `unclearCount` | Number of unclear rows in the shared report |
 | `notCheckedCount` | Number of not-checked rows in the shared report |
