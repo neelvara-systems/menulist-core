@@ -20,7 +20,10 @@ import {
     buildPublicTruthMonitorHistoryEntry,
     buildPublicTruthMonitorSummary,
 } from "@lib/public-truth-tools/publicTruthMonitorReport";
-import { evaluatePublicTruthMonitorServerEntitlement } from "@lib/public-truth-tools/serverPublicTruthMonitorEntitlements";
+import {
+    evaluatePublicTruthMonitorServerEntitlement,
+    getPublicTruthMonitorSessionScope,
+} from "@lib/public-truth-tools/serverPublicTruthMonitorEntitlements";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { logger } from "@lib/monitoring/logger";
 import { checkDataWriteLimit } from "@lib/rateLimit/helpers";
@@ -63,22 +66,27 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Invalid input", details: errorMsg }, { status: 400 });
         }
 
-        if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
+        const sessionScope = getPublicTruthMonitorSessionScope(session);
+        if (!sessionScope) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        if (!verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request)) {
             logger.security("Tenant Access Violation - Public Truth Monitor Refresh API", {
                 ...getPublicTruthMonitorSecurityLogContext(session, request, ENDPOINT),
             }, "critical");
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
-        const storeData = await readPublicTruthMonitorStoreDataServer(session.sId);
+        const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);
         const permissionError = requireAnyStorePermissionForStoreData(
             request,
             session,
             storeData,
             [PERMISSIONS.VIEW_ANALYTICS],
             "Public Truth Monitor refresh",
-            Number(session.sId),
-            Number(session.tId),
+            sessionScope.storeScope.numericId,
+            sessionScope.tenantScope.numericId,
         );
         if (permissionError) return permissionError;
 
@@ -95,13 +103,13 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const generatedAt = new Date().toISOString();
-        const projectSummaries = await readPublicTruthMonitorProjectSummariesServer(session.sId);
+        const projectSummaries = await readPublicTruthMonitorProjectSummariesServer(sessionScope.storeScope.documentId);
         const selectedProjectId = pickPublicTruthMonitorProjectId(projectSummaries, validation.data.selectedProjectId);
         const projectData = selectedProjectId
             ? await readPublicTruthMonitorProjectDataServer({
                 projectId: selectedProjectId,
-                sId: session.sId,
-                tId: session.tId,
+                sId: sessionScope.storeScope.documentId,
+                tId: sessionScope.tenantScope.documentId,
             })
             : null;
         const report = buildOwnerPublicTruthReadinessReport({
@@ -111,24 +119,24 @@ export const POST = withAuth(async (request, session) => {
             selectedProjectId,
             store: storeData,
         });
-        const currentSummary = await readPublicTruthMonitorSummaryServer(session.sId);
+        const currentSummary = await readPublicTruthMonitorSummaryServer(sessionScope.storeScope.documentId);
         const entry = buildPublicTruthMonitorHistoryEntry({
             generatedAt,
             report,
-            sId: session.sId,
-            tId: session.tId,
+            sId: sessionScope.storeScope.documentId,
+            tId: sessionScope.tenantScope.documentId,
         });
         const summary = buildPublicTruthMonitorSummary({
             current: currentSummary,
             entitlement,
             entry,
             generatedByUserId: session.uId || session.user?.id,
-            sId: session.sId,
-            tId: session.tId,
+            sId: sessionScope.storeScope.documentId,
+            tId: sessionScope.tenantScope.documentId,
         });
 
         await writePublicTruthMonitorSummaryServer({
-            storeId: session.sId,
+            storeId: sessionScope.storeScope.documentId,
             summary,
         });
 

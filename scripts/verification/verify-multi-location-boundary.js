@@ -109,6 +109,55 @@ function verifyOutletSessionScopeHelper(helper) {
   ].forEach((token) => assertIncludes(helper, token, 'Outlet session scope helper boundary'));
 }
 
+function verifyProjectIdBoundary(helper, resolver, linkedOutletSaveRoute) {
+  [
+    'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+    'export const MULTI_OUTLET_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{3,160}$/;',
+    'const MULTI_OUTLET_NUMERIC_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;',
+    'export type MultiOutletProjectIdScope = {',
+    'tenantDocumentId: string;',
+    'storeDocumentId: string;',
+    'export function normalizeMultiOutletNumericDocumentId(value: unknown): MultiOutletNumericDocumentId | null',
+    'documentId !== raw',
+    '!MULTI_OUTLET_NUMERIC_DOCUMENT_ID_PATTERN.test(documentId)',
+    'String(numericId) === documentId',
+    'export function normalizeMultiOutletProjectId(value: unknown): MultiOutletProjectIdScope | null',
+    '!MULTI_OUTLET_PROJECT_ID_PATTERN.test(projectId)',
+    'const tenantScope = normalizeMultiOutletNumericDocumentId(parts[0]);',
+    'const storeScope = normalizeMultiOutletNumericDocumentId(parts[parts.length - 1]);',
+  ].forEach((token) => assertIncludes(helper, token, 'Multi-outlet shared project ID boundary'));
+
+  [
+    'import { normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";',
+    'const scope = normalizeMultiOutletProjectId(projectId);',
+    'throw new Error("Invalid multi-outlet project reference");',
+    'const masterProjectScope = normalizeMultiOutletProjectId(storeProject.masterProjectId);',
+    "logMultiOutletFailure('multi_outlet_master_project_reference_invalid'",
+    'const { tId, sId: masterStoreId } = masterProjectScope;',
+  ].forEach((token) => assertIncludes(resolver, token, 'Multi-outlet resolver project ID boundary'));
+
+  [
+    'parseInt(parts[0], 10)',
+    'parseInt(parts[parts.length - 1], 10)',
+  ].forEach((token) => assertNotIncludes(resolver, token, 'Multi-outlet resolver must not prefix-parse project scope'));
+
+  [
+    'import { normalizeMultiOutletNumericDocumentId, normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";',
+    'const outletProjectRef = normalizeMultiOutletProjectId(project.projectId);',
+    'const masterProjectRef = normalizeMultiOutletProjectId(project.masterProjectId);',
+    'const currentStoreScope = normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId);',
+    'linked_outlet_save_invalid_session_store_scope',
+    'const currentStoreId = currentStoreScope.numericId;',
+  ].forEach((token) => assertIncludes(linkedOutletSaveRoute, token, 'Linked outlet save shared project ID boundary'));
+
+  [
+    'const parseProjectId = (projectId: string): { tId: number; sId: number } | null => {',
+    'const tId = Number(parts[0]);',
+    'const sId = Number(parts[parts.length - 1]);',
+    'const currentStoreId = Number(session.sId || session.user?.storeId);',
+  ].forEach((token) => assertNotIncludes(linkedOutletSaveRoute, token, 'Linked outlet save must not use loose project scope parsing'));
+}
+
 function verifyCreateRoute(createRoute) {
   verifyOutletActionRoute(createRoute, 'Outlet create route boundary', 'OUTLET_ACTION_MAX_BODY_BYTES', 'outlet:${tenantRateLimitHash}');
 
@@ -267,8 +316,11 @@ function verifyLinkedOutletSaveRoute(route) {
     '.refine(isValidFirestoreDocumentId, "Invalid override ID")',
     'readBoundedJsonBody(request, OUTLET_SAVE_MAX_BODY_BYTES',
     'validateAPIInput(schema, body)',
-    'parseProjectId(project.projectId)',
-    'parseProjectId(project.masterProjectId)',
+    'normalizeMultiOutletProjectId(project.projectId)',
+    'normalizeMultiOutletProjectId(project.masterProjectId)',
+    'normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId)',
+    'linked_outlet_save_invalid_session_store_scope',
+    'const currentStoreId = currentStoreScope.numericId;',
     'verifyTenantAccess(session, tenantId, currentStoreId, request)',
     'hashPublicRateLimitValue(session.uId || session.user?.id || "unknown")',
     'hashPublicRateLimitValue(project.projectId)',
@@ -306,6 +358,7 @@ function verifyLinkedOutletSaveRoute(route) {
     [
       'readBoundedJsonBody(request, OUTLET_SAVE_MAX_BODY_BYTES',
       'validateAPIInput(schema, body)',
+      'const currentStoreScope = normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId);',
       'verifyTenantAccess(session, tenantId, currentStoreId, request)',
       'checkRateLimit({',
       'Promise.all([',
@@ -584,6 +637,8 @@ function verifyDocs(packageJson, docs) {
     'Multi-location boundary source gate: `npm run verify:multi-location-boundary`',
     'source-only and does not run browser, Razorpay, Firebase deploy, or live Firestore smoke',
     'active non-master outlets only',
+    '**July 6, 2026 linked outlet save session store ID boundary:**',
+    '**July 6, 2026 shared project ID boundary:**',
     '**July 5, 2026 linked outlet save ID boundary:**',
   ].forEach((token) => assertIncludes(implDoc, token, 'Multi-outlet implementation source gate docs'));
 
@@ -603,6 +658,8 @@ function verifyDocs(packageJson, docs) {
     'Master update awareness snapshot hardening is cost-neutral',
     'nested `undefined` values that Firestore rejects',
     'Active-only max-outlet cap is cost-neutral',
+    'Linked outlet save session store ID boundary is cost-neutral',
+    'Shared multi-outlet project ID boundary is cost-neutral',
     'Linked outlet save ID admission is cost-neutral',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Multi-outlet Firebase source gate docs'));
 
@@ -659,6 +716,8 @@ function verifyDocs(packageJson, docs) {
     'active-cap source checkpoint',
     'Browser smoke for desktop/mobile Locations, Add Outlet, Rename Outlet, and Deactivate Outlet remains pending',
     'Linked outlet save ID boundary checkpoint',
+    'Linked outlet save session store document-ID boundary checkpoint',
+    'Multi-Outlet shared project ID boundary checkpoint',
     'src/lib/firebase/firestoreDocumentId.ts',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit multi-location source gate evidence'));
 
@@ -699,6 +758,18 @@ function verifyDocs(packageJson, docs) {
   ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog linked outlet save ID boundary evidence'));
 
   [
+    'Multi-Outlet Shared Project ID Boundary',
+    'normalizeMultiOutletProjectId',
+    'npm run verify:multi-location-boundary',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog multi-outlet shared project ID boundary evidence'));
+
+  [
+    'Linked Outlet Save Session Store ID Boundary',
+    'normalized session store scope',
+    'npm run verify:menulist-api-tenant-safety',
+  ].forEach((token) => assertIncludes(changelogDoc, token, 'Changelog linked outlet save session store ID boundary evidence'));
+
+  [
     'Multi-Outlet Sync/Cache Claim Boundary',
     'no longer promises instant customer freshness',
     'npm run verify:multi-location-boundary',
@@ -732,6 +803,8 @@ function verifyMultiLocationBoundary() {
   const linkedOutletSaveRoute = read('src/app/api/projects/outlet-save/route.ts');
   const files = {
     outletSessionScope: read('src/lib/multiOutlet/outletSessionScope.ts'),
+    projectIdBoundary: read('src/lib/multiOutlet/projectIdBoundary.ts'),
+    resolver: read('src/lib/multiOutlet/resolveProject.ts'),
     actionGuards: read('src/lib/multiOutlet/outletActionResponseGuards.ts'),
     linkedOutletSaveResponse: read('src/lib/multiOutlet/linkedOutletSaveResponse.ts'),
     multiOutletDal: read('src/database/multiOutlet/index.ts'),
@@ -768,6 +841,7 @@ function verifyMultiLocationBoundary() {
   };
 
   verifyOutletSessionScopeHelper(files.outletSessionScope);
+  verifyProjectIdBoundary(files.projectIdBoundary, files.resolver, linkedOutletSaveRoute);
   verifyCreateRoute(createRoute);
   verifyDeactivateRoute(deactivateRoute);
   verifyRenameRoute(renameRoute);

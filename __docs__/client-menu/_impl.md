@@ -441,6 +441,8 @@ async function getProjectBySlugOrDefault(
 }
 ```
 
+Public menu project document-ID boundary: `src/app/client/[[...slug]]/page.tsx` resolves the public menu project through `normalizePublicMenuProjectDocumentScope` before reading `projects/{tId}/{sId}/{projectId}`. The guard keeps valid immutable project IDs, reads tenant scope from the first segment and store scope from the final segment, and requires both scope segments to be exact positive numeric Firestore document IDs. Whitespace-mutated, path-shaped, reserved, malformed, zero, negative, unsafe, or nonnumeric project scope fails closed as menu not found before Admin SDK project refs are built.
+
 ### 4. Decision Blocks Fetch
 
 ```typescript

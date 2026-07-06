@@ -823,6 +823,127 @@ body[data-campaigncue-mobile-menu="open"] [data-product="campaigncue"][role="dia
     margin: 0 auto;
 }
 
+.campaigncue-hero-visual--proof {
+    display: block;
+    min-height: auto;
+}
+
+.campaigncue-product-proof {
+    position: relative;
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    margin: 0;
+}
+
+.campaigncue-product-proof img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid rgb(1 27 109 / 10%);
+    border-radius: var(--cc-radius);
+    background: #ffffff;
+    box-shadow: var(--cc-shadow);
+}
+
+.campaigncue-product-proof figcaption {
+    color: var(--cc-muted);
+    font-size: 0.84rem;
+    font-weight: 750;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.campaigncue-product-proof--hero {
+    width: min(1120px, 100%);
+    margin: 0 auto;
+}
+
+.campaigncue-product-proof--pack-room,
+.campaigncue-product-proof--creative-system {
+    width: 100%;
+}
+
+.campaigncue-product-proof--creative-system {
+    margin-bottom: 22px;
+}
+
+.campaigncue-product-proof--feature {
+    margin-top: 4px;
+}
+
+.campaigncue-product-proof--feature img {
+    box-shadow: var(--cc-soft-shadow);
+}
+
+.campaigncue-product-proof--use-case {
+    margin-top: 18px;
+}
+
+.campaigncue-hero-proof-artifacts {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    width: min(980px, 100%);
+    margin: 14px auto 0;
+}
+
+.campaigncue-hero-proof-artifact {
+    display: grid;
+    gap: 5px;
+    min-height: 92px;
+    padding: 12px;
+    border: 1px solid rgb(1 27 109 / 9%);
+    border-radius: var(--cc-radius);
+    background: var(--asset-bg, #ffffff);
+    color: var(--asset-ink, var(--cc-ink));
+    box-shadow: 0 14px 32px rgb(1 27 109 / 7%);
+}
+
+.campaigncue-hero-proof-artifact span,
+.campaigncue-hero-proof-artifact em {
+    color: inherit;
+    opacity: 0.78;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.campaigncue-hero-proof-artifact strong {
+    font-size: 0.96rem;
+    line-height: 1.12;
+}
+
+.campaigncue-hero-proof-artifact.is-rose {
+    --asset-bg: var(--cc-pink);
+    --asset-ink: #ffffff;
+}
+
+.campaigncue-hero-proof-artifact.is-pink {
+    --asset-bg: #fbe4ef;
+}
+
+.campaigncue-hero-proof-artifact.is-blue {
+    --asset-bg: var(--cc-ink);
+    --asset-ink: #ffffff;
+}
+
+.campaigncue-hero-proof-artifact.is-purple {
+    --asset-bg: var(--cc-navy-soft);
+    --asset-ink: #ffffff;
+}
+
+.campaigncue-hero-proof-artifact.is-cream {
+    --asset-bg: var(--cc-pink-soft);
+}
+
+@media (max-width: 760px) {
+    .campaigncue-hero-proof-artifacts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 .campaigncue-hero-cloud {
     position: absolute;
     inset: 0;

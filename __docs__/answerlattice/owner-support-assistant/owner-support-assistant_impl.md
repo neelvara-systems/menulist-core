@@ -27,7 +27,7 @@ It must not own a separate support memory, message store, plan store, or analyti
 | Existing system | Reuse |
 | --- | --- |
 | `src/components/answerlattice/AnswerlatticeDashboardLayout.tsx` | Route shell, access state, responsive dashboard layout. |
-| `src/lib/answerlattice/sessionScope.ts` | `resolveAnswerlatticeSessionScope()`, `getAnswerlatticeScopedSession()`, and `canUseAnswerlatticeManagement()`. |
+| `src/lib/answerlattice/sessionScope.ts` | `resolveAnswerlatticeSessionScope()`, `getAnswerlatticeScopedSession()`, and `canUseAnswerlatticeManagement()`; tenant/store scope is accepted only as exact positive numeric Firestore document IDs. |
 | `src/config/features.ts` | App-side flag `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT`, default `false`. |
 | `functions-answerlattice/src/constants/features.ts` | Function-side mirror only when the compact assistant summary task is wired. |
 | `src/constants/answerlattice/routes.ts` | Add `/answerlattice/support-assistant` route constant. |
@@ -231,7 +231,7 @@ Server sequence:
 
 1. `withAuth()`.
 2. Feature flag check.
-3. Resolve Answerlattice scoped session from server-side session, not request body.
+3. Resolve Answerlattice scoped session from server-side session, not request body; malformed tenant/store scope fails before assistant context reads.
 4. Permission check.
 5. Zod validate request.
 6. Apply workspace/user rate limit before context expansion.

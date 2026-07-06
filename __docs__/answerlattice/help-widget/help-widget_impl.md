@@ -292,7 +292,7 @@ Protected dashboard endpoint used by `/answerlattice/widget`.
 
 Implementation:
 
-- Uses `withAuth()` and `resolveAnswerlatticeSessionScope()` to read only the active Answerlattice tenant/store.
+- Uses `withAuth()` and `resolveAnswerlatticeSessionScope()` to read only the active Answerlattice tenant/store. The shared scope helper accepts tenant/store values only as exact positive numeric Firestore document IDs before widget activity reads.
 - Reads recent `aiSearchHistory` rows where `mountContext === "widget"` and returns only safe dashboard fields: question, answer preview, canonical flag, confidence, reference count, feedback state, and timestamp.
 - Falls back to a bounded recent-history scan if the composite index is still building, while preserving tenant/store filtering before responding.
 - Normalizes stored activity timestamps through the widget activity timestamp boundary: Firestore Timestamp-like values and canonical ISO `...Z` strings are accepted, while malformed stored values become `null` or sort as oldest instead of using permissive `Date.parse()`.

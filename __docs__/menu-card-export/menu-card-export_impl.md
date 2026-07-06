@@ -17,6 +17,8 @@ The implementation must not be a modal-only extension. The route owns job preset
 
 July 1 route guard: `/api/menu-card-export/design-advisor` now requires `canManageMenuSharing`, `canPublishMenu`, or `canManageMenu` after bounded body parsing and schema validation, and before Pro/Premium subscription lookup, AI capacity checks, Gemini calls, recommendation normalization, or AI accounting.
 
+July 6 AI advisor session scope boundary: `/api/menu-card-export/design-advisor` now normalizes authenticated session tenant/store scope as exact positive numeric Firestore document IDs before tenant access, bounded request parsing, route permission checks, subscription lookup, AI capacity check, Gemini call, recommendation normalization, or AI accounting. Malformed, whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped session scope fails with the existing owner-safe forbidden response.
+
 ---
 
 ## Current Baseline

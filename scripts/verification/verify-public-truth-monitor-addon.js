@@ -114,6 +114,15 @@ assertIncludes(types, 'PublicTruthMonitorHistoryEntry', 'history entry type');
 assertIncludes(entitlement, 'hasValidSubscriptionAccess', 'paid plan entitlement');
 assertIncludes(entitlement, 'getPublicTruthMonitorPaidPlanIds', 'paid plan list helper');
 assertIncludes(serverEntitlement, 'getActiveSubscriptionForStoreServer', 'server subscription check');
+assertIncludes(serverEntitlement, 'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";', 'server entitlement session scope document-ID guard import');
+assertIncludes(serverEntitlement, 'export function normalizePublicTruthMonitorSessionScopeDocumentId(', 'server entitlement session scope normalizer');
+assertIncludes(serverEntitlement, 'documentId !== raw || !/^[1-9]\\d*$/.test(documentId) || !isValidFirestoreDocumentId(documentId)', 'server entitlement exact numeric scope guard');
+assertIncludes(serverEntitlement, 'export function getPublicTruthMonitorSessionScope(session: any): PublicTruthMonitorSessionScope | null', 'server entitlement session scope helper');
+assertIncludes(serverEntitlement, 'const sessionScope = getPublicTruthMonitorSessionScope(params.session);', 'server entitlement normalized session scope');
+assertIncludes(serverEntitlement, 'readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId)', 'server entitlement normalized store read');
+assertIncludes(serverEntitlement, 'getActiveSubscriptionForStoreServer(sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId)', 'server entitlement normalized subscription lookup');
+assertNotIncludes(serverEntitlement, 'const tenantId = Number(params.session?.tId);', 'server entitlement must not loose-coerce tenant scope');
+assertNotIncludes(serverEntitlement, 'const storeId = Number(params.session?.sId);', 'server entitlement must not loose-coerce store scope');
 
 assertIncludes(report, 'buildPublicTruthMonitorHistoryEntry', 'history builder');
 assertIncludes(report, 'buildPublicTruthMonitorExportText', 'export renderer');
@@ -126,6 +135,7 @@ assertIncludes(validation, 'import { isValidFirestoreDocumentId } from "@lib/fir
 assertIncludes(validation, 'const publicTruthMonitorProjectIdSchema = z.string()', 'refresh request project ID schema');
 assertIncludes(validation, '.refine(isValidFirestoreDocumentId, "Invalid project ID")', 'refresh request project ID document-ID guard');
 assertIncludes(validation, 'selectedProjectId: publicTruthMonitorProjectIdSchema.optional()', 'refresh request selected project ID schema usage');
+assertNotIncludes(validation, '.trim()', 'refresh request project ID schema must not trim selected project IDs before validation');
 assertNotIncludes(validation, 'selectedProjectId: z.string().min(1).max(140).optional()', 'refresh request must not keep max-only selected project validation');
 
 assertIncludes(serverDal, 'DB_COLLECTIONS.PLATFORM_SUMMARY', 'platform summary storage through DB collection constant');
@@ -134,7 +144,8 @@ assertIncludes(serverDal, 'parseSummaryProjects', 'summary project parser');
 assertIncludes(serverDal, 'sanitizeForAdminFirestore', 'admin write sanitizer');
 assertIncludes(serverDal, 'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";', 'server DAL document-ID guard import');
 assertIncludes(serverDal, 'function normalizePublicTruthMonitorDocumentId(value: unknown): string | null', 'server DAL document-ID normalizer');
-assertIncludes(serverDal, 'const documentId = typeof value === "string" ? value.trim() : "";', 'server DAL document-ID trim');
+assertIncludes(serverDal, 'const raw = typeof value === "string" ? value : "";', 'server DAL document-ID raw value');
+assertIncludes(serverDal, 'return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;', 'server DAL document-ID raw equality guard');
 assertIncludes(serverDal, 'const projectId = normalizePublicTruthMonitorDocumentId(project.projectId);', 'project picker normalizes persisted summary project IDs');
 assertIncludes(serverDal, 'const selectedProjectIdDocumentId = normalizePublicTruthMonitorDocumentId(selectedProjectId);', 'project picker normalizes selected project ID');
 assertIncludes(serverDal, 'const projectId = normalizePublicTruthMonitorDocumentId(params.projectId);', 'project reader normalizes project IDs before Firestore reads');
@@ -155,6 +166,14 @@ assertIncludes(summaryRoute, 'verifyTenantAccess', 'summary route tenant check')
 assertIncludes(summaryRoute, 'requireAnyStorePermissionForStoreData', 'summary route store permission check');
 assertIncludes(summaryRoute, 'PERMISSIONS.VIEW_ANALYTICS', 'summary route Business Health permission');
 assertIncludes(summaryRoute, 'evaluatePublicTruthMonitorServerEntitlement', 'summary route entitlement');
+assertIncludes(summaryRoute, 'getPublicTruthMonitorSessionScope', 'summary route session scope normalizer');
+assertIncludes(summaryRoute, 'const sessionScope = getPublicTruthMonitorSessionScope(session);', 'summary route normalized session scope');
+assertIncludes(summaryRoute, 'verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request)', 'summary route normalized tenant access');
+assertIncludes(summaryRoute, 'readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId)', 'summary route normalized store read');
+assertIncludes(summaryRoute, 'sessionScope.storeScope.numericId', 'summary route normalized store permission scope');
+assertIncludes(summaryRoute, 'readPublicTruthMonitorSummaryServer(sessionScope.storeScope.documentId)', 'summary route normalized summary read');
+assertNotIncludes(summaryRoute, 'Number(session.sId)', 'summary route must not loose-coerce store scope');
+assertNotIncludes(summaryRoute, 'Number(session.tId)', 'summary route must not loose-coerce tenant scope');
 assertIncludes(refreshRoute, 'withAuth', 'refresh route auth');
 assertIncludes(refreshRoute, 'checkDataWriteLimit', 'refresh route write rate limit');
 assertIncludes(refreshRoute, 'validateAPIInput', 'refresh route input validation');
@@ -164,6 +183,15 @@ assertIncludes(refreshRoute, 'requireAnyStorePermissionForStoreData', 'refresh r
 assertIncludes(refreshRoute, 'PERMISSIONS.VIEW_ANALYTICS', 'refresh route Business Health permission');
 assertIncludes(refreshRoute, 'writePublicTruthMonitorSummaryServer', 'refresh route summary write');
 assertIncludes(refreshRoute, 'buildOwnerPublicTruthReadinessReport', 'refresh route owner readiness reuse');
+assertIncludes(refreshRoute, 'getPublicTruthMonitorSessionScope', 'refresh route session scope normalizer');
+assertIncludes(refreshRoute, 'const sessionScope = getPublicTruthMonitorSessionScope(session);', 'refresh route normalized session scope');
+assertIncludes(refreshRoute, 'verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request)', 'refresh route normalized tenant access');
+assertIncludes(refreshRoute, 'readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId)', 'refresh route normalized store read');
+assertIncludes(refreshRoute, 'readPublicTruthMonitorProjectSummariesServer(sessionScope.storeScope.documentId)', 'refresh route normalized project summary read');
+assertIncludes(refreshRoute, 'tId: sessionScope.tenantScope.documentId', 'refresh route normalized project read tenant scope');
+assertIncludes(refreshRoute, 'storeId: sessionScope.storeScope.documentId', 'refresh route normalized summary write scope');
+assertNotIncludes(refreshRoute, 'Number(session.sId)', 'refresh route must not loose-coerce store scope');
+assertNotIncludes(refreshRoute, 'Number(session.tId)', 'refresh route must not loose-coerce tenant scope');
 
 assertIncludes(clientDal, '/api/public-truth-monitor/summary', 'client summary endpoint');
 assertIncludes(clientDal, '/api/public-truth-monitor/refresh', 'client refresh endpoint');
@@ -182,17 +210,23 @@ assertIncludes(mobileCard, 'minHeight: 44', 'mobile touch target');
 
 assertIncludes(implDoc, 'Status:** Runtime implemented', 'implementation doc status');
 assertIncludes(implDoc, 'Public Truth Monitor project and scope ID boundary', 'implementation doc project and scope ID boundary');
-assertIncludes(implDoc, 'trims and normalizes', 'implementation doc server DAL project ID normalization');
+assertIncludes(implDoc, 'whitespace-mutated selected project IDs fail', 'implementation doc strict selected project ID boundary');
+assertIncludes(implDoc, 'Public Truth Monitor session scope boundary', 'implementation doc session scope boundary');
 assertIncludes(firebaseDoc, 'platformSummary/publicTruthMonitor_{storeId}', 'Firebase doc summary path');
 assertIncludes(firebaseDoc, 'maximum 6 reports', 'Firebase doc retention cap');
 assertIncludes(firebaseDoc, 'Public Truth Monitor project/scope-ID admission is cost-neutral', 'Firebase doc project and scope ID boundary');
-assertIncludes(firebaseDoc, 'normalized document ID', 'Firebase doc normalized document ID boundary');
+assertIncludes(firebaseDoc, 'whitespace-mutated selected project IDs fail', 'Firebase doc strict project ID boundary');
+assertIncludes(firebaseDoc, 'Public Truth Monitor session-scope admission is cost-neutral', 'Firebase doc session scope boundary');
 assertIncludes(testsDoc, 'PTM-API-001', 'API acceptance test');
 assertIncludes(testsDoc, 'PTM-MOB-001', 'mobile acceptance test');
 assertIncludes(productionAudit, 'Public Truth Monitor project and scope ID boundary checkpoint', 'production audit project and scope ID boundary');
+assertIncludes(productionAudit, 'Public Truth Monitor session scope boundary checkpoint', 'production audit session scope boundary');
 assertIncludes(productionAudit, 'Public Truth Monitor server DAL ID normalization checkpoint', 'production audit server DAL ID normalization');
+assertIncludes(productionAudit, 'whitespace-mutated selected project IDs', 'production audit strict selected project ID boundary');
 assertIncludes(changelog, 'Public Truth Monitor Project ID Boundary', 'changelog project ID boundary');
+assertIncludes(changelog, 'Public Truth Monitor Session Scope Boundary', 'changelog session scope boundary');
 assertIncludes(changelog, 'Public Truth Monitor Server DAL ID Normalization', 'changelog server DAL ID normalization');
+assertIncludes(changelog, 'Public Truth Monitor Strict Project ID Boundary', 'changelog strict project ID boundary');
 assertIncludes(aggregateVerifier, 'verify-public-truth-monitor-addon.js', 'aggregate verifier includes monitor verifier');
 
 [

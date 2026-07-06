@@ -38,6 +38,50 @@ type PageProps = {
     };
 };
 
+type CampaignCueFeatureProofImage = {
+    src: string;
+    alt: string;
+    caption: string;
+};
+
+const CAMPAIGNCUE_FEATURE_PROOF_IMAGES = {
+    "daily-desk": {
+        src: "/campaigncue-website-assets/dummy/campaigncue-feature-daily-desk.webp",
+        alt: "Sample CampaignCue Daily Campaign Desk showing a recommended lunch cue, checked facts, campaign pack outputs, and result memory.",
+        caption: "Sample Daily Campaign Desk output with dummy business data.",
+    },
+    "pack-studio": {
+        src: "/campaigncue-website-assets/dummy/campaigncue-feature-pack-studio.webp",
+        alt: "Sample CampaignCue Campaign Pack Studio showing grouped outputs, proof notes, and manual delivery controls.",
+        caption: "Dummy Campaign Pack Studio image for source-backed export packs.",
+    },
+    "creative-studio": {
+        src: "/campaigncue-website-assets/dummy/campaigncue-feature-creative-studio.webp",
+        alt: "Sample CampaignCue Creative Studio showing a campaign asset, protected source text, review panel, and export checks.",
+        caption: "Dummy Creative Studio asset showing protected text and export checks.",
+    },
+    cuelayers: {
+        src: "/campaigncue-website-assets/dummy/campaigncue-feature-cuelayers.webp",
+        alt: "Sample CampaignCue CueLayers flow showing original flat image preservation, editable layer candidates, and flat-safe fallback.",
+        caption: "Dummy CueLayers image showing conservative image reuse.",
+    },
+    "trust-center": {
+        src: "/campaigncue-website-assets/dummy/campaigncue-feature-trust-center.webp",
+        alt: "Sample CampaignCue Creative Trust Center showing claim, source, risk, and action rows before handoff.",
+        caption: "Dummy trust-center matrix showing review posture before handoff.",
+    },
+    "proof-deck": {
+        src: "/campaigncue-website-assets/dummy/campaigncue-feature-proof-deck.webp",
+        alt: "Sample CampaignCue proof deck showing a review brief, Brand Playbook note, source trace, UGC consent, and manual export boundary.",
+        caption: "Dummy proof deck image for review-ready handoff.",
+    },
+    templates: {
+        src: "/campaigncue-website-assets/dummy/campaigncue-feature-reusable-templates.webp",
+        alt: "Sample CampaignCue reusable pack template flow showing save, refresh, review, and export steps.",
+        caption: "Dummy reusable-pack flow showing fact refresh before export.",
+    },
+} satisfies Record<CampaignCueWebsiteFeature["previewKind"], CampaignCueFeatureProofImage>;
+
 export function generateMetadata({ params }: PageProps): Metadata {
     const feature = getCampaignCueWebsiteFeature(params.featureSlug);
 
@@ -126,6 +170,15 @@ function MiniChrome({ title, children }: { title: string; children: ReactNode })
             </div>
             {children}
         </div>
+    );
+}
+
+function CampaignCueFeatureProofFigure({ image }: { image: CampaignCueFeatureProofImage }) {
+    return (
+        <figure className="campaigncue-product-proof campaigncue-product-proof--feature">
+            <img src={image.src} alt={image.alt} loading="lazy" decoding="async" />
+            <figcaption>{image.caption}</figcaption>
+        </figure>
     );
 }
 
@@ -381,6 +434,7 @@ export default function CampaignCueFeaturePage({ params }: PageProps) {
                 </div>
                 <div className={`campaigncue-feature-preview is-${feature.previewKind}`}>
                     <CampaignCueFeaturePreview feature={feature} />
+                    <CampaignCueFeatureProofFigure image={CAMPAIGNCUE_FEATURE_PROOF_IMAGES[feature.previewKind]} />
                     <p>{feature.dashboardNote}</p>
                 </div>
             </section>

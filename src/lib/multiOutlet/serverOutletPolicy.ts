@@ -1,6 +1,11 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import {
+    normalizeMultiOutletNumericDocumentId,
+    normalizeMultiOutletProjectId,
+    type MultiOutletNumericDocumentId,
+} from "@lib/multiOutlet/projectIdBoundary";
+import {
     DEFAULT_OUTLET_POLICY,
     LOCAL_CATEGORY_PREFIX,
     LOCAL_ITEM_PREFIX,
@@ -18,21 +23,13 @@ type SessionLike = {
     };
 };
 
-const parseStoreIdFromProjectId = (projectId: string): number | null => {
-    const parts = projectId.split("-");
-    const parsed = Number(parts[parts.length - 1]);
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-};
+const getSessionTenantScope = (session: SessionLike): MultiOutletNumericDocumentId | null => (
+    normalizeMultiOutletNumericDocumentId(session.tId ?? session.user?.tenantId)
+);
 
-const getSessionTenantId = (session: SessionLike): number | null => {
-    const parsed = Number(session.tId ?? session.user?.tenantId);
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-};
-
-const getSessionStoreId = (session: SessionLike): number | null => {
-    const parsed = Number(session.sId ?? session.user?.storeId);
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-};
+const getSessionStoreScope = (session: SessionLike): MultiOutletNumericDocumentId | null => (
+    normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId)
+);
 
 const hasInheritedTargets = (itemIds: string[]) => {
     if (!itemIds.length) return true;
@@ -94,15 +91,24 @@ export async function getLinkedOutletPolicyBlockReason({
 }): Promise<string | null> {
     if (!projectId) return null;
 
-    const tenantId = getSessionTenantId(session);
-    const storeId = getSessionStoreId(session);
-    if (!tenantId || !storeId) {
+    const tenantScope = getSessionTenantScope(session);
+    const storeScope = getSessionStoreScope(session);
+    if (!tenantScope || !storeScope) {
         return "Store access is required";
+    }
+
+    const projectScope = normalizeMultiOutletProjectId(projectId);
+    if (
+        !projectScope
+        || projectScope.tId !== tenantScope.numericId
+        || projectScope.sId !== storeScope.numericId
+    ) {
+        return "Project not found";
     }
 
     const db = admin.firestore();
     const projectSnap = await db
-        .doc(`${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}/${projectId}`)
+        .doc(`${DB_COLLECTIONS.PROJECTS}/${tenantScope.documentId}/${storeScope.documentId}/${projectScope.projectId}`)
         .get();
     if (!projectSnap.exists) {
         return "Project not found";
@@ -112,10 +118,17 @@ export async function getLinkedOutletPolicyBlockReason({
     const masterProjectId = project?.masterProjectId;
     if (!masterProjectId) return null;
 
-    const masterStoreId = parseStoreIdFromProjectId(masterProjectId);
-    if (!masterStoreId || masterStoreId === storeId) return null;
+    const masterProjectScope = normalizeMultiOutletProjectId(masterProjectId);
+    if (!masterProjectScope || masterProjectScope.tId !== tenantScope.numericId) {
+        return "Store access is required";
+    }
+    if (masterProjectScope.sId === storeScope.numericId) return null;
 
-    const masterStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${masterStoreId}`).get();
+    const masterStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${masterProjectScope.storeDocumentId}`).get();
+    const masterTenantScope = normalizeMultiOutletNumericDocumentId(masterStoreSnap.data()?.tenantId);
+    if (!masterTenantScope || masterTenantScope.numericId !== tenantScope.numericId) {
+        return "Store access is required";
+    }
     const policy: OutletPolicy = {
         ...DEFAULT_OUTLET_POLICY,
         ...(masterStoreSnap.data()?.outletPolicy || {}),

@@ -9,6 +9,7 @@ import { getActiveSubscriptionForStore } from '@database/subscriptions/server';
 import { HarmBlockThreshold, HarmCategory } from '@google/genai';
 import { finalizeAiOperationAccounting } from '@lib/ai/accounting';
 import { checkAICapacity } from '@lib/ai/capacityCheck';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from '@lib/google/genAi/diagnostics';
 import { genAIClient } from '@lib/google/genAi';
 import { logger } from '@lib/monitoring/logger';
@@ -30,6 +31,26 @@ const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const ENDPOINT = '/api/menu-card-export/design-advisor';
 const MENU_CARD_DESIGN_ADVISOR_MAX_BODY_BYTES = 128 * 1024;
 const MAX_MENU_CARD_DESIGN_ADVISOR_PARSE_DIAGNOSTICS = 25;
+type MenuCardDesignAdvisorSessionScopeDocumentId = {
+    documentId: string;
+    numericId: number;
+};
+
+function normalizeMenuCardDesignAdvisorSessionScopeDocumentId(
+    value: unknown,
+): MenuCardDesignAdvisorSessionScopeDocumentId | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (documentId !== raw || !/^[1-9]\d*$/.test(documentId) || !isValidFirestoreDocumentId(documentId)) {
+        return null;
+    }
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? { documentId, numericId }
+        : null;
+}
+
 const GENERATION_CONFIG = {
     responseMimeType: 'application/json' as const,
     temperature: 0.35,
@@ -207,14 +228,14 @@ function hasAllowedAdvisorPlan(subscription: FirestoreSubscriptionDoc | null): b
 export const POST = withAuth(async (request: NextRequest, session) => {
     const requestId = crypto.randomUUID();
     const userId = session.user?.id || session.uId;
-    const tenantId = Number(session.tId);
-    const storeId = Number(session.sId);
 
     if (!FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT || !FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_AI_ADVISOR) {
         return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
     }
 
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId)) {
+    const tenantScope = normalizeMenuCardDesignAdvisorSessionScopeDocumentId(session.tId);
+    const storeScope = normalizeMenuCardDesignAdvisorSessionScopeDocumentId(session.sId);
+    if (!tenantScope || !storeScope) {
         logger.security('Invalid session scope - Menu Card Design Advisor', {
             ...getAIRouteSecurityContext(session, request),
             endpoint: ENDPOINT,
@@ -222,6 +243,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }, 'high');
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+    const tenantId = tenantScope.numericId;
+    const storeId = storeScope.numericId;
 
     try {
         const { checkSafeMode } = await import('@lib/ops/safeMode');

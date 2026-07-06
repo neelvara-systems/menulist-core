@@ -3752,15 +3752,20 @@ assertIncludes(accessStatusRoute, 'new Date(millis).toISOString() === normalized
 assert(!accessStatusRoute.includes('Date.parse(value)'), 'Access-status route must not use permissive Date.parse for session revocation timestamps.');
 assertIncludes(accessStatusRoute, 'const normalizeOptionalDocumentId', 'Access-status route must normalize optional Firestore document IDs.');
 assertIncludes(accessStatusRoute, 'isValidFirestoreDocumentId(documentId)', 'Access-status route must reject path-shaped user/tenant/store document IDs.');
+assertIncludes(accessStatusRoute, 'documentId === rawDocumentId && isValidFirestoreDocumentId(documentId)', 'Access-status route must reject whitespace-mutated user/tenant/store document IDs.');
 assertIncludes(accessStatusRoute, 'if (!userDocumentId) return null;', 'Access-status route must fail malformed session user IDs before user doc reads.');
 assertIncludes(accessStatusRoute, 'TENANT_REFERENCE_INVALID', 'Access-status route must fail malformed tenant references.');
 assertIncludes(accessStatusRoute, 'STORE_REFERENCE_INVALID', 'Access-status route must fail malformed store references.');
 assert(!accessStatusRoute.includes('.doc(String(userId))'), 'Access-status route must not read user docs with raw session user IDs.');
 assert(!accessStatusRoute.includes('.doc(String(id))'), 'Access-status route must not read tenant/store docs with raw entity IDs.');
 assertIncludes(authFirebaseDoc, 'Access-status entity reference boundary', 'Auth Firebase docs must document access-status entity reference boundary.');
+assertIncludes(authFirebaseDoc, 'Path-shaped or whitespace-mutated user IDs fail', 'Auth Firebase docs must document strict access-status raw ID admission.');
 assertIncludes(authMobileSupportDoc, 'access-status entity reference guard', 'Auth mobile docs must inherit access-status entity reference guard.');
+assertIncludes(authMobileSupportDoc, 'strict access-status entity reference guard', 'Auth mobile docs must inherit strict access-status raw ID admission.');
 assertIncludes(productionReadinessAudit, 'Auth access-status entity reference boundary checkpoint', 'Production audit must document access-status entity reference boundary.');
+assertIncludes(productionReadinessAudit, 'path-shaped or whitespace-mutated IDs', 'Production audit must document strict access-status raw ID admission.');
 assertIncludes(changelog, 'Auth Access-Status Entity Reference Boundary', 'Changelog must document access-status entity reference boundary.');
+assertIncludes(changelog, 'Auth Strict Document ID Boundaries', 'Changelog must document strict auth document ID boundaries.');
 assertIncludes(turnstileWidget, 'NEXT_PUBLIC_TURNSTILE_SITE_KEY', 'Client Turnstile widget must use the public site key env.');
 assertIncludes(stagingEnv, 'TURNSTILE_SECRET_KEY=', 'Staging env template must expose server Turnstile secret placeholder.');
 assertIncludes(stagingEnv, 'NEXT_PUBLIC_TURNSTILE_SITE_KEY=', 'Staging env template must expose client Turnstile site key placeholder.');
@@ -4470,6 +4475,7 @@ assert(!phoneOtpVerify.includes("secureError('[Phone OTP] Verify route failed'")
 assertIncludes(phoneOtpHelper, "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';", 'Phone OTP helper must import the shared Firestore document ID guard.');
 assertIncludes(phoneOtpHelper, 'const PHONE_OTP_CHALLENGE_ID_PATTERN = /^[A-Za-z0-9]{20}$/;', 'Phone OTP helper must restrict challenge IDs to Firestore auto-ID shape.');
 assertIncludes(phoneOtpHelper, 'export const normalizePhoneOtpChallengeId = (value: unknown): string | null => {', 'Phone OTP helper must expose the challenge ID normalizer.');
+assertIncludes(phoneOtpHelper, 'if (challengeId !== rawChallengeId) return null;', 'Phone OTP challenge ID normalizer must reject whitespace-mutated challenge IDs.');
 assertIncludes(phoneOtpHelper, 'isValidFirestoreDocumentId(challengeId)', 'Phone OTP helper must reject path-shaped or reserved challenge IDs.');
 assertIncludes(phoneOtpHelper, 'export const normalizePhoneOtpUserDocumentId = (value: unknown): string | null => {', 'Phone OTP helper must expose a user document ID normalizer.');
 assertIncludes(phoneOtpHelper, 'userId === raw && userId.length > 0 && userId.length <= 160 && isValidFirestoreDocumentId(userId)', 'Phone OTP user document ID normalizer must reject whitespace-mutated, empty, oversized, path-shaped, or reserved user IDs.');
@@ -4502,11 +4508,14 @@ assert(read('__docs__/phone-otp-auth/phone-otp-auth_firebase.md').includes('The 
 assert(read('__docs__/phone-otp-auth/phone-otp-auth_impl.md').includes('Phone OTP User Document ID Boundary'), 'Phone OTP implementation docs must record user document ID boundary.');
 assert(read('__docs__/phone-otp-auth/phone-otp-auth_firebase.md').includes('Phone OTP User Document ID Boundary'), 'Phone OTP Firebase docs must record user document ID cost boundary.');
 assert(productionReadinessAudit.includes('Phone OTP challenge ID boundary checkpoint'), 'Production audit must record Phone OTP challenge ID boundary.');
+assert(productionReadinessAudit.includes('malformed or whitespace-mutated `challengeId` values'), 'Production audit must record strict Phone OTP challenge ID admission.');
 assert(productionReadinessAudit.includes('Phone OTP user document-ID boundary checkpoint'), 'Production audit must record Phone OTP user document ID boundary.');
 assert(changelog.includes('Phone OTP Challenge ID Boundary'), 'Changelog must record Phone OTP challenge ID boundary.');
 assert(changelog.includes('Phone OTP User Document ID Boundary'), 'Changelog must record Phone OTP user document ID boundary.');
+assert(changelog.includes('Auth Strict Document ID Boundaries'), 'Changelog must record strict auth document ID boundaries.');
 assert(read('__docs__/changelog.md').includes('Phone OTP Challenge ID Boundary'), 'Lowercase changelog must record Phone OTP challenge ID boundary.');
 assert(read('__docs__/changelog.md').includes('Phone OTP User Document ID Boundary'), 'Lowercase changelog must record Phone OTP user document ID boundary.');
+assert(read('__docs__/changelog.md').includes('Auth Strict Document ID Boundaries'), 'Lowercase changelog must record strict auth document ID boundaries.');
 
 if (failures.length > 0) {
     console.error('Auth/security failure matrix verification failed:');

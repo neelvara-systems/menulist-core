@@ -2684,17 +2684,19 @@ assert(!capacityCheck.includes('.doc(subscription.id)'), 'AI capacity check must
 [
   'MenuList Billing Subscription Document ID Boundary',
   'capacity-check lazy reset and consumption normalize subscription document IDs',
-  'malformed IDs return before reset refs or fail paid credit consumption before debit refs',
+  'malformed or whitespace-mutated IDs return before reset refs or fail paid credit consumption before debit refs',
 ].forEach((token) => {
   assert(aiEnhancementPacksFirebase.includes(token), `AI enhancement packs Firebase doc includes subscription document ID boundary token ${token}`);
 });
 [
   'MenuList Billing Subscription Document ID Boundary checkpoint',
+  'whitespace-mutated subscription IDs',
   '`npm run verify:ai-accounting`',
 ].forEach((token) => {
   assert(productionReadinessAudit.includes(token), `production readiness audit includes subscription document ID boundary token ${token}`);
 });
 [
+  'Billing Strict Provider Document ID Boundaries',
   'MenuList Billing Subscription Document ID Boundary',
   'Paid AI credit consumption fails closed for malformed subscription IDs',
 ].forEach((token) => {

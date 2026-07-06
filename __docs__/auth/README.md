@@ -524,6 +524,7 @@ Verifies the OTP challenge and returns a short-lived one-time login token for th
 - **Auth:** Public endpoint; valid unexpired OTP is required
 - **Rate limit:** `AUTH_PHONE_OTP_VERIFY` by IP before parsing, then by challenge hash after validation
 - **Body admission:** 1KB bounded JSON body before challenge verification
+- **Challenge ID admission:** `normalizePhoneOtpChallengeId()` requires the raw 20-character Firestore auto-ID challenge shape and rejects whitespace-mutated, path-shaped, or reserved document IDs before challenge-specific throttling, challenge reads, OTP hash comparison, or login-token writes.
 - **Diagnostics:** Expected OTP errors log code-only; unexpected route failures and consumed-token user mismatches use bounded auth diagnostics.
 - **Returns:** `{ success, action: "verify", challengeId, loginToken, phoneMasked, expiresInSeconds }`
 - **Browser acknowledgement:** `PhoneOtpAuthPanel` requires the verify action and matching challenge id before using the login token.

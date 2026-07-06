@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
@@ -27,6 +28,30 @@ const ANALYTICS_COLLECTION = 'chatAnalytics'; // New collection for aggregated s
 const CHAT_SESSIONS_COLLECTION = DB_COLLECTIONS.CHAT_SESSIONS;
 const TODAY_LIVE_STATS_LIMIT = 500;
 const MAX_ANALYTICS_RANGE_DAYS = 90;
+
+type ChatAnalyticsScope = {
+    tId: number;
+    sId: number;
+};
+
+const getEmptyChatAnalyticsStats = () => ({
+    totalChats: 0,
+    qnaChats: 0,
+    assistantChats: 0,
+    totalMessages: 0,
+    positiveFeedback: 0,
+    negativeFeedback: 0,
+    totalFeedback: 0,
+    totalRegenerations: 0,
+});
+
+const getChatAnalyticsScope = (session: any): ChatAnalyticsScope | null => {
+    const tId = normalizeAnswerlatticeScopeDocumentId(session?.tId ?? session?.tenantId ?? session?.user?.tenantId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(session?.sId ?? session?.storeId ?? session?.user?.storeId);
+
+    if (!tId || !sId) return null;
+    return { tId, sId };
+};
 
 const normalizeAnalyticsDays = (days: number, fallback = 30) => {
     if (!Number.isFinite(days)) return fallback;
@@ -93,6 +118,9 @@ export interface ChatAnalyticsDay {
 export const getTodayLiveStats = async (session: any) => {
     return await apiCallComposer(
         async () => {
+            const scope = getChatAnalyticsScope(session);
+            if (!scope) return getEmptyChatAnalyticsStats();
+
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
             const todayEnd = new Date();
@@ -101,8 +129,8 @@ export const getTodayLiveStats = async (session: any) => {
             // Query only today's sessions for THIS STORE
             const q = query(
                 await getChatSessionsCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId), // CRITICAL: Filter by storeId
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
                 where('createdOn', '>=', Timestamp.fromDate(todayStart)),
                 where('createdOn', '<=', Timestamp.fromDate(todayEnd)),
                 limit(TODAY_LIVE_STATS_LIMIT)
@@ -117,16 +145,7 @@ export const getTodayLiveStats = async (session: any) => {
 
             // Early return if no chats today (optimization)
             if (sessions.length === 0) {
-                return {
-                    totalChats: 0,
-                    qnaChats: 0,
-                    assistantChats: 0,
-                    totalMessages: 0,
-                    positiveFeedback: 0,
-                    negativeFeedback: 0,
-                    totalFeedback: 0,
-                    totalRegenerations: 0
-                };
+                return getEmptyChatAnalyticsStats();
             }
 
             // Calculate today's stats
@@ -187,6 +206,17 @@ export const getChatStatisticsOptimized = async (session: any, days: number = 30
     return await apiCallComposer(
         async () => {
             const safeDays = normalizeAnalyticsDays(days, 30);
+            const scope = getChatAnalyticsScope(session);
+            if (!scope) {
+                return {
+                    ...getEmptyChatAnalyticsStats(),
+                    todayChats: 0,
+                    satisfactionRate: 0,
+                    avgMessagesPerChat: 0,
+                    regenerationRate: 0,
+                };
+            }
+
             const today = new Date().toISOString().split('T')[0];
             const endDate = new Date();
             const startDate = new Date();
@@ -198,8 +228,8 @@ export const getChatStatisticsOptimized = async (session: any, days: number = 30
 
             const q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId), // CRITICAL: Filter by storeId
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
                 where('date', '>=', startDate.toISOString().split('T')[0]),
                 where('date', '<=', yesterday.toISOString().split('T')[0]),
                 orderBy('date', 'desc')
@@ -305,14 +335,17 @@ export const getChatStatisticsOptimized = async (session: any, days: number = 30
 export const getTopQuestionsOptimized = async (session: any, days: number = 30) => {
     return await apiCallComposer(
         async () => {
+            const scope = getChatAnalyticsScope(session);
+            if (!scope) return [];
+
             const endDate = new Date();
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - normalizeAnalyticsDays(days, 30));
 
             const q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId), // CRITICAL: Filter by storeId
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
                 where('date', '>=', startDate.toISOString().split('T')[0]),
                 where('date', '<=', endDate.toISOString().split('T')[0]),
                 orderBy('date', 'desc')
@@ -347,14 +380,17 @@ export const getTopQuestionsOptimized = async (session: any, days: number = 30) 
 export const getKnowledgeGapsOptimized = async (session: any, days: number = 30) => {
     return await apiCallComposer(
         async () => {
+            const scope = getChatAnalyticsScope(session);
+            if (!scope) return [];
+
             const endDate = new Date();
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - normalizeAnalyticsDays(days, 30));
 
             const q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId), // CRITICAL: Filter by storeId
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
                 where('date', '>=', startDate.toISOString().split('T')[0]),
                 where('date', '<=', endDate.toISOString().split('T')[0]),
                 orderBy('date', 'desc')
@@ -403,6 +439,21 @@ export const getChatDashboardAggregatesOptimized = async (session: any, days: nu
     return await apiCallComposer(
         async () => {
             const safeDays = normalizeAnalyticsDays(days, 30);
+            const scope = getChatAnalyticsScope(session);
+            if (!scope) {
+                return {
+                    statistics: {
+                        ...getEmptyChatAnalyticsStats(),
+                        todayChats: 0,
+                        satisfactionRate: 0,
+                        avgMessagesPerChat: 0,
+                        regenerationRate: 0,
+                    },
+                    topQuestions: [],
+                    knowledgeGaps: [],
+                };
+            }
+
             const endDate = new Date();
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - safeDays);
@@ -413,8 +464,8 @@ export const getChatDashboardAggregatesOptimized = async (session: any, days: nu
 
             const q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 where('date', '>=', startDate.toISOString().split('T')[0]),
                 where('date', '<=', endDate.toISOString().split('T')[0]),
                 orderBy('date', 'desc')
@@ -547,6 +598,9 @@ export const getChatVolumeOverTimeOptimized = async (session: any, days: number 
     return await apiCallComposer(
         async () => {
             const safeDays = normalizeAnalyticsDays(days, 7);
+            const scope = getChatAnalyticsScope(session);
+            if (!scope) return [];
+
             const endDate = new Date();
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - safeDays);
@@ -554,8 +608,8 @@ export const getChatVolumeOverTimeOptimized = async (session: any, days: number 
 
             const q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId), // CRITICAL: Filter by storeId
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
                 where('date', '>=', startDate.toISOString().split('T')[0]),
                 where('date', '<=', endDate.toISOString().split('T')[0]),
                 orderBy('date', 'asc')
@@ -616,11 +670,20 @@ export const getConversationsPaginated = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            const scope = getChatAnalyticsScope(session);
+            if (!scope) {
+                return {
+                    sessions: [],
+                    hasNextPage: false,
+                    nextPageCursor: null,
+                };
+            }
+
             // Build query with limit (CRITICAL for cost control)
             let q = query(
                 await getChatSessionsCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId), // CRITICAL: Filter by storeId
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
                 orderBy('modifiedOn', 'desc'),
                 limit(pageSize + 1) // +1 to check if there's next page
             );
@@ -712,8 +775,13 @@ export const getConversationsPaginated = async (
 export const aggregateDailyStats = async (session: any, date: Date) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
+            const scope = getChatAnalyticsScope(session);
+            if (!scope) {
+                throw new Error('Missing Answerlattice chat analytics scope');
+            }
+
             const dateStr = date.toISOString().split('T')[0];
-            const docId = `${session.tId}_${session.sId}_${dateStr}`; // CRITICAL: Include storeId
+            const docId = `${scope.tId}_${scope.sId}_${dateStr}`; // CRITICAL: Include storeId
 
             // Get all sessions for this STORE and day
             const startOfDay = new Date(date);
@@ -723,8 +791,8 @@ export const aggregateDailyStats = async (session: any, date: Date) => {
 
             const q = query(
                 await getChatSessionsCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId), // CRITICAL: Filter by storeId
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
                 where('createdOn', '>=', Timestamp.fromDate(startOfDay)),
                 where('createdOn', '<=', Timestamp.fromDate(endOfDay))
             );
@@ -787,8 +855,8 @@ export const aggregateDailyStats = async (session: any, date: Date) => {
 
             // Prepare aggregated document
             const aggregatedData: ChatAnalyticsDay = {
-                tId: session.tId,
-                sId: session.sId, // CRITICAL: Include storeId
+                tId: scope.tId,
+                sId: scope.sId, // CRITICAL: Include storeId
                 date: dateStr,
                 totalChats,
                 qnaChats,
@@ -829,10 +897,13 @@ export const aggregateDailyStats = async (session: any, date: Date) => {
 export const getLastAnalyticsUpdate = async (session: any): Promise<Date | null> => {
     return await apiCallComposer(
         async () => {
+            const scope = getChatAnalyticsScope(session);
+            if (!scope) return null;
+
             const q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 orderBy('modifiedOn', 'desc'),
                 limit(1)
             );

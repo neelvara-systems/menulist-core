@@ -43,8 +43,9 @@ const timestampToMillis = (value: any): number => {
 
 const normalizeOptionalDocumentId = (value?: string | number | null): string | null => {
     if (value == null || value === "") return null;
-    const documentId = String(value).trim();
-    return isValidFirestoreDocumentId(documentId) ? documentId : null;
+    const rawDocumentId = String(value);
+    const documentId = rawDocumentId.trim();
+    return documentId === rawDocumentId && isValidFirestoreDocumentId(documentId) ? documentId : null;
 };
 
 const getCurrentUserSnapshot = async (session: any) => {

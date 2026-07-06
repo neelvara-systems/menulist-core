@@ -35,6 +35,9 @@ git diff --check -- functions/src/schedulers/founderMonitorSnapshot.ts src/datab
 - `storesSummary` supports bounded `menuPresence` / `presence` distribution hints.
 - Manual presence confirmations mirror into `storesSummary`, so Active Distribution Stores can be counted without per-store reads.
 - Boundary verifier rejects raw store scans in the Founder Monitor snapshot job.
+- Founder revenue movement IDs pass through `src/lib/firebase/firestoreDocumentId.ts`.
+- Payment-to-live transition store IDs must be exact positive numeric MenuList store document IDs before the same document-ID guard.
+- Valid Razorpay-driven cash, failed-payment, new-MRR, churn, refund, expansion, and downgrade movements keep the same deterministic summary-write behavior.
 
 ### Deploy Attempt
 

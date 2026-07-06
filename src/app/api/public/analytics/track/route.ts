@@ -28,7 +28,7 @@ const AnalyticsValueSchema = z.union([
 const AnalyticsTrackSchema = z.object({
     tenantId: z.union([z.string().regex(/^\d{1,20}$/), z.number().int().positive()]),
     storeId: z.union([z.string().regex(/^\d{1,20}$/), z.number().int().positive()]),
-    projectId: z.string().trim().regex(/^[A-Za-z0-9_-]{1,120}$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),
+    projectId: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),
     dateString: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     storeTimeZone: z.string().trim().max(80).optional(),
     businessDayEndTime: z.string().trim().regex(/^\d{2}:\d{2}$/).optional(),

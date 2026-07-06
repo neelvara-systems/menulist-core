@@ -8,6 +8,225 @@
 
 ---
 
+## July 6, 2026 - Answerlattice Shared Session Scope Boundary
+
+### Fixed
+
+- **Shared Answerlattice scope resolution is exact** - `resolveAnswerlatticeSessionScope()`, `getAnswerlatticeProductAccount()`, `getAnswerlatticeScopedSession()`, and public-content scope fallback now accept tenant/store IDs only as exact positive numeric Firestore document IDs.
+- **Malformed shared scope fails before downstream routes** - whitespace-mutated, leading-zero, decimal, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped tenant/store values no longer pass through shared Answerlattice scope resolution by loose numeric coercion.
+- **Valid scoped access is preserved** - valid `productAccounts.AL` scope, valid Answerlattice product-id fallback, support-client scoped session rewrite, management-role checks, and downstream valid route behavior keep the same operation shape.
+- **Verifier coverage is tightened** - `npm run verify:answerlattice-runtime-truth` and `npm run verify:help-center-boundary` now guard the exact helper, public-content reuse, old loose scope-parser exclusions, route docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed shared Answerlattice session-scope admission only. It does not change valid Answerlattice owner/admin access, valid Help Center scoped search, valid widget/public-content routes, valid activation/dashboard routes, valid billing/session behavior, Firestore read/write counts for valid requests, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Answerlattice Chat Session Scope Boundary
+
+### Fixed
+
+- **Chat-session reads use exact session scope** - HelpChat / Answerlattice chat history, admin conversation lists, chat statistics, top questions, knowledge gaps, and chat-volume reads now validate session `tId/sId` as exact positive numeric Firestore document IDs before querying `chatSessions`.
+- **Chat image uploads use normalized Storage scope** - chat image Storage paths are now generated from the normalized tenant/store scope instead of raw session values.
+- **Malformed session scope fails before chat work** - whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped scope no longer reaches chat image Storage path composition or chat-session query filters through loose numeric coercion.
+- **Valid chat behavior is preserved** - valid chat image uploads, user history, admin pagination, stat scans, acknowledgements, and existing read caps keep the same behavior and operation shape.
+- **Verifier coverage is tightened** - `npm run verify:answerlattice-runtime-truth` now guards the exact scope helper, normalized Storage path input, normalized query filters, old raw session filter/coercion exclusions, Help Center docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed chat-session scope admission only. It does not change valid chat behavior, valid chat image uploads, valid owner/admin chat reads, Firestore read/write counts for valid requests, Storage operations for valid uploads, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Answerlattice Chat Analytics Scope Boundary
+
+### Fixed
+
+- **Chat analytics reads use exact session scope** - optimized dashboard stats, top questions, knowledge gaps, chat-volume charts, paginated conversations, and last-update reads now normalize session `tId/sId` through the shared Answerlattice exact positive numeric Firestore document-ID helper before querying `chatAnalytics` or `chatSessions`.
+- **Daily aggregate document IDs use normalized scope** - `aggregateDailyStats()` now rejects malformed scope before composing the `{tId}_{sId}_{YYYY-MM-DD}` aggregate document ID or aggregate payload.
+- **Malformed analytics scope fails before Firestore work** - whitespace-mutated, leading-zero, decimal, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped tenant/store values return empty read models or reject daily aggregation before query filters or document IDs are built.
+- **Valid analytics behavior is preserved** - valid dashboard analytics, daily aggregate writes, read caps, and bounded today-live fallback diagnostics keep the same operation shape.
+- **Verifier coverage is tightened** - `npm run verify:answerlattice-runtime-truth` now guards the shared helper import, normalized query filters, normalized aggregate doc ID/data, old raw session filter/doc-ID exclusions, Help Center docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed chat analytics session-scope admission only. It does not change valid dashboard analytics behavior, valid aggregate writes, Firestore read/write counts for valid requests, Storage operations, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Answerlattice Support Ticket Session Scope Boundary
+
+### Fixed
+
+- **Owner ticket reads use exact session scope** - MenuList Help Center / Answerlattice owner ticket history now validates session `tId/sId` as exact positive numeric Firestore document IDs before querying `supportTickets`.
+- **Malformed session scope fails before ticket queries** - whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped scope no longer reaches owner ticket reads/listeners through raw `session.tId/session.sId` filters or loose numeric coercion.
+- **Valid support-ticket behavior is preserved** - valid owner ticket history keeps the same `tId + sId + deleted` query shape and caps; platform support-ticket views keep the existing platform-wide query behavior; ticket create/update/message/status behavior is unchanged.
+- **Verifier coverage is tightened** - `npm run verify:help-center-boundary` and `npm run verify:answerlattice-runtime-truth` now guard the exact scope helper, normalized query filters, old raw session filter exclusions, Help Center docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed owner support-ticket session-scope admission only. It does not change valid owner ticket history, valid platform support-ticket views, valid ticket create/update/message/status behavior, Firestore read/write counts for valid requests, Storage operations, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Linked Outlet Save Session Store ID Boundary
+
+### Fixed
+
+- **Linked outlet save caller-store scope is exact** - `/api/projects/outlet-save` now validates authenticated session store scope as an exact positive numeric Firestore document ID before tenant access, caller-store reads, store permission checks, outlet/master store reads, OutletPolicy enforcement, linked outlet writes, public/screen cache invalidation, Owner Business Assistant packet invalidation, or save acknowledgement.
+- **Malformed session store scope fails before linked outlet work** - whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped session store IDs now return the existing forbidden response before Firestore document access.
+- **Valid linked outlet saves are preserved** - valid outlet-store and master-store saves keep the same project/master ID checks, tenant/store authorization, policy enforcement, local override persistence, cache invalidation, and acknowledgement behavior.
+- **Verifier coverage is tightened** - `npm run verify:multi-location-boundary` and `npm run verify:menulist-api-tenant-safety` now guard the normalized session store scope, invalid-session diagnostic, old raw numeric-coercion exclusion, Multi-Outlet docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed linked outlet save session-scope admission only. It does not change valid outlet/master saves, valid OutletPolicy behavior, Firestore read/write counts for valid requests, cache invalidation for valid saves, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Menu Card Design Advisor Session Scope Boundary
+
+### Fixed
+
+- **Design-advisor session scope is exact** - `/api/menu-card-export/design-advisor` now validates authenticated tenant/store scope as exact positive numeric Firestore document IDs before tenant access, request parsing, route permission checks, Pro/Premium subscription lookup, AI capacity checks, Gemini calls, recommendation normalization, or AI accounting.
+- **Malformed sessions fail before AI work** - whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped session scope now returns the existing forbidden response before Firestore reads or provider work.
+- **Valid Pro/Premium behavior is preserved** - valid sessions keep the same plan gate, capacity check, JSON recommendation handling, AI operation accounting, and owner-facing copy.
+- **Verifier coverage is tightened** - `npm run verify:menu-card-export` and `npm run verify:menulist-api-tenant-safety` now guard the strict helper, normalized tenant/store usage, old raw `Number(session.tId/sId)` exclusions, Menu Card Export docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed Menu Card Design Advisor session-scope admission only. It does not change valid Pro/Premium advice behavior, valid plan/capacity checks, valid AI accounting, Firestore read/write counts for valid requests, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, provider smoke, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Public Truth Monitor Session Scope Boundary
+
+### Fixed
+
+- **Public Truth Monitor session scope is exact** - `/api/public-truth-monitor/summary`, `/api/public-truth-monitor/refresh`, and `serverPublicTruthMonitorEntitlements.ts` now normalize authenticated session tenant/store IDs as exact positive numeric Firestore document IDs before tenant access checks, Business Health permission checks, store reads, subscription lookups, project summary reads, summary reads/writes, or report entry scope persistence.
+- **Malformed session scope fails before Firestore refs** - whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped session scope now fails before monitor Firestore work.
+- **Valid monitor behavior is preserved** - valid summary/refresh requests keep the same paid entitlement gate, selected-project behavior, capped report history, and owner-facing copy.
+- **Verifier coverage is tightened** - `npm run verify:public-truth-monitor-addon` now guards the strict helper, normalized route refs and permission arguments, old `Number(session.sId/tId)` exclusions, Public Truth Monitor docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes authenticated Public Truth Monitor session-scope admission only. It does not change valid summary/refresh behavior, valid project selection, valid report content, Firestore read/write counts for valid requests, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Linked Outlet AI Policy Scope Boundary
+
+### Fixed
+
+- **Linked outlet AI policy scope is exact** - `getLinkedOutletPolicyBlockReason()` now normalizes session tenant/store scope, requested project scope, stored master project scope, and master store tenant scope before description, image, image-editing, batch image, or translation routes can continue toward AI capacity checks or provider calls.
+- **Cross-tenant master references fail closed** - malformed or cross-tenant stored `masterProjectId` values now block provider work instead of allowing a master-store policy read from loosely parsed store scope.
+- **Valid policy behavior is preserved** - valid single-store, master-store, and linked-outlet projects keep the same description/image/translation policy behavior and the same read shape for valid linked outlet requests.
+- **Verifier coverage is tightened** - `npm run verify:menulist-api-tenant-safety` now guards the helper normalizers, normalized project/store refs, same-tenant checks, old loose parser exclusions, Multi-Outlet docs, Multi-Chain Permissions docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed linked-outlet AI policy admission only. It does not change valid description/image/translation behavior, valid linked-outlet policy blocks, Firestore read counts for valid requests, Firestore writes/deletes, Storage operations, Cloud Functions, Firebase/Vercel deploys, production builds, provider smoke, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Multi-Outlet Shared Project ID Boundary
+
+### Fixed
+
+- **Shared multi-outlet project scope is exact** - `src/lib/multiOutlet/projectIdBoundary.ts` now backs the shared resolver and `/api/projects/outlet-save`, requiring `projectId` / `masterProjectId` values to be exact Firestore document IDs with exact positive numeric tenant/store path segments before master-project reads or linked-outlet project writes.
+- **Malformed persisted master references fail open in rendering** - `resolveProjectForRender()` records bounded `multi_outlet_master_project_reference_invalid` diagnostics and returns the store project as unlinked instead of reading `projects/NaN/NaN`.
+- **Linked outlet saves reject loose scope** - `/api/projects/outlet-save` no longer accepts leading-zero, whitespace-mutated, unsafe, zero, negative, nonnumeric, path-shaped, reserved, or oversized project-scope segments through loose `Number()` parsing.
+- **Verifier coverage is tightened** - `npm run verify:multi-location-boundary` now guards `normalizeMultiOutletProjectId`, resolver usage, route usage, old `parseInt()` / loose `Number()` exclusions, Multi-Outlet docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed multi-outlet project-scope admission only. It does not change valid master reads, valid linked-outlet saves, valid inherited menu rendering, Firestore read/write counts for valid requests, cache invalidation for valid saves, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Master Job Status Session Store ID Boundary
+
+### Fixed
+
+- **Whitespace-mutated session store IDs fail before the caller-store read** - `/api/projects/master-job-status` now validates authenticated session store scope as an exact positive numeric Firestore document ID before composing the caller `stores/{sId}` ref, so malformed session values are not numeric-coerced into Firestore document access.
+- **Master job polling is store-bound** - the existing rule remains: only the store encoded in `masterProjectId` can query that master job directly, and other stores must present a linked outlet project whose `masterProjectId` matches.
+- **Outlet polling still works through linked projects** - valid outlet sessions keep the same linked-project validation, permission checks, capped active-job query, and browser response contract.
+- **Verifier coverage is tightened** - `npm run verify:menulist-api-tenant-safety` now guards the session store normalizer, normalized caller-store ref, old numeric-coercion/ref exclusions, Multi-Outlet docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes authenticated master-job status session-scope admission only. It does not change valid master-store polling, valid linked-outlet polling, project-ID admission, job status semantics, Firestore read counts for valid requests, Firestore writes/deletes, Storage operations, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Platform Founder Monitor Revenue Document ID Boundary
+
+### Fixed
+
+- **Founder revenue movement refs now validate document IDs** - transaction-time Founder Monitor revenue writes now validate deterministic movement IDs before `founderRevenueMovements/{movementId}` refs.
+- **Payment-to-live transition refs now require exact numeric store IDs** - new-MRR transition seeding now requires the store scope to be an exact positive numeric MenuList store document ID before `founderOnboardingTransitions/{storeId}` refs, so whitespace-mutated, zero, negative, unsafe, leading-zero, nonnumeric, path-shaped, reserved, or empty store IDs fail before Firestore document access.
+- **Verifier coverage is tightened** - `npm run verify:platform-founder-monitor-boundary` now guards the exact numeric store helper, old trim-before-validate exclusion, Founder Monitor docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes Founder Monitor revenue document-ID admission only. It does not change valid Razorpay-derived revenue movement writes, valid summary counters, valid onboarding transition writes, Firestore read/write counts for valid requests, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, provider smoke, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Compliance Pages Public Override Document ID Boundary
+
+### Fixed
+
+- **Malformed public compliance override scope fails closed** - `/privacy`, `/terms`, and `/refund` now normalize the store-scoped `compliancePages/{sId}` document ID before the optional owner override read, so path-shaped, reserved, whitespace-mutated, zero, negative, unsafe, or nonnumeric store scope cannot reach the Admin SDK override ref.
+- **Generated policy fallback is preserved** - valid stores keep the same generated policy text, optional owner override composition, bounded diagnostics, MenuList attribution, and guest-facing copy. Invalid override scope skips only the override read and keeps generated policy text.
+- **Verifier coverage is tightened** - `npm run verify:compliance-pages-boundary` and `npm run verify:public-business-truth` now guard the public compliance store-scope normalizer, normalized override ref, old raw `doc(String(sId))` exclusion, Compliance Pages docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes public compliance override-read admission only. It does not change generated policy text, valid owner override rendering, compliance API behavior, owner editor behavior, Firestore read/write counts for valid requests, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser custom-domain smoke, owner/legal approval, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Public Menu Project Document ID Boundary
+
+### Fixed
+
+- **Malformed public menu project scope fails closed** - the customer menu renderer now normalizes resolved project IDs before building `projects/{tId}/{sId}/{projectId}` Admin SDK refs, so path-shaped, reserved, whitespace-mutated, zero, negative, unsafe, or nonnumeric tenant/store project scope cannot reach public project reads.
+- **Valid public menu behavior is preserved** - valid project IDs keep the same host/store resolution, slug/default summary lookup, linked-master resolution, active special-menu handling, cache behavior, and one-read project fetch.
+- **Verifier coverage is tightened** - `npm run verify:public-business-truth` and `npm run verify:menu-extraction-pipeline` now guard the public menu project normalizer, normalized refs, old raw split/ref exclusions, Client Menu docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes public menu project-ref admission only. It does not change valid public menu routing, valid linked master menus, valid active special menus, Firestore read/write counts for valid requests, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - POS and Public Truth Monitor Strict Project ID Boundaries
+
+### Fixed
+
+- **Whitespace-mutated POS project IDs fail closed** - `/api/pos-sync/deliver` now validates raw `projectId` values instead of trimming first, so mutated POS project IDs fail before scoped project reads, menu-version writes, delivery logs, POS status writes, or outbound webhook delivery.
+- **Public Truth Monitor Strict Project ID Boundary** - manual refresh `selectedProjectId` values and server-side selected/persisted project IDs now require exact raw-value equality before Public Truth Monitor project selection or scoped/legacy project reads.
+- **Valid flows are preserved** - valid POS deliveries and valid Public Truth Monitor summary/refresh behavior keep the same permissions, rate limits, target validation, Firestore read/write shape, and owner-facing copy.
+- **Verifier coverage is tightened** - `npm run verify:pos-sync-boundary`, `npm run verify:public-truth-monitor-addon`, and `npm run verify:menulist-api-tenant-safety` now guard the strict raw project-ID schemas, server DAL raw equality, docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes POS and Public Truth Monitor project-ID admission only. It does not change valid POS webhook delivery, valid Public Truth Monitor reports, tenant/store scope admission, Firestore read/write counts for valid requests, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, external provider smoke, browser/device QA, launch approval, or release certification.
+
+## July 6, 2026 - Public Analytics Strict Project ID Boundary
+
+### Fixed
+
+- **Whitespace-mutated analytics project IDs fail closed** - `/api/public/analytics/track` now validates raw `projectId` values instead of trimming first, so values whose trimmed Firestore document ID differs from the submitted value fail before cached target validation or daily analytics writes.
+- **Valid analytics surfaces are preserved** - valid public menu project IDs plus reserved `obp` and `customerApp` surfaces keep the same preference gates, target validation, business-day resolution, and daily analytics write shape.
+- **Verifier coverage is tightened** - `npm run verify:menulist-api-tenant-safety` now rejects the old trim-based public analytics project-ID schema and guards the strict docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes public analytics project-ID request admission only. It does not change valid project IDs, valid reserved `obp`/`customerApp` analytics, valid public menu analytics, analytics preferences, Firestore write counts for valid events, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
+## July 6, 2026 - Billing Strict Provider Document ID Boundaries
+
+### Fixed
+
+- **Whitespace-mutated subscription IDs fail closed** - `normalizeBillingSubscriptionDocumentId()` now rejects subscription IDs whose trimmed Firestore document ID differs from the raw value before subscription DAL refs, AI capacity reset/consume refs, entitlement sync mirror writes, or top-up verification refs.
+- **Whitespace-mutated top-up order IDs fail closed** - `normalizeBillingTopupDocumentId()` now rejects Razorpay `order_...` values whose trimmed Firestore document ID differs from the raw value before pending top-up writes, idempotency reads, or paid audit writes.
+- **Valid billing behavior is preserved** - valid Razorpay subscription IDs and top-up order IDs keep the same provider verification, Firestore read/write shape, credit math, entitlement sync, and cache invalidation behavior.
+- **Verifier coverage is tightened** - `npm run verify:billing-entitlement-boundary` and `npm run verify:ai-accounting` now guard strict raw provider-ID equality, route/helper usage, docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes billing provider document-ID admission only. It does not change valid Razorpay provider calls, valid subscription/top-up writes, credit math, entitlement/cache invalidation behavior, Firestore read/write counts for valid requests, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, Razorpay sandbox smoke, launch approval, or release certification.
+
+## July 6, 2026 - Auth Strict Document ID Boundaries
+
+### Fixed
+
+- **Access-status whitespace-mutated entity IDs fail closed** - `/api/auth/access-status` now rejects user, tenant, and store document IDs whose trimmed Firestore document ID differs from the raw value before session user reads, tenant/store block checks, or bounded diagnostics.
+- **Phone OTP whitespace-mutated challenge IDs fail closed** - `normalizePhoneOtpChallengeId()` now requires the raw 20-character Firestore auto-ID challenge shape before challenge-specific throttling, challenge document reads, OTP hash comparison, or login-token writes.
+- **Valid auth behavior is preserved** - valid access-status polling, session revocation checks, tenant/store block checks, Phone OTP verification, login-token creation, and NextAuth handoff keep the same runtime contracts.
+- **Verifier coverage is tightened** - `npm run verify:auth-security-failure-matrix` and `npm run verify:menulist-api-tenant-safety` now guard strict raw document-ID equality, route/helper usage, docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes auth document-ID admission only. It does not change valid session polling, valid Phone OTP verification, valid login-token consumption, Firebase Auth operations for valid requests, Firestore read/write counts for valid requests, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, launch approval, or release certification.
+
 ## July 6, 2026 - Owner Business Assistant Strict Document ID Boundary
 
 ### Fixed
@@ -46,6 +265,19 @@
 ### Boundaries
 
 - This changes public Guest Feedback project-ID admission only. It does not change valid feedback submissions, feedback writes for valid requests, review URL behavior, owner inbox behavior, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
+
+## July 6, 2026 - Onboarding Compensation Scope Boundary
+
+### Fixed
+
+- **Provider-failure compensation scope is exact** - `compensateFailedTenantStoreOnboarding()` now validates tenant/store compensation scope as exact positive numeric Firestore document IDs before composing `tenants/{tenantId}`, `stores/{storeId}`, or `platformSummary/storesSummary.stores.{storeId}` paths.
+- **Malformed compensation scope fails closed** - whitespace-mutated, path-shaped, reserved, zero, negative, unsafe, leading-zero, or nonnumeric tenant/store scope now fails before rollback document path composition.
+- **Valid generated onboarding IDs are preserved** - valid website and reseller onboarding compensation keep the same tenant/store/user/storesSummary writes and fixed owner-facing failure behavior.
+- **Verifier coverage is tightened** - `npm run verify:menulist-api-tenant-safety` now guards the compensation scope normalizer, normalized tenant/store refs, old numeric-coercion/ref exclusions, Auth Onboarding docs, Onboarding Centralization docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes provider-failure compensation scope admission only. It does not change valid onboarding, reseller onboarding, provider behavior, valid compensation write counts, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, launch approval, or release certification.
 
 ## July 6, 2026 - Onboarding Strict User ID Helper Boundary
 
@@ -494,6 +726,7 @@
 ### Fixed
 
 - **Public feedback target refs are guarded** - `POST /api/public/feedback/submit` now validates caller-supplied tenant/store IDs through `normalizeGuestFeedbackNumericDocumentId()` before honeypot, Turnstile, `projects/{tId}/{sId}/{projectId}` reads, `stores/{sId}` reads, `tenants/{tId}` reads, feedback writes, MOL event logging, or bounded diagnostics.
+- **Public feedback page target scope is exact** - `/feedback/{projectId}` now validates the project-derived tenant/store path segments with the same numeric document-ID normalizer before project and store reads, so malformed prefix-parsed values cannot reach public page lookup.
 - **Malformed feedback scope fails closed** - whitespace-mutated, path-shaped, reserved, zero, negative, decimal, unsafe, or nonnumeric tenant/store IDs now return the existing validation response before Firestore work.
 - **Valid feedback behavior is preserved** - valid public feedback links, valid submissions, store/tenant eligibility checks, safe review URL handling, store field defaults, owner inbox behavior, response shape, and valid Firestore read/write/delete counts are unchanged.
 - **Verifier coverage is tightened** - `npm run verify:guest-feedback-boundary` and `npm run verify:menulist-api-tenant-safety` now guard the target document-ID boundary, normalized project/store/tenant refs, raw `doc(String(data.tId))` / `doc(String(data.sId))` / `collection(String(data.sId))` exclusions, docs, audit evidence, and changelog evidence.
@@ -636,8 +869,8 @@
 
 ### Fixed
 
-- **Top-up order refs now validate Razorpay order IDs** - `src/lib/billing/topupDocumentIdBoundary.ts` validates `order_...` values through the shared Firestore document-ID guard before `topups/{orderId}` refs in top-up creation and verification.
-- **Provider/request top-up IDs fail closed before Firestore refs** - `create-topup-order` rejects malformed Razorpay order IDs before writing pending top-up audit rows, and `verify-topup` rejects malformed checkout order IDs before idempotency reads or paid audit writes.
+- **Top-up order refs now validate Razorpay order IDs** - `src/lib/billing/topupDocumentIdBoundary.ts` validates raw `order_...` values through exact raw-value comparison plus the shared Firestore document-ID guard before `topups/{orderId}` refs in top-up creation and verification.
+- **Provider/request top-up IDs fail closed before Firestore refs** - `create-topup-order` rejects malformed or whitespace-mutated Razorpay order IDs before writing pending top-up audit rows, and `verify-topup` rejects malformed or whitespace-mutated checkout order IDs before idempotency reads or paid audit writes.
 - **Valid top-up behavior is preserved** - valid Razorpay top-up order IDs keep the same pending write, idempotency read, subscription credit increment, paid audit write, and duplicate-verification behavior.
 - **Verifier coverage is tightened** - `npm run verify:billing-entitlement-boundary` now guards the top-up document-ID helper, create/verify route refs, raw-ref exclusions, Razorpay docs, AI enhancement docs, audit evidence, and changelog evidence.
 
@@ -649,8 +882,8 @@
 
 ### Fixed
 
-- **Subscription document refs now validate billing IDs** - `src/lib/billing/subscriptionDocumentIdBoundary.ts` normalizes subscription document IDs through the shared Firestore document-ID guard before MenuList subscription DAL refs, AI capacity credit reset/consume refs, entitlement sync refs, and top-up verification refs.
-- **Paid AI credit consumption fails closed for malformed subscription IDs** - `consumeAICapacity()` now rejects malformed subscription IDs before debit transactions, so paid provider output cannot silently skip credit consumption.
+- **Subscription document refs now validate billing IDs** - `src/lib/billing/subscriptionDocumentIdBoundary.ts` normalizes raw subscription document IDs through exact raw-value comparison plus the shared Firestore document-ID guard before MenuList subscription DAL refs, AI capacity credit reset/consume refs, entitlement sync refs, and top-up verification refs.
+- **Paid AI credit consumption fails closed for malformed subscription IDs** - `consumeAICapacity()` now rejects malformed or whitespace-mutated subscription IDs before debit transactions, so paid provider output cannot silently skip credit consumption.
 - **Valid billing behavior is preserved** - valid Razorpay `sub_...` IDs, active subscription reads, create/update/get-by-id paths, lazy monthly reset, credit consumption, entitlement/cache sync, and top-up verification keep the same read/write shape.
 - **Verifier coverage is tightened** - `npm run verify:billing-entitlement-boundary` and `npm run verify:ai-accounting` now guard the helper, subscription DAL refs, AI capacity refs, entitlement sync refs, top-up verification refs, raw-ref exclusions, Razorpay docs, AI enhancement docs, audit evidence, and changelog evidence.
 
@@ -1121,10 +1354,10 @@
 
 ### Fixed
 
-- **Mark-done project IDs are validated before analytics document access** - `/api/analytics/owner-action/mark-done` now validates request `projectId` with the shared Firestore document-ID boundary before composing the owner dashboard analytics summary document ID.
-- **Composed dashboard document IDs are rechecked** - malformed project IDs no longer reach `analytics/{tenantId}_{storeId}_{projectId}_dashboard_summary` reads or receipt writes.
+- **Mark-done project IDs are validated before analytics document access** - `/api/analytics/owner-action/mark-done` now validates raw request `projectId` values with the existing analytics character rule plus the shared Firestore document-ID boundary before composing the owner dashboard analytics summary document ID.
+- **Composed dashboard document IDs are rechecked** - malformed or whitespace-mutated project IDs no longer reach `analytics/{tenantId}_{storeId}_{projectId}_dashboard_summary` reads or receipt writes.
 - **Receipt pruning uses safe receipt keys only** - new receipt IDs remain server-derived 32-character lowercase hex hashes, and existing receipt map keys are filtered to that same shape before dotted delete update paths are built.
-- **Verifier coverage is tightened** - `npm run verify:menulist-api-tenant-safety` now guards the schema helper usage, composed document-ID guard order, receipt-key filter, Analytics docs, audit evidence, and changelog evidence.
+- **Verifier coverage is tightened** - `npm run verify:menulist-api-tenant-safety` now guards the schema helper usage, no-trim project-ID rule, composed document-ID guard order, receipt-key filter, Analytics docs, audit evidence, and changelog evidence.
 
 ### Boundaries
 
@@ -1289,9 +1522,9 @@
 
 ### Fixed
 
-- **Reseller profile IDs are validated before updates** - `/api/reseller/manage` now validates update `profileId` values through the shared Firestore document-ID boundary before reseller profile lookup, Firebase Auth sync, or `resellerProfiles` document merge work.
-- **Malformed profile IDs fail during request validation** - path-shaped, reserved, empty, or oversized reseller profile IDs no longer reach the platform reseller-management update path.
-- **Verifier coverage is tightened** - `npm run verify:reseller-dashboard-boundary` now guards the shared document-ID helper usage, old slash-only guard removal, implementation/Firebase docs, audit evidence, and changelog evidence.
+- **Reseller profile IDs are validated before updates** - `/api/reseller/manage` now validates exact raw update `profileId` values through the shared Firestore document-ID boundary before reseller profile lookup, Firebase Auth sync, or `resellerProfiles` document merge work.
+- **Malformed profile IDs fail during request validation** - whitespace-mutated, path-shaped, reserved, empty, or oversized reseller profile IDs no longer reach the platform reseller-management update path.
+- **Verifier coverage is tightened** - `npm run verify:reseller-dashboard-boundary` now guards the shared document-ID helper usage, old trim/slash-only guard removal, implementation/Firebase docs, audit evidence, and changelog evidence.
 
 ### Boundaries
 
@@ -22794,7 +23027,7 @@ TEMPLATE FOR NEW ENTRIES:
 ### Fixed
 
 - **Owner Notification Template Output Boundary** — MenuList owner notification and lifecycle email templates now normalize subject/text metadata, escape HTML metadata before rendering, validate rendered email links, and map publish-health failure codes to fixed owner copy instead of printing arbitrary `failureReason` text. Existing delivery routing, SMTP configuration, owner-notification migration, idempotency, rate limits, message logs, and recovery tooling remain unchanged.
-- **Owner Action Mark-Done Session Scope Boundary** — The owner dashboard mark-done route now validates session tenant/store IDs with the shared Firestore document-ID boundary before rate limiting, request parsing, dashboard-summary reads, or receipt writes. Valid receipt behavior is unchanged; malformed session scope now returns the existing owner-safe onboarding response with bounded diagnostics only.
+- **Owner Action Mark-Done Session Scope Boundary** — The owner dashboard mark-done route now normalizes session tenant/store IDs as exact positive numeric Firestore document IDs before rate limiting, request parsing, dashboard-summary document construction, reads, or receipt writes. Valid receipt behavior is unchanged; malformed or whitespace-mutated session scope now returns the existing owner-safe onboarding response with bounded diagnostics only.
 - **Platform Entity Blocks Entity ID Boundary** — The platform entity block route now rejects path-shaped or reserved string entity IDs through the shared Firestore document-ID boundary before tenant/store/user document access. Valid platform block/unblock behavior, finite numeric IDs, Firebase Auth sync, cache invalidation, and desktop/mobile acknowledgement behavior are unchanged.
 - **Platform Entity Blocks Entity ID Boundary** — The platform entity block route now rejects path-shaped or reserved string entity IDs through the shared Firestore document-ID boundary before tenant/store/user document access. Valid platform block/unblock behavior, finite numeric IDs, Firebase Auth sync, cache invalidation, and desktop/mobile acknowledgement behavior are unchanged.
-- **Owner Action Mark-Done Session Scope Boundary** — The owner dashboard mark-done route now validates session tenant/store IDs with the shared Firestore document-ID boundary before rate limiting, request parsing, dashboard-summary reads, or receipt writes. Valid receipt behavior is unchanged; malformed session scope now returns the existing owner-safe onboarding response with bounded diagnostics only.
+- **Owner Action Mark-Done Session Scope Boundary** — The owner dashboard mark-done route now normalizes session tenant/store IDs as exact positive numeric Firestore document IDs before rate limiting, request parsing, dashboard-summary document construction, reads, or receipt writes. Valid receipt behavior is unchanged; malformed or whitespace-mutated session scope now returns the existing owner-safe onboarding response with bounded diagnostics only.

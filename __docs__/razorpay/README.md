@@ -73,7 +73,7 @@ All 34 files are inventoried in [§2 — File Inventory](./razorpay_impl.md#2-fi
 - **Billing history:** Sourced from webhook event log (`paymentTransactions` collection, append-only lean v2 summaries)
 - **Payment action body caps:** Authenticated subscription, top-up, verification, upgrade, pause/resume, cancel, and onboarding billing JSON routes use bounded request parsing before Zod validation, provider calls, or Firestore writes.
 - **Document-ID boundary:** Subscription document refs pass through `src/lib/billing/subscriptionDocumentIdBoundary.ts` before DAL, AI capacity, entitlement sync, and top-up verification refs.
-- **Top-up order document-ID boundary:** Top-up order refs pass through `src/lib/billing/topupDocumentIdBoundary.ts` before pending writes, idempotency reads, and paid audit writes.
+- **Top-up order document-ID boundary:** Raw top-up order refs pass through `src/lib/billing/topupDocumentIdBoundary.ts` before pending writes, idempotency reads, and paid audit writes; whitespace-mutated order IDs fail before Firestore refs.
 - **Webhook cheap-fail:** Missing signature/secret, oversized bodies above 256KB, and IP-rate-limited bursts are rejected before raw-body signature verification or Firestore idempotency work.
 - **Webhook idempotency:** Signed webhook events are claimed in server-only `razorpayWebhookEvents/{eventKey}` before billing mutations, so duplicate retries do not repeat writes.
 - **State machine:** All status transitions validated by `subscriptionStateMachine.ts`; invalid transitions are blocked before status writes.

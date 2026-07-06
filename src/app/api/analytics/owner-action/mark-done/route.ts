@@ -21,9 +21,9 @@ const MARK_DONE_MAX_BODY_BYTES = 6 * 1024;
 const MAX_OWNER_ACTION_RECEIPTS = 20;
 const RESULT_CHECK_DELAY_DAYS = 7;
 const OWNER_ACTION_RECEIPT_ID_PATTERN = /^[a-f0-9]{32}$/;
+const OWNER_ACTION_SCOPE_DOCUMENT_ID_PATTERN = /^\d+$/;
 
 const MarkDoneProjectIdSchema = z.string()
-    .trim()
     .min(1)
     .max(120)
     .regex(/^[A-Za-z0-9_-]+$/)
@@ -51,6 +51,17 @@ function buildReceiptId(projectId: string, actionId: string): string {
 
 function isOwnerActionReceiptId(value: unknown): value is string {
     return typeof value === 'string' && OWNER_ACTION_RECEIPT_ID_PATTERN.test(value);
+}
+
+function normalizeMarkDoneScopeDocumentId(value: unknown): string | null {
+    if (typeof value !== 'string' && typeof value !== 'number') return null;
+    const documentId = String(value);
+    if (!OWNER_ACTION_SCOPE_DOCUMENT_ID_PATTERN.test(documentId) || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? documentId
+        : null;
 }
 
 function pickBaselineMetrics(data: Record<string, any>) {
@@ -91,17 +102,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     );
     if (permissionError) return permissionError;
 
-    const tenantId = String(session.tId || session.user?.tenantId || '');
-    const storeId = String(session.sId || session.user?.storeId || '');
+    const rawTenantId = session.tId || session.user?.tenantId || '';
+    const rawStoreId = session.sId || session.user?.storeId || '';
+    const tenantId = normalizeMarkDoneScopeDocumentId(rawTenantId);
+    const storeId = normalizeMarkDoneScopeDocumentId(rawStoreId);
     const userId = String(session.uId || session.user?.id || 'unknown');
     if (!tenantId || !storeId) {
-        return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
-    }
-    if (!isValidFirestoreDocumentId(tenantId) || !isValidFirestoreDocumentId(storeId)) {
         logAnalyticsFailure('owner_action_mark_done_invalid_session_scope', undefined, {
             ...getBoundedAnalyticsStringContext('endpoint', '/api/analytics/owner-action/mark-done'),
-            ...getBoundedAnalyticsStringContext('tenantId', tenantId),
-            ...getBoundedAnalyticsStringContext('storeId', storeId),
+            ...getBoundedAnalyticsStringContext('tenantId', rawTenantId),
+            ...getBoundedAnalyticsStringContext('storeId', rawStoreId),
         });
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }

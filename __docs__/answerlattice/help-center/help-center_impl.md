@@ -1,7 +1,7 @@
 # Help Center — Technical Implementation Blueprint
 
-> **Version:** 1.0.4
-> **Last Updated:** 2026-07-02
+> **Version:** 1.0.7
+> **Last Updated:** 2026-07-06
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -73,6 +73,8 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | Governance components        | —     | Not mounted in Help Center. `AnswerlatticeCoverageKPI`, `MutationProposalReview`, `EntityCandidateReview`, and `GovernanceHub` belong to Answerlattice owner/admin routes. |
 
 Answerlattice FAQ article reference ID boundary: FAQ-linked article references in `src/lib/answerlattice/faqRetrieval.ts` are normalized through the KB article ID boundary before related-article output or full-article Firestore reads. Invalid linked article IDs are skipped rather than becoming article document refs.
+
+Answerlattice support ticket session scope boundary: owner-side ticket reads and listeners in `src/database/tickets/index.ts` now normalize session `tId/sId` as exact positive numeric Firestore document IDs before querying `supportTickets`. Whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped scope fails before owner ticket reads. Platform ticket views keep the existing platform-wide query behavior, and valid owner ticket history remains capped to the same store-scoped latest tickets.
 
 **Landing subcomponents:** `landing/`
 
@@ -339,6 +341,8 @@ New-session saves require `assertChatSessionSaveSucceeded()` before HelpChat ins
 
 HelpChat answer feedback writes both the `aiSearchHistory` feedback row and the chat-session message feedback mirror before changing local feedback state or showing thank-you copy. `submitSearchFeedback()` requires `assertAiSearchHistoryFeedbackUpdateSucceeded()` and `assertChatMessageFeedbackUpdateSucceeded()` acknowledgements; malformed or fallback write results route through the existing `help_chat_feedback_up_submit_failed` / `help_chat_feedback_down_submit_failed` bounded diagnostics. Negative-feedback signal emission still runs only after both feedback writes are acknowledged.
 
+Answerlattice chat session scope boundary: chat image uploads, user chat history, admin conversation lists, chat statistics, top questions, knowledge gaps, and chat-volume reads now normalize session `tId/sId` as exact positive numeric Firestore document IDs before composing Storage paths or `chatSessions` query filters. Whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped scope fails before chat image Storage writes or session reads/scans. Valid sessions keep the same `tId + sId` query shape, existing read caps, storage path shape, and acknowledgement behavior.
+
 ### 3.4 Chat Analytics (`src/database/chatAnalytics/index.ts`)
 
 | Function                                                | Reads          | Writes | Notes                       |
@@ -353,6 +357,8 @@ HelpChat answer feedback writes both the `aiSearchHistory` feedback row and the 
 | `getLastAnalyticsUpdate(session)`                       | 1              | 0      | Data freshness check        |
 
 The optimized chat analytics DAL uses `src/database/chatAnalytics/diagnostics.ts` for bounded fallback diagnostics. If today's live session read fails, `getChatStatisticsOptimized()` and `getChatDashboardAggregatesOptimized()` continue with historical aggregates and log `answerlattice_chat_analytics_today_live_stats_failed` with bounded tenant/store/day metadata and source error name/code/status only. Raw Firestore/provider errors and session payloads are not direct-console logged.
+
+Answerlattice chat analytics scope boundary: optimized dashboard stats, top questions, knowledge gaps, volume charts, paginated conversations, daily aggregation, and last-update reads now normalize session `tId/sId` through the shared Answerlattice exact positive numeric Firestore document-ID helper before composing `chatAnalytics` document IDs or `chatAnalytics` / `chatSessions` query filters. Malformed tenant/store scope returns empty read models for read paths or rejects daily aggregation before the `{tId}_{sId}_{YYYY-MM-DD}` document ID is composed. Valid sessions keep the same read caps, query shapes, daily aggregate document shape, and bounded fallback diagnostics.
 
 The Help Center search wrapper, search core, browser clients, and visual query helper keep failure diagnostics bounded. `src/app/api/helpCenter/search-kb/route.ts` records `answerlattice_search_operation_log_failed` and `answerlattice_help_center_search_failed` with source error name/code/status only. Search request validation returns the shared safe Zod detail payload with issue count, field path, and issue code only; it does not echo raw Zod issue messages. `src/lib/search/searchCore.ts` records image fallback, image fetch HTTP failure, product-surface context, FAQ retrieval, vector search, answer-JSON parse, instant-cache stage, canonical cache-version, instant-cache write invocation/import, and perf-log write failures with stable codes plus bounded metadata; it does not persist exception messages, raw image fetch status text, or AI response previews. Trusted image URL fetches use the shared bounded response reader so oversized image streams are rejected before full buffering. `src/lib/answerlattice/instantCache.ts` logs Redis lookup, stale-delete, and write failures with bounded tenant/store/entity/version/count context while continuing to degrade to the live retrieval pipeline. `src/components/organisms/AISearchModal/AiSearchBarComponent.tsx` and `src/components/templates/main-app/helpChat/api.ts` use fixed client failure copy instead of raw search-route response text. `src/components/organisms/AISearchModal/ActionButtons.tsx`, `src/components/templates/main-app/helpChat/hooks/useChatHandlers.ts`, and platform `chatManagement/MessageBubble.tsx` now check Clipboard API support before answer/message copy, await copy acknowledgement, and log unavailable/rejected copy attempts with bounded metadata before fixed local copy. `src/lib/vectorEmbeddings/index.ts` records `answerlattice_image_query_generation_failed` for failed image-to-search-context generation, throws generic image-query failure text, caps Gemini text extracted for vector/chat helpers before downstream parsing, and logs only prompt/query length plus provider-response length/truncation metadata for image-query success breadcrumbs. These changes do not alter canonical-first retrieval, FAQ fallback, embedding/vector search, RAG fallback, cache behavior, AI operation accounting, or tenant/store scoping.
 

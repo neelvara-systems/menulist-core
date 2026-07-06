@@ -161,7 +161,9 @@ export const hashPhoneForOtpRateLimit = (phone: string | PhoneOtpNumberInput) =>
 };
 
 export const normalizePhoneOtpChallengeId = (value: unknown): string | null => {
-    const challengeId = typeof value === 'string' ? value.trim() : '';
+    const rawChallengeId = typeof value === 'string' ? value : '';
+    const challengeId = rawChallengeId.trim();
+    if (challengeId !== rawChallengeId) return null;
     if (!PHONE_OTP_CHALLENGE_ID_PATTERN.test(challengeId)) return null;
     return isValidFirestoreDocumentId(challengeId) ? challengeId : null;
 };

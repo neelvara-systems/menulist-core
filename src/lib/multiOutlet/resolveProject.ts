@@ -11,6 +11,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import GlobalLanguagesList from "@data/languages";
 import { getProjectDataByStore } from "@database/projects";
 import { getMultiOutletProjectLogContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
+import { normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";
 import {
     ExtractedDataCategory,
     ExtractedDataItem,
@@ -133,10 +134,14 @@ export function parseProjectId(projectId: string): {
     tId: number;
     sId: number;
 } {
-    const parts = projectId.split("-");
+    const scope = normalizeMultiOutletProjectId(projectId);
+    if (!scope) {
+        throw new Error("Invalid multi-outlet project reference");
+    }
+
     return {
-        tId: parseInt(parts[0], 10),
-        sId: parseInt(parts[parts.length - 1], 10),
+        tId: scope.tId,
+        sId: scope.sId,
     };
 }
 
@@ -144,8 +149,7 @@ export function parseProjectId(projectId: string): {
  * Extract only storeId from projectId
  */
 export function extractStoreIdFromProjectId(projectId: string): number {
-    const parts = projectId.split("-");
-    return parseInt(parts[parts.length - 1], 10);
+    return parseProjectId(projectId).sId;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -203,10 +207,23 @@ export async function resolveProjectForRender(
         };
     }
 
-    // 2-READ ARCHITECTURE: Extract tId and sId from masterProjectId format
-    const { tId, sId: masterStoreId } = parseProjectId(
-        storeProject.masterProjectId,
-    );
+    // 2-READ ARCHITECTURE: Extract tId and sId from strict masterProjectId format
+    const masterProjectScope = normalizeMultiOutletProjectId(storeProject.masterProjectId);
+    if (!masterProjectScope) {
+        logMultiOutletFailure('multi_outlet_master_project_reference_invalid', undefined, {
+            ...getMultiOutletProjectLogContext(storeProject.projectId, storeProject.masterProjectId),
+        });
+        return {
+            ...storeProject,
+            _resolved: {
+                isMasterLinked: false,
+                masterProjectId: storeProject.masterProjectId,
+                itemStates: {},
+                categoryStates: {},
+            },
+        };
+    }
+    const { tId, sId: masterStoreId } = masterProjectScope;
 
     // Use cached master to reduce Firestore reads (30s TTL)
     const masterProject = await getCachedMasterProject(

@@ -1,13 +1,8 @@
-import { resolveAnswerlatticeSessionScope } from './sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from './sessionScope';
 
 export type AnswerlatticePublicContentScope = {
     tId: number;
     sId: number;
-};
-
-const normalizeScopeNumber = (value: unknown): number | null => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
 export const resolveAnswerlatticePublicContentScope = (sessionOrUser: any): AnswerlatticePublicContentScope | null => {
@@ -19,12 +14,12 @@ export const resolveAnswerlatticePublicContentScope = (sessionOrUser: any): Answ
         };
     }
 
-    const tenantId = normalizeScopeNumber(
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(
         sessionOrUser?.tId
         ?? sessionOrUser?.tenantId
         ?? sessionOrUser?.user?.tenantId,
     );
-    const storeId = normalizeScopeNumber(
+    const storeId = normalizeAnswerlatticeScopeDocumentId(
         sessionOrUser?.sId
         ?? sessionOrUser?.storeId
         ?? sessionOrUser?.user?.storeId,

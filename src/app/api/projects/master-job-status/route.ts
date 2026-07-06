@@ -16,6 +16,13 @@ import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const ACTIVE_MASTER_JOB_STATUSES = ["pending", "processing", "preview_ready"] as const;
 const MASTER_JOB_STATUS_RATE_LIMIT_KEY = "master-job-status";
+const MASTER_JOB_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;
+const MASTER_JOB_STATUS_SESSION_DOCUMENT_ID_PATTERN = /^[1-9]\d*$/;
+
+type MasterJobStatusSessionDocumentScope = {
+    documentId: string;
+    numericId: number;
+};
 
 const projectIdSchema = z.string()
     .min(1)
@@ -26,6 +33,22 @@ const querySchema = z.object({
     masterProjectId: projectIdSchema,
     outletProjectId: projectIdSchema.optional(),
 });
+
+function normalizeMasterJobStatusSessionDocumentId(value: unknown): MasterJobStatusSessionDocumentScope | null {
+    if (typeof value !== "string" && typeof value !== "number") return null;
+    const documentId = String(value);
+    if (
+        documentId.length === 0
+        || documentId.length > MASTER_JOB_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH
+        || !MASTER_JOB_STATUS_SESSION_DOCUMENT_ID_PATTERN.test(documentId)
+        || !isValidFirestoreDocumentId(documentId)
+    ) {
+        return null;
+    }
+    const numericId = Number(documentId);
+    if (!Number.isSafeInteger(numericId) || numericId <= 0 || String(numericId) !== documentId) return null;
+    return { documentId, numericId };
+}
 
 const getMasterJobStatusRouteLogContext = (request: NextRequest, session: any) => ({
     endpoint: "/api/projects/master-job-status",
@@ -107,13 +130,14 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         const tenantId = masterRef.tId;
         const masterStoreId = masterRef.sId;
-        const sessionStoreId = Number(session.sId || session.user?.storeId);
-        if (!sessionStoreId || !verifyTenantAccess(session, tenantId, sessionStoreId, request)) {
+        const sessionStoreScope = normalizeMasterJobStatusSessionDocumentId(session.sId ?? session.user?.storeId);
+        if (!sessionStoreScope || !verifyTenantAccess(session, tenantId, sessionStoreScope.numericId, request)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
+        const sessionStoreId = sessionStoreScope.numericId;
 
         const db = admin.firestore();
-        const sessionStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${sessionStoreId}`).get();
+        const sessionStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${sessionStoreScope.documentId}`).get();
         const sessionStore = sessionStoreSnap.data();
         if (!sessionStoreSnap.exists || Number(sessionStore?.tenantId) !== tenantId) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });

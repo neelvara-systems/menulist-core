@@ -59,13 +59,6 @@ type WorkflowStep = {
     icon: IconType;
 };
 
-type OutputFormat = {
-    title: string;
-    description: string;
-    icon: IconType;
-    status: string;
-};
-
 type PackRoomColumn = {
     title: string;
     description: string;
@@ -74,13 +67,6 @@ type PackRoomColumn = {
         label: string;
         status: string;
     }>;
-};
-
-type HeroAsset = {
-    label: string;
-    title: string;
-    meta: string;
-    tone: string;
 };
 
 type PowerhouseFeature = {
@@ -115,6 +101,45 @@ type FooterGroup = {
         href: string;
     }>;
 };
+
+type CampaignCueProofImage = {
+    src: string;
+    alt: string;
+    caption: string;
+};
+
+type HeroFloatingAsset = {
+    eyebrow: string;
+    title: string;
+    detail: string;
+    tone: 'rose' | 'pink' | 'blue' | 'purple' | 'cream';
+};
+
+const CAMPAIGNCUE_PRODUCT_PROOF_IMAGES = {
+    hero: {
+        src: '/campaigncue-website-assets/dummy/campaigncue-home-hero-daily-desk.webp',
+        alt: 'Sample CampaignCue daily desk showing a local lunch cue, source facts, campaign pack outputs, story asset, and export-first state.',
+        caption: 'Sample CampaignCue daily-desk output with dummy business data.',
+    },
+    packRoom: {
+        src: '/campaigncue-website-assets/dummy/campaigncue-pack-room-export-pack.webp',
+        alt: 'Sample CampaignCue pack room showing owner-ready pieces, proof beside the work, and manual delivery controls.',
+        caption: 'Dummy pack room showing grouped outputs, proof notes, and manual handoff.',
+    },
+    creativeSystem: {
+        src: '/campaigncue-website-assets/dummy/campaigncue-creative-output-system.webp',
+        alt: 'Sample CampaignCue creative output system showing WhatsApp, Google local, story creative, poster, reel brief, proof deck, staff note, and result memory tiles.',
+        caption: 'Dummy creative-output set aligned to CampaignCue export-first assets.',
+    },
+} satisfies Record<string, CampaignCueProofImage>;
+
+const HERO_FLOATING_ASSETS: HeroFloatingAsset[] = [
+    { eyebrow: 'Story', title: 'Lunch combo frame', detail: 'Download', tone: 'rose' },
+    { eyebrow: 'Poster', title: 'Counter card', detail: 'Print note', tone: 'pink' },
+    { eyebrow: 'Google', title: 'Local update', detail: 'Manual publish', tone: 'blue' },
+    { eyebrow: 'Reel', title: 'Shot list', detail: 'Brief only', tone: 'purple' },
+    { eyebrow: 'Review', title: 'Claim check', detail: 'Owner action', tone: 'cream' },
+];
 
 const NAV_LINKS = [
     { label: 'Pack room', href: '#pack-room' },
@@ -305,7 +330,7 @@ const PACK_ROOM_COLUMNS: PackRoomColumn[] = [
             { label: 'WhatsApp status', status: 'Copy ready' },
             { label: 'Google local draft', status: 'Manual publish' },
             { label: 'Square + story creative', status: 'Download PNG' },
-            { label: 'Print and staff note', status: 'Use in store' },
+            { label: 'Print and staff pack', status: 'Use in store' },
         ],
     },
     {
@@ -329,78 +354,6 @@ const PACK_ROOM_COLUMNS: PackRoomColumn[] = [
             { label: 'Assign follow-up', status: 'Manual task' },
             { label: 'Mark result', status: 'Memory saved' },
         ],
-    },
-];
-
-const HERO_FLOATING_ASSETS: HeroAsset[] = [
-    {
-        label: 'Story',
-        title: 'Lunch combo',
-        meta: '1080 x 1920',
-        tone: 'rose',
-    },
-    {
-        label: 'Poster',
-        title: 'Book today',
-        meta: 'Print ready',
-        tone: 'pink',
-    },
-    {
-        label: 'Google',
-        title: 'Local update',
-        meta: 'Source checked',
-        tone: 'blue',
-    },
-    {
-        label: 'Script',
-        title: '15 sec reel',
-        meta: 'Shoot list',
-        tone: 'purple',
-    },
-    {
-        label: 'Trust',
-        title: 'Claim review',
-        meta: 'Owner check',
-        tone: 'cream',
-    },
-];
-
-const OUTPUTS: OutputFormat[] = [
-    {
-        title: 'WhatsApp pack',
-        description: 'Status text, reply line, image note, and consent reminder ready for manual sharing.',
-        icon: LuMessageSquare,
-        status: 'Copy ready',
-    },
-    {
-        title: 'Google local draft',
-        description: 'Offer, event, update, photo caption, and clear manual publish steps.',
-        icon: LuSearchCheck,
-        status: 'Source checked',
-    },
-    {
-        title: 'Social creative',
-        description: 'Downloadable square, story, poster, and caption variants for the same offer.',
-        icon: LuImage,
-        status: 'Editable',
-    },
-    {
-        title: 'Print and staff pack',
-        description: 'Counter poster, flyer note, coupon or QR card, staff share text, and a short counter script.',
-        icon: LuFileDown,
-        status: 'Use in store',
-    },
-    {
-        title: 'Email, SMS, and QR brief',
-        description: 'Subject line, short-message copy, destination note, and QR handoff fields stay in the same campaign pack.',
-        icon: LuLink,
-        status: 'Manual handoff',
-    },
-    {
-        title: 'Local creator brief',
-        description: 'Creator-fit notes, shot list, disclosure reminder, and 3-test plan for a manual local content test.',
-        icon: LuVideo,
-        status: 'Brief only',
     },
 ];
 
@@ -435,7 +388,7 @@ const POWERHOUSE_FEATURES: PowerhouseFeature[] = [
         description: 'Create hooks, shot lists, creator-fit notes, and safe caption notes without rendering spend.',
         icon: LuVideo,
         tone: 'pink',
-        artifacts: ['Hook', 'Shot list', 'Caption'],
+        artifacts: ['Local creator brief', 'Shot list', 'Caption'],
     },
     {
         label: 'Check',
@@ -684,73 +637,51 @@ function SectionIntro({
     );
 }
 
+function CampaignCueProductProofFigure({
+    image,
+    className = '',
+    eager = false,
+}: {
+    image: CampaignCueProofImage;
+    className?: string;
+    eager?: boolean;
+}) {
+    return (
+        <figure className={`campaigncue-product-proof ${className}`}>
+            <img src={image.src} alt={image.alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+            <figcaption>{image.caption}</figcaption>
+        </figure>
+    );
+}
+
 function HeroProductPreview() {
     return (
-        <div className="campaigncue-hero-visual" aria-label="CampaignCue product preview">
+        <div className="campaigncue-hero-visual campaigncue-hero-visual--proof" aria-label="CampaignCue product preview">
             <div className="campaigncue-hero-cloud" aria-hidden="true">
                 {HERO_FLOATING_ASSETS.map((asset, index) => (
-                    <div className={`campaigncue-floating-asset is-${asset.tone} is-${index + 1}`} key={asset.title}>
-                        <span>{asset.label}</span>
+                    <div
+                        className={`campaigncue-floating-asset is-${index + 1} is-${asset.tone}`}
+                        key={asset.title}
+                    >
+                        <span>{asset.eyebrow}</span>
                         <strong>{asset.title}</strong>
-                        <em>{asset.meta}</em>
+                        <em>{asset.detail}</em>
                     </div>
                 ))}
             </div>
-            <div className="campaigncue-preview-window">
-                <div className="campaigncue-window-bar">
-                    <span />
-                    <span />
-                    <span />
-                    <strong>Daily desk</strong>
-                </div>
-                <div className="campaigncue-preview-grid">
-                    <aside className="campaigncue-preview-rail" aria-label="Preview navigation">
-                        <span className="is-active">Today</span>
-                        <span>Sources</span>
-                        <span>Studio</span>
-                        <span>Trust</span>
-                    </aside>
-
-                    <section className="campaigncue-preview-main" aria-label="Today cue preview">
-                        <div className="campaigncue-preview-kicker">
-                            <LuRadar aria-hidden="true" />
-                            <span>Ready after fact check</span>
-                        </div>
-                        <h2>Promote the lunch combo before 2 PM.</h2>
-                        <p>Photo, price, pickup link, Google update, WhatsApp status, and counter card are ready.</p>
-                        <div className="campaigncue-preview-proof">
-                            <span>
-                                <LuCheckCircle2 aria-hidden="true" />
-                                Price checked
-                            </span>
-                            <span>
-                                <LuShieldAlert aria-hidden="true" />
-                                No ranking claim
-                            </span>
-                        </div>
-                        <div className="campaigncue-preview-actions">
-                            <span>Copy WhatsApp</span>
-                            <span>Download poster</span>
-                            <span>Google draft</span>
-                        </div>
-                    </section>
-
-                    <section className="campaigncue-preview-pack" aria-label="Generated campaign pack">
-                        {OUTPUTS.slice(0, 4).map((output) => {
-                            const Icon = output.icon;
-                            return (
-                                <div className="campaigncue-pack-row" key={output.title}>
-                                    <Icon aria-hidden="true" />
-                                    <div>
-                                        <strong>{output.title}</strong>
-                                        <span>{output.status}</span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </section>
-
-                </div>
+            <CampaignCueProductProofFigure
+                image={CAMPAIGNCUE_PRODUCT_PROOF_IMAGES.hero}
+                className="campaigncue-product-proof--hero"
+                eager
+            />
+            <div className="campaigncue-hero-proof-artifacts" aria-label="CampaignCue sample campaign artifacts">
+                {HERO_FLOATING_ASSETS.map((asset) => (
+                    <div className={`campaigncue-floating-asset-rail-card campaigncue-hero-proof-artifact is-${asset.tone}`} key={asset.title}>
+                        <span>{asset.eyebrow}</span>
+                        <strong>{asset.title}</strong>
+                        <em>{asset.detail}</em>
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -805,6 +736,10 @@ function CampaignPackRoom() {
                     shows the work, the source checks, and the next manual action before anything leaves CampaignCue.
                 </p>
             </div>
+            <CampaignCueProductProofFigure
+                image={CAMPAIGNCUE_PRODUCT_PROOF_IMAGES.packRoom}
+                className="campaigncue-product-proof--pack-room"
+            />
             <div className="campaigncue-pack-room-surface">
                 <div className="campaigncue-pack-room-header">
                     <div>
@@ -855,6 +790,10 @@ function CreativePowerhouse() {
                     assets, reuse paths, review checks, and export files the owner can actually use.
                 </p>
             </div>
+            <CampaignCueProductProofFigure
+                image={CAMPAIGNCUE_PRODUCT_PROOF_IMAGES.creativeSystem}
+                className="campaigncue-product-proof--creative-system"
+            />
             <div className="campaigncue-powerhouse-grid">
                 {POWERHOUSE_FEATURES.map((feature) => {
                     const Icon = feature.icon;

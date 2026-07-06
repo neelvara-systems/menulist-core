@@ -35,7 +35,7 @@ Activation, Readiness Metrics, Daily Governance, Weekly Digest, and the Install 
 
 `GET /api/answerlattice/activation/summary`:
 
-1. Resolves tenant/store from `productAccounts.AL` through `resolveAnswerlatticeSessionScope`.
+1. Resolves tenant/store from `productAccounts.AL` through `resolveAnswerlatticeSessionScope`, which accepts only exact positive numeric Firestore document IDs for tenant/store scope.
 2. Reads the store document.
 3. Reads compact platform summary docs.
 4. Builds a `AnswerlatticeActivationSummary`, including `summary.launchProof` from already-read summary fields.

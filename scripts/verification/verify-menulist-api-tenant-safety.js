@@ -445,6 +445,7 @@ function verifyCoreAuthHelpers() {
   assert(!accessStatusRoute.includes('tenantId: userData.tenantId'), 'access-status route must not log raw tenant IDs');
   assert(!accessStatusRoute.includes('storeId: userData.storeId'), 'access-status route must not log raw store IDs');
   assert(!accessStatusRoute.includes('buildSecurityContext'), 'access-status route must not spread raw session security context into security logs');
+  assert(accessStatusRoute.includes('documentId === rawDocumentId && isValidFirestoreDocumentId(documentId)'), 'access-status route must reject whitespace-mutated user/tenant/store document IDs before Firestore reads');
 
   assertIncludes(
       'src/lib/permissions/server.ts',
@@ -803,9 +804,11 @@ function verifyCallerSuppliedTenantStoreRoutes() {
     'src/app/api/pos-sync/deliver/route.ts',
     [
       'key: `pos-deliver:${storeRateLimitHash}`',
+      "projectId: z.string().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),",
     ],
-    'POS delivery hashed store limiter key',
+    'POS delivery hashed store limiter key and strict project ID schema',
   );
+  assert(!read('src/app/api/pos-sync/deliver/route.ts').includes('projectId: z.string().trim()'), 'POS delivery must not trim project IDs before validation');
   assertIncludes(
     'src/app/api/pos-sync/test/route.ts',
     [
@@ -987,9 +990,15 @@ function verifyCallerSuppliedTenantStoreRoutes() {
     [
       'withAuth',
       'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+      'const MASTER_JOB_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;',
+      'const MASTER_JOB_STATUS_SESSION_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;',
+      'function normalizeMasterJobStatusSessionDocumentId(value: unknown): MasterJobStatusSessionDocumentScope | null',
       'querySchema.safeParse',
       '.refine(isValidFirestoreDocumentId, "Invalid project ID")',
-      'verifyTenantAccess(session, tenantId, sessionStoreId, request)',
+      'const sessionStoreScope = normalizeMasterJobStatusSessionDocumentId(session.sId ?? session.user?.storeId);',
+      'if (!sessionStoreScope || !verifyTenantAccess(session, tenantId, sessionStoreScope.numericId, request))',
+      'const sessionStoreId = sessionStoreScope.numericId;',
+      'db.doc(`${DB_COLLECTIONS.STORES}/${sessionStoreScope.documentId}`)',
       'Number(sessionStore?.tenantId) !== tenantId',
       'requireAnyStorePermissionForStoreData(',
       'if (sessionStoreId !== masterStoreId) {',
@@ -1010,6 +1019,8 @@ function verifyCallerSuppliedTenantStoreRoutes() {
   );
   const masterJobStatusRoute = read('src/app/api/projects/master-job-status/route.ts');
   assert(!masterJobStatusRoute.includes('const projectIdSchema = z.string().min(1).max(200).regex(/^[a-zA-Z0-9_-]+$/);'), 'master job status route must not keep regex-only project ID validation');
+  assert(!masterJobStatusRoute.includes('const sessionStoreId = Number(session.sId || session.user?.storeId);'), 'master job status route must not coerce session store IDs before document access');
+  assert(!masterJobStatusRoute.includes('db.doc(`${DB_COLLECTIONS.STORES}/${sessionStoreId}`)'), 'master job status route must not build store refs from numeric-coerced session store IDs');
   assert(!masterJobStatusRoute.includes('sessionStoreId !== masterStoreId && sessionStore?.isMaster !== true'), 'master job status route must not let master stores query other stores without an outlet link');
   assert(!masterJobStatusRoute.includes('key: `${MASTER_JOB_STATUS_RATE_LIMIT_KEY}:${userId}:${tenantId}:${storeId}`'), 'master job status route must not store raw user/tenant/store IDs in rate-limit keys');
   assertOrder(
@@ -1030,8 +1041,10 @@ function verifyCallerSuppliedTenantStoreRoutes() {
     [
       'Master job status store-link boundary',
       'Master job status project ID boundary',
+      'Master job status session store ID boundary',
       'Only the store encoded in the master project id can query that master job directly',
       'other stores must present a linked outlet project whose `masterProjectId` matches',
+      'session store scope must be an exact positive numeric Firestore document ID',
     ],
     'multi-outlet Firebase master job status store-link boundary',
   );
@@ -1040,8 +1053,10 @@ function verifyCallerSuppliedTenantStoreRoutes() {
     [
       'Master job status store-link boundary checkpoint',
       'Master job status project ID boundary checkpoint',
+      'Master job status session store document-ID boundary checkpoint',
       '`src/app/api/projects/master-job-status/route.ts` now lets only the store encoded in `masterProjectId` query that master job directly',
       'all other stores must present an `outletProjectId` linked to the requested master project',
+      'session store scope can no longer be numeric-coerced before the `stores/{sId}` read',
       '`npm run verify:menulist-api-tenant-safety` source-gates the explicit `sessionStoreId !== masterStoreId` branch',
     ],
     'production audit master job status store-link boundary evidence',
@@ -1051,8 +1066,10 @@ function verifyCallerSuppliedTenantStoreRoutes() {
     [
       'Master Job Status Store-Link Boundary',
       'Master Job Status Project ID Boundary',
+      'Master Job Status Session Store ID Boundary',
       'Master job polling is store-bound',
       'Outlet polling still works through linked projects',
+      'Whitespace-mutated session store IDs fail before the caller-store read',
       'npm run verify:menulist-api-tenant-safety',
     ],
     'primary changelog master job status store-link boundary entry',
@@ -1062,8 +1079,10 @@ function verifyCallerSuppliedTenantStoreRoutes() {
     [
       'Master Job Status Store-Link Boundary',
       'Master Job Status Project ID Boundary',
+      'Master Job Status Session Store ID Boundary',
       'Master job polling is store-bound',
       'Outlet polling still works through linked projects',
+      'Whitespace-mutated session store IDs fail before the caller-store read',
       'npm run verify:menulist-api-tenant-safety',
     ],
     'mirrored changelog master job status store-link boundary entry',
@@ -1296,8 +1315,12 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
   assertIncludes(
     'src/app/api/projects/outlet-save/route.ts',
     [
-      'parseProjectId(project.projectId)',
-      'parseProjectId(project.masterProjectId)',
+      'import { normalizeMultiOutletNumericDocumentId, normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";',
+      'normalizeMultiOutletProjectId(project.projectId)',
+      'normalizeMultiOutletProjectId(project.masterProjectId)',
+      'const currentStoreScope = normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId);',
+      'linked_outlet_save_invalid_session_store_scope',
+      'const currentStoreId = currentStoreScope.numericId;',
       'isValidFirestoreDocumentId',
       '.refine(isValidFirestoreDocumentId, "Invalid project ID")',
       '.refine(isValidFirestoreDocumentId, "Invalid override ID")',
@@ -1311,6 +1334,10 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
       'getOutletPolicyViolation(project, existingProject, outletPolicy)',
     ],
     'linked outlet save target and policy guards',
+  );
+  assert(
+    !read('src/app/api/projects/outlet-save/route.ts').includes('const currentStoreId = Number(session.sId || session.user?.storeId);'),
+    'linked outlet save must not coerce session store IDs before tenant/store reads',
   );
 
   assertIncludes(
@@ -1616,10 +1643,14 @@ function verifySessionScopedPublicTruthRoutes() {
       [
         'withAuth',
         `export const ${method} = withAuth(async`,
-        'verifyTenantAccess(session, session.tId, session.sId, request)',
-        'const storeData = await readPublicTruthMonitorStoreDataServer(session.sId);',
+        'getPublicTruthMonitorSessionScope',
+        'const sessionScope = getPublicTruthMonitorSessionScope(session);',
+        'verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request)',
+        'const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);',
         'const permissionError = requireAnyStorePermissionForStoreData(',
         '[PERMISSIONS.VIEW_ANALYTICS]',
+        'sessionScope.storeScope.numericId',
+        'sessionScope.tenantScope.numericId',
         'if (permissionError) return permissionError;',
         'evaluatePublicTruthMonitorServerEntitlement',
       ],
@@ -1631,11 +1662,12 @@ function verifySessionScopedPublicTruthRoutes() {
     'src/app/api/public-truth-monitor/summary/route.ts',
     [
       'const rateLimitResponse = await checkAIRateLimit("DATA_READ", "public-truth-monitor-read");',
-      'if (!verifyTenantAccess(session, session.tId, session.sId, request))',
-      'const storeData = await readPublicTruthMonitorStoreDataServer(session.sId);',
+      'const sessionScope = getPublicTruthMonitorSessionScope(session);',
+      'if (!verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request))',
+      'const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);',
       'const permissionError = requireAnyStorePermissionForStoreData(',
       'const entitlement = await evaluatePublicTruthMonitorServerEntitlement({',
-      '? await readPublicTruthMonitorSummaryServer(session.sId)',
+      '? await readPublicTruthMonitorSummaryServer(sessionScope.storeScope.documentId)',
     ],
     'Public Truth Monitor summary must rate-limit, tenant-check, permission-check, then read saved summary',
   );
@@ -1645,14 +1677,26 @@ function verifySessionScopedPublicTruthRoutes() {
     [
       'const rateLimitResponse = await checkDataWriteLimit();',
       'const validation = validateAPIInput(PublicTruthMonitorRefreshRequestSchema, jsonBody.data);',
-      'if (!verifyTenantAccess(session, session.tId, session.sId, request))',
-      'const storeData = await readPublicTruthMonitorStoreDataServer(session.sId);',
+      'const sessionScope = getPublicTruthMonitorSessionScope(session);',
+      'if (!verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request))',
+      'const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);',
       'const permissionError = requireAnyStorePermissionForStoreData(',
       'const entitlement = await evaluatePublicTruthMonitorServerEntitlement({',
       'await writePublicTruthMonitorSummaryServer({',
     ],
     'Public Truth Monitor refresh must rate-limit, validate, tenant-check, permission-check, then write summary',
   );
+  ['src/app/api/public-truth-monitor/summary/route.ts', 'src/app/api/public-truth-monitor/refresh/route.ts'].forEach((routePath) => {
+    const route = read(routePath);
+    [
+      'verifyTenantAccess(session, session.tId, session.sId, request)',
+      'readPublicTruthMonitorStoreDataServer(session.sId)',
+      'Number(session.sId)',
+      'Number(session.tId)',
+    ].forEach((token) => {
+      assert(!route.includes(token), `${routePath} must not use raw Public Truth Monitor session scope token ${token}`);
+    });
+  });
 
   assertIncludes(
     'src/lib/validation/publicTruthMonitorSchemas.ts',
@@ -1665,6 +1709,10 @@ function verifySessionScopedPublicTruthRoutes() {
     'Public Truth Monitor refresh selected-project schema must use shared document-ID guard',
   );
   assert(
+    !read('src/lib/validation/publicTruthMonitorSchemas.ts').includes('.trim()'),
+    'Public Truth Monitor refresh selectedProjectId must not trim IDs before validation',
+  );
+  assert(
     !read('src/lib/validation/publicTruthMonitorSchemas.ts').includes('selectedProjectId: z.string().min(1).max(140).optional()'),
     'Public Truth Monitor refresh selectedProjectId must not keep max-only validation',
   );
@@ -1673,7 +1721,8 @@ function verifySessionScopedPublicTruthRoutes() {
     [
       'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
       'function normalizePublicTruthMonitorDocumentId(value: unknown): string | null',
-      'const documentId = typeof value === "string" ? value.trim() : "";',
+      'const raw = typeof value === "string" ? value : "";',
+      'return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;',
       'function normalizePublicTruthMonitorScopeDocumentId(value: unknown): string | null',
       'return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;',
       'const projectId = normalizePublicTruthMonitorDocumentId(project.projectId);',
@@ -1702,6 +1751,7 @@ function verifySessionScopedPublicTruthRoutes() {
     [
       'Public Truth Monitor project and scope ID boundary checkpoint',
       'Public Truth Monitor server DAL ID normalization checkpoint',
+      'whitespace-mutated selected project IDs',
     ],
     'Production audit must record Public Truth Monitor project/scope ID boundaries',
   );
@@ -1710,6 +1760,7 @@ function verifySessionScopedPublicTruthRoutes() {
     [
       'Public Truth Monitor Project ID Boundary',
       'Public Truth Monitor Server DAL ID Normalization',
+      'Public Truth Monitor Strict Project ID Boundary',
     ],
     'Changelog must record Public Truth Monitor project ID boundaries',
   );
@@ -2826,6 +2877,51 @@ function verifyPublicTruthMutationBoundedBodies() {
     'multi-outlet Firebase cost outlet lifecycle session document ID boundary evidence',
   );
   assertIncludes(
+    '__docs__/multi-outlet-consistency/multi-outlet-consistency_impl.md',
+    [
+      'July 6, 2026 linked outlet save session store ID boundary',
+      '`/api/projects/outlet-save` now validates authenticated session store scope',
+      'Valid outlet and master-store saves keep the same behavior',
+    ],
+    'multi-outlet implementation linked outlet save session store boundary evidence',
+  );
+  assertIncludes(
+    '__docs__/multi-outlet-consistency/multi-outlet-consistency_firebase.md',
+    [
+      'Linked outlet save session store ID boundary is cost-neutral',
+      'normalizeMultiOutletNumericDocumentId()',
+      'Firebase deploy requirement, or Vercel deploy action',
+    ],
+    'multi-outlet Firebase linked outlet save session store boundary evidence',
+  );
+  assertIncludes(
+    '__docs__/audits/menulist-production-readiness-audit.md',
+    [
+      'Linked outlet save session store document-ID boundary checkpoint',
+      'Number(session.sId || session.user?.storeId)',
+      '`npm run verify:multi-location-boundary` and `npm run verify:menulist-api-tenant-safety` source-gate',
+    ],
+    'production audit linked outlet save session store boundary evidence',
+  );
+  assertIncludes(
+    '__docs__/CHANGELOG.md',
+    [
+      'Linked Outlet Save Session Store ID Boundary',
+      'Linked outlet save caller-store scope is exact',
+      'normalized session store scope',
+    ],
+    'primary changelog linked outlet save session store boundary entry',
+  );
+  assertIncludes(
+    '__docs__/changelog.md',
+    [
+      'Linked Outlet Save Session Store ID Boundary',
+      'Linked outlet save caller-store scope is exact',
+      'normalized session store scope',
+    ],
+    'mirrored changelog linked outlet save session store boundary entry',
+  );
+  assertIncludes(
     '__docs__/CHANGELOG.md',
     [
       'Outlet Lifecycle Session Document ID Boundary',
@@ -2849,7 +2945,8 @@ function verifyPublicTruthMutationBoundedBodies() {
     [
       'const bodyResult = await readBoundedJsonBody(request, OUTLET_SAVE_MAX_BODY_BYTES',
       'const validation = validateAPIInput(schema, body);',
-      'parseProjectId(project.projectId)',
+      'normalizeMultiOutletProjectId(project.projectId)',
+      'const currentStoreScope = normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId);',
       'verifyTenantAccess(session, tenantId, currentStoreId, request)',
       'const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || "unknown");',
       'const projectRateLimitHash = hashPublicRateLimitValue(project.projectId);',
@@ -3127,7 +3224,7 @@ function verifyPublicCustomerSignalBoundedBodies() {
       'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
       'const tenantId = tenantScope.documentId;',
       'const storeId = storeScope.documentId;',
-      "projectId: z.string().trim().regex(/^[A-Za-z0-9_-]{1,120}$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),",
+      "projectId: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),",
       "logAnalyticsFailure('public_analytics_track_failed'",
       '.collection(DB_COLLECTIONS.TENANTS)',
       'if (!tenantSnap.exists || isPlatformEntityBlocked(tenantSnap.data())) return null;',
@@ -3145,6 +3242,7 @@ function verifyPublicCustomerSignalBoundedBodies() {
   assert(!analyticsRoute.includes('error instanceof Error ? error'), 'public analytics track must not pass raw exceptions to secure logging');
   assert(!analyticsRoute.includes('const tenantId = String(data.tenantId);'), 'public analytics track must not build tenant refs from raw parsed tenant IDs');
   assert(!analyticsRoute.includes('const storeId = String(data.storeId);'), 'public analytics track must not build store refs from raw parsed store IDs');
+  assert(!analyticsRoute.includes('projectId: z.string().trim()'), 'public analytics track must not trim project IDs before validation');
   assert(!analyticsRoute.includes('projectId: z.string().trim().regex(/^[A-Za-z0-9_-]{1,120}$/),'), 'public analytics track must not keep regex-only project ID validation');
   assertIncludes(
     'src/lib/analytics/serverWrite.ts',
@@ -3177,15 +3275,20 @@ function verifyPublicCustomerSignalBoundedBodies() {
   assert(analyticsFirebaseDoc.includes('Public analytics shared write helper boundary'), 'Analytics Firebase docs must record public analytics shared write helper boundary');
   assert(analyticsImplDoc.includes('Public analytics project ID boundary'), 'Analytics implementation docs must record public analytics project ID boundary');
   assert(analyticsFirebaseDoc.includes('Public analytics project ID boundary'), 'Analytics Firebase docs must record public analytics project ID boundary');
+  assert(analyticsImplDoc.includes('whitespace-mutated project IDs fail'), 'Analytics implementation docs must record strict public analytics project ID admission');
+  assert(analyticsFirebaseDoc.includes('whitespace-mutated project IDs fail'), 'Analytics Firebase docs must record strict public analytics project ID admission');
   assert(productionAudit.includes('Public Analytics Shared Write Helper Boundary checkpoint'), 'Production audit must record public analytics shared write helper checkpoint');
   assert(productionAudit.includes('Public Analytics Tenant/Store Document ID Boundary checkpoint'), 'Production audit must record public analytics tenant/store document ID checkpoint');
   assert(productionAudit.includes('Public Analytics Project ID Boundary checkpoint'), 'Production audit must record public analytics project ID checkpoint');
+  assert(productionAudit.includes('whitespace-mutated project IDs'), 'Production audit must record strict public analytics project ID admission');
   assert(changelog.includes('Public Analytics Shared Write Helper Boundary'), 'Changelog must record public analytics shared write helper boundary');
   assert(lowercaseChangelog.includes('Public Analytics Shared Write Helper Boundary'), 'Lowercase changelog must record public analytics shared write helper boundary');
   assert(changelog.includes('Public Analytics Tenant/Store Document ID Boundary'), 'Changelog must record public analytics tenant/store document ID boundary');
   assert(lowercaseChangelog.includes('Public Analytics Tenant/Store Document ID Boundary'), 'Lowercase changelog must record public analytics tenant/store document ID boundary');
   assert(changelog.includes('Public Analytics Project ID Boundary'), 'Changelog must record public analytics project ID boundary');
   assert(lowercaseChangelog.includes('Public Analytics Project ID Boundary'), 'Lowercase changelog must record public analytics project ID boundary');
+  assert(changelog.includes('Public Analytics Strict Project ID Boundary'), 'Changelog must record strict public analytics project ID boundary');
+  assert(lowercaseChangelog.includes('Public Analytics Strict Project ID Boundary'), 'Lowercase changelog must record strict public analytics project ID boundary');
 
   const feedbackRoute = read('src/app/api/public/feedback/submit/route.ts');
   const feedbackProjectIdBoundary = read('src/lib/feedback/guestFeedbackProjectIdBoundary.ts');
@@ -3726,6 +3829,62 @@ function verifyAnalyticsErrorBoundary() {
     assert(!source.includes('buildSecurityContext'), `${route} must not spread raw security context into owner AI security logs`);
   });
   assertIncludes(
+    'src/app/api/menu-card-export/design-advisor/route.ts',
+    [
+      'import { isValidFirestoreDocumentId }',
+      'function normalizeMenuCardDesignAdvisorSessionScopeDocumentId(',
+      'const tenantScope = normalizeMenuCardDesignAdvisorSessionScopeDocumentId(session.tId);',
+      'const storeScope = normalizeMenuCardDesignAdvisorSessionScopeDocumentId(session.sId);',
+      'const tenantId = tenantScope.numericId;',
+      'const storeId = storeScope.numericId;',
+      'verifyTenantAccess(session, tenantId, storeId, request)',
+      'getActiveSubscriptionForStore(tenantId, storeId)',
+      'checkAICapacity(tenantId, storeId, ACTION, 1, subscription)',
+    ],
+    'Menu Card design advisor session-scope boundary',
+  );
+  [
+    'const tenantId = Number(session.tId);',
+    'const storeId = Number(session.sId);',
+    'if (!Number.isFinite(tenantId) || !Number.isFinite(storeId))',
+  ].forEach((token) => {
+    assert(!read('src/app/api/menu-card-export/design-advisor/route.ts').includes(token), `Menu Card design advisor must not use loose session scope token ${token}`);
+  });
+  assertIncludes(
+    '__docs__/menu-card-export/menu-card-export_firebase.md',
+    [
+      'AI advisor session-scope admission is cost-neutral',
+      'exact positive numeric Firestore document IDs',
+    ],
+    'Menu Card Export Firebase session-scope boundary docs',
+  );
+  assertIncludes(
+    '__docs__/menu-card-export/menu-card-export_impl.md',
+    [
+      'July 6 AI advisor session scope boundary',
+      'subscription lookup, AI capacity check, Gemini call, recommendation normalization, or AI accounting',
+    ],
+    'Menu Card Export implementation session-scope boundary docs',
+  );
+  assertIncludes(
+    '__docs__/audits/menulist-production-readiness-audit.md',
+    [
+      'Menu Card Design Advisor session scope boundary checkpoint',
+      'subscription lookup',
+      'provider call',
+    ],
+    'Production audit Menu Card design advisor session-scope boundary evidence',
+  );
+  assertIncludes(
+    '__docs__/changelog.md',
+    [
+      'Menu Card Design Advisor Session Scope Boundary',
+      'npm run verify:menu-card-export',
+      'npm run verify:menulist-api-tenant-safety',
+    ],
+    'Changelog Menu Card design advisor session-scope boundary evidence',
+  );
+  assertIncludes(
     'src/app/api/image-generation/batch-generation/route.ts',
     [
       'import { checkRateLimit } from "@lib/rateLimit";',
@@ -3851,6 +4010,69 @@ function verifyAnalyticsErrorBoundary() {
       `${label} route must validate input and permission before expensive AI work`,
     );
   });
+  assertIncludes(
+    'src/lib/multiOutlet/serverOutletPolicy.ts',
+    [
+      'normalizeMultiOutletNumericDocumentId',
+      'normalizeMultiOutletProjectId',
+      'const getSessionTenantScope = (session: SessionLike): MultiOutletNumericDocumentId | null => (',
+      'const getSessionStoreScope = (session: SessionLike): MultiOutletNumericDocumentId | null => (',
+      'const projectScope = normalizeMultiOutletProjectId(projectId);',
+      'projectScope.tId !== tenantScope.numericId',
+      'projectScope.sId !== storeScope.numericId',
+      '.doc(`${DB_COLLECTIONS.PROJECTS}/${tenantScope.documentId}/${storeScope.documentId}/${projectScope.projectId}`)',
+      'const masterProjectScope = normalizeMultiOutletProjectId(masterProjectId);',
+      'masterProjectScope.tId !== tenantScope.numericId',
+      'masterProjectScope.sId === storeScope.numericId',
+      '.doc(`${DB_COLLECTIONS.STORES}/${masterProjectScope.storeDocumentId}`)',
+      'const masterTenantScope = normalizeMultiOutletNumericDocumentId(masterStoreSnap.data()?.tenantId);',
+      'masterTenantScope.numericId !== tenantScope.numericId',
+    ],
+    'linked outlet AI policy scope boundary',
+  );
+  [
+    'const parsed = Number(session.tId ?? session.user?.tenantId);',
+    'const parsed = Number(session.sId ?? session.user?.storeId);',
+    'const parts = projectId.split("-");',
+    'const parsed = Number(parts[parts.length - 1]);',
+    'Number(masterStoreSnap.data()?.tenantId)',
+  ].forEach((token) => {
+    assert(!read('src/lib/multiOutlet/serverOutletPolicy.ts').includes(token), `linked outlet AI policy must not use loose scope parsing: ${token}`);
+  });
+  assertIncludes(
+    '__docs__/multi-outlet-consistency/multi-outlet-consistency_firebase.md',
+    [
+      'Linked outlet AI policy scope boundary is cost-neutral',
+      '`getLinkedOutletPolicyBlockReason()` now uses `normalizeMultiOutletProjectId()`',
+    ],
+    'multi-outlet Firebase linked outlet AI policy scope boundary docs',
+  );
+  assertIncludes(
+    '__docs__/multi-chain-permissions/multi-chain-permissions_firebase.md',
+    [
+      'Linked outlet AI policy scope boundary is cost-neutral',
+      '`getLinkedOutletPolicyBlockReason()` now normalizes session scope, requested project scope, stored master project scope, and master store tenant scope',
+    ],
+    'multi-chain permissions linked outlet AI policy scope boundary docs',
+  );
+  assertIncludes(
+    '__docs__/audits/menulist-production-readiness-audit.md',
+    [
+      'Linked outlet AI policy scope boundary checkpoint',
+      'provider calls',
+      'normalizeMultiOutletProjectId',
+    ],
+    'production audit linked outlet AI policy scope boundary evidence',
+  );
+  assertIncludes(
+    '__docs__/changelog.md',
+    [
+      'Linked Outlet AI Policy Scope Boundary',
+      'getLinkedOutletPolicyBlockReason()',
+      'npm run verify:menulist-api-tenant-safety',
+    ],
+    'changelog linked outlet AI policy scope boundary evidence',
+  );
   assertIncludes(
     'src/app/api/ai-packs/status/route.ts',
     [
@@ -4384,14 +4606,21 @@ function verifyAnalyticsErrorBoundary() {
     [
       "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
       'const MarkDoneProjectIdSchema = z.string()',
+      ".regex(/^[A-Za-z0-9_-]+$/)",
       ".refine(isValidFirestoreDocumentId, 'Invalid project ID')",
       'projectId: MarkDoneProjectIdSchema',
       'const OWNER_ACTION_RECEIPT_ID_PATTERN = /^[a-f0-9]{32}$/;',
+      'const OWNER_ACTION_SCOPE_DOCUMENT_ID_PATTERN = /^\\d+$/;',
+      'function normalizeMarkDoneScopeDocumentId(value: unknown): string | null',
+      'OWNER_ACTION_SCOPE_DOCUMENT_ID_PATTERN.test(documentId)',
+      'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
       'function isOwnerActionReceiptId',
       'const entries = getReceiptEntries(data).filter(([receiptId]) => isOwnerActionReceiptId(receiptId));',
       'if (!isValidFirestoreDocumentId(dashboardDocId))',
       "logAnalyticsFailure('owner_action_mark_done_invalid_dashboard_doc_id'",
-      'if (!isValidFirestoreDocumentId(tenantId) || !isValidFirestoreDocumentId(storeId))',
+      'const tenantId = normalizeMarkDoneScopeDocumentId(rawTenantId);',
+      'const storeId = normalizeMarkDoneScopeDocumentId(rawStoreId);',
+      'if (!tenantId || !storeId)',
       "logAnalyticsFailure('owner_action_mark_done_invalid_session_scope'",
       "return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });",
     ],
@@ -4400,9 +4629,9 @@ function verifyAnalyticsErrorBoundary() {
   assertOrder(
     'src/app/api/analytics/owner-action/mark-done/route.ts',
     [
-      "const tenantId = String(session.tId || session.user?.tenantId || '');",
+      "const rawTenantId = session.tId || session.user?.tenantId || '';",
+      'const tenantId = normalizeMarkDoneScopeDocumentId(rawTenantId);',
       'if (!tenantId || !storeId)',
-      'if (!isValidFirestoreDocumentId(tenantId) || !isValidFirestoreDocumentId(storeId))',
       "const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');",
       'const bodyResult = await readBoundedJsonBody',
       'const validation = MarkDoneSchema.safeParse(bodyResult.data);',
@@ -4414,12 +4643,18 @@ function verifyAnalyticsErrorBoundary() {
     ],
     'owner dashboard action mark-done ID validation before Firestore document access',
   );
+  assert(!ownerActionMarkDoneRoute.includes('.trim()'), 'owner dashboard action mark-done projectId must not trim before validation');
+  assert(!ownerActionMarkDoneRoute.includes('if (!isValidFirestoreDocumentId(tenantId) || !isValidFirestoreDocumentId(storeId))'), 'owner dashboard action mark-done session scope must not rely on trim-tolerant direct document-ID checks');
   assert(!ownerActionMarkDoneRoute.includes('projectId: z.string().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/)'), 'owner dashboard action mark-done projectId must not keep regex-only validation');
   assert(!ownerActionMarkDoneRoute.includes('const dashboardRef = admin.firestore().collection(DB_COLLECTIONS.ANALYTICS).doc(`${tenantId}_${storeId}_${projectId}_dashboard_summary`)'), 'owner dashboard action mark-done must keep the dashboard doc id inspectable before Firestore access');
   assert(analyticsFirebaseDoc.includes('Owner action mark-done session scope boundary'), 'Analytics Firebase docs must record owner action mark-done session scope ID boundary');
+  assert(analyticsFirebaseDoc.includes('Whitespace-mutated, nonnumeric, zero, negative, unsafe, or reserved session scope'), 'Analytics Firebase docs must record strict owner action mark-done session scope rejection');
   assert(analyticsFirebaseDoc.includes('Owner action mark-done project/receipt ID boundary'), 'Analytics Firebase docs must record owner action mark-done project/receipt ID boundary');
+  assert(analyticsFirebaseDoc.includes('whitespace-mutated project IDs'), 'Analytics Firebase docs must record owner action mark-done whitespace-mutated project ID rejection');
   assert(analyticsImplDoc.includes('Owner action mark-done session scope boundary'), 'Analytics implementation docs must record owner action mark-done session scope ID boundary');
+  assert(analyticsImplDoc.includes('Whitespace-mutated, nonnumeric, zero, negative, unsafe, or reserved session scope'), 'Analytics implementation docs must record strict owner action mark-done session scope rejection');
   assert(analyticsImplDoc.includes('Owner action mark-done project/receipt ID boundary'), 'Analytics implementation docs must record owner action mark-done project/receipt ID boundary');
+  assert(analyticsImplDoc.includes('whitespace-mutated project IDs'), 'Analytics implementation docs must record owner action mark-done whitespace-mutated project ID rejection');
   assert(productionAudit.includes('Owner Action Mark-Done Session Scope Boundary checkpoint'), 'Production audit must record owner action mark-done session scope checkpoint');
   assert(productionAudit.includes('Owner Action Mark-Done Project And Receipt ID Boundary checkpoint'), 'Production audit must record owner action mark-done project/receipt checkpoint');
   assert(changelog.includes('Owner Action Mark-Done Session Scope Boundary'), 'Changelog must record owner action mark-done session scope boundary');
@@ -7621,7 +7856,16 @@ function verifyPaymentMutationBoundedJson() {
       'src/lib/onboarding/compensateFailedOnboarding.ts',
       [
         'PAYMENT_PROVIDER_FAILED_STATUS = "payment_provider_failed"',
+        'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
+        'const ONBOARDING_COMPENSATION_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;',
         'requireOnboardingUserId',
+        'const tenantScope = normalizePositiveId(params.tenantId);',
+        'const storeScope = normalizePositiveId(params.storeId);',
+        'const tenantId = tenantScope.numericId;',
+        'const storeId = storeScope.numericId;',
+        'doc(tenantScope.documentId)',
+        'doc(storeScope.documentId)',
+        '[storeScope.documentId]',
         'export async function compensateFailedTenantStoreOnboarding',
         'const userId = requireOnboardingUserId(params.userId);',
         'active: false',
@@ -7648,15 +7892,20 @@ function verifyPaymentMutationBoundedJson() {
     const failedOnboardingCompensation = read('src/lib/onboarding/compensateFailedOnboarding.ts');
     assert(!onboardingCreateTenantStore.includes('.doc(userId);'), 'central onboarding user update helper must not use raw user IDs in document refs');
     assert(!failedOnboardingCompensation.includes('.doc(params.userId)'), 'failed onboarding compensation helper must not use raw user IDs in document refs');
+    assert(!failedOnboardingCompensation.includes('const id = Number(value);'), 'failed onboarding compensation helper must not numeric-coerce scope before document refs');
+    assert(!failedOnboardingCompensation.includes('.doc(String(tenantId))'), 'failed onboarding compensation helper must not build tenant refs from stringified numeric scope');
+    assert(!failedOnboardingCompensation.includes('.doc(String(storeId))'), 'failed onboarding compensation helper must not build store refs from stringified numeric scope');
     assertIncludes(
       '__docs__/onboarding-centralization/README.md',
       [
         'July 5 user-ID boundary',
+        'July 6 compensation scope boundary',
         'src/lib/onboarding/onboardingUserId.ts',
         'whitespace-mutated',
         'oversized',
         'updateUserWithTenantStore()',
         'provider-failure compensation normalizes `params.userId`',
+        'provider-failure compensation normalizes `params.tenantId` and `params.storeId`',
       ],
       'onboarding centralization user ID boundary docs',
     );
@@ -7664,10 +7913,12 @@ function verifyPaymentMutationBoundedJson() {
       '__docs__/auth-onboarding/auth-onboarding_impl.md',
       [
         'July 5 onboarding user-ID boundary note',
+        'July 6 onboarding compensation scope boundary note',
         'src/lib/onboarding/onboardingUserId.ts',
         'whitespace-mutated',
         'oversized',
         'compensateFailedTenantStoreOnboarding()',
+        'exact positive numeric tenant/store document IDs',
         'reseller onboarding normalizes Firebase Auth-generated UIDs',
       ],
       'auth onboarding implementation user ID boundary docs',
@@ -7676,7 +7927,9 @@ function verifyPaymentMutationBoundedJson() {
       '__docs__/auth-onboarding/auth-onboarding_firebase.md',
       [
         'Onboarding user-ID boundary',
+        'Onboarding compensation scope boundary',
         'normalize user IDs through `src/lib/onboarding/onboardingUserId.ts`',
+        'exact positive numeric tenant/store document IDs',
         'whitespace-mutated',
         'oversized',
         'adds no reads or writes for valid requests',
@@ -7687,10 +7940,12 @@ function verifyPaymentMutationBoundedJson() {
       '__docs__/audits/menulist-production-readiness-audit.md',
       [
         'Onboarding strict user ID helper boundary checkpoint',
+        'Onboarding compensation scope boundary checkpoint',
         'src/lib/onboarding/onboardingUserId.ts',
         'whitespace-mutated',
         'oversized',
         'compensateFailedTenantStoreOnboarding()',
+        'provider-failure compensation now requires exact positive numeric tenant/store document IDs',
         'reseller onboarding normalizes Firebase Auth-generated UIDs',
       ],
       'production audit onboarding user ID boundary evidence',
@@ -7699,8 +7954,10 @@ function verifyPaymentMutationBoundedJson() {
       '__docs__/CHANGELOG.md',
       [
         'Onboarding Strict User ID Helper Boundary',
+        'Onboarding Compensation Scope Boundary',
         'whitespace-mutated',
         'oversized',
+        'Provider-failure compensation scope is exact',
         'Onboarding helper user IDs are validated before user document refs',
         'Reseller-created owner docs use the same guard',
       ],
@@ -7710,8 +7967,10 @@ function verifyPaymentMutationBoundedJson() {
       '__docs__/changelog.md',
       [
         'Onboarding Strict User ID Helper Boundary',
+        'Onboarding Compensation Scope Boundary',
         'whitespace-mutated',
         'oversized',
+        'Provider-failure compensation scope is exact',
         'Onboarding helper user IDs are validated before user document refs',
         'Reseller-created owner docs use the same guard',
       ],
@@ -7973,8 +8232,10 @@ function verifyPaymentMutationBoundedJson() {
 	    assert(manageRoute.includes("logger.info('Reseller profile created'"), 'reseller manage route keeps create success breadcrumb');
 	    assert(manageRoute.includes("getBoundedResellerApiStringContext('profileId'"), 'reseller manage success breadcrumbs must bound profile IDs');
 	    assert(manageRoute.includes("getBoundedResellerApiStringContext('resellerName'"), 'reseller manage create breadcrumb must bound reseller names');
+	    assert(manageRoute.includes("profileId: z.string().min(1).max(128).refine((value) => value === value.trim() && isValidFirestoreDocumentId(value), 'Invalid profile ID')"), 'reseller manage update profileId must reject whitespace-mutated Firestore document IDs');
 	    assert(manageRoute.includes('updatedFieldCount: Object.keys(profileUpdates).length'), 'reseller manage update breadcrumb must log field counts, not field names');
 	    assert(!manageRoute.includes('buildSecurityContext'), 'reseller manage route must not import or spread raw security context');
+	    assert(!manageRoute.includes("profileId: z.string().trim().min(1).max(128).refine(isValidFirestoreDocumentId, 'Invalid profile ID')"), 'reseller manage update profileId must not trim before Firestore document ID validation');
 	    assert(!manageRoute.includes('profileId,\n                updatedFields: Object.keys(profileUpdates)'), 'reseller manage update breadcrumb must not log raw profile IDs or field names');
 	    assert(!manageRoute.includes('profileId: authUserId,\n                resellerName: data.name'), 'reseller manage create breadcrumb must not log raw profile IDs or reseller names');
 	  }

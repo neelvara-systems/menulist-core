@@ -152,9 +152,15 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
     "const SUMMARY_DOC_ID = 'founderMonitorRevenue';",
     "const DAILY_DOC_PREFIX = 'founderMonitorRevenueDaily_';",
     "const ONBOARDING_TRANSITION_SOURCE = 'founderRevenueReadModel:new_mrr';",
+    'const FOUNDER_REVENUE_STORE_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;',
     'function normalizeFounderRevenueMovementDocumentId(value: string): string | null',
     'return isValidFirestoreDocumentId(movementId) ? movementId : null;',
     'function normalizeFounderRevenueStoreDocumentId(value: unknown): string | null',
+    "if (typeof value !== 'string' && typeof value !== 'number') return null;",
+    'const storeId = String(value);',
+    'if (!FOUNDER_REVENUE_STORE_DOCUMENT_ID_PATTERN.test(storeId)) return null;',
+    'const numericStoreId = Number(storeId);',
+    'if (!Number.isSafeInteger(numericStoreId) || numericStoreId <= 0 || String(numericStoreId) !== storeId) return null;',
     'return isValidFirestoreDocumentId(storeId) ? storeId : null;',
     'function shouldTrackProduct(productId: unknown): boolean',
     'return normalizedProductId(productId) === PRODUCT_IDS.MENULIST;',
@@ -203,6 +209,7 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
     'console.error',
     'error.message',
     'const movementId = normalizeMovementId(input.id);',
+    'const storeId = cleanText(value, 80);',
     'const storeId = cleanText(input.storeId, 80) || null;',
     "const eventKey = normalizeMovementId(params.eventKey || 'change');",
   ].forEach((token) => assertNotIncludes(source, token, 'Founder revenue read model boundary'));
@@ -467,28 +474,28 @@ function verifyDocsAndPage() {
     assertIncludes(firebaseDoc, token, 'Founder Monitor Firebase docs');
   });
   [
-    'Founder revenue movement document IDs and payment-to-live transition store IDs pass through `src/lib/firebase/firestoreDocumentId.ts`',
-    'malformed, reserved, empty, or path-shaped movement/store IDs return without creating invalid',
+    'Founder revenue movement document IDs pass through `src/lib/firebase/firestoreDocumentId.ts`, and payment-to-live transition store IDs use exact positive numeric MenuList store document scope before the same Firestore document-ID guard.',
+    'malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric movement/store IDs return without creating invalid',
   ].forEach((token) => assertIncludes(implDoc, token, 'Founder Monitor implementation document-ID boundary docs'));
   [
     'Founder Monitor revenue document-ID admission is Firebase-cost neutral',
-    'validates movement IDs and transition store IDs with `src/lib/firebase/firestoreDocumentId.ts`',
-    'malformed, reserved, empty, or path-shaped IDs return before invalid refs',
+    'validates movement IDs with `src/lib/firebase/firestoreDocumentId.ts` and requires transition store IDs to be exact positive numeric MenuList store document IDs before the same guard',
+    'malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric IDs return before invalid refs',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Founder Monitor Firebase document-ID boundary docs'));
   [
     'Founder revenue movement IDs pass through `src/lib/firebase/firestoreDocumentId.ts`',
-    'Payment-to-live transition store IDs pass through the same document-ID guard',
+    'Payment-to-live transition store IDs must be exact positive numeric MenuList store document IDs before the same document-ID guard',
     'Valid Razorpay-driven cash, failed-payment, new-MRR, churn, refund, expansion, and downgrade movements keep the same deterministic summary-write behavior.',
   ].forEach((token) => assertIncludes(validationDoc, token, 'Founder Monitor validation document-ID boundary docs'));
   [
     'Platform Founder Monitor Revenue Document ID Boundary checkpoint',
-    'malformed, reserved, empty, or path-shaped movement IDs and transition store IDs can no longer reach',
+    'malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric movement IDs and transition store IDs can no longer reach',
     '`npm run verify:platform-founder-monitor-boundary`',
   ].forEach((token) => assertIncludes(productionAudit, token, 'Production audit Founder Monitor document-ID boundary evidence'));
   [
     'Platform Founder Monitor Revenue Document ID Boundary',
     'Founder revenue movement refs now validate document IDs',
-    'Payment-to-live transition refs now validate store IDs',
+    'Payment-to-live transition refs now require exact numeric store IDs',
   ].forEach((token) => assertIncludes(changelog, token, 'Changelog Founder Monitor document-ID boundary evidence'));
   [
     [firebaseDoc, 'Founder Monitor Firebase docs'],

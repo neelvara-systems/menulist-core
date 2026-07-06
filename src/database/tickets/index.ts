@@ -9,6 +9,7 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { emitAnswerlatticeSignal } from "@lib/answerlattice/signalEmitter";
 import { answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { clearCapturedLogs, getCapturedLogs, getClientDebugContext } from "@lib/localLogs/localLogsTracker";
 import { triggerNotification } from "@lib/notifications/client";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
@@ -21,6 +22,7 @@ import { addDoc } from "firebase/firestore";
 const COLLECTION = DB_COLLECTIONS.SUPPORT_TICKETS;
 const STORE_TICKETS_LIMIT = 100;
 const PLATFORM_TICKETS_LIMIT = 500;
+const SUPPORT_TICKET_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\d*$/;
 
 const getCollectionRef = () => {
     return collection(answerlatticeFirebaseClient, `${COLLECTION}`)
@@ -70,9 +72,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
 );
 
 const normalizeSupportTicketScopeValue = (value: unknown): number | undefined => {
-    if (value === null || value === undefined || value === '') return undefined;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (
+        documentId !== raw
+        || !SUPPORT_TICKET_SCOPE_DOCUMENT_ID_PATTERN.test(documentId)
+        || !isValidFirestoreDocumentId(documentId)
+    ) {
+        return undefined;
+    }
+
+    const parsed = Number(documentId);
+    return Number.isSafeInteger(parsed) && parsed > 0 && String(parsed) === documentId
+        ? parsed
+        : undefined;
 };
 
 const normalizeSupportTicketScope = (scope?: SupportTicketMutationScope): NormalizedSupportTicketScope | undefined => {
@@ -119,6 +132,15 @@ const getSessionSupportTicketScope = (session: any): NormalizedSupportTicketScop
     sId: session?.sId ?? session?.user?.storeId,
 });
 
+const getRequiredSessionSupportTicketScope = (session: any): NormalizedSupportTicketScope => {
+    const sessionScope = getSessionSupportTicketScope(session);
+    if (!sessionScope) {
+        throw new Error('Missing Answerlattice ticket scope');
+    }
+
+    return sessionScope;
+};
+
 const requireSupportTicketMutationScope = async (
     scope: SupportTicketMutationScope | undefined,
     operationCode: string,
@@ -162,15 +184,11 @@ const applySupportTicketMutationScope = (
 const getScopedTicketConstraints = (session: any): QueryConstraint[] => {
     if (isPlatformTicketSession(session)) return [];
 
-    const tId = Number(session?.tId ?? session?.user?.tenantId);
-    const sId = Number(session?.sId ?? session?.user?.storeId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId)) {
-        throw new Error('Missing Answerlattice ticket scope');
-    }
+    const sessionScope = getRequiredSessionSupportTicketScope(session);
 
     return [
-        where("tId", "==", tId),
-        where("sId", "==", sId),
+        where("tId", "==", sessionScope.tId),
+        where("sId", "==", sessionScope.sId),
     ];
 };
 
@@ -654,10 +672,11 @@ export const getStoresTickets = async (maxResults = STORE_TICKETS_LIMIT) => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
+            const sessionScope = getRequiredSessionSupportTicketScope(session);
             const q = query(
                 getCollectionRef(),
-                where("tId", "==", session.tId),
-                where("sId", "==", session.sId),
+                where("tId", "==", sessionScope.tId),
+                where("sId", "==", sessionScope.sId),
                 where("deleted", "==", false), // ✅ Filter at database level
                 orderBy("createdOn", "desc"),
                 limit(maxResults)
@@ -746,10 +765,11 @@ export const subscribeStoreTickets = async (
 ) => {
     try {
         const session = await getActiveSession();
+        const sessionScope = getRequiredSessionSupportTicketScope(session);
         const q = query(
             getCollectionRef(),
-            where("tId", "==", session.tId),
-            where("sId", "==", session.sId),
+            where("tId", "==", sessionScope.tId),
+            where("sId", "==", sessionScope.sId),
             where("deleted", "==", false), // ✅ Filter at database level
             orderBy("createdOn", "desc"),
             limit(maxResults)

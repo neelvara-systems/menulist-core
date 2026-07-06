@@ -48,6 +48,8 @@
 
 June 29 OutletPolicy response hardening is Firebase-cost neutral. `updateOutletPolicy()` caps `/api/outlets/policy` response JSON at 16KB and requires `success: true`, `masterPromoted`, and a complete boolean `outletPolicy` before desktop/mobile policy state updates. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
+Linked outlet AI policy scope boundary is cost-neutral. `getLinkedOutletPolicyBlockReason()` now normalizes session scope, requested project scope, stored master project scope, and master store tenant scope with the shared multi-outlet exact document-ID guards before description/image/translation routes proceed to AI capacity checks or provider calls. Malformed, whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, cross-tenant, reserved, path-shaped, or oversized project scope fails before provider work. This changes malformed AI policy admission only and adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.
+
 ### Deletes
 
 None — permissions and policies are toggled, never deleted.

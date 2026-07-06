@@ -17,7 +17,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import MenuBreadcrumb from '@/app/client/[[...slug]]/MenuBreadcrumb';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getBrandStoreLabel } from '@lib/businessIdentity/names';
-import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
+import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { getBoundedPublicFeedbackStringContext, logPublicFeedbackPageFailure } from '@lib/feedback/publicFeedbackDiagnostics';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveOBPAccentColor } from '@lib/obp/accentColor';
@@ -32,16 +32,26 @@ import { notFound } from 'next/navigation';
  * Parse projectId to extract tId and sId
  * Format: {tId}-{timestamp}-{sId}
  */
-function parseProjectId(projectId: string): { tId: number; sId: number } | null {
+function parseProjectId(projectId: string): {
+    tId: number;
+    sId: number;
+    tenantDocumentId: string;
+    storeDocumentId: string;
+} | null {
     const parts = projectId.split('-');
     if (parts.length < 3) return null;
 
-    const tId = parseInt(parts[0], 10);
-    const sId = parseInt(parts[parts.length - 1], 10);
+    const tenantScope = normalizeGuestFeedbackNumericDocumentId(parts[0]);
+    const storeScope = normalizeGuestFeedbackNumericDocumentId(parts[parts.length - 1]);
 
-    if (isNaN(tId) || isNaN(sId)) return null;
+    if (!tenantScope || !storeScope) return null;
 
-    return { tId, sId };
+    return {
+        tId: tenantScope.numericId,
+        sId: storeScope.numericId,
+        tenantDocumentId: tenantScope.documentId,
+        storeDocumentId: storeScope.documentId,
+    };
 }
 
 type FeedbackSource = 'menu_footer' | 'feedback_qr' | 'direct_link';
@@ -75,13 +85,13 @@ async function getProjectData(projectId: string) {
             return null;
         }
 
-        const { tId, sId } = parsed;
+        const { tId, sId, tenantDocumentId, storeDocumentId } = parsed;
 
         // Use correct nested path: projects/{tId}/{sId}/{projectId}
         const projectDoc = await firestoreAdmin
             .collection(DB_COLLECTIONS.PROJECTS)
-            .doc(String(tId))
-            .collection(String(sId))
+            .doc(tenantDocumentId)
+            .collection(storeDocumentId)
             .doc(normalizedProjectId)
             .get();
 
@@ -105,6 +115,7 @@ async function getProjectData(projectId: string) {
             projectId: projectDoc.id,
             tId,
             sId,
+            storeDocumentId,
         };
     } catch (error) {
         logPublicFeedbackPageFailure('public_feedback_page_project_fetch_failed', error, {
@@ -130,12 +141,12 @@ interface StoreInfo {
  * Get store data including name and feedback settings
  * Uses direct doc fetch by sId (storeId is the document ID)
  */
-async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null> {
+async function getStoreInfo(tId: number, sId: number, storeDocumentId: string): Promise<StoreInfo | null> {
     try {
         // Direct doc fetch - storeId is the document ID
         const storeDoc = await firestoreAdmin
             .collection(DB_COLLECTIONS.STORES)
-            .doc(String(sId))
+            .doc(storeDocumentId)
             .get();
 
         if (!storeDoc.exists) {
@@ -236,7 +247,7 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
     }
 
     // Get store info (name, feedback settings)
-    const storeInfo = await getStoreInfo(project.tId, project.sId);
+    const storeInfo = await getStoreInfo(project.tId, project.sId, project.storeDocumentId);
     if (!storeInfo || !storeInfo.feedbackEnabled) {
         notFound();
     }
@@ -297,7 +308,7 @@ export async function generateMetadata({ params }: PageProps) {
         };
     }
 
-    const storeInfo = await getStoreInfo(project.tId, project.sId);
+    const storeInfo = await getStoreInfo(project.tId, project.sId, project.storeDocumentId);
 
     return {
         title: `Share Feedback | ${storeInfo?.storeName || 'Restaurant'}`,

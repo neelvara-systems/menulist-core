@@ -18,6 +18,7 @@ import {
     logMultiOutletFailure,
     type MultiOutletLogContext,
 } from "@lib/multiOutlet/diagnostics";
+import { normalizeMultiOutletNumericDocumentId, normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";
 import { DEFAULT_OUTLET_POLICY, LOCAL_CATEGORY_PREFIX, LOCAL_ITEM_PREFIX, type OutletPolicy } from "@type/multiOutlet.types";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
@@ -88,18 +89,6 @@ const OUTLET_PROJECT_WRITE_FIELDS = [
     "defaultLanguage",
     "menuSettings",
 ] as const;
-
-const parseProjectId = (projectId: string): { tId: number; sId: number } | null => {
-    const parts = projectId.split("-");
-    const tId = Number(parts[0]);
-    const sId = Number(parts[parts.length - 1]);
-
-    if (!Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0) {
-        return null;
-    }
-
-    return { tId, sId };
-};
 
 const sanitizeForFirestore = (value: any): any => {
     if (value === undefined) return null;
@@ -373,8 +362,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const project = validation.data.project;
-        const outletProjectRef = parseProjectId(project.projectId);
-        const masterProjectRef = parseProjectId(project.masterProjectId);
+        const outletProjectRef = normalizeMultiOutletProjectId(project.projectId);
+        const masterProjectRef = normalizeMultiOutletProjectId(project.masterProjectId);
         if (!outletProjectRef || !masterProjectRef || outletProjectRef.tId !== masterProjectRef.tId) {
             return NextResponse.json({ error: "Invalid project reference" }, { status: 400 });
         }
@@ -382,14 +371,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const tenantId = outletProjectRef.tId;
         const outletStoreId = outletProjectRef.sId;
         const masterStoreId = masterProjectRef.sId;
-        const currentStoreId = Number(session.sId || session.user?.storeId);
+        const currentStoreScope = normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId);
         failureContext = {
             ...failureContext,
             ...getBoundedMultiOutletStringContext("tenantId", tenantId),
             ...getBoundedMultiOutletStringContext("outletStoreId", outletStoreId),
             ...getBoundedMultiOutletStringContext("masterStoreId", masterStoreId),
-            ...getBoundedMultiOutletStringContext("currentStoreId", currentStoreId),
+            ...getBoundedMultiOutletStringContext("currentStoreId", currentStoreScope?.documentId ?? session.sId ?? session.user?.storeId),
         };
+        if (!currentStoreScope) {
+            logMultiOutletFailure("linked_outlet_save_invalid_session_store_scope", undefined, failureContext);
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const currentStoreId = currentStoreScope.numericId;
         if (!verifyTenantAccess(session, tenantId, currentStoreId, request)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }

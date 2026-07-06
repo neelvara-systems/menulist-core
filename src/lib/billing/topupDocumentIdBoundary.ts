@@ -10,10 +10,12 @@ export type BillingTopupScopeDocumentId = {
 };
 
 export function normalizeBillingTopupDocumentId(value: unknown): string | null {
-    const documentId = typeof value === 'string' ? value.trim() : '';
+    const rawDocumentId = typeof value === 'string' ? value : '';
+    const documentId = rawDocumentId.trim();
     if (
         !documentId
         || documentId.length > BILLING_TOPUP_DOCUMENT_ID_MAX_LENGTH
+        || documentId !== rawDocumentId
         || !RAZORPAY_ORDER_DOCUMENT_ID_PATTERN.test(documentId)
     ) {
         return null;

@@ -36,6 +36,7 @@ const INDIA_OFFSET_MS = 330 * 60 * 1000;
 const SUMMARY_DOC_ID = 'founderMonitorRevenue';
 const DAILY_DOC_PREFIX = 'founderMonitorRevenueDaily_';
 const ONBOARDING_TRANSITION_SOURCE = 'founderRevenueReadModel:new_mrr';
+const FOUNDER_REVENUE_STORE_DOCUMENT_ID_PATTERN = /^[1-9]\d*$/;
 
 function safeNumber(value: unknown): number {
   const numberValue = Number(value || 0);
@@ -63,7 +64,11 @@ function normalizeFounderRevenueMovementDocumentId(value: string): string | null
 }
 
 function normalizeFounderRevenueStoreDocumentId(value: unknown): string | null {
-  const storeId = cleanText(value, 80);
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const storeId = String(value);
+  if (!FOUNDER_REVENUE_STORE_DOCUMENT_ID_PATTERN.test(storeId)) return null;
+  const numericStoreId = Number(storeId);
+  if (!Number.isSafeInteger(numericStoreId) || numericStoreId <= 0 || String(numericStoreId) !== storeId) return null;
   return isValidFirestoreDocumentId(storeId) ? storeId : null;
 }
 

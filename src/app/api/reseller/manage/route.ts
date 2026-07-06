@@ -67,7 +67,7 @@ const CreateResellerSchema = z.object({
 });
 
 const UpdateResellerSchema = z.object({
-    profileId: z.string().trim().min(1).max(128).refine(isValidFirestoreDocumentId, 'Invalid profile ID'),
+    profileId: z.string().min(1).max(128).refine((value) => value === value.trim() && isValidFirestoreDocumentId(value), 'Invalid profile ID'),
     name: z.string().min(2).max(100).optional(),
     phone: z.string().min(10).max(15).optional(),
     email: z.string().email().optional(),

@@ -10,6 +10,12 @@
 
 ## 1. Architecture Overview
 
+## July 6, 2026 - Public Override Document-ID Boundary
+
+Public compliance override document-ID boundary: public compliance pages still generate system policy text first, then optionally read owner overrides from `compliancePages/{sId}`. `src/app/client/compliance/CompliancePageContent.tsx` now normalizes that public override document ID with `normalizePublicComplianceStoreDocumentId()` before the Admin SDK read. The renderer uses the store record's `storeId` first and the returned Firestore doc id only when `storeId` is absent, then requires exact positive numeric Firestore document-ID scope. Malformed, reserved, empty, whitespace-mutated, path-shaped, zero, negative, unsafe, or nonnumeric store scope skips the override read, logs bounded `public_compliance_override_read_failed` diagnostics with the fixed `public_compliance_invalid_store_scope` source error, and keeps the generated policy fallback.
+
+Cost impact: `$0.00` for valid requests. This changes public compliance override-read admission only. It adds no Firestore reads/writes/deletes for valid public compliance pages, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, public route shape changes, or deploy requirement.
+
 ## July 5, 2026 - Public Override-Read Diagnostics
 
 Public compliance pages still generate system policy text first, then read `compliancePages/{sId}` for optional owner overrides. If that override read fails, `src/app/client/compliance/CompliancePageContent.tsx` now keeps the generated policy fallback: public compliance override read failures log `public_compliance_override_read_failed` with bounded diagnostics. The diagnostic includes only store/page/tenant-type presence-length metadata, subdomain/custom-domain presence booleans, and normalized source error metadata. It must not log raw store IDs, custom domains, subdomains, policy text, override text, or browser/provider exception payloads.

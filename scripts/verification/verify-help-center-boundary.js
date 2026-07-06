@@ -47,6 +47,13 @@ function verifySearchBoundary() {
 
   assertIncludes(sessionScope, "normalizedPath === '/help-center' || normalizedPath.startsWith('/help-center/')", 'Answerlattice support client route scope');
   assertIncludes(sessionScope, 'getAnswerlatticeScopedSession', 'Answerlattice scoped session helper');
+  assertIncludes(sessionScope, "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';", 'Answerlattice session scope imports shared Firestore ID guard');
+  assertIncludes(sessionScope, 'ANSWERLATTICE_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;', 'Answerlattice session scope exact numeric helper');
+  assertIncludes(sessionScope, 'export function normalizeAnswerlatticeScopeDocumentId(value: unknown): number | null', 'Answerlattice session scope exports strict normalizer');
+  assertIncludes(sessionScope, 'documentId !== raw', 'Answerlattice session scope must not trim mutated IDs');
+  assertIncludes(sessionScope, '!isValidFirestoreDocumentId(documentId)', 'Answerlattice session scope Firestore document ID guard');
+  assertNotIncludes(sessionScope, 'const normalizeNumber = (value: unknown): number | null => {', 'Answerlattice session scope must not use loose normalizeNumber helper');
+  assertNotIncludes(sessionScope, 'Number.isFinite(parsed) && parsed > 0 ? parsed : null', 'Answerlattice session scope must not use loose numeric coercion');
 
   assertIncludes(searchResponse, 'HELP_CENTER_SEARCH_RESPONSE_JSON_MAX_BYTES = 1024 * 1024', 'Help Center browser response cap');
   assertIncludes(searchResponse, 'HELP_CENTER_SEARCH_REQUEST_POLICY', 'Help Center browser request policy');
@@ -94,8 +101,12 @@ function verifyTicketBoundary() {
   const platformTicketsView = read('src/components/templates/platform/supportTickets/PlatformTicketsView.tsx');
 
   assertIncludes(ticketsDal, 'getScopedTicketConstraints(session)', 'Support ticket platform/client scoped query helper');
-  assertIncludes(ticketsDal, 'where("tId", "==", session.tId)', 'Store ticket read tenant scope');
-  assertIncludes(ticketsDal, 'where("sId", "==", session.sId)', 'Store ticket read store scope');
+  assertIncludes(ticketsDal, 'SUPPORT_TICKET_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;', 'Support ticket exact numeric scope helper');
+  assertIncludes(ticketsDal, 'documentId !== raw', 'Support ticket scope must not trim mutated IDs');
+  assertIncludes(ticketsDal, '!isValidFirestoreDocumentId(documentId)', 'Support ticket scope Firestore document ID guard');
+  assertIncludes(ticketsDal, 'const sessionScope = getRequiredSessionSupportTicketScope(session);', 'Support ticket store reads require normalized session scope');
+  assertIncludes(ticketsDal, 'where("tId", "==", sessionScope.tId)', 'Store ticket read tenant scope');
+  assertIncludes(ticketsDal, 'where("sId", "==", sessionScope.sId)', 'Store ticket read store scope');
   assertIncludes(ticketsDal, 'requireSupportTicketMutationScope', 'Support ticket mutation scope guard');
   assertIncludes(ticketsDal, 'getSessionSupportTicketScope(session)', 'Support ticket session scope resolver');
   assertIncludes(ticketsDal, 'support_ticket_update', 'Support ticket update scope rejection code base');
@@ -103,6 +114,10 @@ function verifyTicketBoundary() {
   assertIncludes(ticketsDal, 'delete updateData.tId;', 'Support ticket platform partial update tenant preserve');
   assertIncludes(ticketsDal, 'delete updateData.sId;', 'Support ticket platform partial update store preserve');
   assertIncludes(ticketsDal, 'applySupportTicketMutationScope(updateData, mutationScope);', 'Support ticket mutation scope application');
+  assertNotIncludes(ticketsDal, 'where("tId", "==", session.tId)', 'Support ticket reads must not query raw session tenant scope');
+  assertNotIncludes(ticketsDal, 'where("sId", "==", session.sId)', 'Support ticket reads must not query raw session store scope');
+  assertNotIncludes(ticketsDal, 'const tId = Number(session?.tId ?? session?.user?.tenantId);', 'Support ticket reads must not numeric-coerce session tenant scope');
+  assertNotIncludes(ticketsDal, 'const sId = Number(session?.sId ?? session?.user?.storeId);', 'Support ticket reads must not numeric-coerce session store scope');
 
   assertIncludes(firestoreRules, 'match /supportTickets/{docId}', 'Answerlattice support ticket rules block');
   assertIncludes(firestoreRules, 'allow update: if isAnswerlatticeScopedUpdateWithSupportControl();', 'Answerlattice support ticket scoped update rule');
@@ -124,6 +139,8 @@ function verifyDocsBoundary() {
   const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/CHANGELOG.md');
+  const helpCenterImpl = read('__docs__/answerlattice/help-center/help-center_impl.md');
+  const helpCenterFirebase = read('__docs__/answerlattice/help-center/help-center_firebase.md');
   const helpChatReadme = read('src/components/templates/main-app/helpChat/README.md');
   const helpChatSummary = read('src/components/templates/main-app/helpChat/IMPLEMENTATION_SUMMARY.md');
 
@@ -131,7 +148,13 @@ function verifyDocsBoundary() {
   assertIncludes(inventory, 'scoped ticket mutation gate passed', 'Help Center inventory scoped ticket status');
   assertIncludes(report, 'Help Center Answerlattice Support Boundary', 'Help Center sweep report checkpoint');
   assertIncludes(audit, 'Help Center Answerlattice support boundary checkpoint', 'Help Center production audit checkpoint');
+  assertIncludes(audit, 'Answerlattice support ticket session scope boundary checkpoint', 'Help Center support ticket session scope audit checkpoint');
   assertIncludes(changelog, 'Help Center Answerlattice Support Boundary', 'Help Center changelog entry');
+  assertIncludes(changelog, 'Answerlattice Support Ticket Session Scope Boundary', 'Help Center support ticket session scope changelog entry');
+  assertIncludes(helpCenterImpl, 'Answerlattice support ticket session scope boundary', 'Help Center implementation support ticket session scope docs');
+  assertIncludes(helpCenterImpl, 'exact positive numeric Firestore document IDs before querying `supportTickets`', 'Help Center implementation exact support ticket scope docs');
+  assertIncludes(helpCenterFirebase, 'Support ticket session scope hardening is cost-neutral', 'Help Center Firebase support ticket session scope cost docs');
+  assertIncludes(helpCenterFirebase, 'adds no Firestore reads/writes/deletes', 'Help Center Firebase support ticket session scope no-cost docs');
   assertIncludes(helpChatReadme, 'A source-gated help interface designed for non-technical owners.', 'Help Chat README source-gated overview');
   assertIncludes(helpChatReadme, 'Launch certification still requires the active Help Center verifier', 'Help Chat README launch certification boundary');
   assertNotIncludes(helpChatReadme, 'A production help interface designed for non-technical owners.', 'Help Chat README stale production overview');

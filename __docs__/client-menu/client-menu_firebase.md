@@ -47,6 +47,8 @@ Menu cache revalidation rate-limit boundary: `/api/revalidate/menu` now applies 
 | Active special menu project | `projects/{tId}/{sId}/{activeSpecialMenuId}` | Store has active special menu | Only when `activeSpecialMenuId` exists | 1 | Direct doc read | Zero extra reads for normal menus; active special menus replace or overlay the base project. File: `src/app/client/[[...slug]]/page.tsx:356-420` |
 | SEO metadata / viewport store lookup | `stores` | Metadata and viewport generation | Per unique cache miss | 0-1 | Same cached helper as page render | Uses shared `getStoreBySubdomain()` / `getStoreByCustomDomain()` helpers with `unstable_cache` and `client-stores` tag. File: `src/lib/firestore/clientStoreLookup.ts:45-116` |
 
+Public menu project document-ID boundary: `getProjectData()` normalizes the resolved immutable project ID with `normalizePublicMenuProjectDocumentScope` before reading `projects/{tId}/{sId}/{projectId}`. It keeps the valid one-read project fetch, but the Admin SDK path now uses normalized first-segment tenant scope, final-segment store scope, and normalized project ID only. Whitespace-mutated, path-shaped, reserved, malformed, zero, negative, unsafe, or nonnumeric project scope fails closed before Firestore work. This adds no Firestore reads/writes/deletes for valid public menu requests, no Storage operations, no Cloud Functions, no provider calls, no cache invalidations, no Firestore rules/indexes, no owner-facing settings, no Firebase deploy requirement, and no Vercel deploy action.
+
 ### Writes
 
 | Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |

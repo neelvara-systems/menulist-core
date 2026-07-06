@@ -12,6 +12,7 @@ import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttri
 import { getBrandName } from "@lib/businessIdentity/names";
 import { composeComplianceContent, extractComplianceInputs, generateComplianceContent } from "@lib/compliance/templates";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import {
     getStoreByCustomDomain,
     getStoreBySubdomain,
@@ -31,6 +32,19 @@ async function getTenantFromHeaders() {
 interface CompliancePageContentProps {
     type: 'privacy' | 'terms' | 'refund';
     backHref?: string;
+}
+
+const PUBLIC_COMPLIANCE_STORE_DOCUMENT_ID_PATTERN = /^\d+$/;
+
+function normalizePublicComplianceStoreDocumentId(value: unknown): string | null {
+    if (typeof value !== 'string' && typeof value !== 'number') return null;
+    const documentId = String(value);
+    if (!PUBLIC_COMPLIANCE_STORE_DOCUMENT_ID_PATTERN.test(documentId) || !isValidFirestoreDocumentId(documentId)) return null;
+
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
+        ? documentId
+        : null;
 }
 
 function logComplianceOverrideReadFailure(
@@ -67,7 +81,7 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
         notFound();
     }
 
-    const sId = storeData.storeId;
+    const sId = storeData.storeId ?? storeData.id;
     const inputs = extractComplianceInputs(storeData);
 
     const titleMap: Record<string, string> = {
@@ -97,33 +111,44 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
     const systemContent = generateComplianceContent(type, inputs);
     let content = systemContent;
 
-    try {
-        const docSnap = await firestoreAdmin
-            .collection(DB_COLLECTIONS.COMPLIANCE_PAGES)
-            .doc(String(sId))
-            .get();
-
-        if (docSnap.exists) {
-            const data = docSnap.data();
-            const overrideFieldMap: Record<string, string> = {
-                privacy: 'privacyOverride',
-                terms: 'termsOverride',
-                refund: 'refundOverride',
-            };
-            const overrideField = overrideFieldMap[type];
-            if (overrideField && data[overrideField]) {
-                content = composeComplianceContent(systemContent, data[overrideField]);
-            }
-        }
-    } catch (error) {
-        logComplianceOverrideReadFailure(error, {
+    const complianceStoreDocumentId = normalizePublicComplianceStoreDocumentId(sId);
+    if (!complianceStoreDocumentId) {
+        logComplianceOverrideReadFailure(new Error('public_compliance_invalid_store_scope'), {
             storeId: sId,
             tenantType,
             type,
             hasCustomDomain: Boolean(customDomain),
             hasSubdomain: Boolean(subdomain),
         });
-        // Firestore error — system content already set as default
+    } else {
+        try {
+            const docSnap = await firestoreAdmin
+                .collection(DB_COLLECTIONS.COMPLIANCE_PAGES)
+                .doc(complianceStoreDocumentId)
+                .get();
+
+            if (docSnap.exists) {
+                const data = docSnap.data();
+                const overrideFieldMap: Record<string, string> = {
+                    privacy: 'privacyOverride',
+                    terms: 'termsOverride',
+                    refund: 'refundOverride',
+                };
+                const overrideField = overrideFieldMap[type];
+                if (overrideField && data[overrideField]) {
+                    content = composeComplianceContent(systemContent, data[overrideField]);
+                }
+            }
+        } catch (error) {
+            logComplianceOverrideReadFailure(error, {
+                storeId: sId,
+                tenantType,
+                type,
+                hasCustomDomain: Boolean(customDomain),
+                hasSubdomain: Boolean(subdomain),
+            });
+            // Firestore error — system content already set as default
+        }
     }
 
     const title = titleMap[type] || 'Policy';

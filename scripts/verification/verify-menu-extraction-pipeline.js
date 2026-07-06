@@ -3093,14 +3093,16 @@ contains(
 contains(
   'src/app/client/[[...slug]]/page.tsx',
   [
-    'const [tId, , sId] = projectId.split("-")',
+    'function normalizePublicMenuProjectDocumentScope',
+    'const projectScope = normalizePublicMenuProjectDocumentScope(projectId);',
+    'if (!projectScope) return null;',
     '.collection(DB_COLLECTIONS.PROJECTS)',
-    '.doc(String(tId))',
-    '.collection(String(sId))',
-    '.doc(projectId)',
+    '.doc(projectScope.tenantDocumentId)',
+    '.collection(projectScope.storeDocumentId)',
+    '.doc(projectScope.projectId)',
     'targetProject.projectId || targetProject.id',
   ],
-  'Public renderer loads projects from the parseable nested project ID contract',
+  'Public renderer loads projects from the normalized nested project ID contract',
 );
 
 contains(

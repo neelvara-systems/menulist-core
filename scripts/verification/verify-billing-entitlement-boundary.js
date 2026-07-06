@@ -95,6 +95,7 @@ function verifyBillingEntitlementBoundary() {
     "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
     'BILLING_SUBSCRIPTION_DOCUMENT_ID_MAX_LENGTH = 180',
     'export function normalizeBillingSubscriptionDocumentId(value: unknown): string | null {',
+    'documentId === rawDocumentId && isValidFirestoreDocumentId(documentId)',
     'isValidFirestoreDocumentId(documentId)',
   ].forEach((token) => assertIncludes(subscriptionDocumentIdBoundary, token, 'billing subscription document ID boundary helper'));
 
@@ -103,6 +104,7 @@ function verifyBillingEntitlementBoundary() {
     'BILLING_TOPUP_DOCUMENT_ID_MAX_LENGTH = 180',
     'RAZORPAY_ORDER_DOCUMENT_ID_PATTERN = /^order_[a-zA-Z0-9]+$/',
     'export function normalizeBillingTopupDocumentId(value: unknown): string | null {',
+    'documentId !== rawDocumentId',
     'export function normalizeBillingTopupScopeDocumentId(value: unknown): BillingTopupScopeDocumentId | null {',
     'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
     'isValidFirestoreDocumentId(documentId)',
@@ -344,6 +346,10 @@ function verifyBillingEntitlementBoundary() {
   assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'MenuList Billing Subscription Scope Document ID Boundary checkpoint', 'Production audit must record subscription scope boundary');
   assertIncludes(read('__docs__/CHANGELOG.md'), 'Billing Subscription Scope Document ID Boundary', 'Changelog must record subscription scope boundary');
   assertIncludes(read('__docs__/changelog.md'), 'Billing Subscription Scope Document ID Boundary', 'Lowercase changelog must record subscription scope boundary');
+  assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'whitespace-mutated subscription IDs', 'Production audit must record strict subscription document ID admission');
+  assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'whitespace-mutated order IDs', 'Production audit must record strict top-up order document ID admission');
+  assertIncludes(read('__docs__/CHANGELOG.md'), 'Billing Strict Provider Document ID Boundaries', 'Changelog must record strict billing provider document ID boundaries');
+  assertIncludes(read('__docs__/changelog.md'), 'Billing Strict Provider Document ID Boundaries', 'Lowercase changelog must record strict billing provider document ID boundaries');
 
   [
     'normalizeBillingSubscriptionDocumentId',
@@ -472,7 +478,7 @@ function verifyBillingEntitlementBoundary() {
   [
     'MenuList Billing Subscription Document ID Boundary',
     'capacity-check lazy reset and consumption normalize subscription document IDs',
-    'malformed IDs return before reset refs or fail paid credit consumption before debit refs',
+    'malformed or whitespace-mutated IDs return before reset refs or fail paid credit consumption before debit refs',
     'normalizes the checkout order ID through `src/lib/billing/topupDocumentIdBoundary.ts`',
     'create-topup-order` also normalizes the provider order ID before the pending top-up write',
     'normalizeBillingTopupScopeDocumentId()',
@@ -553,9 +559,9 @@ function verifyBillingEntitlementBoundary() {
     'past-due grace-period display fallback',
     'RAZORPAY_WEBHOOK_UNHANDLED_EVENT',
     'MenuList Billing Subscription Document ID Boundary',
-    'malformed, reserved, empty, or path-shaped IDs fail or return null before Firestore document refs',
+    'malformed, reserved, empty, whitespace-mutated, or path-shaped IDs fail or return null before Firestore document refs',
     'MenuList Top-Up Order Document ID Boundary',
-    'malformed, reserved, empty, or path-shaped IDs fail before top-up document refs',
+    'malformed, reserved, empty, whitespace-mutated, or path-shaped IDs fail before top-up document refs',
     'MenuList Top-Up Scope Document ID Boundary',
     '`normalizeBillingTopupScopeDocumentId()` validates the resolved billing tenant/store scope',
   ].forEach((token) => assertIncludes(razorpayImplDoc, token, 'Razorpay implementation docs'));
@@ -566,9 +572,9 @@ function verifyBillingEntitlementBoundary() {
     'normal-path debug cleanup is Firebase-cost neutral',
     'past-due grace-period display fallback is Firebase-cost neutral',
     'July 6 MenuList Billing Subscription Document ID Boundary is Firebase-cost neutral',
-    'Malformed, reserved, empty, or path-shaped IDs fail or return null before Firestore document refs.',
+    'Malformed, reserved, empty, whitespace-mutated, or path-shaped IDs fail or return null before Firestore document refs.',
     'July 6 MenuList Top-Up Order Document ID Boundary is Firebase-cost neutral',
-    'Malformed, reserved, empty, or path-shaped order IDs fail before `topups/{orderId}` document refs.',
+    'Malformed, reserved, empty, whitespace-mutated, or path-shaped order IDs fail before `topups/{orderId}` document refs.',
     'July 6 MenuList Top-Up Scope Document ID Boundary is Firebase-cost neutral',
     'Malformed, reserved, empty, whitespace-mutated, decimal, zero, negative, unsafe, nonnumeric, or path-shaped tenant/store scope IDs fail before provider order creation',
     'Searching for Razorpay plan',
@@ -598,6 +604,7 @@ function verifyBillingEntitlementBoundary() {
     'Searching for Razorpay plan',
     'Unhandled webhook event type',
     'RAZORPAY_WEBHOOK_UNHANDLED_EVENT',
+    'Billing Strict Provider Document ID Boundaries',
     'MenuList Billing Subscription Document ID Boundary',
     'Paid AI credit consumption fails closed for malformed subscription IDs',
     'MenuList Top-Up Order Document ID Boundary',

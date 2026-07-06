@@ -26,6 +26,7 @@ import { APP_THEME_COLOR } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PLATFORM_DOMAIN } from "@constant/urls";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { getBrandName, getStoreContextName, getStoreName } from "@lib/businessIdentity/names";
 import { resolvePublicBusinessType } from "@lib/businessIdentity/publicBusinessType";
 import {
@@ -162,6 +163,38 @@ type PublicMenuResolutionFailureType =
     | 'special_project_missing'
     | 'special_resolution_failed';
 
+type PublicMenuProjectDocumentScope = {
+    projectId: string;
+    storeDocumentId: string;
+    tenantDocumentId: string;
+};
+
+const PUBLIC_MENU_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,200}$/;
+const PUBLIC_MENU_NUMERIC_DOCUMENT_ID_PATTERN = /^\d+$/;
+
+function isPublicMenuPositiveNumericDocumentId(value: string): boolean {
+    if (!PUBLIC_MENU_NUMERIC_DOCUMENT_ID_PATTERN.test(value) || !isValidFirestoreDocumentId(value)) return false;
+    const numericId = Number(value);
+    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === value;
+}
+
+function normalizePublicMenuProjectDocumentScope(value: unknown): PublicMenuProjectDocumentScope | null {
+    if (typeof value !== 'string') return null;
+    const projectId = value;
+    if (!PUBLIC_MENU_PROJECT_ID_PATTERN.test(projectId) || !isValidFirestoreDocumentId(projectId)) return null;
+
+    const parts = projectId.split("-");
+    if (parts.length < 3) return null;
+
+    const tenantDocumentId = parts[0];
+    const storeDocumentId = parts[parts.length - 1];
+    if (!isPublicMenuPositiveNumericDocumentId(tenantDocumentId) || !isPublicMenuPositiveNumericDocumentId(storeDocumentId)) {
+        return null;
+    }
+
+    return { projectId, storeDocumentId, tenantDocumentId };
+}
+
 const buildPublicMenuResolutionLogContext = (
     failureType: PublicMenuResolutionFailureType,
     metadata: {
@@ -220,12 +253,14 @@ const logPublicMenuResolutionFailure = (
 
 // Get project data by ID
 async function getProjectData(projectId: string): Promise<any> {
-    const [tId, , sId] = projectId.split("-");
+    const projectScope = normalizePublicMenuProjectDocumentScope(projectId);
+    if (!projectScope) return null;
+
     const docSnap = await firestoreAdmin
         .collection(DB_COLLECTIONS.PROJECTS)
-        .doc(String(tId))
-        .collection(String(sId))
-        .doc(projectId)
+        .doc(projectScope.tenantDocumentId)
+        .collection(projectScope.storeDocumentId)
+        .doc(projectScope.projectId)
         .get();
     if (!docSnap.exists) return null;
     return docSnap.data();

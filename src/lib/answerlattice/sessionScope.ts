@@ -4,6 +4,7 @@ import {
     ECOMSAI_PLATFORM_USER_ROLE,
 } from '@constant/user';
 import { isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 
 export type AnswerlatticeProductAccount = {
     tenantId: number;
@@ -14,11 +15,24 @@ export type AnswerlatticeProductAccount = {
 };
 
 export const ANSWERLATTICE_PRODUCT_ACCOUNT_KEY = PRODUCT_IDS.ANSWERLATTICE;
+const ANSWERLATTICE_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\d*$/;
 
-const normalizeNumber = (value: unknown): number | null => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-};
+export function normalizeAnswerlatticeScopeDocumentId(value: unknown): number | null {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (
+        documentId !== raw
+        || !ANSWERLATTICE_SCOPE_DOCUMENT_ID_PATTERN.test(documentId)
+        || !isValidFirestoreDocumentId(documentId)
+    ) {
+        return null;
+    }
+
+    const parsed = Number(documentId);
+    return Number.isSafeInteger(parsed) && parsed > 0 && String(parsed) === documentId
+        ? parsed
+        : null;
+}
 
 const normalizeProductId = (value: unknown): ProductId | null => {
     if (typeof value !== 'string') return null;
@@ -57,8 +71,8 @@ export function getAnswerlatticeProductAccount(sessionOrUser: any): Answerlattic
     if (!account || typeof account !== 'object') return null;
     if (account.active === false || account.deleted === true || account.authDisabled === true) return null;
 
-    const tenantId = normalizeNumber(account.tenantId ?? account.tId);
-    const storeId = normalizeNumber(account.storeId ?? account.sId);
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(account.tenantId ?? account.tId);
+    const storeId = normalizeAnswerlatticeScopeDocumentId(account.storeId ?? account.sId);
     if (!tenantId || !storeId) return null;
 
     return {
@@ -86,8 +100,8 @@ export function resolveAnswerlatticeSessionScope(sessionOrUser: any): { tenantId
         || normalizeProductId(sessionOrUser?.user?.productId);
     if (productId !== PRODUCT_IDS.ANSWERLATTICE) return null;
 
-    const tenantId = normalizeNumber(sessionOrUser?.tId ?? sessionOrUser?.tenantId ?? sessionOrUser?.user?.tenantId);
-    const storeId = normalizeNumber(sessionOrUser?.sId ?? sessionOrUser?.storeId ?? sessionOrUser?.user?.storeId);
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(sessionOrUser?.tId ?? sessionOrUser?.tenantId ?? sessionOrUser?.user?.tenantId);
+    const storeId = normalizeAnswerlatticeScopeDocumentId(sessionOrUser?.sId ?? sessionOrUser?.storeId ?? sessionOrUser?.user?.storeId);
     if (!tenantId || !storeId) return null;
 
     return {
@@ -118,8 +132,8 @@ export function getAnswerlatticeScopedSession<T extends Record<string, any> | nu
         || normalizeProductId((session as any)?.productId)
         || normalizeProductId((session as any)?.user?.pId)
         || normalizeProductId((session as any)?.user?.productId);
-    const sourceTenantId = normalizeNumber((session as any)?.tId ?? (session as any)?.tenantId ?? (session as any)?.user?.tenantId);
-    const sourceStoreId = normalizeNumber((session as any)?.sId ?? (session as any)?.storeId ?? (session as any)?.user?.storeId);
+    const sourceTenantId = normalizeAnswerlatticeScopeDocumentId((session as any)?.tId ?? (session as any)?.tenantId ?? (session as any)?.user?.tenantId);
+    const sourceStoreId = normalizeAnswerlatticeScopeDocumentId((session as any)?.sId ?? (session as any)?.storeId ?? (session as any)?.user?.storeId);
     const sourceContext = (session as any)?.sourceContext || (
         sourceProductId && sourceProductId !== PRODUCT_IDS.ANSWERLATTICE
             ? {

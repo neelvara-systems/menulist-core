@@ -102,7 +102,7 @@ function verifyManageRoute(route) {
     'validateAPIInput(UpdateResellerSchema, body)',
     'validateAPIInput(CreateResellerSchema, body)',
     'isValidFirestoreDocumentId',
-    "profileId: z.string().trim().min(1).max(128).refine(isValidFirestoreDocumentId, 'Invalid profile ID')",
+    "profileId: z.string().min(1).max(128).refine((value) => value === value.trim() && isValidFirestoreDocumentId(value), 'Invalid profile ID')",
     'assertResellerUniqueness(',
     'await authAdmin.createUser({',
     'await authAdmin.updateUser(uid, updatePayload);',
@@ -138,6 +138,7 @@ function verifyManageRoute(route) {
     'console.error',
     'error.message',
     'key: `reseller-manage:${session.user.id}`',
+    "profileId: z.string().trim().min(1).max(128).refine(isValidFirestoreDocumentId, 'Invalid profile ID')",
     "profileId: z.string().trim().min(1).max(128).refine((value) => !value.includes('/'))",
   ].forEach((token) => assertNotIncludes(route, token, 'Reseller management API boundary'));
 }
@@ -507,7 +508,8 @@ function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, fireb
     'Active reseller onboarding creates the tenant/store account, owner access, subscription state, dashboard link, and public customer link handoff.',
     'It does not upload menu files or run menu extraction inside `/api/reseller/onboard`',
     'July 5, 2026 profile-id boundary:',
-    'Platform reseller management validates update `profileId` through the shared Firestore document-ID boundary',
+    'Platform reseller management validates the exact raw update `profileId` through the shared Firestore document-ID boundary',
+    'whitespace-mutated IDs fail request validation instead of being trimmed',
     'compatibility field; active route does not upload/extract menu files',
   ].forEach((token) => assertIncludes(impl, token, 'Reseller implementation docs'));
 
@@ -574,7 +576,8 @@ function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, fireb
     'invalid explicit `month` filters return `400` before Firestore reads',
     'June 29 mutation limiter-key hardening is Firebase-cost neutral',
     'July 5 platform reseller management profile-id boundary is Firebase-cost neutral',
-    'validates update `profileId` through the shared Firestore document-ID boundary before reseller profile lookup',
+    'validates the exact raw update `profileId` through the shared Firestore document-ID boundary before reseller profile lookup',
+    'whitespace-mutated IDs fail before Firestore reads/writes',
     'Browser Handoff Diagnostics',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Reseller Firebase docs'));
 
@@ -587,7 +590,7 @@ function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, fireb
   [
     'Reseller Management Profile ID Boundary',
     'Reseller profile IDs are validated before updates',
-    'old slash-only guard removal',
+    'old trim/slash-only guard removal',
     'Reseller Monthly Summary Query Boundary',
     'Explicit reseller monthly-summary months are calendar-validated',
     'Invalid explicit months fail before Firestore reads',
@@ -605,7 +608,7 @@ function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, fireb
 
   [
     'Reseller Management Profile ID Boundary checkpoint',
-    'old slash-only guard removal',
+    'old trim/slash-only guard removal',
     'verify:reseller-dashboard-boundary',
     'reseller dashboard',
     'No Firebase deploy, Vercel deploy, production build',

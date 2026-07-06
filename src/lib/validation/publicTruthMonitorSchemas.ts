@@ -17,7 +17,6 @@ export async function parsePublicTruthMonitorJsonBody(request: Request): Promise
 }
 
 const publicTruthMonitorProjectIdSchema = z.string()
-    .trim()
     .min(1)
     .max(140)
     .refine(isValidFirestoreDocumentId, "Invalid project ID");

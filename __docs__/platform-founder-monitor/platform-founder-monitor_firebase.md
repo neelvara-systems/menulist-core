@@ -30,7 +30,7 @@ Scheduler writes every 30 minutes from the 30-minute `menulistMaintenanceSchedul
 - `founderOnboardingTransitions/{storeId}`: completes up to 50 missing `firstLiveAt` / `timeToLiveHours` records per run.
 - `systemAlerts`: bounded Founder Monitor exception alerts for failed payments, paid-not-live stores, stale/broken stores, and critical support tickets. Existing alert cooldown logic controls repeat alerts.
 
-Founder Monitor revenue document-ID admission is Firebase-cost neutral. `src/lib/ops/founderRevenueReadModel.ts` validates movement IDs and transition store IDs with `src/lib/firebase/firestoreDocumentId.ts` before `founderRevenueMovements/{movementId}` and `founderOnboardingTransitions/{storeId}` refs. Valid movement and store IDs keep the same writes; malformed, reserved, empty, or path-shaped IDs return before invalid refs. This adds no reads, writes, deletes, rules, indexes, Cloud Functions, provider calls, deploy action, or owner/platform setting.
+Founder Monitor revenue document-ID admission is Firebase-cost neutral. `src/lib/ops/founderRevenueReadModel.ts` validates movement IDs with `src/lib/firebase/firestoreDocumentId.ts` and requires transition store IDs to be exact positive numeric MenuList store document IDs before the same guard, before `founderRevenueMovements/{movementId}` and `founderOnboardingTransitions/{storeId}` refs. Valid movement and store IDs keep the same writes; malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric IDs return before invalid refs. This adds no reads, writes, deletes, rules, indexes, Cloud Functions, provider calls, deploy action, or owner/platform setting.
 
 Scheduler reads for store coverage:
 

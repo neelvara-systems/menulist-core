@@ -190,11 +190,23 @@ function verifyPublicPageAndForm() {
   const diagnostics = read('src/lib/feedback/publicFeedbackDiagnostics.ts');
 
   assertIncludes(page, 'FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK', 'Guest Feedback public page feature flag');
-  assertIncludes(page, "import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';", 'Guest Feedback public page project ID normalizer import');
+  assertIncludes(page, "import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';", 'Guest Feedback public page project/target ID normalizer import');
   assertIncludes(page, 'const normalizedProjectId = normalizeGuestFeedbackProjectId(projectId);', 'Guest Feedback public page project ID boundary');
   assertIncludes(page, 'parseProjectId(normalizedProjectId)', 'Guest Feedback public page parses normalized project ID');
+  assertIncludes(page, 'const tenantScope = normalizeGuestFeedbackNumericDocumentId(parts[0]);', 'Guest Feedback public page tenant ID boundary');
+  assertIncludes(page, 'const storeScope = normalizeGuestFeedbackNumericDocumentId(parts[parts.length - 1]);', 'Guest Feedback public page store ID boundary');
+  assertIncludes(page, 'tenantDocumentId: tenantScope.documentId', 'Guest Feedback public page tenant document ID return');
+  assertIncludes(page, 'storeDocumentId: storeScope.documentId', 'Guest Feedback public page store document ID return');
+  assertIncludes(page, '.doc(tenantDocumentId)', 'Guest Feedback public page uses normalized tenant document ID');
+  assertIncludes(page, '.collection(storeDocumentId)', 'Guest Feedback public page uses normalized store collection ID');
   assertIncludes(page, '.doc(normalizedProjectId)', 'Guest Feedback public page uses normalized project document ID');
+  assertIncludes(page, '.doc(storeDocumentId)', 'Guest Feedback public page uses normalized store document ID');
   assertNotIncludes(page, '.doc(projectId)', 'Guest Feedback public page direct project ID document read');
+  assertNotIncludes(page, 'parseInt(parts[0], 10)', 'Guest Feedback public page must not prefix-parse tenant scope');
+  assertNotIncludes(page, 'parseInt(parts[parts.length - 1], 10)', 'Guest Feedback public page must not prefix-parse store scope');
+  assertNotIncludes(page, '.doc(String(tId))', 'Guest Feedback public page must not build project refs from stringified tenant IDs');
+  assertNotIncludes(page, '.collection(String(sId))', 'Guest Feedback public page must not build project refs from stringified store IDs');
+  assertNotIncludes(page, '.doc(String(sId))', 'Guest Feedback public page must not build store refs from stringified store IDs');
   assertIncludes(page, 'data?.menuSettings?.feedback === false', 'Guest Feedback public page project feedback toggle');
   assertIncludes(page, 'isPlatformEntityBlocked(storeData)', 'Guest Feedback public page store block gate');
   assertIncludes(page, 'feedbackEnabled: storeData.feedbackEnabled !== false', 'Guest Feedback public page store feedback toggle');
@@ -358,6 +370,7 @@ function verifyDocsParity() {
   assertIncludes(impl, 'normalizeGuestFeedbackNumericDocumentId', 'Guest Feedback implementation target ID helper');
   assertIncludes(impl, 'src/lib/feedback/guestFeedbackProjectIdBoundary.ts', 'Guest Feedback implementation project ID helper');
   assertIncludes(impl, 'The submit route also re-normalizes `data.projectId` into local `projectId`', 'Guest Feedback implementation submit route project ID recheck');
+  assertIncludes(impl, 'The public feedback page uses `normalizeGuestFeedbackNumericDocumentId()` for the project-derived tenant/store path segments', 'Guest Feedback implementation public page target ID boundary');
   assertIncludes(impl, 'excludes `.doc(data.projectId)`', 'Guest Feedback implementation raw project document ref exclusion');
   assertIncludes(impl, 'Safe review URL boundary', 'Guest Feedback implementation safe URL boundary');
   assertIncludes(impl, 'guest_feedback_review_url_parse_failed', 'Guest Feedback implementation review URL parse diagnostic');
@@ -369,6 +382,7 @@ function verifyDocsParity() {
   assertIncludes(firebase, 'normalizeGuestFeedbackNumericDocumentId', 'Guest Feedback Firebase target ID helper');
   assertIncludes(firebase, 'src/lib/feedback/guestFeedbackProjectIdBoundary.ts', 'Guest Feedback Firebase project ID helper');
   assertIncludes(firebase, 'The submit route repeats the normalizer before `.doc(projectId)`', 'Guest Feedback Firebase submit route project ID recheck');
+  assertIncludes(firebase, 'The public feedback page uses the same numeric document-ID normalizer for project-derived tenant/store segments', 'Guest Feedback Firebase public page target ID boundary');
   assertIncludes(firebase, '`.doc(data.projectId)` remains excluded', 'Guest Feedback Firebase raw project document ref exclusion');
   assertIncludes(firebase, 'guest_feedback_review_url_parse_failed', 'Guest Feedback Firebase review URL parse diagnostic boundary');
   assertIncludes(mobile, 'Mobile shell route-map source gate', 'Guest Feedback mobile route-map gate');
@@ -379,6 +393,7 @@ function verifyDocsParity() {
   assertIncludes(audit, 'no longer trims `projectId` before `normalizeGuestFeedbackProjectId(value) === value`', 'Production readiness audit Guest Feedback raw submit schema evidence');
   assertIncludes(audit, 'Guest Feedback Target Document ID Boundary checkpoint', 'Production readiness audit Guest Feedback target ID checkpoint');
   assertIncludes(audit, 'normalizeGuestFeedbackNumericDocumentId', 'Production readiness audit Guest Feedback target ID helper');
+  assertIncludes(audit, 'public feedback page uses the same numeric target normalizer before project and store reads', 'Production readiness audit Guest Feedback public page target ID evidence');
   assertIncludes(audit, 'repeats `normalizeGuestFeedbackProjectId(data.projectId)` into local `projectId` before reading `.doc(projectId)`', 'Production readiness audit Guest Feedback submit route project ID recheck');
   assertIncludes(audit, 'excluding `.doc(data.projectId)`', 'Production readiness audit Guest Feedback raw project document ref exclusion');
   assertIncludes(audit, 'Guest Feedback boundary source-gate checkpoint', 'Production readiness audit Guest Feedback checkpoint');
@@ -388,6 +403,7 @@ function verifyDocsParity() {
   assertIncludes(changelog, 'Whitespace-mutated feedback project IDs fail closed', 'Changelog Guest Feedback whitespace-mutated project ID boundary');
   assertIncludes(changelog, 'Submit schema no longer trims project IDs', 'Changelog Guest Feedback raw submit schema boundary');
   assertIncludes(changelog, 'Guest Feedback Target Document ID Boundary', 'Changelog Guest Feedback target ID boundary');
+  assertIncludes(changelog, 'Public feedback page target scope is exact', 'Changelog Guest Feedback public page target ID boundary');
   assertIncludes(changelog, 'the submit route now re-normalizes `data.projectId` before reading `.doc(projectId)`', 'Changelog Guest Feedback submit route project ID recheck');
   assertIncludes(changelog, 'or `.doc(data.projectId)`', 'Changelog Guest Feedback raw project document ref exclusion');
   assertIncludes(changelog, 'Guest Feedback Review URL Parse Diagnostics', 'Changelog Guest Feedback review URL parse diagnostics');

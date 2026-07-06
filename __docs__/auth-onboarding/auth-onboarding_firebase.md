@@ -69,6 +69,7 @@ The local source gate does not create Firebase Auth users, mint live custom toke
 - **JWT sessions**: No Firestore session storage — JWT tokens are stateless
 - **Session caching**: User/tenant/store data loaded once at login, embedded in JWT
 - **Onboarding user-ID boundary**: Normal onboarding user updates, provider-failure compensation, and reseller-created owner user docs normalize user IDs through `src/lib/onboarding/onboardingUserId.ts` before `users/{userId}` refs. This adds no reads or writes for valid requests; malformed, whitespace-mutated, path-shaped, reserved, empty, or oversized user IDs fail before user document path composition.
+- **Onboarding compensation scope boundary**: Provider-failure compensation requires exact positive numeric tenant/store document IDs before `tenants/{tenantId}`, `stores/{storeId}`, or `platformSummary/storesSummary.stores.{storeId}` compensation writes. This adds no reads or writes for valid requests; malformed, whitespace-mutated, path-shaped, reserved, zero, negative, unsafe, leading-zero, or nonnumeric scope fails before compensation document path composition.
 - **No per-request auth reads**: `getActiveSession()` reads from JWT, not Firestore
 
 ### Warnings

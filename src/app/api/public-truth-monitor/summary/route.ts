@@ -3,7 +3,10 @@ export const dynamic = "force-dynamic";
 import { PERMISSIONS } from "@constant/permissions";
 import { readPublicTruthMonitorStoreDataServer, readPublicTruthMonitorSummaryServer } from "@database/publicTruthMonitor/server";
 import { isPublicTruthMonitorEnabled } from "@lib/public-truth-tools/publicTruthMonitorEntitlements";
-import { evaluatePublicTruthMonitorServerEntitlement } from "@lib/public-truth-tools/serverPublicTruthMonitorEntitlements";
+import {
+    evaluatePublicTruthMonitorServerEntitlement,
+    getPublicTruthMonitorSessionScope,
+} from "@lib/public-truth-tools/serverPublicTruthMonitorEntitlements";
 import {
     getPublicTruthMonitorSecurityLogContext,
     logPublicTruthMonitorApiFailure,
@@ -24,19 +27,24 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const rateLimitResponse = await checkAIRateLimit("DATA_READ", "public-truth-monitor-read");
         if (rateLimitResponse) return rateLimitResponse;
 
-        if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
+        const sessionScope = getPublicTruthMonitorSessionScope(session);
+        if (!sessionScope) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
-        const storeData = await readPublicTruthMonitorStoreDataServer(session.sId);
+        if (!verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request)) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);
         const permissionError = requireAnyStorePermissionForStoreData(
             request,
             session,
             storeData,
             [PERMISSIONS.VIEW_ANALYTICS],
             "Public Truth Monitor summary",
-            Number(session.sId),
-            Number(session.tId),
+            sessionScope.storeScope.numericId,
+            sessionScope.tenantScope.numericId,
         );
         if (permissionError) return permissionError;
 
@@ -45,7 +53,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             storeData,
         });
         const summary = entitlement.allowed
-            ? await readPublicTruthMonitorSummaryServer(session.sId)
+            ? await readPublicTruthMonitorSummaryServer(sessionScope.storeScope.documentId)
             : null;
 
         return NextResponse.json({

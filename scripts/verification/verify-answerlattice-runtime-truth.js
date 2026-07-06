@@ -628,12 +628,22 @@ function verifyAnswerlatticeBrowserHandoffDiagnostics() {
   assertIncludes(ticketsDal, 'assertSupportTicketMessageAddSucceeded', 'Answerlattice support ticket message acknowledgement guard');
   assertIncludes(ticketsDal, 'satisfies SupportTicketMessageAddResult', 'Answerlattice support ticket message explicit result');
   assertIncludes(ticketsDal, 'satisfies SupportTicketStatusUpdateResult', 'Answerlattice support ticket status explicit result');
+  assertIncludes(ticketsDal, 'SUPPORT_TICKET_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;', 'Answerlattice support ticket exact numeric scope helper');
+  assertIncludes(ticketsDal, 'documentId !== raw', 'Answerlattice support ticket scope must not trim mutated IDs');
+  assertIncludes(ticketsDal, '!isValidFirestoreDocumentId(documentId)', 'Answerlattice support ticket scope Firestore document ID guard');
+  assertIncludes(ticketsDal, 'const sessionScope = getRequiredSessionSupportTicketScope(session);', 'Answerlattice support ticket reads require normalized session scope');
+  assertIncludes(ticketsDal, 'where("tId", "==", sessionScope.tId)', 'Answerlattice support ticket owner reads use normalized tenant scope');
+  assertIncludes(ticketsDal, 'where("sId", "==", sessionScope.sId)', 'Answerlattice support ticket owner reads use normalized store scope');
   assertIncludes(ticketsDal, 'requireSupportTicketMutationScope', 'Answerlattice support ticket mutation scope guard');
   assertIncludes(ticketsDal, 'applySupportTicketMutationScope', 'Answerlattice support ticket mutation scope preserve helper');
   assertIncludes(ticketsDal, "throw new Error(`${operationCode}_ticket_scope_missing`)", 'Answerlattice support ticket missing scope rejection');
   assertIncludes(ticketsDal, "throw new Error(`${operationCode}_ticket_scope_mismatch`)", 'Answerlattice support ticket mismatched scope rejection');
   assertIncludes(ticketsDal, 'delete updateData.tId;', 'Answerlattice support ticket platform partial updates must not overwrite tenant scope');
   assertIncludes(ticketsDal, 'delete updateData.sId;', 'Answerlattice support ticket platform partial updates must not overwrite store scope');
+  assertNotIncludes(ticketsDal, 'where("tId", "==", session.tId)', 'Answerlattice support ticket reads must not query raw session tenant scope');
+  assertNotIncludes(ticketsDal, 'where("sId", "==", session.sId)', 'Answerlattice support ticket reads must not query raw session store scope');
+  assertNotIncludes(ticketsDal, 'const tId = Number(session?.tId ?? session?.user?.tenantId);', 'Answerlattice support ticket reads must not numeric-coerce session tenant scope');
+  assertNotIncludes(ticketsDal, 'const sId = Number(session?.sId ?? session?.user?.storeId);', 'Answerlattice support ticket reads must not numeric-coerce session store scope');
   assertIncludes(addSupportTicket, 'support_ticket_submit_create_rejected', 'Answerlattice support ticket submit create rejection code');
   assertIncludes(helpChatHandlers, 'help_chat_escalation_ticket_create_rejected', 'Answerlattice HelpChat escalation ticket create rejection code');
   assertIncludes(helpChatHandlers, 'copyHelpChatMessageToClipboard', 'Answerlattice HelpChat copy acknowledgement helper');
@@ -987,7 +997,11 @@ function verifyProtectedReadRateLimitGuards() {
   const aiOperations = read('src/app/api/answerlattice/ai-operations/route.ts');
   const aiOperationsClient = read('src/database/answerlattice/aiOperations.ts');
   const aiOperationHistoryQuery = read('src/lib/ai/operationHistoryQuery.ts');
+  const sessionScope = read('src/lib/answerlattice/sessionScope.ts');
+  const publicContentScope = read('src/lib/answerlattice/publicContentScope.ts');
   const helpWidgetImpl = read('__docs__/answerlattice/help-widget/help-widget_impl.md');
+  const ownerSupportAssistantImpl = read('__docs__/answerlattice/owner-support-assistant/owner-support-assistant_impl.md');
+  const activationCommandCenterImpl = read('__docs__/answerlattice/client-activation-command-center/client-activation-command-center_impl.md');
   const helpWidgetFirebase = read('__docs__/answerlattice/help-widget/help-widget_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/CHANGELOG.md');
@@ -995,6 +1009,22 @@ function verifyProtectedReadRateLimitGuards() {
   const publicContent = read('src/app/api/answerlattice/public-content/route.ts');
   const publicContentCache = read('src/lib/answerlattice/publicContentCache.ts');
   const publicContentClient = read('src/lib/answerlattice/publicContentClient.ts');
+
+  assertIncludes(sessionScope, "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';", 'Answerlattice shared session scope imports Firestore document ID guard');
+  assertIncludes(sessionScope, 'ANSWERLATTICE_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;', 'Answerlattice shared session scope exact numeric helper');
+  assertIncludes(sessionScope, 'export function normalizeAnswerlatticeScopeDocumentId(value: unknown): number | null', 'Answerlattice shared session scope strict normalizer');
+  assertIncludes(sessionScope, 'documentId !== raw', 'Answerlattice shared session scope must not trim mutated IDs');
+  assertIncludes(sessionScope, '!isValidFirestoreDocumentId(documentId)', 'Answerlattice shared session scope Firestore document ID guard');
+  assertIncludes(sessionScope, 'Number.isSafeInteger(parsed)', 'Answerlattice shared session scope safe integer guard');
+  assertIncludes(publicContentScope, 'normalizeAnswerlatticeScopeDocumentId', 'Answerlattice public content scope reuses shared strict scope helper');
+  assertNotIncludes(sessionScope, 'const normalizeNumber = (value: unknown): number | null => {', 'Answerlattice shared session scope must not use loose normalizeNumber helper');
+  assertNotIncludes(sessionScope, 'Number.isFinite(parsed) && parsed > 0 ? parsed : null', 'Answerlattice shared session scope must not use loose numeric coercion');
+  assertNotIncludes(publicContentScope, 'const normalizeScopeNumber = (value: unknown): number | null => {', 'Answerlattice public content scope must not keep route-local loose scope parser');
+  assertIncludes(helpWidgetImpl, 'exact positive numeric Firestore document IDs before widget activity reads', 'Help widget docs must document shared session scope boundary');
+  assertIncludes(ownerSupportAssistantImpl, 'tenant/store scope is accepted only as exact positive numeric Firestore document IDs', 'Owner Support Assistant docs must document shared session scope boundary');
+  assertIncludes(activationCommandCenterImpl, 'accepts only exact positive numeric Firestore document IDs for tenant/store scope', 'Activation Command Center docs must document shared session scope boundary');
+  assertIncludes(productionAudit, 'Answerlattice shared session scope boundary checkpoint: fixed in source.', 'Production readiness audit must document shared Answerlattice session scope hardening');
+  assertIncludes(changelog, 'Answerlattice Shared Session Scope Boundary', 'Changelog must document shared Answerlattice session scope hardening');
 
   assertIncludes(dashboardReadLimit, "getRateLimitForFeature('DATA_READ')", 'Answerlattice dashboard read limiter shared config');
   assertIncludes(dashboardReadLimit, 'checkRateLimit({', 'Answerlattice dashboard read limiter provider call');
@@ -2195,6 +2225,7 @@ function verifySearchAndRetrievalTruth() {
   const productSurfaceContextsImpl = read('__docs__/answerlattice/product-surface-contexts/product-surface-contexts_impl.md');
   const helpCenterSpec = read('__docs__/answerlattice/help-center/help-center_spec.md');
   const helpCenterImpl = read('__docs__/answerlattice/help-center/help-center_impl.md');
+  const helpCenterFirebase = read('__docs__/answerlattice/help-center/help-center_firebase.md');
   const helpCenterWebsite = read('__docs__/answerlattice/help-center/help-center_website.md');
   const helpCenterDecoupling = read('__docs__/answerlattice/help-center/help-center_decoupling-analysis.md');
   const repeatedReplyImpl = read('__docs__/answerlattice/repeated-reply-import/repeated-reply-import_impl.md');
@@ -2613,6 +2644,22 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(chatSessionsDal, 'satisfies ChatSessionBatchMetadataUpdateResult', 'Answerlattice chat session batch metadata explicit result');
   assertIncludes(chatSessionsDal, 'satisfies ChatSessionInternalNoteUpdateResult', 'Answerlattice chat session internal note explicit result');
   assertIncludes(chatSessionsDal, 'satisfies ChatSessionDeleteResult', 'Answerlattice chat session delete explicit result');
+  assertIncludes(chatSessionsDal, 'CHAT_SESSION_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\\d*$/;', 'Answerlattice chat session exact numeric scope helper');
+  assertIncludes(chatSessionsDal, 'normalizeChatSessionScopeDocumentId', 'Answerlattice chat session scope normalizer');
+  assertIncludes(chatSessionsDal, 'documentId !== raw', 'Answerlattice chat session scope must not trim mutated IDs');
+  assertIncludes(chatSessionsDal, '!isValidFirestoreDocumentId(documentId)', 'Answerlattice chat session scope Firestore document ID guard');
+  assertIncludes(chatSessionsDal, 'const sessionScope = getChatSessionScope(session);', 'Answerlattice chat session reads require normalized session scope');
+  assertIncludes(chatSessionsDal, 'session: scopedSession', 'Answerlattice chat image upload path uses normalized scope');
+  assertIncludes(chatSessionsDal, "where('tId', '==', sessionScope.tId)", 'Answerlattice chat session reads use normalized tenant scope');
+  assertIncludes(chatSessionsDal, "where('sId', '==', sessionScope.sId)", 'Answerlattice chat session reads use normalized store scope');
+  assertNotIncludes(chatSessionsDal, "where('tId', '==', session.tId)", 'Answerlattice chat session reads must not query raw session tenant scope');
+  assertNotIncludes(chatSessionsDal, "where('sId', '==', session.sId)", 'Answerlattice chat session reads must not query raw session store scope');
+  assertNotIncludes(chatSessionsDal, 'const tenantId = Number(session?.tId);', 'Answerlattice chat image upload must not numeric-coerce raw tenant scope');
+  assertNotIncludes(chatSessionsDal, 'const storeId = Number(session?.sId);', 'Answerlattice chat image upload must not numeric-coerce raw store scope');
+  assertIncludes(helpCenterImpl, 'Answerlattice chat session scope boundary', 'Help Center impl docs must document Answerlattice chat session scope boundary.');
+  assertIncludes(helpCenterFirebase, 'Chat session scope hardening is cost-neutral', 'Help Center Firebase docs must document Answerlattice chat session scope cost boundary.');
+  assertIncludes(productionAudit, 'Answerlattice chat session scope boundary checkpoint: fixed in source.', 'Production readiness audit must document Answerlattice chat session scope hardening.');
+  assertIncludes(changelog, 'Answerlattice Chat Session Scope Boundary', 'Changelog must document Answerlattice chat session scope hardening.');
   assertIncludes(helpChatApi, 'help_chat_search_history_feedback_update_rejected', 'HelpChat search-history feedback update rejection code');
   assertIncludes(helpChatApi, 'help_chat_message_feedback_update_rejected', 'HelpChat message feedback update rejection code');
   assertIncludes(helpChatHandlers, 'help_chat_new_session_save_rejected', 'HelpChat new session save rejection code');
@@ -3632,9 +3679,23 @@ function verifyAnswerlatticeCallableDiagnostics() {
 function verifyChatAnalyticsDiagnostics() {
   const chatAnalytics = read('src/database/chatAnalytics/index.ts');
   const chatAnalyticsDiagnostics = read('src/database/chatAnalytics/diagnostics.ts');
+  const helpCenterImpl = read('__docs__/answerlattice/help-center/help-center_impl.md');
+  const helpCenterFirebase = read('__docs__/answerlattice/help-center/help-center_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/CHANGELOG.md');
 
   assertNoDirectConsole(chatAnalytics, 'Answerlattice chat analytics DAL');
   assertIncludes(chatAnalytics, 'logChatAnalyticsFailure', 'Answerlattice chat analytics bounded diagnostics');
+  assertIncludes(chatAnalytics, "import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';", 'Answerlattice chat analytics imports shared strict scope helper');
+  assertIncludes(chatAnalytics, 'const getChatAnalyticsScope = (session: any): ChatAnalyticsScope | null =>', 'Answerlattice chat analytics scope resolver');
+  assertIncludes(chatAnalytics, 'normalizeAnswerlatticeScopeDocumentId(session?.tId ?? session?.tenantId ?? session?.user?.tenantId)', 'Answerlattice chat analytics tenant scope normalization');
+  assertIncludes(chatAnalytics, 'normalizeAnswerlatticeScopeDocumentId(session?.sId ?? session?.storeId ?? session?.user?.storeId)', 'Answerlattice chat analytics store scope normalization');
+  assertIncludes(chatAnalytics, "where('tId', '==', scope.tId)", 'Answerlattice chat analytics reads use normalized tenant scope');
+  assertIncludes(chatAnalytics, "where('sId', '==', scope.sId)", 'Answerlattice chat analytics reads use normalized store scope');
+  assertIncludes(chatAnalytics, 'const docId = `${scope.tId}_${scope.sId}_${dateStr}`;', 'Answerlattice chat analytics aggregate doc ID uses normalized scope');
+  assertIncludes(chatAnalytics, 'tId: scope.tId', 'Answerlattice chat analytics aggregate data uses normalized tenant scope');
+  assertIncludes(chatAnalytics, 'sId: scope.sId', 'Answerlattice chat analytics aggregate data uses normalized store scope');
+  assertIncludes(chatAnalytics, "throw new Error('Missing Answerlattice chat analytics scope')", 'Answerlattice chat analytics aggregate rejects missing scope');
   assertIncludes(chatAnalytics, 'answerlattice_chat_analytics_today_live_stats_failed', 'Answerlattice today live stats fallback failure code');
   assertIncludes(chatAnalytics, "getChatAnalyticsScopeContext(session, 'getChatStatisticsOptimized', safeDays)", 'Answerlattice stats fallback bounded scope');
   assertIncludes(chatAnalytics, "getChatAnalyticsScopeContext(session, 'getChatDashboardAggregatesOptimized', safeDays)", 'Answerlattice dashboard fallback bounded scope');
@@ -3644,6 +3705,13 @@ function verifyChatAnalyticsDiagnostics() {
   assertIncludes(chatAnalyticsDiagnostics, 'sourceErrorName: getChatAnalyticsErrorName(error)', 'Answerlattice chat analytics source error name');
   assertIncludes(chatAnalyticsDiagnostics, 'sourceErrorCode: getChatAnalyticsErrorCode(error)', 'Answerlattice chat analytics source error code');
   assertIncludes(chatAnalyticsDiagnostics, 'sourceStatusCode: getChatAnalyticsErrorStatus(error)', 'Answerlattice chat analytics source status code');
+  assertIncludes(helpCenterImpl, 'Answerlattice chat analytics scope boundary', 'Help Center impl docs must document chat analytics scope boundary');
+  assertIncludes(helpCenterFirebase, 'Chat analytics scope hardening is cost-neutral', 'Help Center Firebase docs must document chat analytics scope cost boundary');
+  assertIncludes(productionAudit, 'Answerlattice chat analytics scope boundary checkpoint: fixed in source.', 'Production readiness audit must document chat analytics scope hardening');
+  assertIncludes(changelog, 'Answerlattice Chat Analytics Scope Boundary', 'Changelog must document chat analytics scope hardening');
+  assertNotIncludes(chatAnalytics, "where('tId', '==', session.tId)", 'Answerlattice chat analytics must not query raw session tenant scope');
+  assertNotIncludes(chatAnalytics, "where('sId', '==', session.sId)", 'Answerlattice chat analytics must not query raw session store scope');
+  assertNotIncludes(chatAnalytics, 'const docId = `${session.tId}_${session.sId}_${dateStr}`;', 'Answerlattice chat analytics must not compose aggregate doc ID from raw session scope');
   assertNotIncludes(chatAnalytics, "Failed to fetch today's stats, using historical only:", 'Answerlattice chat analytics raw fallback warning');
 }
 

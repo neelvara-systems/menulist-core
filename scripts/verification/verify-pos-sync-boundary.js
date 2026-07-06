@@ -145,7 +145,7 @@ function verifyDeliveryRoute(deliverRoute) {
     'import { normalizePosSyncNumericDocumentId } from "@lib/posSync/posSyncDocumentId";',
     'storeId: z.number().int().positive()',
     'tenantId: z.number().int().positive()',
-    "projectId: z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),",
+    "projectId: z.string().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),",
     'PERMISSIONS.MANAGE_INTEGRATIONS, PERMISSIONS.PUBLISH_MENU',
     'getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId)',
     "const newVersion = await db.runTransaction(async (transaction) => {",
@@ -166,6 +166,11 @@ function verifyDeliveryRoute(deliverRoute) {
     'POS delivery outbound order',
   );
 
+  assertNotIncludes(
+    deliverRoute,
+    'projectId: z.string().trim()',
+    'POS delivery route must not trim project IDs before validation',
+  );
   assertNotIncludes(
     deliverRoute,
     'projectId: z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/),',
@@ -421,6 +426,7 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
     'Target document-ID boundary',
     'normalizePosSyncNumericDocumentId',
     'POS delivery project ID boundary',
+    'whitespace-mutated project IDs fail',
     'Delivery failure threshold',
     'First and second failed live deliveries stay owner-quiet',
     'Active docs no longer present Cloud Function delivery/retry workers or `pos_delivery_queue` as current runtime scope',
@@ -439,6 +445,7 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
     'POS Sync target document-ID boundary',
     'normalizePosSyncNumericDocumentId',
     'POS delivery project ID boundary',
+    'whitespace-mutated project IDs fail',
     'Delivery failure threshold',
     'posSync.consecutiveFailures',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'POS Firebase boundary docs'));
@@ -447,6 +454,7 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
     'POS Sync Target Document ID Boundary checkpoint',
     'normalizePosSyncNumericDocumentId',
     'POS Delivery Project ID Boundary checkpoint',
+    'whitespace-mutated `projectId` values',
     'POS Sync live-delivery failure-threshold checkpoint',
     'Failed live deliveries one and two are logged',
     'third failed live delivery in a row marks `connection_issue`',
@@ -462,6 +470,7 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
     'Malformed POS scope fails closed',
     'POS Delivery Project ID Boundary',
     'Malformed project IDs fail during request validation',
+    'Whitespace-mutated POS project IDs fail closed',
   ].forEach((token) => {
     assertIncludes(changelogDoc, token, 'POS changelog project ID boundary');
     assertIncludes(lowercaseChangelogDoc, token, 'POS lowercase changelog project ID boundary');

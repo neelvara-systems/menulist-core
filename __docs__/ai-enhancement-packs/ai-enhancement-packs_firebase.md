@@ -206,7 +206,7 @@ July 1 batch image prompt-cache retention is bounded by the consolidated mainten
 | **Write (increment `topUpCredits`)** | Pack purchase verify-topup                                                   | Per purchase      | 0     | 1      |
 | **Write (reset `monthlyCredits`)**   | Subscription renewal or lazy reset transaction                               | Monthly per store | 0-1   | 1      |
 
-MenuList Billing Subscription Document ID Boundary: capacity-check lazy reset and consumption normalize subscription document IDs before `subscriptions/{subscriptionId}` refs. Valid Razorpay IDs keep the same 0-1 reset write and per-operation consume write; malformed IDs return before reset refs or fail paid credit consumption before debit refs.
+MenuList Billing Subscription Document ID Boundary: capacity-check lazy reset and consumption normalize subscription document IDs before `subscriptions/{subscriptionId}` refs. Valid Razorpay IDs keep the same 0-1 reset write and per-operation consume write; malformed or whitespace-mutated IDs return before reset refs or fail paid credit consumption before debit refs.
 
 ### Cost Estimate
 

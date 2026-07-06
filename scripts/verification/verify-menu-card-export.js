@@ -1594,6 +1594,12 @@ const advisorRoute = fs.readFileSync(path.join(root, 'src/app/api/menu-card-expo
 [
   'withAuth',
   'verifyTenantAccess',
+  'isValidFirestoreDocumentId',
+  'normalizeMenuCardDesignAdvisorSessionScopeDocumentId',
+  'const tenantScope = normalizeMenuCardDesignAdvisorSessionScopeDocumentId(session.tId);',
+  'const storeScope = normalizeMenuCardDesignAdvisorSessionScopeDocumentId(session.sId);',
+  'const tenantId = tenantScope.numericId;',
+  'const storeId = storeScope.numericId;',
   'checkAIOperationLimit',
   'getActiveSubscriptionForStore',
   'hasAllowedAdvisorPlan',
@@ -1605,6 +1611,13 @@ const advisorRoute = fs.readFileSync(path.join(root, 'src/app/api/menu-card-expo
   'FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_PRINT_SHOP',
 ].forEach((token) => {
   if (!advisorRoute.includes(token)) failures.push(`AI advisor route missing token: ${token}`);
+});
+[
+  'const tenantId = Number(session.tId);',
+  'const storeId = Number(session.sId);',
+  'if (!Number.isFinite(tenantId) || !Number.isFinite(storeId))',
+].forEach((token) => {
+  if (advisorRoute.includes(token)) failures.push(`AI advisor route must not use loose session scope token: ${token}`);
 });
 [
   'menu_card_design_advisor_provider_response_parse_failed',

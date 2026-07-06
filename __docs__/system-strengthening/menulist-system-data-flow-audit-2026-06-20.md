@@ -19,6 +19,95 @@ Current MenuList Functions retry evidence must start with `npm run verify:functi
 
 ## Fix Ledger
 
+### July 6 follow-up: POS and Public Truth Monitor strict project-ID admission
+
+Status: Fixed.
+
+POS delivery and Public Truth Monitor already validated project IDs with shared Firestore document-ID guards, but both still accepted IDs after trimming. That allowed whitespace-mutated project IDs to normalize into valid scoped project reads before POS store config reads, menu-version writes, delivery logs, POS status writes, outbound webhook delivery, Public Truth Monitor project selection, scoped project reads, legacy project fallback reads, or readiness summary writes.
+
+`src/app/api/pos-sync/deliver/route.ts` now validates raw `projectId` values without trimming. `src/lib/validation/publicTruthMonitorSchemas.ts` now validates raw `selectedProjectId` values, and `src/database/publicTruthMonitor/server.ts` now requires selected/persisted/final project IDs to exactly match their trimmed Firestore document ID before project selection or project reads. Valid POS deliveries and valid Public Truth Monitor summary/refresh behavior keep the same permissions, rate limits, tenant/store checks, target validation, Firestore read/write shape, bounded diagnostics, and owner-facing copy. `scripts/verification/verify-pos-sync-boundary.js`, `scripts/verification/verify-public-truth-monitor-addon.js`, and `scripts/verification/verify-menulist-api-tenant-safety.js` now source-gate the strict raw project-ID schemas and server DAL raw equality.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-pos-sync-boundary.js`.
+- Passed `node --check scripts/verification/verify-public-truth-monitor-addon.js`.
+- Passed `node --check scripts/verification/verify-menulist-api-tenant-safety.js`.
+- Passed `npm run verify:pos-sync-boundary`.
+- Passed `npm run verify:public-truth-monitor-addon`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:system-strengthening`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: this changes POS and Public Truth Monitor project-ID admission only. It adds no Firestore reads/writes/deletes for valid requests, Storage operations, Cloud Function logic changes, provider calls beyond existing valid POS webhook delivery, cache invalidations, Firestore rules/indexes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+### July 6 follow-up: Public analytics strict project-ID admission
+
+Status: Fixed.
+
+The public analytics route already validated `projectId` with the analytics character rule and shared Firestore document-ID guard, but the Zod schema trimmed the value first. That allowed whitespace-mutated project IDs to normalize into valid public analytics targets before cached target validation, analytics preference checks, business-day resolution, and `analytics/{tenantId}_{storeId}_{projectId}_daily_{date}` writes.
+
+`src/app/api/public/analytics/track/route.ts` now validates the raw `projectId` without trimming before the analytics character rule and shared Firestore document-ID guard run. Valid public menu project IDs and reserved first-party `obp` / `customerApp` analytics surfaces keep the same target validation, preference gates, daily write shape, bounded diagnostics, and public responses. `scripts/verification/verify-menulist-api-tenant-safety.js` now source-gates the raw project-ID schema and bans the old trim-based schema.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-menulist-api-tenant-safety.js`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npm run verify:customer-app-pwa`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:system-strengthening`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: this changes public analytics project-ID admission only. It adds no Firestore reads/writes/deletes for valid events, Storage operations, Cloud Function logic changes, provider calls, cache invalidations, Firestore rules/indexes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+### July 6 follow-up: Billing strict provider document-ID admission
+
+Status: Fixed.
+
+MenuList Razorpay subscription and top-up order document-ID helpers already used the shared Firestore document-ID guard, but both accepted provider IDs after trimming. That allowed whitespace-mutated values to normalize into valid `subscriptions/{subscriptionId}` and `topups/{orderId}` document refs before subscription DAL refs, AI capacity reset/consume refs, entitlement sync mirror writes, top-up pending writes, idempotency reads, paid audit writes, or top-up verification subscription refs.
+
+`src/lib/billing/subscriptionDocumentIdBoundary.ts` now requires the raw subscription ID to exactly equal the trimmed value before the shared Firestore document-ID guard. `src/lib/billing/topupDocumentIdBoundary.ts` now requires the raw Razorpay `order_...` ID to exactly equal the trimmed value before top-up order document refs. Valid Razorpay subscription IDs and order IDs keep the same provider verification, Firestore read/write shape, credit math, entitlement sync, and cache invalidation behavior. `scripts/verification/verify-billing-entitlement-boundary.js` and `scripts/verification/verify-ai-accounting-hardening.js` now source-gate the strict raw provider-ID equality and documentation evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-billing-entitlement-boundary.js`.
+- Passed `node --check scripts/verification/verify-ai-accounting-hardening.js`.
+- Passed `npm run verify:billing-entitlement-boundary`.
+- Passed `npm run verify:ai-accounting`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:system-strengthening`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks, including 89 child root `verify:*` scripts.
+
+Impact: this changes billing provider document-ID admission only. It adds no Firestore reads/writes/deletes for valid requests, Razorpay provider calls, credit math changes, entitlement/cache invalidation changes, Cloud Function logic changes, Firestore rules/indexes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
+### July 6 follow-up: Auth strict document-ID admission
+
+Status: Fixed.
+
+The access-status and Phone OTP challenge paths already used shared Firestore document-ID guards, but both still accepted IDs after trimming. That left whitespace-mutated values able to normalize into valid Firestore document IDs before session user reads, tenant/store block checks, challenge-specific throttle keys, challenge document reads, OTP hash comparison, or login-token writes.
+
+`src/app/api/auth/access-status/route.ts` now requires the trimmed user, tenant, and store document ID to exactly equal the raw value before direct document reads. `src/lib/auth/phoneOtp.ts` now requires the raw Phone OTP challenge ID to exactly match the 20-character Firestore auto-ID shape before challenge verification. Valid access-status polling, session revocation checks, tenant/store block checks, Phone OTP verification, login-token creation, and NextAuth handoff remain unchanged. `scripts/verification/verify-auth-security-failure-matrix.js` and `scripts/verification/verify-menulist-api-tenant-safety.js` now source-gate the strict raw document-ID equality and documentation evidence.
+
+Validation:
+
+- Passed `node --check scripts/verification/verify-auth-security-failure-matrix.js`.
+- Passed `node --check scripts/verification/verify-menulist-api-tenant-safety.js`.
+- Passed `npm run verify:auth-security-failure-matrix`.
+- Passed `npm run verify:menulist-api-tenant-safety`.
+- Passed `npx tsc --noEmit --incremental false --pretty false`.
+- Passed `npm run docs:check-links`.
+- Passed `git diff --check`.
+- Passed `npm run verify:system-strengthening`.
+- Passed `npm run verify:production-readiness-local` with 93/93 checks.
+
+Impact: this changes auth document-ID admission only. It adds no Firestore reads/writes/deletes for valid requests, Firebase Auth operations, WhatsApp provider calls, Cloud Function logic changes, Firestore rules/indexes, cache invalidations, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+
 ### July 5 follow-up: Batch image result stored-error display boundary
 
 Status: Fixed.

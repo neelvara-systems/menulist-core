@@ -33,7 +33,7 @@ import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 const schema = z.object({
     storeId: z.number().int().positive(),
     tenantId: z.number().int().positive(),
-    projectId: z.string().trim().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),
+    projectId: z.string().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),
 });
 
 const WEBHOOK_TIMEOUT_MS = 5_000;

@@ -75,6 +75,12 @@ const JSON_LD = {
     ],
 };
 
+const SMALL_BUSINESS_PRODUCT_PROOF_IMAGE = {
+    src: "/campaigncue-website-assets/dummy/campaigncue-use-case-small-business-pack.webp",
+    alt: "Sample CampaignCue small-business journey showing source facts, a daily cue, pack output, creative reuse, manual export, and result memory.",
+    caption: "Sample small-business pack journey with dummy CampaignCue data.",
+};
+
 function getBasePath(): string {
     try {
         const headerList = headers();
@@ -215,6 +221,15 @@ function ReusePreview() {
     );
 }
 
+function SmallBusinessProductProofFigure() {
+    return (
+        <figure className="campaigncue-product-proof campaigncue-product-proof--use-case">
+            <img src={SMALL_BUSINESS_PRODUCT_PROOF_IMAGE.src} alt={SMALL_BUSINESS_PRODUCT_PROOF_IMAGE.alt} loading="lazy" decoding="async" />
+            <figcaption>{SMALL_BUSINESS_PRODUCT_PROOF_IMAGE.caption}</figcaption>
+        </figure>
+    );
+}
+
 export default function CampaignCueSmallBusinessUseCasePage() {
     const basePath = getBasePath();
     const useCase = CAMPAIGNCUE_SMALL_BUSINESS_USE_CASE;
@@ -315,6 +330,7 @@ export default function CampaignCueSmallBusinessUseCasePage() {
                         </p>
                     </div>
                     <SourceToPackVisual />
+                    <SmallBusinessProductProofFigure />
                 </div>
                 <div className="campaigncue-use-case-asset-grid" aria-label="Small business campaign assets">
                     {useCase.assets.map((asset) => (

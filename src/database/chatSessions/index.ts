@@ -10,6 +10,7 @@ import {
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
 import { answerlatticeFirebaseClient, answerlatticeStorage } from '@lib/firebase/answerlatticeFirebaseClient';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
@@ -23,6 +24,7 @@ const ADMIN_CHAT_SESSION_PAGE_SIZE_LIMIT = 100;
 const ADMIN_CHAT_SESSION_SCAN_LIMIT = 500;
 const CHAT_VOLUME_SESSION_LIMIT = 1000;
 const MAX_CHAT_VOLUME_DAYS = 90;
+const CHAT_SESSION_SCOPE_DOCUMENT_ID_PATTERN = /^[1-9]\d*$/;
 
 export type ChatSessionUpdateResult = {
     sessionId: string;
@@ -220,12 +222,35 @@ const normalizePositiveInteger = (value: unknown, fallback: number, max: number)
     return Math.min(Math.floor(parsed), max);
 };
 
-const hasValidStoreScope = (session: any) => (
-    Number.isFinite(Number(session?.tId))
-    && Number.isFinite(Number(session?.sId))
-    && Number(session?.tId) > 0
-    && Number(session?.sId) > 0
-);
+type AnswerlatticeChatSessionScope = {
+    tId: number;
+    sId: number;
+};
+
+const normalizeChatSessionScopeDocumentId = (value: unknown): number | undefined => {
+    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const documentId = raw.trim();
+    if (
+        documentId !== raw
+        || !CHAT_SESSION_SCOPE_DOCUMENT_ID_PATTERN.test(documentId)
+        || !isValidFirestoreDocumentId(documentId)
+    ) {
+        return undefined;
+    }
+
+    const parsed = Number(documentId);
+    return Number.isSafeInteger(parsed) && parsed > 0 && String(parsed) === documentId
+        ? parsed
+        : undefined;
+};
+
+const getChatSessionScope = (session: any): AnswerlatticeChatSessionScope | undefined => {
+    const tId = normalizeChatSessionScopeDocumentId(session?.tId ?? session?.user?.tenantId);
+    const sId = normalizeChatSessionScopeDocumentId(session?.sId ?? session?.user?.storeId);
+
+    if (tId === undefined || sId === undefined) return undefined;
+    return { tId, sId };
+};
 
 /**
  * Upload chat image to Firebase Storage with tenant/store isolation
@@ -249,11 +274,15 @@ export const uploadChatImage = async (
         async () => {
             // Check if image contains base64 data
             if (image.url?.includes('base64') || image.source?.includes('base64')) {
-                const tenantId = Number(session?.tId);
-                const storeId = Number(session?.sId);
-                if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) {
+                const sessionScope = getChatSessionScope(session);
+                if (!sessionScope) {
                     throw new Error('Missing Answerlattice workspace context for chat image upload');
                 }
+                const scopedSession = {
+                    ...session,
+                    tId: sessionScope.tId,
+                    sId: sessionScope.sId,
+                };
 
                 const imageType = normalizeAnswerlatticeChatImageMimeType(image.type);
                 if (!isAllowedAnswerlatticeChatImageMimeType(imageType)) {
@@ -272,7 +301,7 @@ export const uploadChatImage = async (
                 const path = generateStoragePath({
                     collection: COLLECTION,
                     fileType: 'chatimages',
-                    session,
+                    session: scopedSession,
                     fileId: imageId,
                     useDefaults: false
                 });
@@ -417,11 +446,12 @@ export const deleteChatSession = async (sessionId: string) => {
 export const getUserChatSessions = async (session: any) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
-            if (!session?.tId || !session?.sId || !session?.uId) return [];
+            const sessionScope = getChatSessionScope(session);
+            if (!sessionScope || !session?.uId) return [];
             const q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId),
+                where('tId', '==', sessionScope.tId),
+                where('sId', '==', sessionScope.sId),
                 where('uId', '==', session.uId),
                 orderBy('modifiedOn', 'desc'),
                 limit(USER_CHAT_SESSION_LIMIT)
@@ -600,7 +630,8 @@ export const getAllChatSessionsForAdmin = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            if (!hasValidStoreScope(session)) {
+            const sessionScope = getChatSessionScope(session);
+            if (!sessionScope) {
                 return { sessions: [], hasNextPage: false, total: 0 };
             }
 
@@ -611,8 +642,8 @@ export const getAllChatSessionsForAdmin = async (
             // Base query: all sessions for this Answerlattice store.
             let q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId),
+                where('tId', '==', sessionScope.tId),
+                where('sId', '==', sessionScope.sId),
                 orderBy(sortBy, sortOrder),
                 limit(pageSize + 1) // +1 to check if there's a next page
             );
@@ -702,7 +733,8 @@ export const getChatStatistics = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            if (!hasValidStoreScope(session)) {
+            const sessionScope = getChatSessionScope(session);
+            if (!sessionScope) {
                 return {
                     totalChats: 0,
                     todayChats: 0,
@@ -721,8 +753,8 @@ export const getChatStatistics = async (
             // Query sessions for this tenant (capped at 500 to prevent unbounded Firestore reads)
             let q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId),
+                where('tId', '==', sessionScope.tId),
+                where('sId', '==', sessionScope.sId),
                 orderBy('createdOn', 'desc'),
                 limit(ADMIN_CHAT_SESSION_SCAN_LIMIT)
             );
@@ -822,15 +854,16 @@ export const getChatStatistics = async (
 export const getTopQuestions = async (session: any, limitCount: number = 10) => {
     return await apiCallComposer(
         async () => {
-            if (!hasValidStoreScope(session)) {
+            const sessionScope = getChatSessionScope(session);
+            if (!sessionScope) {
                 return [];
             }
 
             // Get recent sessions (capped at 500 to prevent unbounded Firestore reads)
             const q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId),
+                where('tId', '==', sessionScope.tId),
+                where('sId', '==', sessionScope.sId),
                 orderBy('createdOn', 'desc'),
                 limit(ADMIN_CHAT_SESSION_SCAN_LIMIT)
             );
@@ -872,15 +905,16 @@ export const getTopQuestions = async (session: any, limitCount: number = 10) => 
 export const getKnowledgeGaps = async (session: any) => {
     return await apiCallComposer(
         async () => {
-            if (!hasValidStoreScope(session)) {
+            const sessionScope = getChatSessionScope(session);
+            if (!sessionScope) {
                 return [];
             }
 
             // Get recent sessions (capped at 500 to prevent unbounded Firestore reads)
             const q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId),
+                where('tId', '==', sessionScope.tId),
+                where('sId', '==', sessionScope.sId),
                 orderBy('createdOn', 'desc'),
                 limit(ADMIN_CHAT_SESSION_SCAN_LIMIT)
             );
@@ -946,7 +980,8 @@ export const getKnowledgeGaps = async (session: any) => {
 export const getChatVolumeOverTime = async (session: any, days: number = 7) => {
     return await apiCallComposer(
         async () => {
-            if (!hasValidStoreScope(session)) {
+            const sessionScope = getChatSessionScope(session);
+            if (!sessionScope) {
                 return [];
             }
 
@@ -958,8 +993,8 @@ export const getChatVolumeOverTime = async (session: any, days: number = 7) => {
 
             const q = query(
                 await getCollectionRef(),
-                where('tId', '==', session.tId),
-                where('sId', '==', session.sId),
+                where('tId', '==', sessionScope.tId),
+                where('sId', '==', sessionScope.sId),
                 where('createdOn', '>=', Timestamp.fromDate(startDate)),
                 where('createdOn', '<=', Timestamp.fromDate(endDate)),
                 orderBy('createdOn', 'asc'),

@@ -1,7 +1,7 @@
 # Help Center — Firebase Cost & Operations Tracking
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-05-16
+> **Version:** 1.1.3
+> **Last Updated:** 2026-07-06
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -34,6 +34,12 @@ Chat session acknowledgement hardening is cost-neutral. `saveChatSession()` stil
 Chat session delete acknowledgement hardening is cost-neutral. `deleteChatSession()` still performs the existing session read, best-effort attached-image cleanup, and one `chatSessions` delete, but HelpChat now requires `{ success, sessionId, deleted, storageFilesDeleted }` before showing delete success. Failed or malformed delete results reload session state and restore the previous active-session/search snapshot. This adds no reads, writes, deletes, Storage operations, indexes, rules, Cloud Functions, routes, schema fields, or deployment requirement beyond the existing delete path.
 
 HelpChat answer-feedback acknowledgement hardening is also cost-neutral. Feedback submission still attempts the existing `aiSearchHistory` feedback merge and `chatSessions` message feedback mirror, but `submitSearchFeedback()` now requires explicit acknowledgements from both writes before local feedback state, thank-you copy, or negative-feedback signal emission advances. This adds no reads, writes, indexes, rules, Cloud Functions, Storage operations, provider calls, routes, schema fields, or deployment requirement.
+
+Chat session scope hardening is cost-neutral. Chat image uploads still perform the same single Storage upload for valid base64 chat images, and chat history/admin/stat reads keep the same `chatSessions` query shapes and read caps, but `src/database/chatSessions/index.ts` now normalizes session `tId/sId` as exact positive numeric Firestore document IDs before composing Storage paths or Firestore filters. Malformed session scope fails before Storage path composition or chat-session reads/scans instead of being trimmed, loosely numeric-coerced, or passed raw to query filters. This adds no Firestore reads/writes/deletes, Storage operations for valid uploads, indexes, rules, Cloud Functions, provider calls, schema fields, Firebase deploy requirement, or Vercel deploy action.
+
+Chat analytics scope hardening is cost-neutral. Optimized dashboard stats, top questions, knowledge gaps, volume charts, paginated conversations, daily aggregation, and last-update reads keep the same `chatAnalytics` / `chatSessions` query shapes, read caps, and one daily aggregate write for valid sessions, but `src/database/chatAnalytics/index.ts` now normalizes session `tId/sId` through the shared Answerlattice exact positive numeric Firestore document-ID helper before query filters or `{tId}_{sId}_{YYYY-MM-DD}` aggregate document IDs are composed. Malformed scope returns empty read models or rejects daily aggregation before Firestore work. This adds no Firestore reads/writes/deletes for valid requests, Storage operations, indexes, rules, Cloud Functions, provider calls, schema fields, Firebase deploy requirement, or Vercel deploy action.
+
+Support ticket session scope hardening is cost-neutral. Owner-side ticket reads and listeners still query `supportTickets` by `tId + sId + deleted`, order by `createdOn`, and keep the same latest-ticket caps, but `src/database/tickets/index.ts` now normalizes session `tId/sId` as exact positive numeric Firestore document IDs before composing those queries. Malformed session scope fails before owner ticket reads/listeners instead of being trimmed, loosely numeric-coerced, or passed raw to Firestore query filters. Platform-wide support-ticket views keep the existing platform query behavior. This adds no Firestore reads/writes/deletes, Storage operations, indexes, rules, Cloud Functions, provider calls, schema fields, Firebase deploy requirement, or Vercel deploy action.
 
 ---
 

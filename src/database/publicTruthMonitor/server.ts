@@ -43,8 +43,9 @@ function legacyProjectBelongsToSession(params: {
 }
 
 function normalizePublicTruthMonitorDocumentId(value: unknown): string | null {
-    const documentId = typeof value === "string" ? value.trim() : "";
-    return isValidFirestoreDocumentId(documentId) ? documentId : null;
+    const raw = typeof value === "string" ? value : "";
+    const documentId = raw.trim();
+    return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
 }
 
 function normalizePublicTruthMonitorScopeDocumentId(value: unknown): string | null {

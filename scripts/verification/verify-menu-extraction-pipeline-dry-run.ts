@@ -392,7 +392,11 @@ const publicClientRenderer = read('src/app/client/[[...slug]]/page.tsx');
 const publicMenuRenderer = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
 assertCheck(
   'public menu renderer contract is aligned with extraction output shape',
-  publicClientRenderer.includes('const [tId, , sId] = projectId.split("-")')
+  publicClientRenderer.includes('function normalizePublicMenuProjectDocumentScope')
+    && publicClientRenderer.includes('const projectScope = normalizePublicMenuProjectDocumentScope(projectId);')
+    && publicClientRenderer.includes('.doc(projectScope.tenantDocumentId)')
+    && publicClientRenderer.includes('.collection(projectScope.storeDocumentId)')
+    && publicClientRenderer.includes('.doc(projectScope.projectId)')
     && publicClientRenderer.includes('targetProject.projectId || targetProject.id')
     && publicMenuRenderer.includes('file.extractedData?.data?.categories')
     && publicMenuRenderer.includes('cat.active !== false')
