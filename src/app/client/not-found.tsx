@@ -5,7 +5,7 @@
  * Lightweight — no Ant Design, no dashboard dependencies.
  * Shows professional message instead of generic Next.js 404.
  *
- * 3-Year Freeze: This is what restaurant customers see if they
+ * 3-Year Freeze: This is what customers see if they
  * hit a bad URL. Must look professional, not broken.
  */
 
@@ -27,7 +27,6 @@ export default function ClientMenuNotFound() {
                 color: "#333",
             }}
         >
-            {/* Icon */}
             <div
                 style={{
                     width: "64px",
@@ -41,7 +40,7 @@ export default function ClientMenuNotFound() {
                     fontSize: "28px",
                 }}
             >
-                🍽️
+                ML
             </div>
 
             <h1
@@ -64,8 +63,8 @@ export default function ClientMenuNotFound() {
                     lineHeight: 1.5,
                 }}
             >
-                This menu link doesn&apos;t seem to be active. The restaurant may
-                have updated their menu URL.
+                This public link does not seem to be active. The business may
+                have updated their MenuList link.
             </p>
 
             <a
@@ -93,7 +92,7 @@ export default function ClientMenuNotFound() {
                     margin: 0,
                 }}
             >
-                Please ask your server for the correct menu link.
+                Please ask the business for the correct link.
             </p>
 
             <PublicMenuListAttribution />

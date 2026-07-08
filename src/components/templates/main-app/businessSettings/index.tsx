@@ -67,6 +67,7 @@ import {
 } from "react-icons/lu";
 import DigitalScreenSettings from "../settings/DigitalScreenSettings";
 import PresenceMonitor from "../useMenuList/PresenceMonitor";
+import TempStatusCard from "./TempStatusCard";
 import {
     AnalyticsTab,
     BasicInfoTab,
@@ -106,6 +107,7 @@ const BUSINESS_SETTINGS_FOCUS_SECTION: Record<string, string> = {
     'official-page-actions': 'business-profile',
     'official-page-photos': 'business-profile',
     'presence-monitor': 'search-discovery',
+    'temp-status': 'hours',
     'working-hours': 'hours',
 };
 
@@ -425,6 +427,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         officialPageActions: createRef<HTMLDivElement>(),
         officialPagePhotos: createRef<HTMLDivElement>(),
         presenceMonitor: createRef<HTMLDivElement>(),
+        tempStatus: createRef<HTMLDivElement>(),
     });
 
     const TAB_ITEMS_LIST = [
@@ -751,12 +754,21 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             label: t('workingHours'),
             icon: <LuClock />,
             tab: (
-                <WorkingHoursTab
-                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 4 : 3]}
-                    workingHours={workingHours}
-                    setWorkingHours={setWorkingHours}
-                    form={form}
-                />
+                <Flex vertical gap={16} ref={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 4 : 3]}>
+                    <WorkingHoursTab
+                        workingHours={workingHours}
+                        setWorkingHours={setWorkingHours}
+                        form={form}
+                    />
+                    {FEATURE_FLAGS.ENABLE_TEMP_STATUS ? (
+                        <div ref={publicTruthFocusRefs.current.tempStatus}>
+                            <TempStatusCard
+                                setStoreDetails={setStoreDetails}
+                                storeDetails={storeDetails}
+                            />
+                        </div>
+                    ) : null}
+                </Flex>
             ),
         },
         {
@@ -869,7 +881,9 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                     ? publicTruthFocusRefs.current.officialPagePhotos
                                     : focusParam === 'presence-monitor'
                                         ? publicTruthFocusRefs.current.presenceMonitor
-                                        : null;
+                                        : focusParam === 'temp-status'
+                                            ? publicTruthFocusRefs.current.tempStatus
+                                            : null;
 
         window.setTimeout(() => {
             setActiveSection(targetSectionIndex);

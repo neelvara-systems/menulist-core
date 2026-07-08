@@ -3,7 +3,7 @@
 **Feature:** Customer-Facing Digital Menu  
 **Parent Feature:** Projects (Menu Digitization)  
 **Status:** Implemented source evidence; not current launch certification
-**Last Updated:** January 2026
+**Last Updated:** July 8, 2026
 
 **Launch boundary:** This spec documents the customer-facing menu view; it is not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
 
@@ -11,12 +11,12 @@
 
 ## Executive Summary
 
-B2C View is the customer-facing digital menu that restaurant patrons see. It includes a controlled menu design editor for owners to choose moods, compatible layouts, and branding accents, with real-time preview and responsive design.
+B2C View is the customer-facing digital menu that restaurant patrons see. It includes a controlled menu design editor for owners to choose moods, compatible layouts, branding accents, display settings, and visual preset previews, with real-time preview and responsive design.
 
 ### What It Does
 
 - **Visual Menu Display** → Clear, responsive menu for customers
-- **Menu Design Controls** → Controlled moods, compatible layouts, optional brand accent, display settings
+- **Menu Design Controls** → Controlled moods, compatible layouts, visual preset previews, optional brand accent, display settings
 - **Menu Layouts** → List, grid, and card layouts with controlled category tabs
 - **Device Preview** → Mobile, tablet, desktop frames
 - **Share & Embed** → URL sharing, QR codes
@@ -63,6 +63,7 @@ B2C View is the customer-facing digital menu that restaurant patrons see. It inc
 **Acceptance Criteria:**
 
 - Choose a controlled mood and compatible layout
+- Choose a recommended style from preview cards that show the expected customer-menu shape
 - Optionally apply a brand accent color
 - Upload logo
 - Select a compatible layout style

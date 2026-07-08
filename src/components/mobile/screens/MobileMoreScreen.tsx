@@ -9,6 +9,7 @@ import { signOutSession } from '@lib/auth/client';
 import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { buildMenuSetupProgress } from '@lib/menuSetupProgress/buildMenuSetupProgress';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
@@ -37,6 +38,7 @@ import {
     LuHelpCircle,
     LuKeyRound,
     LuLayoutTemplate,
+    LuListChecks,
     LuLogOut,
     LuMail,
     LuMapPin,
@@ -303,7 +305,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         name?: string;
         phoneNumber?: string;
     }>({});
-    const { selectedProjectId } = useMobileProjects();
+    const { isLoading: projectsLoading, selectedProject, selectedProjectId } = useMobileProjects();
 
     const sessionUser = (session?.user || {}) as any;
     const userName = profileOverrides.name || sessionUser.name || 'User';
@@ -341,6 +343,21 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     });
     const canManageBusinessProfile = canManageStore || canManagePublicPresence;
     const canManageSearchDiscovery = canManagePublicPresence || canManageIntegrations;
+    const menuSetupSummary = useMemo(
+        () => {
+            if (!FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS) return null;
+            if (projectsLoading && selectedProjectId && !selectedProject) return null;
+            return buildMenuSetupProgress({ project: selectedProject as any, storeDetails: storeDetails as any });
+        },
+        [projectsLoading, selectedProject, selectedProjectId, storeDetails],
+    );
+    const canOpenMenuSetupShortcut = useMemo(() => {
+        const actionId = menuSetupSummary?.nextAction?.id;
+        if (!menuSetupSummary?.shouldShow || !actionId) return false;
+        if (actionId === 'open_share') return canManageDailyActions;
+        if (actionId === 'open_public_presence' || actionId === 'open_public_photos') return canManagePublicPresence;
+        return canManageMenu || canManageDailyActions;
+    }, [canManageDailyActions, canManageMenu, canManagePublicPresence, menuSetupSummary]);
     const userLoginLabel = sessionUser.staffAuthMode === 'owner_passcode'
         ? `Staff ID: ${sessionUser.staffLoginId || sessionUser.loginUsername || ''}`
         : profileEmail
@@ -464,6 +481,19 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         openSubScreen('officialPage');
     };
 
+    const openMenuSetupShortcut = useCallback(() => {
+        const actionId = menuSetupSummary?.nextAction?.id;
+        if (actionId === 'open_share') {
+            onOpenShareTab?.();
+            return;
+        }
+        if (actionId === 'open_public_presence' || actionId === 'open_public_photos') {
+            openOfficialPage('main');
+            return;
+        }
+        onOpenMenuTab?.();
+    }, [menuSetupSummary?.nextAction?.id, onOpenMenuTab, onOpenShareTab]);
+
     const getBackTarget = (currentScreen: MoreSubScreen): MoreSubScreen => {
         if (currentScreen === 'officialPage') {
             return officialPageBackTarget;
@@ -502,8 +532,22 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         : { color: 'default', label: tShare('feedbackOff') };
 
     const moduleItems: MoreListItem[] = [
-        ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color={token.colorPrimary} size={20} />, keywords: ['analytics', 'stats', 'performance', 'insights'], label: t('dashboard'), description: t('dashboardDesc'), onClick: () => openSubScreen('dashboard') }] : []),
-        ...(FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && canViewAnalytics ? [{ key: 'businessHealth', icon: <LuActivity color={token.colorSuccess} size={20} />, keywords: ['business health', 'assistant', 'status', 'checks', 'stats'], label: 'Business Health', description: 'Ask about today, this week, and checks that need attention.', onClick: () => openSubScreen('businessHealth') }] : []),
+        ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color={token.colorPrimary} size={20} />, keywords: ['business status', 'public status', 'dashboard', 'needs attention'], label: 'Business status', description: 'What customers can see and what needs attention.', onClick: () => openSubScreen('dashboard') }] : []),
+        ...(canOpenMenuSetupShortcut && menuSetupSummary ? [{
+            key: 'menuSetup',
+            icon: <LuListChecks color={token.colorPrimary} size={20} />,
+            keywords: ['menu setup', 'onboarding', 'progress', 'publish', 'share', 'menu check'],
+            label: 'Menu setup',
+            description: menuSetupSummary.compactCopy,
+            statusTag: {
+                color: menuSetupSummary.requiredDone === menuSetupSummary.requiredTotal ? 'success' as const : menuSetupSummary.nextStep?.status === 'needs_attention' ? 'warning' as const : 'default' as const,
+                label: menuSetupSummary.requiredDone === menuSetupSummary.requiredTotal
+                    ? 'Optional'
+                    : `${menuSetupSummary.requiredDone}/${menuSetupSummary.requiredTotal}`,
+            },
+            onClick: openMenuSetupShortcut,
+        }] : []),
+        ...(FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && canViewAnalytics ? [{ key: 'businessHealth', icon: <LuActivity color={token.colorSuccess} size={20} />, keywords: ['business health', 'status', 'checks'], label: 'Business Health', description: 'Public checks and items that need attention.', onClick: () => openSubScreen('businessHealth') }] : []),
         ...(FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER && FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER_MOBILE && canManageMenu ? [{ key: 'aiMenuManager', icon: <LuMessageCircle color={token.colorPrimary} size={20} />, keywords: ['menu manager', 'ai menu manager', 'agent', 'price', 'availability', 'menu update'], label: 'Menu Manager', description: 'Tell MenuList what changed and approve the prepared menu card.', onClick: () => openSubScreen('aiMenuManager') }] : []),
         ...((FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES || FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE) && canManageDailyActions ? [{ key: 'printAssets', icon: <LuPrinter color={token.colorPrimary} size={20} />, keywords: ['assets', 'print assets', 'templates', 'table tent', 'counter sticker', 'qr print', 'printables'], label: 'Assets', description: 'Download branded table, counter, entrance, feedback, and menu files.', onClick: openPrintAssets }] : []),
         ...(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT && canManageDailyActions ? [{ key: 'printMenu', icon: <LuPrinter color={token.colorSuccess} size={20} />, keywords: ['print menu', 'menu pdf', 'download menu', 'export menu', 'print shop'], label: 'Print Menu', description: 'Preview and create a PDF or print-shop packet.', onClick: openMenuCardExport }] : []),
@@ -687,15 +731,52 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         subScreen,
     ]);
 
+    const pickItems = (items: MoreListItem[], keys: string[]) => {
+        const lookup = new Map(items.map((item) => [item.key, item]));
+        return keys.map((key) => lookup.get(key)).filter((item): item is MoreListItem => Boolean(item));
+    };
+
+    const publicBusinessItems = [
+        ...pickItems(moduleItems, ['dashboard', 'menuSetup', 'businessHealth', 'aiMenuManager']),
+        ...pickItems(businessIdentityItems, ['businessProfileHub', 'hoursEdit']),
+        ...pickItems(moduleItems, ['tempStatus', 'specialMenus', 'officialPageTop', 'designEditor', 'digitalScreens', 'feedback']),
+    ];
+
+    const shareAndMaterialItems = [
+        ...pickItems(businessIdentityItems, ['searchDiscoveryHub']),
+        ...pickItems(moduleItems, ['printAssets', 'printMenu']),
+        ...pickItems(businessPresenceItems, ['feedbackSettings']),
+    ];
+
+    const accountAdminItems = [
+        ...pickItems(businessIdentityItems, ['users', 'roles', 'locations', 'locale', 'timeSlots']),
+        ...pickItems(moduleItems, ['billing', 'transactions']),
+    ];
+
+    const advancedOwnerItems = [
+        ...pickItems(businessPresenceItems, ['analyticsSettings', 'posSync']),
+        ...pickItems(moduleItems, ['todayHistory']),
+    ];
+
     const itemSections = useMemo(() => ([
-        { items: moduleItems, title: 'Modules' },
-        { items: businessIdentityItems, title: 'Business Settings' },
-        { items: businessPresenceItems, title: 'Business Presence' },
+        { items: publicBusinessItems, title: 'What customers see' },
+        { items: shareAndMaterialItems, title: 'Public links and materials' },
+        { items: accountAdminItems, title: 'Account and team' },
+        { items: advancedOwnerItems, title: 'Advanced setup' },
         ...(platformMonitoringItems.length ? [{ items: platformMonitoringItems, title: 'Platform Monitoring' }] : []),
         ...(resellerManagementItems.length ? [{ items: resellerManagementItems, title: 'Reseller' }] : []),
         ...(platformManagementItems.length ? [{ items: platformManagementItems, title: 'Platform Management' }] : []),
         ...(answerlatticeManagementItems.length ? [{ items: answerlatticeManagementItems, title: 'Answerlattice' }] : []),
-    ]), [businessIdentityItems, businessPresenceItems, answerlatticeManagementItems, moduleItems, platformManagementItems, platformMonitoringItems, resellerManagementItems]);
+    ]).filter((section) => section.items.length > 0), [
+        accountAdminItems,
+        advancedOwnerItems,
+        answerlatticeManagementItems,
+        platformManagementItems,
+        platformMonitoringItems,
+        publicBusinessItems,
+        resellerManagementItems,
+        shareAndMaterialItems,
+    ]);
 
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -773,7 +854,16 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'digitalScreens') subScreenContent = <MobileDigitalScreensScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
     else if (subScreen === 'locations') subScreenContent = <MobileLocationsScreen onBack={() => setSubScreen('main')} onOpenBilling={() => setSubScreen('billing')} />;
     else if (subScreen === 'users') subScreenContent = <MobileUsersScreen onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'dashboard') subScreenContent = <MobileDashboardScreen onBack={() => setSubScreen('main')} onOpenBusinessHealth={() => setSubScreen('businessHealth')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
+    else if (subScreen === 'dashboard') subScreenContent = (
+        <MobileDashboardScreen
+            onBack={() => setSubScreen('main')}
+            onOpenBusinessHealth={() => setSubScreen('businessHealth')}
+            onOpenDesignEditor={() => setSubScreen('designEditor')}
+            onOpenMenuTab={onOpenMenuTab}
+            onOpenMoreScreen={openSubScreen}
+            onOpenShareTab={onOpenShareTab}
+        />
+    );
     else if (subScreen === 'businessHealth') subScreenContent = <MobileBusinessHealthScreen onBack={() => setSubScreen('main')} onOpenMenuTab={onOpenMenuTab} onOpenMoreScreen={openSubScreen} onOpenShareTab={onOpenShareTab} />;
     else if (subScreen === 'aiMenuManager') subScreenContent = <MobileAiMenuManagerScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'printAssets') subScreenContent = <MobilePrintAssetsScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} onOpenPrintMenu={() => setSubScreen('printMenu')} />;

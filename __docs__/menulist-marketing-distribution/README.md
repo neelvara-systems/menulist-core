@@ -50,7 +50,8 @@ This follows the existing MenuList marketing strategy: transformation must be vi
 | [menulist-marketing-distribution_demo-placeholder-assets.md](./menulist-marketing-distribution_demo-placeholder-assets.md) | Temporary placeholder assets for salon/spa, service-list, local-service pages, and launch-video planning |
 | [menulist-marketing-distribution_product-hunt-asset-pack.md](./menulist-marketing-distribution_product-hunt-asset-pack.md) | Product Hunt thumbnail, gallery, tagline, maker-comment, and reply-bank draft copy |
 | [menulist-marketing-distribution_product-hunt-launch-page-spec.md](./menulist-marketing-distribution_product-hunt-launch-page-spec.md) | Future `/launch/product-hunt` page spec, copy, route gates, and tracking plan |
-| [menulist-marketing-distribution_launch-video-scripts.md](./menulist-marketing-distribution_launch-video-scripts.md) | 10-15 second vertical scripts and 60-90 second walkthrough script |
+| [../videos/README.md](../videos/README.md) | Dedicated MenuList video planning folder with type-wise docs for launch/hero, product demo, feature videos, reels, paid cutdowns, campaign calendar, and production plan |
+| [menulist-marketing-distribution_launch-video-scripts.md](./menulist-marketing-distribution_launch-video-scripts.md) | Compatibility pointer to `__docs__/videos/`; do not add new video strategy here |
 | [menulist-marketing-distribution_activation-follow-up.md](./menulist-marketing-distribution_activation-follow-up.md) | Two-surface activation definition, funnel states, tracking columns, and follow-up templates |
 | [menulist-marketing-distribution_founder-post-pack.md](./menulist-marketing-distribution_founder-post-pack.md) | Founder LinkedIn/X launch, pilot, partner, and broad-SMB positioning post drafts |
 | [menulist-marketing-distribution_partner-brief.md](./menulist-marketing-distribution_partner-brief.md) | Draft setup-partner brief, workflow, fit rules, and qualification questions |

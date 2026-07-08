@@ -881,7 +881,7 @@ assert(mobileShell.includes("FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER") && mobileShe
 
 const mobileNavigation = read('src/components/mobile/MobileNavigation.tsx');
 assert(mobileNavigation.includes("'aiMenuManager'"), 'MobileNavigation must include the Menu Manager tab key');
-assert(mobileNavigation.includes("title: 'Manager'"), 'MobileNavigation must expose Menu Manager in the bottom tab bar');
+assert(mobileNavigation.includes("title: 'Menu help'"), 'MobileNavigation must expose owner-friendly Menu help in the bottom tab bar');
 
 const mobileScreen = read('src/components/mobile/ai-menu-manager/MobileAiMenuManagerScreen.tsx');
 const mobileProposalCard = read('src/components/mobile/ai-menu-manager/MobileAiMenuCardStack.tsx');

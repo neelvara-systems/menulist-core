@@ -29,6 +29,7 @@ import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepare
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
+import MenuStylePresetPreview from '@/components/shared/menuDesign/MenuStylePresetPreview';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
@@ -39,7 +40,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuChevronDown, LuEye, LuLink2, LuPalette, LuX } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { Button, Card, DotLoading, Flex, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
+import { Button, Card, Collapse, DotLoading, Flex, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
@@ -695,6 +696,17 @@ export default function MobileDesignEditorScreen({
                     </Flex>
                 </SectionCard>
 
+                <Collapse>
+                    <Collapse.Panel
+                        key="fine-tune-style"
+                        title={(
+                            <Flex gap={2} vertical>
+                                <Text strong>Fine tune style</Text>
+                                <Text type="secondary">Optional. Recommended styles are enough for most menus.</Text>
+                            </Flex>
+                        )}
+                    >
+                        <Flex gap={12} vertical>
                 <SectionCard title={t('menuMood')} subtitle={t('menuMoodSubtitle')}>
                     <Flex gap={8} vertical>
                         {Object.entries(MENU_MOODS).map(([key, config]) => {
@@ -802,6 +814,9 @@ export default function MobileDesignEditorScreen({
                         />
                     </List>
                 </SectionCard>
+                        </Flex>
+                    </Collapse.Panel>
+                </Collapse>
 
                 <SectionCard title={t('background')} subtitle={t('backgroundImagePriorityNote')}>
                     <Flex gap={12} vertical>
@@ -975,79 +990,21 @@ export default function MobileDesignEditorScreen({
                                             borderWidth: isSelected ? 2 : 1,
                                         }}
                                     >
-                                        <Flex align="center" gap={12}>
-                                            <Text style={{ fontSize: 18 }}>{preset.emoji}</Text>
-                                            <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
-                                                <Text strong>{preset.label}</Text>
-                                                <Text type="secondary">{preset.description}</Text>
+                                        <Flex gap={10} vertical>
+                                            <Flex align="center" gap={12}>
+                                                <Text style={{ fontSize: 18 }}>{preset.emoji}</Text>
+                                                <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
+                                                    <Text strong>{preset.label}</Text>
+                                                    <Text type="secondary">{preset.description}</Text>
+                                                </Flex>
+                                                {isSelected ? <LuCheck color={token.colorPrimary} size={18} /> : null}
                                             </Flex>
-                                            {isSelected ? <LuCheck color={token.colorPrimary} size={18} /> : null}
+                                            <MenuStylePresetPreview compact preset={preset} selected={isSelected} />
                                         </Flex>
                                     </Card>
                                 );
                             })}
                         </Flex>
-
-                        {selectedRecommendedPreset ? (
-                            <Card>
-                                <Flex gap={12} vertical>
-                                    <Flex gap={2} vertical>
-                                        <Text strong>{selectedRecommendedPreset.label}</Text>
-                                        <Text type="secondary">{selectedRecommendedPreset.recommendedFor}</Text>
-                                    </Flex>
-
-                                    <Flex align="center" justify="space-between">
-                                        <Text type="secondary">{t('menuMood')}</Text>
-                                        <Text strong>{MENU_MOODS[selectedRecommendedPreset.mood]?.label}</Text>
-                                    </Flex>
-                                    <Flex align="center" justify="space-between">
-                                        <Text type="secondary">{t('backgroundColor')}</Text>
-                                        <Flex align="center" gap={8}>
-                                            <span
-                                                aria-hidden
-                                                style={{
-                                                    background: MENU_MOODS[selectedRecommendedPreset.mood]?.background,
-                                                    border: `1px solid ${token.colorBorderSecondary}`,
-                                                    borderRadius: 999,
-                                                    display: 'inline-block',
-                                                    height: 18,
-                                                    width: 18,
-                                                }}
-                                            />
-                                            <Text strong>{MENU_MOODS[selectedRecommendedPreset.mood]?.background?.toUpperCase()}</Text>
-                                        </Flex>
-                                    </Flex>
-                                    <Flex align="center" justify="space-between">
-                                        <Text type="secondary">{t('menuLayout')}</Text>
-                                        <Text strong>{MENU_LAYOUTS[selectedRecommendedPreset.layout]?.label}</Text>
-                                    </Flex>
-                                    <Flex align="center" justify="space-between">
-                                        <Text type="secondary">{t('brandColor')}</Text>
-                                        <Flex align="center" gap={8}>
-                                            <span
-                                                aria-hidden
-                                                style={{
-                                                    backgroundColor: selectedRecommendedPreset.accentColor,
-                                                    border: `1px solid ${token.colorBorderSecondary}`,
-                                                    borderRadius: 999,
-                                                    display: 'inline-block',
-                                                    height: 18,
-                                                    width: 18,
-                                                }}
-                                            />
-                                            <Text strong>{selectedRecommendedPreset.accentColor.toUpperCase()}</Text>
-                                        </Flex>
-                                    </Flex>
-
-                                    <Flex gap={6} wrap>
-                                        <Tag color={selectedRecommendedPreset.showItemPrices ? 'success' : 'default'}>{t('showItemPrices')}: {selectedRecommendedPreset.showItemPrices ? t('on') : t('off')}</Tag>
-                                        <Tag color={selectedRecommendedPreset.showImages ? 'success' : 'default'}>{t('showItemImages')}: {selectedRecommendedPreset.showImages ? t('on') : t('off')}</Tag>
-                                        <Tag color={selectedRecommendedPreset.showCategoryIcons ? 'success' : 'default'}>{t('showCategoryIcons')}: {selectedRecommendedPreset.showCategoryIcons ? t('on') : t('off')}</Tag>
-                                        <Tag color={selectedRecommendedPreset.showCategoryTabs ? 'success' : 'default'}>{t('categoryTabs')}: {selectedRecommendedPreset.showCategoryTabs ? t('on') : t('off')}</Tag>
-                                    </Flex>
-                                </Flex>
-                            </Card>
-                        ) : null}
 
                         <Button block color="primary" disabled={!selectedRecommendedPreset} onClick={applySelectedRecommendedStyle}>
                             {t('applyStyle')}

@@ -5,6 +5,7 @@ import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattic
 import { logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { normalizeAnswerlatticeProductSurfaceId } from '@lib/answerlattice/productSurfaceIdBoundary';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import {
     ANSWERLATTICE_PRODUCT_SURFACE_LIMIT,
     getContextContentSummaryDocId,
@@ -36,8 +37,8 @@ const getSummaryDocRef = (tId: number, sId: number) =>
     doc(answerlatticeFirebaseClient, SUMMARY_COLLECTION, getContextContentSummaryDocId(tId, sId));
 
 type ProductSurfaceScopeInput = {
-    tId?: number;
-    sId?: number;
+    tId?: unknown;
+    sId?: unknown;
 };
 
 type ProductSurfaceSummaryRefreshContext = Record<string, boolean | number | string | null | undefined>;
@@ -154,20 +155,28 @@ const readProductSurfaceSummaryRebuildResponse = async (
     return (payload as ProductSurfaceSummaryRebuildResponse).summary;
 };
 
+const normalizeProductSurfaceScope = (scope?: ProductSurfaceScopeInput | null) => {
+    const tId = normalizeAnswerlatticeScopeDocumentId(scope?.tId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(scope?.sId);
+    if (!tId || !sId) return null;
+    return { tId, sId };
+};
+
 const requireScope = async (scopeOverride?: ProductSurfaceScopeInput) => {
-    const overrideTId = Number(scopeOverride?.tId);
-    const overrideSId = Number(scopeOverride?.sId);
-    if (Number.isFinite(overrideTId) && Number.isFinite(overrideSId) && overrideTId > 0 && overrideSId > 0) {
-        return { tId: overrideTId, sId: overrideSId };
+    if (scopeOverride) {
+        const overrideScope = normalizeProductSurfaceScope(scopeOverride);
+        if (!overrideScope) {
+            throw new Error('Answerlattice workspace is not available.');
+        }
+        return overrideScope;
     }
 
     const session = await getActiveSession();
-    const tId = Number(session?.tId);
-    const sId = Number(session?.sId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+    const scope = resolveAnswerlatticeSessionScope(session);
+    if (!scope) {
         throw new Error('Answerlattice workspace is not available.');
     }
-    return { tId, sId };
+    return { tId: scope.tenantId, sId: scope.storeId };
 };
 
 const buildProductSurfaceDocId = (tId: number, sId: number, key: string) =>

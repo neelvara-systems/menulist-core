@@ -16,6 +16,7 @@ export interface DashboardSidebarShellItem {
     key: string;
     label: ReactNode;
     icon: DashboardShellIcon;
+    sectionLabel?: ReactNode;
     active?: boolean;
     subNavActive?: boolean;
     expanded?: boolean;
@@ -343,6 +344,11 @@ export default function DashboardSidebarShell({
                         className={`${styles.menuSectionWrap} ${item.subNav?.length ? styles.parentMenuSectionWrap : ''}`}
                         key={item.key}
                     >
+                        {showExpandedSidebar && item.sectionLabel ? (
+                            <div className={styles.navSectionLabel}>
+                                {item.sectionLabel}
+                            </div>
+                        ) : null}
                         {renderMenuButton(item, { showChevron: Boolean(item.subNav?.length) })}
                         <AnimatePresence>
                             {Boolean(item.expanded && showExpandedSidebar && item.subNav?.length) && (

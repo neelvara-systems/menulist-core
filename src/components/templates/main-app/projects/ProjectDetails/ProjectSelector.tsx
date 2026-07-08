@@ -416,7 +416,9 @@ export const ProjectSelector = ({
             content: (
                 <div>
                     <p>Permanently delete <strong>&quot;{projectName}&quot;</strong>?</p>
-                    <p style={{ fontSize: 12, color: '#ff4d4f' }}>This action cannot be undone. All {labels.offeringPhrase} data will be lost.</p>
+                    <p style={{ fontSize: 12, color: '#ff4d4f' }}>
+                        Customers will no longer see this {labels.offeringLower}. This action cannot be undone. All {labels.offeringPhrase} data will be lost.
+                    </p>
                 </div>
             ),
             okText: 'Delete',

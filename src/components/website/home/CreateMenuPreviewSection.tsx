@@ -1,17 +1,23 @@
+'use client';
+
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { LuArrowRight, LuCamera, LuCheck, LuClock3, LuLink, LuShieldCheck } from 'react-icons/lu';
+import { LuArrowRight, LuCamera, LuCheck, LuClock3, LuLink, LuShieldCheck, LuType } from 'react-icons/lu';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 
+type SourceKey = 'photo' | 'link' | 'typed';
+
 const sourceCards = [
   { key: 'photo', Icon: LuCamera },
   { key: 'link', Icon: LuLink },
-  { key: 'review', Icon: LuShieldCheck },
-];
+  { key: 'typed', Icon: LuType },
+] as const;
 
 const previewSteps = ['previewStep0', 'previewStep1', 'previewStep2'];
+const sampleRows = ['Sample0', 'Sample1', 'Sample2'];
 const trustItems = [
   { key: 'trust0', Icon: LuShieldCheck },
   { key: 'trust1', Icon: LuCheck },
@@ -20,6 +26,7 @@ const trustItems = [
 
 export default function CreateMenuPreviewSection() {
   const t = useTranslations('Website');
+  const [activeSource, setActiveSource] = useState<SourceKey>('photo');
 
   return (
     <SectionWrapper className="ws-create-preview-section" id="create-menu-preview">
@@ -37,7 +44,14 @@ export default function CreateMenuPreviewSection() {
 
             <div className="ws-create-preview__source-grid" aria-label={t('CreateMenuPreview.sourceLabel')}>
               {sourceCards.map(({ key, Icon }) => (
-                <div className="ws-create-preview__source-card" key={key}>
+                <button
+                  type="button"
+                  aria-pressed={activeSource === key}
+                  className="ws-create-preview__source-card"
+                  data-active={activeSource === key ? 'true' : 'false'}
+                  key={key}
+                  onClick={() => setActiveSource(key)}
+                >
                   <span className="ws-create-preview__source-icon" aria-hidden="true">
                     <Icon size={20} />
                   </span>
@@ -45,7 +59,7 @@ export default function CreateMenuPreviewSection() {
                     <h3>{t(`CreateMenuPreview.${key}Title`)}</h3>
                     <p>{t(`CreateMenuPreview.${key}Body`)}</p>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
 
@@ -76,8 +90,16 @@ export default function CreateMenuPreviewSection() {
                 <span />
               </div>
               <div className="ws-create-preview__phone-hero">
-                <span>{t('CreateMenuPreview.previewLabel')}</span>
-                <strong>{t('CreateMenuPreview.previewTitle')}</strong>
+                <span>{t(`CreateMenuPreview.${activeSource}PreviewKicker`)}</span>
+                <strong>{t(`CreateMenuPreview.${activeSource}PreviewTitle`)}</strong>
+              </div>
+              <div className="ws-create-preview__sample-list" aria-label={t('CreateMenuPreview.sampleLabel')}>
+                {sampleRows.map((key) => (
+                  <div className="ws-create-preview__sample-row" key={key}>
+                    <span aria-hidden="true" />
+                    <p>{t(`CreateMenuPreview.${activeSource}${key}`)}</p>
+                  </div>
+                ))}
               </div>
               <div className="ws-create-preview__preview-list">
                 {previewSteps.map((key, index) => (

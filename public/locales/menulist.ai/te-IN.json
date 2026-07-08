@@ -89,7 +89,13 @@
         "Support": "Support",
         "Use MenuList": "MenuList ఉపయోగించండి",
         "Assets": "అసెట్స్",
-        "Growth Kits": "Growth Kits"
+        "Growth Kits": "Growth Kits",
+        "Status": "స్థితి",
+        "What customers see": "కస్టమర్లు చూసేది",
+        "Public links and materials": "పబ్లిక్ లింకులు మరియు మెటీరియల్స్",
+        "Account and team": "ఖాతా మరియు టీమ్",
+        "Advanced setup": "అధునాతన సెటప్",
+        "Internal tools": "అంతర్గత టూల్స్"
     },
     "Settings": {
         "language": "Language",
@@ -1665,7 +1671,7 @@
         "itemCustomerImpactFeatureLabel": "Feature level",
         "itemCustomerImpactFeatureDesc": "Guides Featured choices. It does not move the item in the menu and customers do not see this setting.",
         "deleteItemTitle": "Delete item",
-        "deleteItemConfirm": "Are you sure you want to delete \"{item}\"?",
+        "deleteItemConfirm": "Customers will no longer see \"{item}\". Delete this item? This cannot be undone.",
         "deleteItemAction": "Delete this item",
         "categoriesSummary": "{items} · {categories}",
         "categoriesCount": "{count} categories",

@@ -1,7 +1,7 @@
 # MenuList Marketing Distribution - Action Register
 
-**Status:** Active tracker  
-**Created:** June 22, 2026  
+**Status:** Active tracker
+**Created:** June 22, 2026
 **Purpose:** Live task log for MenuList marketing/distribution work.
 
 ## Status Legend
@@ -88,6 +88,16 @@
 | MLD-A013 | QR print trust-cue hardening review | Codex | Done | Accepted factual trust cues inside existing Assets/Menu Kit; enforced four-module QR quiet zones; rejected standalone QR-product framing, unsupported verified/secure/no-spam claims, WhatsApp consent copy on normal menu QR, and ordinary menu-scan interstitials |
 | MLD-A014 | QR-to-WhatsApp experiment feature boundary | Codex | Done | Created `__docs__/qr-whatsapp-experiments/` and added a disabled feature flag so physical QR campaign tests stay separate from ordinary Assets/Menu Kit QR behavior |
 | MLD-A015 | Branded QR action-template doctrine | Codex | Done | Created `__docs__/branded-qr-action-templates/` and aligned Assets, Printable Asset Templates, Menu Kit, and QR WhatsApp docs around scan-safe branded action files |
+| MLD-A016 | Full launch video system v2 | Codex | Done | Expanded `menulist-marketing-distribution_launch-video-scripts.md` into a complete video system after checking live `menulist.online` positioning; no video files created |
+| MLD-A017 | Dedicated type-wise video docs folder | Codex | Done | Created `__docs__/videos/` with separate docs for launch/hero video, product demo, feature videos, reels, paid ad cutdowns, campaign calendar, and production plan; old launch-video doc now points there |
+| MLD-A018 | 12-video production handoff blueprint | Codex | Done | Created `__docs__/videos/videos_launch-product-marketing-production-blueprint.md` with executive summary, brand rules, visual language, assumptions, A-P production sections for all 12 videos, asset list, shot list, video design system, thumbnails, launch sequencing, review checklist, deliverables table, and editor notes |
+| MLD-A019 | Individual 12-video handoff files | Codex | Done | Added standalone `__docs__/videos/videos_01-*` through `videos_12-*` files so each required video type has its own A-P design-team handoff |
+| MLD-A020 | AI-era video strategy addendum | Codex | Done | Added `__docs__/videos/videos_ai-era-market-strategy.md`, `videos_future-ai-search-ready-video.md`, AI-era readiness language in the master blueprint, all 12 standalone video files, short-form plan, calendar, and launch-video compatibility pointer |
+| MLD-A021 | Founder review of launch video system | Codex | Done | Added `__docs__/videos/videos_founder-review.md`; approved production preparation, rejected risky claims, and marked public publishing blocked until production gates pass |
+| MLD-A022 | HyperFrames 30-sec launch announcement draft | Codex | Done | Created `__docs__/videos/hyperframes/menulist-launch-announcement-30s/` with visual identity, composition source, narration WAV, rendered MP4, review frames, and production note |
+| MLD-A023 | HyperFrames Founder / Brand POV draft | Codex | Done | Created `__docs__/videos/hyperframes/menulist-founder-brand-pov/` with visual identity, founder POV script, composition source, narration WAV, rendered 75s MP4, review frames, and production note |
+| MLD-A024 | HyperFrames-only audio production plan | Codex | Done | Added `__docs__/videos/videos_audio-production-research-and-plan.md`; defaulted MenuList video production to local HyperFrames plus FFmpeg, classified macOS `say` as scratch-only, and defined local TTS/BGM/SFX/mix/master gates |
+| MLD-A025 | Audio v2 rescue pass for rendered HyperFrames drafts | Codex | Done | Created landscape 30-sec, native 9:16 30-sec, and Founder POV audio-v2 MP4s using local Kokoro `af_nova`, FreeToUse `Enlivening` BGM, FFmpeg ducking/loudnorm, real MenuList icon, and website blue theme; still needs founder listen approval before public use |
 
 ## Research Actions
 
@@ -106,6 +116,7 @@
 | MLD-R011 | Founder distribution and automation research | Codex | Done | Captured in `../menulist-signaldesk/menulist-signaldesk_founder-distribution-research-2026-06-24.md`; startup/founder/community research confirms Activation Concierge, proof assets, demand listening, and objection learning before more outbound automation |
 | MLD-R012 | QR-to-WhatsApp A/B testing blueprint review | Codex | Done | Accepted the funnel model only as a future governed experiment feature: physical asset -> tracked landing/redirect -> WhatsApp click -> consent -> outcome dashboard |
 | MLD-R013 | Branded QR physical-action creative review | Codex | Done | Accepted branded physical action points as a MenuList Assets doctrine; rejected generic QR generator and artistic QR output until scan-safety tests exist |
+| MLD-R014 | 2026 AI/search-era video strategy check | Codex | Done | Source-checked Google Search Central, BrightLocal, Toast, Wyzowl, YouTube, and Sprout signals; accepted readiness/source-quality framing and rejected ranking/recommendation guarantees |
 
 ## Launch Actions
 
@@ -161,3 +172,15 @@
 | MLD-V014 | QR trust-cue hardening verification | Codex | Done | Passed `npm run verify:menu-card-export`, `npm run verify:printable-asset-templates`, `git diff --check`, focused ESLint, and `npx tsc --noEmit --incremental false --pretty false` |
 | MLD-V015 | QR WhatsApp Experiments docs verification | Codex | Done | Passed `git diff --check`, feature-boundary grep, docs file inventory, claim-boundary scan, and `npx tsc --noEmit --incremental false --pretty false` |
 | MLD-V016 | Branded QR Action Templates alignment verification | Codex | Done | Passed `git diff --check`, docs file inventory, boundary grep, and prohibited-claim scan; hits were only negative guardrail wording |
+| MLD-V017 | Launch video system doc verification | Codex | Done | Live site checked on July 7, 2026; docs-only update passed `git diff --check`, targeted prohibited-claim scan, and local markdown table/link smoke |
+| MLD-V018 | Dedicated video folder docs verification | Codex | Done | Type-wise video docs pass `git diff --check`, markdown relative-link smoke, and targeted claim-boundary scan |
+| MLD-V019 | 12-video production blueprint verification | Codex | Done | Master handoff doc checked for all 12 required video sections, `git diff --check`, markdown relative-link smoke, and targeted claim-boundary scan |
+| MLD-V020 | Individual 12-video file verification | Codex | Done | All standalone `videos_01-*` through `videos_12-*` files checked for required A-P structure, markdown links, whitespace, and claim-boundary wording |
+| MLD-V021 | AI-era video strategy verification | Codex | Done | AI/search-era docs pass source-link, markdown-link, whitespace, and prohibited-claim checks; unsafe search/AI claims remain negative guardrails only |
+| MLD-V022 | Founder review verification | Codex | Done | Founder review doc passed markdown link, whitespace, and claim-boundary checks; verdict is production-prep approved but publish-blocked until gates pass |
+| MLD-V023 | HyperFrames draft verification | Codex | Done | Installed Node 22 through existing nvm for HyperFrames only; `npm run check` passed with 0 errors and 0 layout issues; rendered 30s MP4 with H.264 video and AAC audio; visually checked review frames |
+| MLD-V024 | Founder POV HyperFrames verification | Codex | Done | `npm run check` passed with 0 lint warnings, no console errors, 57 WCAG-passing text elements, and 0 layout issues; rendered 75.03s MP4 with H.264 video and AAC audio; visually checked review frames at 2s, 12s, 24s, 36s, 48s, 60s, and 70s |
+| MLD-V025 | Audio production plan verification | Codex | Done | Passed `git diff --check`, relative-link smoke, targeted claim-boundary scan, local HyperFrames CLI probe for `tts`, `transcribe`, and `beats`, and local Kokoro candidate generation; prohibited-claim hits are negative guardrails only |
+| MLD-V026 | Launch announcement audio v2 verification | Codex | Done | `npm run check` passed with 0 errors, no console errors, 67 WCAG-passing text elements, and 0 layout issues; rendered MP4 is 1920 x 1080, 30fps, H.264 video, AAC audio, 30.04 seconds; loudness spot-check found `input_i=-16.58`, `input_tp=-4.60`; review frames checked at 1s, 11s, 18s, and 26s |
+| MLD-V027 | Launch announcement vertical audio v2 verification | Codex | Done | Native 9:16 HyperFrames project passed `npm run check` with 0 errors and 0 layout issues; rendered MP4 is 1080 x 1920, 30fps, H.264 video, AAC audio, 30.04 seconds, 3.5 MB; review frames checked at 1s, 11s, 18s, and 26s |
+| MLD-V028 | Founder POV audio v2 verification | Codex | Done | Founder POV HyperFrames project passed `npm run check` with 0 errors, 0 warnings, no console errors, 62 WCAG-passing text elements, and 0 layout issues; rendered MP4 is 1920 x 1080, 30fps, H.264 video, AAC audio, 75.03 seconds, 7.5 MB; loudness spot-check found `input_i=-16.73`, `input_tp=-4.78`; review frames checked at 2s, 12s, 24s, 36s, 48s, 60s, and 70s |

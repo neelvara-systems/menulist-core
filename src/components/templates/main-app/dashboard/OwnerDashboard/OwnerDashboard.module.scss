@@ -46,6 +46,28 @@ $spacing-xl: 32px;
   }
 }
 
+.truthStatusCard {
+  border: 1px solid color-mix(in srgb, var(--ant-color-success) 24%, var(--ant-color-border));
+  border-radius: $radius-lg;
+  box-shadow: $shadow-sm;
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+  }
+}
+
+.quickActionsCard {
+  border-radius: $radius-md;
+
+  :global(.ant-card-head) {
+    min-height: 42px;
+  }
+
+  :global(.ant-card-body) {
+    padding: $spacing-md;
+  }
+}
+
 // View Mode Tabs - Primary action area
 .viewModeTabs {
   margin-bottom: $spacing-md;

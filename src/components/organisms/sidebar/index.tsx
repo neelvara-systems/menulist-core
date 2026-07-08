@@ -270,6 +270,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
             key: nav.route,
             label: tNav(nav.label as any),
             icon: nav.icon,
+            sectionLabel: nav.sectionLabel ? tNav(nav.sectionLabel as any) : undefined,
             active: nav.active,
             subNavActive: nav.subNavActive,
             expanded: nav.showSubNav,

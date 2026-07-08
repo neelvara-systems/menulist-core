@@ -110,6 +110,7 @@
     "verify:help-center-boundary": "node scripts/verification/verify-help-center-boundary.js",
     "verify:communication-kit-boundary": "node scripts/verification/verify-communication-kit-boundary.js",
     "verify:menu-presence-monitor-boundary": "node scripts/verification/verify-menu-presence-monitor-boundary.js",
+    "verify:menu-setup-progress-boundary": "node scripts/verification/verify-menu-setup-progress-boundary.js",
     "verify:multi-location-boundary": "node scripts/verification/verify-multi-location-boundary.js",
     "verify:pos-sync-boundary": "node scripts/verification/verify-pos-sync-boundary.js",
     "verify:staff-roles-route-parity": "node scripts/verification/verify-staff-roles-route-parity.js",

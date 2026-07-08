@@ -28,6 +28,7 @@ import {
 } from '@lib/answerlattice/faqContent';
 import { normalizeAnswerlatticeFaqId } from '@lib/answerlattice/faqIdBoundary';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { revalidateAnswerlatticePublicClientCache } from '@lib/cache/answerlatticePublicClientCache';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
@@ -53,7 +54,7 @@ const getArticleRef = (articleId: string) => {
 };
 
 type FaqArticleMaintenanceScope = { tId: number; sId: number };
-type FaqArticleMaintenanceInput = { id: string; tId?: number; sId?: number };
+type FaqArticleMaintenanceInput = { id: string; tId?: unknown; sId?: unknown };
 
 export type AnswerlatticeFaqWriteResult = AnswerlatticeFaq & {
     success: true;
@@ -108,27 +109,28 @@ export function assertAnswerlatticeFaqArchiveSucceeded(
 
 const requireScope = async () => {
     const session = await getActiveSession();
-    const tId = Number(session?.tId);
-    const sId = Number(session?.sId);
-    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+    const scope = resolveAnswerlatticeSessionScope(session);
+    if (!scope) {
         throw new Error('Answerlattice workspace is not available.');
     }
-    return { tId, sId };
+    return { tId: scope.tenantId, sId: scope.storeId };
 };
 
-const isValidFaqArticleMaintenanceScope = (scope: FaqArticleMaintenanceScope): boolean => (
-    Number.isFinite(scope.tId) && Number.isFinite(scope.sId) && scope.tId > 0 && scope.sId > 0
-);
+const normalizeFaqArticleMaintenanceScope = (
+    source: Pick<FaqArticleMaintenanceInput, 'tId' | 'sId'>,
+): FaqArticleMaintenanceScope | null => {
+    const tId = normalizeAnswerlatticeScopeDocumentId(source.tId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(source.sId);
+    if (!tId || !sId) return null;
+    return { tId, sId };
+};
 
 const resolveFaqArticleMaintenanceScope = async (
     article: FaqArticleMaintenanceInput,
     failureCode: string,
 ): Promise<FaqArticleMaintenanceScope | null> => {
-    const explicitScope = {
-        tId: Number(article.tId),
-        sId: Number(article.sId),
-    };
-    if (isValidFaqArticleMaintenanceScope(explicitScope)) return explicitScope;
+    const explicitScope = normalizeFaqArticleMaintenanceScope(article);
+    if (explicitScope) return explicitScope;
 
     try {
         return await requireScope();

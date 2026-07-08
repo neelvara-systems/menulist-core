@@ -1,7 +1,7 @@
 # Knowledge Base — Technical Implementation Blueprint
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-07-05
+> **Version:** 1.0.1
+> **Last Updated:** 2026-07-06
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -60,6 +60,8 @@ Article create/update/delete and bulk publish/archive UI paths must require `ass
 When Answerlattice product surfaces are enabled, KB article create/update and approved KB-generation publish paths must await `rebuildProductSurfaceContentSummaryWithDiagnostics()` after the confirmed write. Refresh failures log `answerlattice_article_summary_refresh_after_create_failed`, `answerlattice_article_summary_refresh_after_update_failed`, or `answerlattice_kb_generation_summary_refresh_after_publish_failed` with bounded article/job metadata and show fixed contextual-help refresh warning copy. The primary article/job write remains successful; embedding failures are also caught inside `ArticleModal.tsx` so a post-write embedding failure cannot be reported as a failed article save.
 
 Answerlattice KB session lookup diagnostics (July 5, 2026): category and article DAL session lookups no longer collapse thrown `getActiveSession()` failures into anonymous or global fallback scope. Categories log `answerlattice_kb_categories_session_lookup_failed`, articles log `answerlattice_kb_articles_session_lookup_failed`, and operation metadata is presence/length/type only. Category reads return `null` if the session lookup itself failed, so they do not fall through to the legacy categories doc. Legitimate no-session/null behavior and scoped tenant/store reads remain unchanged.
+
+Answerlattice KB owner content scope boundary (July 6, 2026): category document IDs, article data/session scope, article final read guards, FAQ article-maintenance scope, product-surface explicit/session scope, and protected article embedding authorization now reuse the shared exact positive numeric Firestore document-ID scope normalizer. Malformed tenant/store values, partial product-surface overrides, whitespace-mutated values, leading-zero strings, decimals, zero, negative, empty, unsafe, reserved, or path-shaped scope now fail before scoped KB/FAQ/product-surface Firestore work instead of passing through loose numeric coercion. Valid owner/admin KB behavior, platform administrative reads, scoped category legacy fallback, article writes, FAQ maintenance, product-surface reads, and embedding generation keep the same operation shape.
 
 ### 2.3 Database Layer
 

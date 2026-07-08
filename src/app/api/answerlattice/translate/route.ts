@@ -27,7 +27,7 @@ import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVers
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -177,13 +177,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const article = articleDoc.data()!;
-        const articleTenantId = Number(article.tId ?? article.tenantId);
-        const articleStoreId = Number(article.sId ?? article.storeId);
+        const articleTenantId = normalizeAnswerlatticeScopeDocumentId(article.tId ?? article.tenantId);
+        const articleStoreId = normalizeAnswerlatticeScopeDocumentId(article.sId ?? article.storeId);
         if (
-            !Number.isFinite(articleTenantId) ||
-            !Number.isFinite(articleStoreId) ||
-            articleTenantId !== Number(sessionScope.tenantId) ||
-            articleStoreId !== Number(sessionScope.storeId)
+            !articleTenantId ||
+            !articleStoreId ||
+            articleTenantId !== sessionScope.tenantId ||
+            articleStoreId !== sessionScope.storeId
         ) {
             return NextResponse.json({ error: 'Article not found.' }, { status: 404 });
         }

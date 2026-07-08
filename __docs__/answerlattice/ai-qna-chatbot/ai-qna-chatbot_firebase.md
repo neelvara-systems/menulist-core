@@ -1,7 +1,7 @@
 # AI QnA Chatbot — Firebase Cost & Operations Tracking
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-06-30
+> **Version:** 1.0.1
+> **Last Updated:** 2026-07-06
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -37,7 +37,7 @@
 | **Collection** | `aiSearchHistory` |
 | **DB_COLLECTIONS constant** | `DB_COLLECTIONS.AI_SEARCH_HISTORY` |
 | **Doc ID** | Auto-generated |
-| **Scoping** | `tId` field (tenant) |
+| **Scoping** | `tId + sId` fields |
 | **Avg Doc Size** | 2-10 KB |
 | **Growth Rate** | Per-unique-search (cache misses only save new docs) |
 
@@ -200,7 +200,7 @@
 | `chatSessions` | `tId ASC, sId ASC, modifiedOn DESC` | Paginated conversations |
 | `chatAnalytics` | `tId ASC, sId ASC, date ASC` | Aggregated stats |
 | `chatAnalytics` | `tId ASC, sId ASC, modifiedOn DESC` | Last update check |
-| `aiSearchHistory` | `cacheKey ASC, tId ASC` | Cache lookup |
+| `aiSearchHistory` | `cacheKey ASC, tId ASC, sId ASC, createdOn DESC` | Cache lookup |
 | `kb_articles` | `status ASC` + Vector(`embedding`, 768, COSINE) | Vector search |
 
 ---
@@ -218,6 +218,8 @@
 | **apiCallComposerClientWithoutLoader** | Better UX | Chat operations don't block global UI |
 
 HelpChat answer-feedback acknowledgement hardening is cost-neutral. Feedback submission still performs the existing `aiSearchHistory` feedback merge and `chatSessions` message feedback mirror, but `submitSearchFeedback()` now requires explicit acknowledgements from both writes before local feedback state, thank-you copy, or negative-feedback signal emission advances. This adds no Firestore reads/writes/deletes beyond existing feedback writes, no Storage operations, no routes, no Cloud Functions, no indexes, no rules, and no deployment requirement.
+
+Search-history server scope hardening is cost-neutral. `src/database/aiSearchHistory/server.ts` now requires exact positive numeric Firestore document-ID tenant/store scope before composing new `aiSearchHistory` rows or querying the cache by `cacheKey + tId + sId`. Valid cache hits and search-history writes keep the same one-read / one-write operation shape; malformed scope returns no cache row or fails before writing a row with fallback `0` scope. This adds no reads/writes/deletes for valid requests, Storage operations, routes, rules, indexes, Cloud Functions, provider calls, Firebase deployment, or Vercel deployment.
 
 HelpChat session-delete acknowledgement hardening is also cost-neutral. The delete path still performs the existing session read, best-effort Storage cleanup for attached chat images, and one chat-session delete, but the UI now requires explicit delete acknowledgement before success copy and restores the previous active-session/search state if acknowledgement fails.
 

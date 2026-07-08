@@ -11,7 +11,7 @@ import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting'
 import { extractEntitiesFromArticles, extractPlainTextFromTipTap } from '@lib/answerlattice/entityExtraction';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
@@ -112,8 +112,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const article = validation.data;
         articleIdForLog = article.id;
-        const tenantId = Number(scope.tenantId);
-        const storeId = Number(scope.storeId);
+        const tenantId = scope.tenantId;
+        const storeId = scope.storeId;
         const articleRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES).doc(article.id);
         const articleSnap = await articleRef.get();
         if (!articleSnap.exists) {
@@ -121,7 +121,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const persistedArticle = articleSnap.data() || {};
-        if (Number(persistedArticle.tId) !== tenantId || Number(persistedArticle.sId) !== storeId) {
+        const articleTenantId = normalizeAnswerlatticeScopeDocumentId(persistedArticle.tId ?? persistedArticle.tenantId);
+        const articleStoreId = normalizeAnswerlatticeScopeDocumentId(persistedArticle.sId ?? persistedArticle.storeId);
+        if (!articleTenantId || !articleStoreId || articleTenantId !== tenantId || articleStoreId !== storeId) {
             logger.security('Authorization Failed - Answerlattice Article Entity Extraction Scope Mismatch', {
                 ...getBoundedRuntimeStringContext('articleId', article.id),
                 ...getBoundedRuntimeStringContext('requestedStoreId', storeId),

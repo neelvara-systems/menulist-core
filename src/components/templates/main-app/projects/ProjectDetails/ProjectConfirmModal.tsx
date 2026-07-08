@@ -65,13 +65,12 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
                 {actionType === 'delete' ? (
                     <>
                         <Text>
-                            Are you sure you want to delete{' '}
                             {projectName ? (
                                 <>
-                                    <Text strong>&quot;{projectName}&quot;</Text>?
+                                    Customers will no longer see <Text strong>&quot;{projectName}&quot;</Text>.
                                 </>
                             ) : (
-                                `this ${labels.offeringPhrase}?`
+                                `Customers will no longer see this ${labels.offeringPhrase}.`
                             )}
                         </Text>
                         {fileCount > 0 && (
@@ -92,7 +91,7 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
                 ) : (
                     <>
                         <Text>
-                            Are you sure you want to reset this {labels.offeringPhrase} and remove all files?
+                            This resets this {labels.offeringPhrase} and removes all files. Customers keep seeing the last saved version until you publish again.
                         </Text>
                         {fileCount > 0 && (
                             <Alert

@@ -6,6 +6,7 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
+import { normalizeAnswerlatticeScopeDocumentId } from "@lib/answerlattice/sessionScope";
 import { revalidateAnswerlatticePublicClientCache } from "@lib/cache/answerlatticePublicClientCache";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseSection } from "@type/knowledgeBase";
@@ -17,6 +18,11 @@ const LEGACY_CATEGORIES_DOC_ID = 'categories';
 type KnowledgeBaseCategorySessionLookup = {
     failed: boolean;
     session: Awaited<ReturnType<typeof getActiveSession>> | null;
+};
+
+type KnowledgeBaseCategoryScope = {
+    tId: number;
+    sId: number;
 };
 
 export type KnowledgeBaseCategoryWriteResult = KnowledgeBaseCategoriesType['categories'][string] & {
@@ -33,12 +39,20 @@ export type KnowledgeBaseCategoriesMutationResult = KnowledgeBaseCategoriesType 
 };
 
 export const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
-    if (Number.isFinite(tenantId) && Number.isFinite(storeId) && tenantId > 0 && storeId > 0) {
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(tId);
+    const storeId = normalizeAnswerlatticeScopeDocumentId(sId);
+    if (tenantId && storeId) {
         return `categories_${tenantId}_${storeId}`;
     }
     return LEGACY_CATEGORIES_DOC_ID;
+};
+
+const getKnowledgeBaseCategoryScope = (source: unknown): KnowledgeBaseCategoryScope | null => {
+    const record = source as any;
+    const tId = normalizeAnswerlatticeScopeDocumentId(record?.tId ?? record?.tenantId ?? record?.user?.tenantId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(record?.sId ?? record?.storeId ?? record?.user?.storeId);
+    if (!tId || !sId) return null;
+    return { tId, sId };
 };
 
 const getCollectionRef = async () => {
@@ -66,24 +80,24 @@ const resolveKnowledgeBaseCategorySession = async (operation: string): Promise<K
 
 const getDocRef = async () => {
     const { session } = await resolveKnowledgeBaseCategorySession('doc_ref');
-    return doc(answerlatticeFirebaseClient, `${COLLECTION}`, getKnowledgeBaseCategoriesDocId(session?.tId, session?.sId))
+    const scope = getKnowledgeBaseCategoryScope(session);
+    return doc(answerlatticeFirebaseClient, `${COLLECTION}`, getKnowledgeBaseCategoriesDocId(scope?.tId, scope?.sId))
 }
 
 const bumpKnowledgeBaseVersionForSession = async (reason: string, sourceId?: string) => {
     const { session } = await resolveKnowledgeBaseCategorySession('cache_version_bump');
-    const tId = Number(session?.tId);
-    const sId = Number(session?.sId);
-    if (!Number.isFinite(tId) || tId <= 0 || !Number.isFinite(sId) || sId <= 0) {
+    const scope = getKnowledgeBaseCategoryScope(session);
+    if (!scope) {
         throw new Error('Cannot update Answerlattice KB cache version without tenant and store scope.');
     }
 
-    await bumpAnswerlatticeCacheVersion(ANSWERLATTICE_CACHE_SOURCES.KB, tId, sId, {
+    await bumpAnswerlatticeCacheVersion(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
         reason,
         sourceId,
         sourceType: 'kb_category',
     });
 
-    return { tId, sId };
+    return scope;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
@@ -135,22 +149,27 @@ export const getCategories = async () => {
             if (sessionLookupFailed) {
                 return null;
             }
-            const scopedDocId = getKnowledgeBaseCategoriesDocId(session?.tId, session?.sId);
+            const scope = getKnowledgeBaseCategoryScope(session);
+            const isPlatform = session?.platformRole === 'PLATFORM';
+            if (!scope && !isPlatform) {
+                return null;
+            }
+            const scopedDocId = getKnowledgeBaseCategoriesDocId(scope?.tId, scope?.sId);
             const docRef = doc(answerlatticeFirebaseClient, `${COLLECTION}`, scopedDocId);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 return { ...docSnap.data(), id: docSnap.id };
             }
-            if (scopedDocId !== LEGACY_CATEGORIES_DOC_ID && session?.platformRole === 'PLATFORM') {
+            if (scopedDocId !== LEGACY_CATEGORIES_DOC_ID && isPlatform) {
                 const legacyDocSnap = await getDoc(doc(answerlatticeFirebaseClient, `${COLLECTION}`, LEGACY_CATEGORIES_DOC_ID));
                 if (legacyDocSnap.exists()) {
                     const legacyData = legacyDocSnap.data() as KnowledgeBaseCategoriesType;
                     const filteredCategories = Object.fromEntries(
                         Object.entries(legacyData.categories || {}).filter(([, category]: any) => {
-                            const categoryTenantId = Number(category?.tId);
-                            const categoryStoreId = Number(category?.sId);
-                            if (Number.isFinite(categoryTenantId) && Number.isFinite(categoryStoreId)) {
-                                return categoryTenantId === Number(session?.tId) && categoryStoreId === Number(session?.sId);
+                            const categoryTenantId = normalizeAnswerlatticeScopeDocumentId(category?.tId);
+                            const categoryStoreId = normalizeAnswerlatticeScopeDocumentId(category?.sId);
+                            if (scope && categoryTenantId && categoryStoreId) {
+                                return categoryTenantId === scope.tId && categoryStoreId === scope.sId;
                             }
                             return true;
                         })

@@ -9,7 +9,7 @@
  * @see __docs__/temp-status-layer/temp-status-layer_impl.md
  */
 
-import { Button, Card, DatePicker, Flex, Input, Tag, Typography, theme } from 'antd';
+import { Button, Card, DatePicker, Flex, Input, Modal, Tag, Typography, theme } from 'antd';
 import dayjs from 'dayjs';
 import { useFormatter } from 'next-intl';
 import { useCallback, useState } from 'react';
@@ -56,7 +56,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleSet = useCallback(async () => {
+    const handleSet = useCallback(() => {
         if (!expiresAt) {
             setError('Please set an expiry time');
             return;
@@ -66,84 +66,112 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
             return;
         }
 
-        setIsLoading(true);
         setError(null);
 
         const selectedOption = STATUS_OPTIONS.find(o => o.value === statusType);
         const message = statusType === 'custom'
             ? (customMessage.trim() || 'Temporary notice')
             : (selectedOption?.defaultMsg || statusType);
-
-        // Optimistic update
         const newStatus = {
             type: statusType,
             message,
             expiresAt: expiresAt.toISOString(),
             createdAt: new Date().toISOString(),
         };
-        setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
 
-        try {
-            const res = await fetch('/api/store/temp-status', {
-                ...AUTH_BROWSER_REQUEST_POLICY,
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'set',
-                    type: statusType,
-                    message: statusType === 'custom' ? customMessage.trim() : undefined,
-                    expiresAt: expiresAt.toISOString(),
-                }),
-            });
+        Modal.confirm({
+            title: 'Show this status to customers?',
+            content: `Customers will see "${message}" until ${formatDateTime(newStatus.expiresAt, 'datetime', formatter)}.`,
+            okText: 'Show to customers',
+            cancelText: 'Cancel',
+            onOk: async () => {
+                setIsLoading(true);
+                setError(null);
 
-            await readTempStatusResponse(res, 'set', buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType));
-        } catch (err) {
-            // Revert optimistic update
-            setStoreDetails((prev: any) => ({ ...prev, tempStatus: currentStatus }));
-            logBusinessSettingsFailure(
-                'desktop_temp_status_set_failed',
-                err,
-                buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType),
-            );
-            setError('Failed to set status');
-        } finally {
-            setIsLoading(false);
-        }
-    }, [statusType, customMessage, expiresAt, setStoreDetails, currentStatus, storeDetails]);
+                // Optimistic update
+                setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
 
-    const handleClear = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
+                try {
+                    const res = await fetch('/api/store/temp-status', {
+                        ...AUTH_BROWSER_REQUEST_POLICY,
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'set',
+                            type: statusType,
+                            message: statusType === 'custom' ? customMessage.trim() : undefined,
+                            expiresAt: expiresAt.toISOString(),
+                        }),
+                    });
 
-        // Optimistic update
-        const prevStatus = storeDetails?.tempStatus;
-        setStoreDetails((prev: any) => {
-            const { tempStatus, ...rest } = prev;
-            return rest;
+                    await readTempStatusResponse(res, 'set', buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType));
+                } catch (err) {
+                    // Revert optimistic update
+                    setStoreDetails((prev: any) => ({ ...prev, tempStatus: currentStatus }));
+                    logBusinessSettingsFailure(
+                        'desktop_temp_status_set_failed',
+                        err,
+                        buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType),
+                    );
+                    setError('Could not set status');
+                } finally {
+                    setIsLoading(false);
+                }
+            },
         });
+    }, [statusType, customMessage, expiresAt, setStoreDetails, currentStatus, storeDetails, formatter]);
 
-        try {
-            const res = await fetch('/api/store/temp-status', {
-                ...AUTH_BROWSER_REQUEST_POLICY,
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'clear' }),
-            });
+    const handleClear = useCallback(() => {
+        const prevStatus = storeDetails?.tempStatus;
 
-            await readTempStatusResponse(res, 'clear', buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type));
-        } catch (err) {
-            // Revert optimistic update
-            setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
-            logBusinessSettingsFailure(
-                'desktop_temp_status_clear_failed',
-                err,
-                buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type),
-            );
-            setError('Failed to clear status');
-        } finally {
-            setIsLoading(false);
-        }
+        Modal.confirm({
+            title: 'Clear customer status?',
+            content: prevStatus?.message
+                ? `Customers will no longer see "${prevStatus.message}" on your public page.`
+                : 'Customers will no longer see the temporary status on your public page.',
+            okText: 'Clear status',
+            okType: 'danger',
+            cancelText: 'Cancel',
+            onOk: async () => {
+                setIsLoading(true);
+                setError(null);
+
+                // Optimistic update
+                setStoreDetails((prev: any) => {
+                    const { tempStatus, ...rest } = prev || {};
+                    return rest;
+                });
+
+                try {
+                    const res = await fetch('/api/store/temp-status', {
+                        ...AUTH_BROWSER_REQUEST_POLICY,
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'clear' }),
+                    });
+
+                    await readTempStatusResponse(res, 'clear', buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type));
+                } catch (err) {
+                    // Revert optimistic update
+                    setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
+                    logBusinessSettingsFailure(
+                        'desktop_temp_status_clear_failed',
+                        err,
+                        buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type),
+                    );
+                    setError('Could not clear status');
+                } finally {
+                    setIsLoading(false);
+                }
+            },
+        });
     }, [storeDetails, setStoreDetails]);
+
+    const selectedOption = STATUS_OPTIONS.find(o => o.value === statusType);
+    const previewMessage = statusType === 'custom'
+        ? (customMessage.trim() || 'Temporary notice')
+        : (selectedOption?.defaultMsg || statusType);
+    const previewExpiry = expiresAt ? formatDateTime(expiresAt.toISOString(), 'datetime', formatter) : 'the selected time';
 
     return (
         <Card style={{ marginBottom: 16 }}>
@@ -201,22 +229,22 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                     {/* Status type pills */}
                     <Flex gap={8} wrap="wrap">
                         {STATUS_OPTIONS.map((opt) => (
-                            <Tag
+                            <Button
                                 key={opt.value}
-                                color={statusType === opt.value ? 'warning' : 'default'}
+                                aria-pressed={statusType === opt.value}
                                 onClick={() => setStatusType(opt.value)}
+                                type={statusType === opt.value ? 'primary' : 'default'}
                                 style={{
-                                    cursor: 'pointer',
-                                    padding: '6px 14px',
-                                    fontSize: 13,
+                                    background: statusType === opt.value ? token.colorWarning : token.colorBgContainer,
+                                    borderColor: statusType === opt.value ? token.colorWarningText : token.colorBorderSecondary,
                                     borderRadius: 20,
-                                    border: statusType === opt.value ? `1.5px solid ${token.colorWarningText}` : `1.5px solid ${token.colorBorderSecondary}`,
+                                    color: statusType === opt.value ? token.colorTextLightSolid : token.colorText,
                                     fontWeight: statusType === opt.value ? 600 : 400,
-                                    userSelect: 'none',
+                                    minHeight: 38,
                                 }}
                             >
                                 {opt.icon} {opt.label}
-                            </Tag>
+                            </Button>
                         ))}
                     </Flex>
 
@@ -244,6 +272,20 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         </Flex>
                     </Flex>
 
+                    <div style={{
+                        background: token.colorWarningBg,
+                        border: `1px solid ${token.colorWarningBorder}`,
+                        borderRadius: 10,
+                        padding: '12px 14px',
+                    }}>
+                        <Flex gap={4} vertical>
+                            <Text strong>Customer preview</Text>
+                            <Text type="secondary" style={{ fontSize: 13 }}>
+                                Customers will see &quot;{previewMessage}&quot; until {previewExpiry}.
+                            </Text>
+                        </Flex>
+                    </div>
+
                     {error && (
                         <Text type="danger" style={{ fontSize: 13 }}>{error}</Text>
                     )}
@@ -257,7 +299,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         block
                         style={{ background: token.colorWarning, borderColor: token.colorWarning, color: token.colorTextLightSolid }}
                     >
-                        Set Status
+                        Show to customers
                     </Button>
                 </Flex>
             )}

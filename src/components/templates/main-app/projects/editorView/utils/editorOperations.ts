@@ -171,7 +171,7 @@ export const confirmCategoryDelete = ({
 
     Modal.confirm({
         title: "Delete Category?",
-        content: `Are you sure you want to delete "${categoryName}"? ${itemCount > 0 ? `This will also delete ${itemCount} item${itemCount > 1 ? "s" : ""}.` : ""}`,
+        content: `Customers will no longer see "${categoryName}". ${itemCount > 0 ? `This also deletes ${itemCount} item${itemCount > 1 ? "s" : ""} in this category. ` : ""}This cannot be undone.`,
         okText:
             itemCount > 0
                 ? `Delete Category & ${itemCount} Item${itemCount > 1 ? "s" : ""}`
@@ -197,8 +197,8 @@ export const confirmItemDelete = ({
 
     Modal.confirm({
         title: "Delete Item?",
-        content: `Are you sure you want to delete "${itemName}"?`,
-        okText: "Delete",
+        content: `Customers will no longer see "${itemName}". Delete this item? This cannot be undone.`,
+        okText: "Delete item",
         okType: "danger",
         cancelText: "Cancel",
         onOk: onDelete,
@@ -213,9 +213,9 @@ export const confirmAttributeDelete = ({
     onDelete,
 }: ConfirmAttributeDeleteParams) => {
     Modal.confirm({
-        title: "Delete Attribute?",
-        content: "Are you sure you want to delete this attribute/variation?",
-        okText: "Delete",
+        title: "Delete Option?",
+        content: "Customers will no longer see this option on the item. Delete it? This cannot be undone.",
+        okText: "Delete option",
         okType: "danger",
         cancelText: "Cancel",
         onOk: onDelete,

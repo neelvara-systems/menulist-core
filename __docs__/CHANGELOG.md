@@ -8,6 +8,100 @@
 
 ---
 
+## July 8, 2026 - Owner Public Truth Control Panel
+
+### Improved
+
+- **Dashboard starts with public business status** - desktop and mobile now lead with live/not-live status, menu/hours/public-page readiness, common public updates, and needs-attention items before analytics.
+- **Needs-attention actions open the right fix** - the dashboard now routes missing-menu, missing-hours, and missing-public-link issues to the matching owner task instead of a generic destination.
+- **Special hours are reachable from desktop** - the desktop Hours settings now expose the temporary-status card, and dashboard special-hours shortcuts deep-link to it.
+- **Mobile owner navigation is calmer** - More is grouped into What customers see, Public links and materials, Account and team, and Advanced setup instead of a module-heavy list.
+- **Public changes show consequences** - regular-hours saves now explain what customers will see before publishing, and mobile item editing includes a customer preview before save.
+- **Delete copy is consequence-based** - item deletion confirms that customers will no longer see the item and that the action cannot be undone.
+- **Menu design stays preset-first** - recommended style previews remain the default path, while manual tone/layout/display controls sit behind an optional fine-tune section.
+- **Custom roles are safer** - new custom roles start with no permissions, keeping Owner/Manager/Staff as the normal path.
+
+### Boundaries
+
+- This is an owner UX hardening pass over existing routes, permissions, DALs, dashboard summaries, menu design settings, and mobile shell navigation. It does not add Firestore collections, API routes, Cloud Functions, Firebase rules/indexes, dependencies, Vercel deploys, production builds, or new public-menu output contracts.
+
+## July 8, 2026 - Menu Design Style Preview Cards
+
+### Improved
+
+- **Recommended styles now show visual proof** - desktop Menu Design and mobile Menu Design both render the same small customer-menu preview strip for each recommended style, using the existing mood, layout, color, photo, category-icon, price, and category-tab settings.
+- **Owner choice stays constrained** - the preview cards apply the existing `menuDesignPresets` patches only. No new click path, theme contract, public-menu renderer behavior, Firestore field, API route, provider call, or free-form design surface was added.
+- **Mobile stays light** - the main mobile Menu Design screen keeps the selected style as compact text, and the existing `Change` sheet shows visual strips with a checkmark plus `Apply` instead of a technical mood/color/toggle breakdown.
+
+### Boundaries
+
+- This is owner UI clarity for existing B2C design controls. It does not change customer-menu output logic, publish/cache behavior, Firebase rules/indexes, Cloud Functions, Vercel deploys, production builds, or launch certification requirements.
+
+## July 7, 2026 - Homepage Preview Source Selector
+
+### Improved
+
+- **Homepage preview is easier to understand** - owners can switch between photo, owned public link, and typed-list examples inside the `Create menu preview` section before opening the signed-in setup flow.
+- **Private preview guardrails stay visible** - account before processing, five preview attempts per day, 24-hour draft expiry, and owner review before public publishing remain part of the section.
+
+### Boundaries
+
+- This is public website proof only. It does not process uploads, fetch links, create drafts, reserve slugs, call providers, change `/create-menu`, change owner dashboard behavior, change customer menu behavior, change Firebase rules/indexes, add Cloud Functions, run Vercel deploys, or run production builds.
+
+## July 7, 2026 - Menu Setup Progress
+
+### Added
+
+- **Menu setup progress is menu-specific** - Owner dashboard, Mobile Menu, and Mobile Share now show MenuList setup progress for source added, menu imported, key details checked, menu published, and official link placement.
+- **Mobile More has a shortcut, not a new setup group** - while setup is incomplete, More > Modules can open the next Menu setup action through existing Menu, Share, or Official Page screens.
+- **Optional polish stays optional** - descriptions, images, conditional menu translations, public links, and public photos are shown as improvements without blocking publish.
+- **Existing truth is reused** - setup status is computed from selected project data, Menu Check signals, `lastPublishedAt`, starter activation signals, `menuPresence`, `socialMedia`, and `publicPresence`.
+- **Verifier coverage is added** - `npm run verify:menu-setup-progress-boundary` guards docs, flag, shared compute helper, dashboard/mobile mounts, shared dashboard project data, and the no-new-backend boundary.
+
+### Boundaries
+
+- This adds a read-only setup progress layer only. It does not add Firestore collections, Firestore fields, API routes, Cloud Functions, Firebase rules/indexes, Storage operations, Vercel deploys, production builds, or a business/profile setup score.
+
+## July 6, 2026 - Answerlattice Article AI Route Scope Boundary
+
+### Fixed
+
+- **Article AI route scope is exact** - FAQ-from-article generation, article translation, and article entity extraction now compare authenticated Answerlattice route scope with persisted article tenant/store scope only after both pass the shared exact positive numeric Firestore document-ID helper.
+- **Malformed persisted article scope fails before provider work** - malformed article `tId/sId` values no longer pass authorization through loose `Number()` coercion before FAQ generation, translation, or entity extraction.
+- **Valid article actions are preserved** - valid FAQ suggestion generation, translation writes, entity extraction, entity candidate writes, AI accounting, cache-version behavior, bounded diagnostics, and existing route admission order keep the same operation shape.
+- **Verifier coverage is tightened** - `npm run verify:answerlattice-runtime-truth` now guards the helper imports, normalized persisted article scope comparisons, old loose `Number()` exclusions, Help Center/Knowledge Base/FAQ docs, data inventory evidence, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed article AI route scope admission only. It does not change valid FAQ generation, valid translation, valid entity extraction, valid article reads/writes, Firestore read/write counts for valid requests, Storage operations, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Answerlattice Search History Server Scope Boundary
+
+### Fixed
+
+- **Server search-history scope is exact** - `src/database/aiSearchHistory/server.ts` now requires exact positive numeric Firestore document-ID tenant/store scope before composing new `aiSearchHistory` rows or querying cached search rows by `cacheKey + tId + sId`.
+- **Malformed scope fails before cache writes** - malformed tenant/store values no longer become fallback `0` values in search-history rows or raw numeric-coerced cache filters.
+- **Valid search behavior is preserved** - valid Help Center/widget cache lookups keep the same one-read shape, and valid saved search-history rows keep the same one-write shape, trace/request IDs, retention fields, payload caps, and Answerlattice product code.
+- **Verifier coverage is tightened** - `npm run verify:answerlattice-runtime-truth` now guards the helper import, normalized writer/cache filters, old fallback `0` and raw session filter exclusions, AI QnA Firebase docs, data inventory evidence, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed search-history server scope admission only. It does not change valid cache hits, valid search-history writes, valid Help Center/widget search behavior, Firestore read/write counts for valid requests, Storage operations, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, production-host smoke, launch approval, or release certification.
+
+## July 6, 2026 - Answerlattice KB Owner Content Scope Boundary
+
+### Fixed
+
+- **KB owner content scope is exact** - Help Center / Knowledge Base category document IDs, article read/write scope, FAQ article-maintenance scope, product-surface session/override scope, and protected article embedding tenant/store authorization now use the shared Answerlattice exact positive numeric Firestore document-ID scope normalizer.
+- **Malformed KB scope fails before Firestore work** - whitespace-mutated, leading-zero, decimal, zero, negative, unsafe, nonnumeric, reserved, empty, path-shaped, or partial explicit tenant/store values no longer reach scoped KB/FAQ/product-surface Firestore refs, filters, cache-version writes, public-cache revalidation payloads, or article embedding authorization through loose `Number()` coercion.
+- **Bulk article delete revalidates scoped cache** - `deleteMultipleArticles()` now revalidates the public KB/context cache with the resolved tenant/store scope after the batch delete instead of sending an undefined scope fallback.
+- **Valid behavior is preserved** - valid owner/admin KB reads and writes, platform administrative reads, scoped category legacy fallback, FAQ maintenance, product-surface queries, article embedding generation, cache-version writes, and public-cache revalidation keep the same valid operation shape.
+- **Verifier coverage is tightened** - `npm run verify:answerlattice-runtime-truth` now guards the shared helper imports, normalized category/article/FAQ/product-surface/article-embedding scope handling, old loose `Number()` exclusions, Help Center docs, Knowledge Base docs, FAQ/Product Surface docs, audit evidence, and changelog evidence.
+
+### Boundaries
+
+- This changes malformed KB owner content scope admission only. It does not change valid KB/FAQ/product-surface behavior, valid embedding generation, Firestore read/write counts for valid requests, Storage operations, Firestore rules/indexes, Cloud Functions, Firebase/Vercel deploys, production builds, browser/device QA, provider smoke, production-host smoke, launch approval, or release certification.
+
 ## July 6, 2026 - Answerlattice Shared Session Scope Boundary
 
 ### Fixed

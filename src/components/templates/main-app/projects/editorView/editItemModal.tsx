@@ -23,7 +23,7 @@ import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Collapse, CollapseProps, Empty, Flex, Input, InputNumber, Modal, Select, Slider, Switch, Tooltip, Typography } from 'antd';
 import React, { memo, useCallback, useContext, useEffect, useMemo, useState } from 'react'; // Added useCallback
-import { LuCheck, LuClock, LuDownload, LuExternalLink, LuFileImage, LuLock, LuPlus, LuShare2, LuSparkles, LuTrendingUp, LuX } from 'react-icons/lu';
+import { LuCheck, LuClock, LuDownload, LuExternalLink, LuEye, LuFileImage, LuLock, LuPlus, LuShare2, LuSparkles, LuTrendingUp, LuX } from 'react-icons/lu';
 import { ExtractedDataAttribute, ExtractedDataItem, ItemForDropdown, NewItemMetadataAPIParams, Project, ProjectFileType } from '../types';
 import { sanitizeUserInput } from '../utils';
 import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorFailure } from '../utils/editorDiagnostics';
@@ -264,6 +264,16 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             updatedLabel: 'Current menu',
         };
     }, [itemData, primaryLanguage, projectData, selectedCategory?.name, storeDetails]);
+    const customerPreviewMeta = useMemo(() => {
+        const parts = [
+            sharableCardInput.categoryName,
+            itemData?.attributes?.length ? 'Has options' : sharableCardInput.price,
+            itemData?.available === false ? availabilityLabels.unavailable : null,
+            itemData?.active === false ? 'Hidden from customers' : 'Customers can see this',
+        ].filter(Boolean);
+
+        return parts.join(' - ') || 'Saved item details';
+    }, [availabilityLabels.unavailable, itemData?.active, itemData?.attributes?.length, itemData?.available, sharableCardInput.categoryName, sharableCardInput.price]);
     const canGenerateSharableCard = FEATURE_FLAGS.ENABLE_SHARABLE_ITEM_CARD_GENERATION && modalData.status === 'edit' && Boolean(itemData?.id);
 
     const handleShareCard = useCallback(async () => {
@@ -683,9 +693,9 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             {itemData ? (
                 <Flex vertical gap={16}>
                     <Flex gap={24} wrap="wrap">
-                        {/* Active toggle - show/hide item from menu */}
+                        {/* Active toggle - show/hide item from customers */}
                         <Flex align='center' gap={8}>
-                            <Text onClick={() => setItemData(prev => ({ ...prev!, active: !Boolean(prev?.active) }))} style={{ cursor: 'pointer' }}>Show on Menu</Text>
+                            <Text onClick={() => setItemData(prev => ({ ...prev!, active: !Boolean(prev?.active) }))} style={{ cursor: 'pointer' }}>Show to customers</Text>
                             <Switch
                                 size='small'
                                 checked={Boolean(itemData?.active)}
@@ -723,6 +733,56 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                             </Flex>
                         </Tooltip>
                     </Flex>
+
+                    <div style={{
+                        background: 'rgba(0,0,0,0.02)',
+                        border: '1px solid rgba(0,0,0,0.08)',
+                        borderRadius: 8,
+                        padding: 12,
+                    }}>
+                        <Flex gap={10} vertical>
+                            <Flex align="center" gap={8}>
+                                <LuEye size={15} style={{ opacity: 0.7 }} />
+                                <Text strong>Customer preview</Text>
+                            </Flex>
+                            <Flex align="center" gap={12}>
+                                {sharableCardInput.imageUrl ? (
+                                    <img
+                                        alt={`Customer preview for ${sharableCardInput.itemName}`}
+                                        src={sharableCardInput.imageUrl}
+                                        style={{
+                                            borderRadius: 8,
+                                            flex: '0 0 auto',
+                                            height: 54,
+                                            objectFit: 'cover',
+                                            width: 54,
+                                        }}
+                                    />
+                                ) : (
+                                    <Flex
+                                        align="center"
+                                        justify="center"
+                                        style={{
+                                            background: 'rgba(0,0,0,0.04)',
+                                            border: '1px solid rgba(0,0,0,0.08)',
+                                            borderRadius: 8,
+                                            flex: '0 0 auto',
+                                            height: 54,
+                                            width: 54,
+                                        }}
+                                    >
+                                        <LuFileImage size={18} style={{ opacity: 0.45 }} />
+                                    </Flex>
+                                )}
+                                <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                    <Text strong ellipsis>{sharableCardInput.itemName}</Text>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        {customerPreviewMeta}
+                                    </Text>
+                                </Flex>
+                            </Flex>
+                        </Flex>
+                    </div>
 
                     {/* Advanced Options - Progressive Disclosure (collapsed by default) */}
                     <Collapse

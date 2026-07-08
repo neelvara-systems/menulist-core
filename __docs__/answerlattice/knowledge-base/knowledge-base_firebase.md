@@ -1,7 +1,7 @@
 # Knowledge Base — Firebase Cost & Operations Tracking
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-07-05
+> **Version:** 1.1.2
+> **Last Updated:** 2026-07-06
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -119,6 +119,10 @@ Bulk article status acknowledgement hardening is cost-neutral. `bulkUpdateArticl
 Category navigation acknowledgement hardening is cost-neutral. `addCategory()`, `updateCategory()`, `deleteCategory()`, `updateArticleInParent()`, and `deleteArticleFromParent()` still use the same existing scoped categories-doc writes and cache revalidation paths, but platform KB category, section, article-parent, and delete callers now require explicit category/categories mutation acknowledgements before local navigation state or success copy advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
 
 July 5 session lookup diagnostics update: KB article and category session lookup failures now log bounded diagnostics instead of disappearing into anonymous/global fallback behavior. This adds no Firestore reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment. A failed category session lookup stops before the legacy categories doc read, so the degraded path can reduce reads instead of adding cost.
+
+July 6 KB owner content scope hardening is cost-neutral. Category doc IDs, article scope resolution, article read guards, article embedding authorization, FAQ article-maintenance scope, and product-surface explicit/session scope now require exact positive numeric Firestore document IDs before scoped Firestore refs, filters, cache-version writes, public-cache revalidation, or embedding writes. Bulk article delete also revalidates the public KB/context cache with the resolved tenant/store scope instead of an undefined session fallback. Valid reads/writes keep the same Firestore operation counts and query shapes; malformed scope fails before Firestore work or returns the existing empty/not-found model. This adds no Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
+
+July 6 article AI route scope hardening is cost-neutral. FAQ generation, article translation, and article entity extraction now normalize persisted article `tId/sId` through the shared Answerlattice exact positive numeric Firestore document-ID scope helper before comparing to authenticated route scope. Valid provider calls, article mutations, FAQ suggestion writes, translation writes, entity candidate writes, AI accounting, and cache-version behavior keep the same operation counts. Malformed persisted or route scope returns the existing not-found/workspace response before provider work or mutation. This adds no Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
 
 ---
 

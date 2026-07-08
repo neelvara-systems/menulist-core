@@ -18,7 +18,7 @@ import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import { LuAlertTriangle, LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
+import { LuAlertTriangle, LuBarChart3, LuCalendar, LuClock, LuEye, LuFlame, LuHeart, LuImage, LuInfo, LuQrCode, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuUtensils, LuZap } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, Popover, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileBusinessHealthCard from '../components/MobileBusinessHealthCard';
@@ -49,6 +49,9 @@ interface MobileDashboardScreenProps {
     onBack: () => void;
     onOpenBusinessHealth?: () => void;
     onOpenDesignEditor?: () => void;
+    onOpenMenuTab?: () => void;
+    onOpenMoreScreen?: (screen: 'businessProfileHub' | 'domainSettings' | 'hoursEdit' | 'officialPage' | 'tempStatus') => void;
+    onOpenShareTab?: () => void;
 }
 
 const FULL_WIDTH_TAG_STYLE = {
@@ -68,7 +71,14 @@ function formatUpdatedTime(value: Date | string | undefined, formatter: IntlForm
     return formatDateTime(parsed, 'time', formatter);
 }
 
-export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, onOpenDesignEditor }: MobileDashboardScreenProps) {
+export default function MobileDashboardScreen({
+    onBack,
+    onOpenBusinessHealth,
+    onOpenDesignEditor,
+    onOpenMenuTab,
+    onOpenMoreScreen,
+    onOpenShareTab,
+}: MobileDashboardScreenProps) {
     const t = useTranslations('MobileDashboard');
     const formatter = useFormatter();
     const { token } = theme.useToken();
@@ -253,6 +263,14 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                         : viewMode === 'overall'
                             ? loading && !overall && !hasOBPSettledData
                             : loading && !currentViewData;
+    const hasPublicLink = Boolean(storeDetails?.customDomain || storeDetails?.subdomain);
+    const hasWorkingHours = Boolean(storeDetails?.workingHours && Object.values(storeDetails.workingHours as Record<string, unknown>).some(Boolean));
+    const selectedMenuIsLive = selectedProjectSummary?.active !== false;
+    const attentionItems = [
+        !selectedMenuIsLive ? { key: 'menu', label: 'Menu is not live', action: 'Open menu', onClick: onOpenMenuTab } : null,
+        !hasWorkingHours ? { key: 'hours', label: 'Hours are missing', action: 'Set hours', onClick: () => onOpenMoreScreen?.('hoursEdit') } : null,
+        !hasPublicLink ? { key: 'public-link', label: 'Public link is not ready', action: 'Set public link', onClick: () => onOpenMoreScreen?.('domainSettings') } : null,
+    ].filter(Boolean) as Array<{ action: string; key: string; label: string; onClick?: () => void }>;
 
     const overviewStatus = (() => {
         if (!overview) return { color: 'default', text: t('noDataYet') };
@@ -315,6 +333,85 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                 </>
             ) : null}
         </Flex>
+    );
+
+    const renderPublicTruthStatus = () => (
+        <Card size="small">
+            <Flex gap={14} vertical>
+                <Flex align="center" justify="space-between" gap={10}>
+                    <Flex align="center" gap={10} style={{ minWidth: 0 }}>
+                        <LuShield color={attentionItems.length ? token.colorWarning : token.colorSuccess} size={22} />
+                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                            <Text strong style={{ fontSize: 16 }}>
+                                {attentionItems.length ? 'Needs attention' : 'Business profile is live'}
+                            </Text>
+                            <Text type="secondary">
+                                {attentionItems.length ? 'Fix public details first.' : 'No action needed.'}
+                            </Text>
+                        </Flex>
+                    </Flex>
+                    <Tag color={hasPublicLink && selectedMenuIsLive ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
+                        {hasPublicLink && selectedMenuIsLive ? 'Live' : 'Not live'}
+                    </Tag>
+                </Flex>
+
+                <Flex gap={8} wrap>
+                    <Tag color={selectedMenuIsLive ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
+                        Menu: {selectedMenuIsLive ? 'Live' : 'Hidden'}
+                    </Tag>
+                    <Tag color={hasWorkingHours ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
+                        Hours: {hasWorkingHours ? 'Set' : 'Missing'}
+                    </Tag>
+                    <Tag color={hasPublicLink ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
+                        Public page: {hasPublicLink ? 'Visible' : 'Not ready'}
+                    </Tag>
+                </Flex>
+
+                {attentionItems.length ? (
+                    <Flex gap={8} vertical>
+                        <Text strong>Needs attention</Text>
+                        {attentionItems.slice(0, 3).map((item) => (
+                            <Card key={item.key} size="small" style={{ backgroundColor: token.colorFillAlter }}>
+                                <Flex align="center" justify="space-between" gap={10}>
+                                    <Text>{item.label}</Text>
+                                    <Button
+                                        color="primary"
+                                        fill="outline"
+                                        onClick={item.onClick}
+                                        size="small"
+                                        style={{ minHeight: 36 }}
+                                    >
+                                        {item.action}
+                                    </Button>
+                                </Flex>
+                            </Card>
+                        ))}
+                    </Flex>
+                ) : null}
+            </Flex>
+        </Card>
+    );
+
+    const renderQuickActions = () => (
+        <Card size="small" title={<Text strong>Common updates</Text>}>
+            <Flex gap={8} wrap>
+                <Button fill="outline" onClick={onOpenMenuTab} style={{ minHeight: 44 }}>
+                    <Flex align="center" gap={6}><LuUtensils size={15} /> Menu</Flex>
+                </Button>
+                <Button fill="outline" onClick={() => onOpenMoreScreen?.('hoursEdit')} style={{ minHeight: 44 }}>
+                    <Flex align="center" gap={6}><LuClock size={15} /> Hours</Flex>
+                </Button>
+                <Button fill="outline" onClick={() => onOpenMoreScreen?.('tempStatus')} style={{ minHeight: 44 }}>
+                    <Flex align="center" gap={6}><LuCalendar size={15} /> Today status</Flex>
+                </Button>
+                <Button fill="outline" onClick={() => onOpenMoreScreen?.('officialPage')} style={{ minHeight: 44 }}>
+                    <Flex align="center" gap={6}><LuImage size={15} /> Photos</Flex>
+                </Button>
+                <Button fill="outline" onClick={onOpenShareTab} style={{ minHeight: 44 }}>
+                    <Flex align="center" gap={6}><LuQrCode size={15} /> Public link</Flex>
+                </Button>
+            </Flex>
+        </Card>
     );
 
     const renderTodaySoFar = () => {
@@ -558,6 +655,9 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                         onClick={onOpenBusinessHealth}
                     />
                 ) : null}
+
+                {renderPublicTruthStatus()}
+                {renderQuickActions()}
 
                 <div style={stickyHistoricalHeaderStyle}>
                     <Card className="mobile-dashboard-tabs-card" size="small">

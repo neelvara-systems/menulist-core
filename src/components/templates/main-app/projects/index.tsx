@@ -568,7 +568,7 @@ function ProjectsPage() {
     )));
 
     useEffect(() => {
-        const hasDeepLinkIntent = Boolean(projectIdQuery || viewQuery === 'editor' || focusQuery === 'menu-readiness' || qualityActionQuery);
+        const hasDeepLinkIntent = Boolean(projectIdQuery || viewQuery === 'editor' || viewQuery === 'b2c' || focusQuery === 'menu-readiness' || qualityActionQuery);
         if (!hasDeepLinkIntent || projectsList.length === 0) return;
 
         const targetProject = projectIdQuery
@@ -590,6 +590,8 @@ function ProjectsPage() {
         }
         if (viewQuery === 'editor' || focusQuery === 'menu-readiness' || qualityActionQuery) {
             setCurrentView(2);
+        } else if (viewQuery === 'b2c') {
+            setCurrentView(3);
         }
 
         const allowedQualityActions = new Set([

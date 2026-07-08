@@ -2063,6 +2063,24 @@ export const FEATURE_FLAGS = {
     ENABLE_MENU_PRESENCE_MONITOR: true,
 
     /**
+     * Menu Setup Progress — menu-specific onboarding progress
+     *
+     * When enabled:
+     * - Owner dashboard shows menu setup progress before setup is fully running
+     * - Mobile Menu and Share screens show compact setup/placement progress
+     * - Required steps use existing project publish, Menu Check, and starter activation truth
+     *
+     * When disabled:
+     * - Menu setup progress cards are hidden
+     * - Menu Check and Presence Monitor continue unchanged
+     *
+     * Firebase cost: ~$0.00 incremental (desktop shares selected-project read with Menu Check; mobile reuses loaded project data)
+     *
+     * @see __docs__/menu-setup-progress/README.md
+     */
+    ENABLE_MENU_SETUP_PROGRESS: true,
+
+    /**
      * Customer Communication Kit — Pre-generated message templates
      *
      * When enabled:

@@ -370,7 +370,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                         <Text>Hours</Text>
                         <Badge
                             status={gbpState?.hoursStatus === "OK" ? "success" : "warning"}
-                            text={gbpState?.hoursStatus === "OK" ? "Synced" : "Not synced"}
+                            text={gbpState?.hoursStatus === "OK" ? "Updated" : "Needs review"}
                         />
                     </Flex>
 

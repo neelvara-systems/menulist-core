@@ -1827,6 +1827,8 @@ function verifyProtectedAiRequestAdmission() {
   const articleEmbedding = read('src/app/api/helpCenter/article-embedding/route.ts');
   const helpCenterSearch = read('src/app/api/helpCenter/search-kb/route.ts');
   const helpCenterFirebase = read('__docs__/answerlattice/help-center/help-center_firebase.md');
+  const knowledgeBaseFirebase = read('__docs__/answerlattice/knowledge-base/knowledge-base_firebase.md');
+  const faqManagementFirebase = read('__docs__/answerlattice/faq-management/faq-management_firebase.md');
   const dataInventoryMap = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_data-map.md');
   const dataInventoryEvidence = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_evidence.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -1835,6 +1837,7 @@ function verifyProtectedAiRequestAdmission() {
 
   assertIncludes(entityExtraction, 'const ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES = 256 * 1024;', 'Answerlattice entity extraction body cap');
   assertIncludes(entityExtraction, "import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';", 'Answerlattice entity extraction KB article ID boundary import');
+  assertIncludes(entityExtraction, "import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';", 'Answerlattice entity extraction strict scope helper import');
   assertIncludes(entityExtraction, 'id: z.string().trim().max(160).refine((value) => normalizeAnswerlatticeKbArticleId(value) === value)', 'Answerlattice entity extraction KB article ID schema boundary');
   assertIncludes(entityExtraction, 'readBoundedJsonBody(request, ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES', 'Answerlattice entity extraction bounded body');
   assertIncludes(entityExtraction, 'ArticleSchema.safeParse(bodyResult.data)', 'Answerlattice entity extraction bounded validation');
@@ -1843,7 +1846,12 @@ function verifyProtectedAiRequestAdmission() {
   assertIncludes(entityExtraction, "getBoundedRuntimeStringContext('storeId', storeIdForLog)", 'Answerlattice entity extraction bounded store metadata');
   assertIncludes(entityExtraction, "getBoundedRuntimeStringContext('userId', userIdForLog)", 'Answerlattice entity extraction bounded user metadata');
   assertIncludes(entityExtraction, "getBoundedRuntimeStringContext('articleId', articleIdForLog)", 'Answerlattice entity extraction bounded article metadata');
+  assertIncludes(entityExtraction, 'const tenantId = scope.tenantId;', 'Answerlattice entity extraction uses normalized route tenant scope');
+  assertIncludes(entityExtraction, 'const articleTenantId = normalizeAnswerlatticeScopeDocumentId(persistedArticle.tId ?? persistedArticle.tenantId);', 'Answerlattice entity extraction normalizes persisted article tenant scope');
+  assertIncludes(entityExtraction, 'if (!articleTenantId || !articleStoreId || articleTenantId !== tenantId || articleStoreId !== storeId)', 'Answerlattice entity extraction compares normalized article scope');
   assertNotIncludes(entityExtraction, 'request.json()', 'Answerlattice entity extraction raw JSON parser');
+  assertNotIncludes(entityExtraction, 'const tenantId = Number(scope.tenantId);', 'Answerlattice entity extraction must not loosely coerce route tenant scope');
+  assertNotIncludes(entityExtraction, 'Number(persistedArticle.tId) !== tenantId', 'Answerlattice entity extraction must not loosely coerce persisted article tenant scope');
   assertOrder(
     entityExtraction,
     [
@@ -1883,6 +1891,7 @@ function verifyProtectedAiRequestAdmission() {
   assertIncludes(faqGeneration, 'const FAQ_PROVIDER_RESPONSE_TEXT_MAX_CHARS = 32 * 1024;', 'Answerlattice FAQ generation provider response text cap');
   assertIncludes(faqGeneration, 'type BoundedFaqProviderResponseText', 'Answerlattice FAQ generation bounded provider response type');
   assertIncludes(faqGeneration, "import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';", 'Answerlattice FAQ generation KB article ID boundary import');
+  assertIncludes(faqGeneration, "import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';", 'Answerlattice FAQ generation strict scope helper import');
   assertIncludes(faqGeneration, 'articleId: z.string().trim().refine((value) => normalizeAnswerlatticeKbArticleId(value) === value)', 'Answerlattice FAQ generation KB article ID schema boundary');
   assertIncludes(faqGeneration, 'readBoundedJsonBody(request, GENERATE_FAQ_FROM_ARTICLE_MAX_BODY_BYTES', 'Answerlattice FAQ generation bounded body');
   assertIncludes(faqGeneration, 'GenerateFaqRequestSchema.safeParse(bodyResult.data)', 'Answerlattice FAQ generation bounded validation');
@@ -1896,7 +1905,12 @@ function verifyProtectedAiRequestAdmission() {
   assertIncludes(faqGeneration, "getBoundedRuntimeStringContext('storeId', storeIdForLog)", 'Answerlattice FAQ generation bounded store metadata');
   assertIncludes(faqGeneration, "getBoundedRuntimeStringContext('articleId', articleIdForLog)", 'Answerlattice FAQ generation bounded article metadata');
   assertIncludes(faqGeneration, "getBoundedRuntimeStringContext('articleId', articleId)", 'Answerlattice FAQ generation success breadcrumb bounded article metadata');
+  assertIncludes(faqGeneration, 'const tenantId = sessionScope.tenantId;', 'Answerlattice FAQ generation uses normalized route tenant scope');
+  assertIncludes(faqGeneration, 'const articleTenantId = normalizeAnswerlatticeScopeDocumentId(articleRecord.tId ?? articleRecord.tenantId);', 'Answerlattice FAQ generation normalizes persisted article tenant scope');
+  assertIncludes(faqGeneration, 'articleTenantId !== tenantId', 'Answerlattice FAQ generation compares normalized article tenant scope');
   assertNotIncludes(faqGeneration, 'request.json()', 'Answerlattice FAQ generation raw JSON parser');
+  assertNotIncludes(faqGeneration, 'const tenantId = Number(sessionScope?.tenantId);', 'Answerlattice FAQ generation must not loosely coerce route tenant scope');
+  assertNotIncludes(faqGeneration, 'const articleTenantId = Number(article.tId);', 'Answerlattice FAQ generation must not loosely coerce persisted article tenant scope');
   assertOrder(
     faqGeneration,
     [
@@ -2019,6 +2033,7 @@ function verifyProtectedAiRequestAdmission() {
   assertIncludes(translation, 'class AnswerlatticeTranslationProviderOutputError extends Error', 'Answerlattice translation oversized provider output error');
   assertIncludes(translation, "readonly code = 'ANSWERLATTICE_TRANSLATION_RESPONSE_TOO_LARGE';", 'Answerlattice translation oversized provider output code');
   assertIncludes(translation, "import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';", 'Answerlattice translation KB article ID boundary import');
+  assertIncludes(translation, "import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';", 'Answerlattice translation strict scope helper import');
   assertIncludes(translation, 'articleId: z.string().trim().max(160).refine((value) => normalizeAnswerlatticeKbArticleId(value) === value)', 'Answerlattice translation KB article ID schema boundary');
   assertIncludes(translation, 'readBoundedJsonBody(request, TRANSLATE_ARTICLE_MAX_BODY_BYTES', 'Answerlattice translation bounded body');
   assertIncludes(translation, 'TranslateRequestSchema.safeParse(bodyResult.data)', 'Answerlattice translation bounded validation');
@@ -2032,6 +2047,8 @@ function verifyProtectedAiRequestAdmission() {
   assertIncludes(translation, "getBoundedRuntimeStringContext('storeId', storeIdForLog)", 'Answerlattice translation bounded store metadata');
   assertIncludes(translation, "getBoundedRuntimeStringContext('articleId', articleIdForLog)", 'Answerlattice translation bounded article metadata');
   assertIncludes(translation, "getBoundedRuntimeStringContext('targetLocale', targetLocaleForLog)", 'Answerlattice translation bounded locale metadata');
+  assertIncludes(translation, 'const articleTenantId = normalizeAnswerlatticeScopeDocumentId(article.tId ?? article.tenantId);', 'Answerlattice translation normalizes persisted article tenant scope');
+  assertIncludes(translation, 'articleTenantId !== sessionScope.tenantId', 'Answerlattice translation compares normalized article tenant scope');
   assertNotIncludes(translation, 'request.json()', 'Answerlattice translation raw JSON parser');
   assertOrder(
     translation,
@@ -2052,12 +2069,20 @@ function verifyProtectedAiRequestAdmission() {
   assertNotIncludes(translation, "secureError('[Answerlattice Translate] Failed'", 'Answerlattice translation raw secureError');
   assertNotIncludes(translation, 'articleId: z.string().trim().min(1).max(160)', 'Answerlattice translation loose article ID schema');
   assertNotIncludes(translation, 'const responseText = getTranslationResponseText(response);', 'Answerlattice translation direct provider text parsing');
+  assertNotIncludes(translation, 'const articleTenantId = Number(article.tId ?? article.tenantId);', 'Answerlattice translation must not loosely coerce persisted article tenant scope');
+  assertNotIncludes(translation, 'articleTenantId !== Number(sessionScope.tenantId)', 'Answerlattice translation must not loosely coerce route tenant scope');
   assertIncludes(helpCenterFirebase, 'Article embedding, article entity extraction, FAQ generation, translation, and public-content article reads normalize KB article IDs through the shared Firestore document-ID boundary before any `kb_articles` document access', 'Answerlattice help-center KB article ID boundary docs');
+  assertIncludes(helpCenterFirebase, 'Article AI route scope hardening is cost-neutral', 'Help Center Firebase docs must document article AI route scope boundary');
+  assertIncludes(knowledgeBaseFirebase, 'July 6 article AI route scope hardening is cost-neutral', 'Knowledge Base Firebase docs must document article AI route scope boundary');
+  assertIncludes(faqManagementFirebase, 'FAQ-from-article route scope hardening is cost-neutral', 'FAQ Firebase docs must document FAQ route scope boundary');
   assertIncludes(dataInventoryMap, 'Article embedding, article entity extraction, FAQ generation, translation, and public-content article reads validate article IDs with the shared Firestore document-ID boundary before direct `kb_articles` document access', 'Answerlattice data inventory KB article ID boundary docs');
-  assertIncludes(dataInventoryEvidence, 'Article embedding, article entity extraction, FAQ-from-article generation, article translation, and public-content article reads normalize request-supplied article IDs through the shared Firestore document-ID boundary before `kb_articles` document access', 'Answerlattice data inventory evidence KB article ID boundary docs');
+  assertIncludes(dataInventoryEvidence, 'provider-backed article AI routes also normalize persisted article tenant/store scope before provider work or mutation', 'Answerlattice data inventory evidence article AI scope boundary docs');
   assertIncludes(productionAudit, 'Answerlattice KB Article ID Boundary', 'Answerlattice KB article ID boundary audit checkpoint');
+  assertIncludes(productionAudit, 'Answerlattice article AI route scope boundary checkpoint: fixed in source.', 'Answerlattice article AI route scope audit checkpoint');
   assertIncludes(changelog, 'Answerlattice KB Article ID Boundary', 'Changelog records Answerlattice KB article ID boundary');
+  assertIncludes(changelog, 'Answerlattice Article AI Route Scope Boundary', 'Changelog records article AI route scope boundary');
   assertIncludes(lowercaseChangelog, 'Answerlattice KB Article ID Boundary', 'Lowercase changelog records Answerlattice KB article ID boundary');
+  assertIncludes(lowercaseChangelog, 'Answerlattice Article AI Route Scope Boundary', 'Lowercase changelog records article AI route scope boundary');
 
   assertIncludes(articleEmbedding, 'const ARTICLE_EMBEDDING_MAX_BODY_BYTES = 256 * 1024;', 'Answerlattice article embedding body cap');
   assertIncludes(articleEmbedding, "import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';", 'Answerlattice article embedding KB article ID boundary import');
@@ -2198,11 +2223,13 @@ function verifySearchAndRetrievalTruth() {
   const faqManagement = read('src/components/templates/answerlattice/faqManagement/AnswerlatticeFaqManagement.tsx');
   const productSurfaces = read('src/components/templates/answerlattice/productSurfaces/AnswerlatticeProductSurfaces.tsx');
   const helpCenterSearch = read('src/app/api/helpCenter/search-kb/route.ts');
+  const articleEmbeddingRoute = read('src/app/api/helpCenter/article-embedding/route.ts');
   const aiSearchModal = read('src/components/organisms/AISearchModal/AiSearchBarComponent.tsx');
   const aiSearchActionButtons = read('src/components/organisms/AISearchModal/ActionButtons.tsx');
   const helpChatApi = read('src/components/templates/main-app/helpChat/api.ts');
   const chatSessionsDal = read('src/database/chatSessions/index.ts');
   const aiSearchHistoryDal = read('src/database/aiSearchHistory/index.ts');
+  const aiSearchHistoryServer = read('src/database/aiSearchHistory/server.ts');
   const helpChatHandlers = read('src/components/templates/main-app/helpChat/hooks/useChatHandlers.ts');
   const platformMessageBubble = read('src/components/templates/platform/chatManagement/MessageBubble.tsx');
   const platformConversationDetail = read('src/components/templates/platform/chatManagement/ConversationDetail.tsx');
@@ -2219,8 +2246,10 @@ function verifySearchAndRetrievalTruth() {
   const kbGenerationImpl = read('__docs__/answerlattice/kb-generation-pipeline/kb-generation-pipeline_impl.md');
   const kbGenerationFirebase = read('__docs__/answerlattice/kb-generation-pipeline/kb-generation-pipeline_firebase.md');
   const aiQnaSpec = read('__docs__/answerlattice/ai-qna-chatbot/ai-qna-chatbot_spec.md');
+  const aiQnaFirebase = read('__docs__/answerlattice/ai-qna-chatbot/ai-qna-chatbot_firebase.md');
   const chatMonitoringImpl = read('__docs__/answerlattice/chat-monitoring/chat-monitoring_impl.md');
   const faqManagementImpl = read('__docs__/answerlattice/faq-management/faq-management_impl.md');
+  const faqManagementFirebase = read('__docs__/answerlattice/faq-management/faq-management_firebase.md');
   const productSurfaceContextsReadme = read('__docs__/answerlattice/product-surface-contexts/README.md');
   const productSurfaceContextsImpl = read('__docs__/answerlattice/product-surface-contexts/product-surface-contexts_impl.md');
   const helpCenterSpec = read('__docs__/answerlattice/help-center/help-center_spec.md');
@@ -2491,6 +2520,32 @@ function verifySearchAndRetrievalTruth() {
   assertNotIncludes(kbGenerationSpec, '`getIngestionJobs()` fetches ALL jobs with no tenant filter', 'Answerlattice KB generation spec stale global job risk');
   assertNotIncludes(kbGenerationImpl, '| `getIngestionJobs()` | N | 0 | ALL jobs, NO tenant filter |', 'Answerlattice KB generation impl stale global job row');
   assertNotIncludes(kbGenerationFirebase, '(but `getIngestionJobs()` has no filter)', 'Answerlattice KB generation Firebase stale job scoping note');
+  assertIncludes(knowledgeBaseCategories, 'normalizeAnswerlatticeScopeDocumentId', 'Answerlattice KB categories use shared strict scope normalizer');
+  assertIncludes(knowledgeBaseCategories, 'const getKnowledgeBaseCategoryScope = (source: unknown): KnowledgeBaseCategoryScope | null =>', 'Answerlattice KB categories normalize session scope through helper');
+  assertIncludes(knowledgeBaseCategories, 'const tenantId = normalizeAnswerlatticeScopeDocumentId(tId);', 'Answerlattice KB category doc ID tenant scope normalization');
+  assertIncludes(knowledgeBaseCategories, 'const storeId = normalizeAnswerlatticeScopeDocumentId(sId);', 'Answerlattice KB category doc ID store scope normalization');
+  assertIncludes(knowledgeBaseCategories, 'if (!scope && !isPlatform) {\n                return null;\n            }', 'Answerlattice KB categories reject malformed non-platform scope before legacy fallback');
+  assertIncludes(knowledgeBaseCategories, 'return categoryTenantId === scope.tId && categoryStoreId === scope.sId;', 'Answerlattice KB category legacy filter compares normalized scope');
+  assertNotIncludes(knowledgeBaseCategories, 'const tenantId = Number(tId);', 'Answerlattice KB category doc ID must not loosely coerce tenant scope');
+  assertNotIncludes(knowledgeBaseCategories, 'const tId = Number(session?.tId);', 'Answerlattice KB category cache version must not loosely coerce session tenant scope');
+  assertNotIncludes(knowledgeBaseCategories, 'const categoryTenantId = Number(category?.tId);', 'Answerlattice KB category legacy filter must not loosely coerce category tenant scope');
+  assertIncludes(knowledgeBaseArticles, "import { normalizeAnswerlatticeScopeDocumentId } from \"@lib/answerlattice/sessionScope\";", 'Answerlattice KB articles import shared strict scope normalizer');
+  assertIncludes(knowledgeBaseArticles, 'const normalizeKnowledgeBaseArticleScope = (source?: Record<string, unknown> | null) =>', 'Answerlattice KB articles normalize explicit article scope');
+  assertIncludes(knowledgeBaseArticles, 'const normalizeKnowledgeBaseArticleSessionScope = (session: Awaited<ReturnType<typeof getActiveSession>> | null) =>', 'Answerlattice KB articles normalize session scope');
+  assertIncludes(knowledgeBaseArticles, 'normalizeAnswerlatticeScopeDocumentId(record?.tId ?? record?.tenantId) === scope.tId', 'Answerlattice KB article final guard compares normalized tenant scope');
+  assertIncludes(knowledgeBaseArticles, 'normalizeAnswerlatticeScopeDocumentId(record?.sId ?? record?.storeId) === scope.sId', 'Answerlattice KB article final guard compares normalized store scope');
+  assertIncludes(knowledgeBaseArticles, "const scope = await bumpKnowledgeBaseVersion(null, 'article_bulk_delete');", 'Answerlattice KB bulk delete keeps resolved scope');
+  assertIncludes(knowledgeBaseArticles, "await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'deleteMultipleArticles');", 'Answerlattice KB bulk delete revalidates scoped public cache');
+  assertNotIncludes(knowledgeBaseArticles, 'const dataTId = Number(data?.tId);', 'Answerlattice KB article writes must not loosely coerce data tenant scope');
+  assertNotIncludes(knowledgeBaseArticles, 'const tId = Number(session?.tId);', 'Answerlattice KB article readable scope must not loosely coerce session tenant scope');
+  assertNotIncludes(knowledgeBaseArticles, 'Number(article?.tId) === scope.tId', 'Answerlattice KB article final guard must not loosely coerce article tenant scope');
+  assertNotIncludes(knowledgeBaseArticles, "await revalidateAnswerlatticePublicClientCache(undefined, ['kb', 'context'], 'deleteMultipleArticles');", 'Answerlattice KB bulk delete must not revalidate public cache without scope');
+  assertIncludes(faqDal, "import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';", 'Answerlattice FAQ DAL imports shared strict scope helpers');
+  assertIncludes(faqDal, 'const scope = resolveAnswerlatticeSessionScope(session);', 'Answerlattice FAQ DAL session scope uses shared resolver');
+  assertIncludes(faqDal, 'const normalizeFaqArticleMaintenanceScope = (', 'Answerlattice FAQ article maintenance normalizes explicit scope');
+  assertIncludes(faqDal, 'const explicitScope = normalizeFaqArticleMaintenanceScope(article);', 'Answerlattice FAQ article maintenance uses normalized explicit scope');
+  assertNotIncludes(faqDal, 'const tId = Number(session?.tId);', 'Answerlattice FAQ DAL must not loosely coerce session tenant scope');
+  assertNotIncludes(faqDal, 'tId: Number(article.tId),', 'Answerlattice FAQ article maintenance must not loosely coerce article tenant scope');
   assertIncludes(productSurfacesDal, 'AnswerlatticeProductSurfaceWriteResult', 'Answerlattice product surface write explicit result');
   assertIncludes(productSurfacesDal, 'AnswerlatticeProductSurfaceArchiveResult', 'Answerlattice product surface archive explicit result');
   assertIncludes(productSurfacesDal, 'assertAnswerlatticeProductSurfaceWriteSucceeded', 'Answerlattice product surface write acknowledgement guard');
@@ -2515,6 +2570,27 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(productSurfacesDal, 'sourceId: surfaceId,', 'Answerlattice product surface archive source ID is normalized');
   assertIncludes(productSurfacesDal, 'const normalizedSurfaceId = normalizeAnswerlatticeProductSurfaceId(surfaceId);', 'Answerlattice product surface read normalizes ID');
   assertIncludes(productSurfacesDal, 'if (!normalizedSurfaceId) return null;', 'Answerlattice product surface read rejects malformed ID before ref');
+  assertIncludes(productSurfacesDal, "import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';", 'Answerlattice product surface DAL imports shared strict scope helpers');
+  assertIncludes(productSurfacesDal, 'const normalizeProductSurfaceScope = (scope?: ProductSurfaceScopeInput | null) =>', 'Answerlattice product surface override scope normalizer');
+  assertIncludes(productSurfacesDal, 'const overrideScope = normalizeProductSurfaceScope(scopeOverride);', 'Answerlattice product surface explicit scope is normalized');
+  assertIncludes(productSurfacesDal, 'const scope = resolveAnswerlatticeSessionScope(session);', 'Answerlattice product surface session scope uses shared resolver');
+  assertNotIncludes(productSurfacesDal, 'const overrideTId = Number(scopeOverride?.tId);', 'Answerlattice product surface override must not loosely coerce tenant scope');
+  assertNotIncludes(productSurfacesDal, 'const tId = Number(session?.tId);', 'Answerlattice product surface session must not loosely coerce tenant scope');
+  assertIncludes(articleEmbeddingRoute, "import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';", 'Answerlattice article embedding imports shared strict scope helpers');
+  assertIncludes(articleEmbeddingRoute, 'const sessionScope = resolveAnswerlatticeSessionScope(session);', 'Answerlattice article embedding uses shared session scope only');
+  assertIncludes(articleEmbeddingRoute, 'const articleTenantId = normalizeAnswerlatticeScopeDocumentId(article.tId ?? article.tenantId);', 'Answerlattice article embedding normalizes stored article tenant scope');
+  assertIncludes(articleEmbeddingRoute, 'articleTenantId !== sessionScope.tenantId', 'Answerlattice article embedding compares normalized tenant scope');
+  assertNotIncludes(articleEmbeddingRoute, 'const tenantId = Number(session.tId ?? session.user?.tenantId);', 'Answerlattice article embedding must not fall back to loose session tenant scope');
+  assertNotIncludes(articleEmbeddingRoute, 'const articleTenantId = Number(article.tId ?? article.tenantId);', 'Answerlattice article embedding must not loosely coerce stored article tenant scope');
+  assertIncludes(helpCenterImpl, 'Answerlattice KB owner content scope boundary', 'Help Center impl docs must document KB owner content scope boundary');
+  assertIncludes(helpCenterFirebase, 'KB owner content scope hardening is cost-neutral', 'Help Center Firebase docs must document KB owner content scope cost boundary');
+  assertIncludes(knowledgeBaseImpl, 'Answerlattice KB owner content scope boundary', 'Knowledge Base impl docs must document KB owner content scope boundary');
+  assertIncludes(knowledgeBaseFirebase, 'July 6 KB owner content scope hardening is cost-neutral', 'Knowledge Base Firebase docs must document KB owner content scope cost boundary');
+  assertIncludes(faqManagementFirebase, 'FAQ session and article-maintenance scope hardening is cost-neutral', 'FAQ Firebase docs must document FAQ scope boundary');
+  assertIncludes(productSurfaceContextsImpl, 'Product-surface session and override scope now reuse the shared Answerlattice exact positive numeric Firestore document-ID scope helper', 'Product Surface docs must document scope boundary');
+  assertIncludes(productionAudit, 'Answerlattice KB owner content scope boundary checkpoint: fixed in source.', 'Production readiness audit must document KB owner content scope hardening');
+  assertIncludes(changelog, 'Answerlattice KB Owner Content Scope Boundary', 'Changelog must document KB owner content scope hardening');
+  assertIncludes(lowercaseChangelog, 'Answerlattice KB Owner Content Scope Boundary', 'Lowercase changelog must document KB owner content scope hardening');
   assertNotIncludes(productSurfacesDal, 'doc(answerlatticeFirebaseClient, COLLECTION, docId)', 'Answerlattice product surface DAL must not build raw document refs');
   assertNotIncludes(productSurfacesDal, 'getDocRef(surface.id)', 'Answerlattice product surface archive must not use raw surface ID refs');
   assertNotIncludes(productSurfacesDal, 'sourceId: surface.id', 'Answerlattice product surface archive must not use raw source ID');
@@ -2633,6 +2709,25 @@ function verifySearchAndRetrievalTruth() {
   assertNotIncludes(helpChatApi, '(data as any).error', 'Answerlattice HelpChat API must not throw raw search route response text');
   assertIncludes(aiSearchHistoryDal, 'assertAiSearchHistoryFeedbackUpdateSucceeded', 'Answerlattice search-history feedback acknowledgement guard');
   assertIncludes(aiSearchHistoryDal, 'satisfies AiSearchHistoryFeedbackUpdateResult', 'Answerlattice search-history feedback explicit result');
+  assertIncludes(aiSearchHistoryServer, "import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';", 'Answerlattice search-history server imports shared strict scope normalizer');
+  assertIncludes(aiSearchHistoryServer, 'const getAiSearchHistoryScope = (source: { tId?: unknown; sId?: unknown } | null | undefined): AiSearchHistoryScope | null =>', 'Answerlattice search-history server scope resolver');
+  assertIncludes(aiSearchHistoryServer, 'const scope = getAiSearchHistoryScope(data);', 'Answerlattice search-history writer normalizes scope before compose');
+  assertIncludes(aiSearchHistoryServer, "throw new Error('Answerlattice search history scope is not available.');", 'Answerlattice search-history writer rejects missing scope before Firestore write');
+  assertIncludes(aiSearchHistoryServer, 'tId: scope.tId', 'Answerlattice search-history writer stores normalized tenant scope');
+  assertIncludes(aiSearchHistoryServer, 'sId: scope.sId', 'Answerlattice search-history writer stores normalized store scope');
+  assertIncludes(aiSearchHistoryServer, 'const scope = getAiSearchHistoryScope(session);', 'Answerlattice search-history cache lookup normalizes session scope');
+  assertIncludes(aiSearchHistoryServer, "if (!scope) return null;", 'Answerlattice search-history cache lookup fails closed for malformed scope');
+  assertIncludes(aiSearchHistoryServer, ".where('tId', '==', scope.tId)", 'Answerlattice search-history cache lookup uses normalized tenant scope');
+  assertIncludes(aiSearchHistoryServer, ".where('sId', '==', scope.sId)", 'Answerlattice search-history cache lookup uses normalized store scope');
+  assertIncludes(aiQnaFirebase, 'Search-history server scope hardening is cost-neutral', 'AI QnA Firebase docs must document search-history server scope cost boundary');
+  assertIncludes(dataInventoryEvidence, 'Server search history writer normalizes exact tenant/store scope', 'Answerlattice data inventory evidence must document search-history server scope boundary');
+  assertIncludes(productionAudit, 'Answerlattice search-history server scope boundary checkpoint: fixed in source.', 'Production readiness audit must document search-history server scope boundary');
+  assertIncludes(changelog, 'Answerlattice Search History Server Scope Boundary', 'Changelog must document search-history server scope boundary');
+  assertIncludes(lowercaseChangelog, 'Answerlattice Search History Server Scope Boundary', 'Lowercase changelog must document search-history server scope boundary');
+  assertNotIncludes(aiSearchHistoryServer, 'tId: Number(data.tId || 0)', 'Answerlattice search-history writer must not fallback malformed tenant scope to zero');
+  assertNotIncludes(aiSearchHistoryServer, 'sId: Number(data.sId || 0)', 'Answerlattice search-history writer must not fallback malformed store scope to zero');
+  assertNotIncludes(aiSearchHistoryServer, ".where('tId', '==', Number(session.tId))", 'Answerlattice search-history cache lookup must not loosely coerce raw session tenant scope');
+  assertNotIncludes(aiSearchHistoryServer, ".where('sId', '==', Number(session.sId))", 'Answerlattice search-history cache lookup must not loosely coerce raw session store scope');
   assertIncludes(chatSessionsDal, 'assertChatSessionSaveSucceeded', 'Answerlattice chat sessions DAL save acknowledgement guard');
   assertIncludes(chatSessionsDal, 'assertChatSessionUpdateSucceeded', 'Answerlattice chat sessions DAL update acknowledgement guard');
   assertIncludes(chatSessionsDal, 'assertChatMessageFeedbackUpdateSucceeded', 'Answerlattice chat message feedback acknowledgement guard');
@@ -3133,7 +3228,9 @@ function verifyArticleEntityExtractionScope() {
   const extraction = read('src/app/api/answerlattice/articles/extract-entities/route.ts');
 
   assertIncludes(extraction, 'const articleRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES).doc(article.id)', 'Answerlattice entity extraction article lookup');
-  assertIncludes(extraction, 'if (Number(persistedArticle.tId) !== tenantId || Number(persistedArticle.sId) !== storeId)', 'Answerlattice entity extraction article scope guard');
+  assertIncludes(extraction, 'const articleTenantId = normalizeAnswerlatticeScopeDocumentId(persistedArticle.tId ?? persistedArticle.tenantId);', 'Answerlattice entity extraction normalized article tenant scope');
+  assertIncludes(extraction, 'if (!articleTenantId || !articleStoreId || articleTenantId !== tenantId || articleStoreId !== storeId)', 'Answerlattice entity extraction article scope guard');
+  assertNotIncludes(extraction, 'if (Number(persistedArticle.tId) !== tenantId || Number(persistedArticle.sId) !== storeId)', 'Answerlattice entity extraction must not loosely coerce article scope');
   assertIncludes(extraction, 'Authorization Failed - Answerlattice Article Entity Extraction Scope Mismatch', 'Answerlattice entity extraction security logging');
   assertIncludes(extraction, 'const sourceContent = persistedArticle.content ?? article.content', 'Answerlattice entity extraction canonical content preference');
   assertIncludes(extraction, 'await articleRef.set', 'Answerlattice entity extraction scoped article write');

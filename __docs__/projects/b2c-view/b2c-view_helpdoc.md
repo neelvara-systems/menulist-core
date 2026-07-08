@@ -4,7 +4,7 @@
 
 ## Quick Summary
 
-The B2C Preview lets you choose a menu style, compatible layout, brand accent, and display settings before publishing the customer menu.
+The B2C Preview lets you choose a menu style, compatible layout, brand accent, and display settings before publishing the customer menu. Recommended styles show a small visual strip so you can recognize the expected customer-menu shape without opening another screen.
 
 ---
 
@@ -14,9 +14,10 @@ The B2C Preview lets you choose a menu style, compatible layout, brand accent, a
 
 1. Go to **Projects** and select your menu project.
 2. Open the customer menu preview/design area.
-3. Choose a menu mood such as Clean, Warm, Premium, Bold, or Fast.
-4. Review the preview.
-5. Save or publish when the preview matches the menu you want customers to see.
+3. Use **Recommended styles** when you want a quick starting point. Each card keeps the label short and shows a small visual cue for the customer-menu shape.
+4. Or choose a menu mood such as Clean, Warm, Premium, Bold, or Fast.
+5. Review the preview.
+6. Save or publish when the preview matches the menu you want customers to see.
 
 ### How to set the brand accent
 
@@ -73,4 +74,4 @@ The preview is close, but the customer menu is the final source. Scan your QR co
 
 ## Source Boundary
 
-This help document is support-copy evidence for the current B2C design presentation source path; it is not current launch certification. Release approval requires the External Certification Runbook, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.
+This help document is support-copy evidence for the current B2C design presentation source path, including visual preset preview behavior; it is not current launch certification. Release approval requires the External Certification Runbook, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.

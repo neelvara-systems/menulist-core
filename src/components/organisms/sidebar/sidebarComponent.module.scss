@@ -80,6 +80,15 @@
       }
     }
 
+    .navSectionLabel {
+      color: var(--ant-color-text-tertiary);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0;
+      line-height: 1.2;
+      padding: 10px 2px 2px;
+    }
+
     .subNavPanel {
       border-left: 1px solid var(--ant-color-border-secondary);
       display: flex;

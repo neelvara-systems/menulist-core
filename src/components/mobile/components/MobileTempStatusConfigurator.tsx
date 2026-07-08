@@ -187,22 +187,21 @@ export default function MobileTempStatusConfigurator({
                     }}
                 >
                     {statusOptions.map((option) => (
-                        <Tag
+                        <Button
                             key={option.value}
-                            color={statusType === option.value ? 'processing' : 'default'}
+                            aria-pressed={statusType === option.value}
+                            color={statusType === option.value ? setButtonColor : 'primary'}
+                            fill={statusType === option.value ? 'solid' : 'outline'}
                             onClick={() => onStatusTypeChange(option.value)}
+                            size="small"
                             style={{
-                                cursor: 'pointer',
-                                display: 'block',
-                                marginInlineEnd: 0,
+                                justifyContent: 'center',
                                 minHeight: 44,
-                                padding: '9px 12px',
-                                textAlign: 'center',
                                 width: '100%',
                             }}
                         >
                             {`${option.icon} ${option.label}`}
-                        </Tag>
+                        </Button>
                     ))}
                 </div>
             </Flex>
@@ -223,19 +222,20 @@ export default function MobileTempStatusConfigurator({
                 <Text strong>{expiryLabel}</Text>
                 <Flex align="center" gap={10} wrap>
                     {expiryOptions.map((option) => (
-                        <Tag
+                        <Button
                             key={option.hours}
-                            color={selectedExpiryHours === option.hours ? 'processing' : 'default'}
+                            aria-pressed={selectedExpiryHours === option.hours}
+                            color={selectedExpiryHours === option.hours ? 'primary' : 'primary'}
+                            fill={selectedExpiryHours === option.hours ? 'solid' : 'outline'}
                             onClick={() => onExpiryHoursChange(option.hours)}
+                            size="small"
                             style={{
-                                cursor: 'pointer',
-                                marginInlineEnd: 0,
-                                padding: '6px 10px',
+                                minHeight: 44,
                                 width: 'max-content',
                             }}
                         >
                             {option.label}
-                        </Tag>
+                        </Button>
                     ))}
                     <div style={{ flex: '1 1 190px', marginLeft: 'auto', minWidth: 190, width: 'clamp(190px, 52vw, 240px)' }}>
                         <Input

@@ -6,7 +6,7 @@ import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting'
 import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -79,13 +79,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (bodyResult.ok === false) return bodyResult.response;
 
         const { embeddingPayload } = ArticleEmbeddingRequestSchema.parse(bodyResult.data);
-        const sessionScope = resolveAnswerlatticeSessionScope(session) || (() => {
-            const tenantId = Number(session.tId ?? session.user?.tenantId);
-            const storeId = Number(session.sId ?? session.user?.storeId);
-            return Number.isFinite(tenantId) && Number.isFinite(storeId)
-                ? { tenantId, storeId }
-                : null;
-        })();
+        const sessionScope = resolveAnswerlatticeSessionScope(session);
         if (!sessionScope) {
             return NextResponse.json({ error: 'User not onboarded' }, { status: 400 });
         }
@@ -97,13 +91,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const article = articleDoc.data() || {};
-        const articleTenantId = Number(article.tId ?? article.tenantId);
-        const articleStoreId = Number(article.sId ?? article.storeId);
+        const articleTenantId = normalizeAnswerlatticeScopeDocumentId(article.tId ?? article.tenantId);
+        const articleStoreId = normalizeAnswerlatticeScopeDocumentId(article.sId ?? article.storeId);
         if (
-            !Number.isFinite(articleTenantId) ||
-            !Number.isFinite(articleStoreId) ||
-            articleTenantId !== Number(sessionScope.tenantId) ||
-            articleStoreId !== Number(sessionScope.storeId)
+            !articleTenantId ||
+            !articleStoreId ||
+            articleTenantId !== sessionScope.tenantId ||
+            articleStoreId !== sessionScope.storeId
         ) {
             return NextResponse.json({ error: 'Article not found' }, { status: 404 });
         }

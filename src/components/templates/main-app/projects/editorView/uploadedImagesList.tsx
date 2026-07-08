@@ -37,9 +37,9 @@ function UploadedImagesList({
         if (disabled) return;
 
         Modal.confirm({
-            title: 'Are you sure you want to delete this image?',
-            content: 'This action cannot be undone.',
-            okText: 'Delete',
+            title: 'Delete item photo?',
+            content: 'Customers will no longer see this photo on the item after you save.',
+            okText: 'Delete photo',
             okType: 'danger',
             cancelText: 'Cancel',
             onOk: async () => {

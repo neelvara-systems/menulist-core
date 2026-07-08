@@ -7,6 +7,7 @@
  */
 
 import { Card, Collapse, Divider, Flex, Input, Switch, Typography, theme } from 'antd';
+import MenuStylePresetPreview from '@/components/shared/menuDesign/MenuStylePresetPreview';
 import { getLocalizedDraftText, updateLocalizedText } from '@lib/localization/text';
 import {
     findMatchingMenuDesignPreset,
@@ -245,7 +246,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                             ? `${selectedPreset.label}: ${selectedPreset.description}`
                             : t('recommendedStyleHelper')}
                     </Text>
-                    <Flex vertical gap={8}>
+                    <Flex vertical gap={10}>
                         {recommendedPresets.map((preset) => {
                             const isSelected = selectedPreset?.key === preset.key;
                             return (
@@ -258,18 +259,21 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                                         borderRadius: 10,
                                         color: token.colorText,
                                         cursor: 'pointer',
-                                        padding: '10px 12px',
+                                        padding: 12,
                                         textAlign: 'left',
                                     }}
                                     type="button"
                                 >
-                                    <Flex align="center" gap={10}>
-                                        <span aria-hidden>{preset.emoji}</span>
-                                        <Flex vertical gap={2}>
-                                            <Text strong>{preset.label}</Text>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>{preset.description}</Text>
-                                            <Text type="secondary" style={{ fontSize: 11 }}>{preset.recommendedFor}</Text>
+                                    <Flex gap={12} vertical>
+                                        <Flex align="flex-start" gap={10}>
+                                            <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>{preset.emoji}</span>
+                                            <Flex vertical gap={2} style={{ minWidth: 0 }}>
+                                                <Text strong>{preset.label}</Text>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>{preset.description}</Text>
+                                                <Text type="secondary" style={{ fontSize: 11 }}>{preset.recommendedFor}</Text>
+                                            </Flex>
                                         </Flex>
+                                        <MenuStylePresetPreview compact preset={preset} selected={isSelected} />
                                     </Flex>
                                 </button>
                             );

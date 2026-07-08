@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
+import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { AiSearchHistory } from '@type/aiSearchHistory';
@@ -22,7 +23,19 @@ const SEARCH_HISTORY_OMIT_KEYS = new Set([
     '_vector',
 ]);
 
+type AiSearchHistoryScope = {
+    tId: number;
+    sId: number;
+};
+
 const createTraceId = () => createRuntimeId('al');
+
+const getAiSearchHistoryScope = (source: { tId?: unknown; sId?: unknown } | null | undefined): AiSearchHistoryScope | null => {
+    const tId = normalizeAnswerlatticeScopeDocumentId(source?.tId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(source?.sId);
+    if (!tId || !sId) return null;
+    return { tId, sId };
+};
 
 const sanitizeForFirestore = (value: any): any => {
     if (value === undefined) return null;
@@ -96,12 +109,16 @@ const composeAiSearchHistory = (data: Omit<AiSearchHistory, 'id'> | Partial<AiSe
     const now = new Date();
     const traceId = (data as any).traceId || createTraceId();
     const compactData = compactAiSearchHistoryPayload(data);
+    const scope = getAiSearchHistoryScope(data);
+    if (!scope) {
+        throw new Error('Answerlattice search history scope is not available.');
+    }
 
     return sanitizeForFirestore({
         ...compactData,
         pId: PRODUCT_IDS.ANSWERLATTICE,
-        tId: Number(data.tId || 0),
-        sId: Number(data.sId || 0),
+        tId: scope.tId,
+        sId: scope.sId,
         uId: data.uId || 'system',
         modifiedOn: now,
         createdOn: (data as any).createdOn || now,
@@ -122,10 +139,13 @@ export const findCachedSearchByCacheKeyServer = async (
     cacheKey: string,
     session: LoginUserType
 ): Promise<AiSearchHistory | null> => {
+    const scope = getAiSearchHistoryScope(session);
+    if (!scope) return null;
+
     const snapshot = await firestoreAdmin.collection(COLLECTION)
         .where('cacheKey', '==', cacheKey)
-        .where('tId', '==', Number(session.tId))
-        .where('sId', '==', Number(session.sId))
+        .where('tId', '==', scope.tId)
+        .where('sId', '==', scope.sId)
         .orderBy('createdOn', 'desc')
         .limit(1)
         .get();

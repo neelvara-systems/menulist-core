@@ -82,6 +82,7 @@ import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileCommunicationKit from '../components/CommunicationKit';
 import MobileLinkCard from '../components/MobileLinkCard';
+import MobileMenuSetupProgress from '../components/MenuSetupProgress';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
@@ -231,6 +232,8 @@ interface MobileShareScreenProps {
     onBack?: () => void;
     onOpenDigitalScreens?: () => void;
     onOpenDesignEditor?: () => void;
+    onOpenMenuTab?: () => void;
+    onOpenOfficialPage?: () => void;
     onOpenPosSync?: () => void;
     onOpenPrintAssets?: () => void;
     onOpenPrintMenu?: () => void;
@@ -241,6 +244,8 @@ export default function MobileShareScreen({
     onBack,
     onOpenDigitalScreens,
     onOpenDesignEditor,
+    onOpenMenuTab,
+    onOpenOfficialPage,
     onOpenPosSync,
     onOpenPrintAssets,
     onOpenPrintMenu,
@@ -1376,6 +1381,15 @@ export default function MobileShareScreen({
                     onClick={() => setIsProjectSelectorOpen(true)}
                 />
             ) : null}
+
+            <MobileMenuSetupProgress
+                hideUntilPublished
+                onOpenMenu={onOpenMenuTab}
+                onOpenOfficialPage={onOpenOfficialPage}
+                onOpenShare={() => setActiveGuide('sharing')}
+                project={selectedProject as any}
+                storeDetails={storeDetails as any}
+            />
 
             <MobileLinkCard
                 compact={isCompactHandheld}

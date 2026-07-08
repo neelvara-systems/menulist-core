@@ -16,10 +16,10 @@ import {
     default as MobileTempStatusConfigurator,
 } from '../components/MobileTempStatusConfigurator';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { fromNativeDateTimeInputValue, toDate } from '@util/dateTime';
-import { useTranslations } from 'next-intl';
+import { formatDateTime, fromNativeDateTimeInputValue, toDate } from '@util/dateTime';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
-import { Card, DotLoading, Flex, NavBar, Toast } from '../antd';
+import { Card, Dialog, DotLoading, Flex, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import {
     getBoundedMobileOwnerStringContext,
@@ -73,6 +73,7 @@ function getMobileTempStatusFailureCode(
 
 export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScreenProps) {
     const t = useTranslations('MobileTempStatus');
+    const formatter = useFormatter();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
 
     const currentStatus = storeDetails?.tempStatus;
@@ -89,13 +90,10 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
         : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === statusType)?.defaultMsg || statusType);
 
     const handleSet = useCallback(async () => {
-        setIsLoading(true);
-
         const expiresAt = fromNativeDateTimeInputValue(exactExpiryAt);
         const exactExpiryDate = toDate(expiresAt);
         if (!exactExpiryAt || Number.isNaN(exactExpiryDate.getTime()) || exactExpiryDate.getTime() <= Date.now()) {
             Toast.show({ content: 'Choose a future end date and time.', duration: 2000 });
-            setIsLoading(false);
             return;
         }
 
@@ -103,6 +101,16 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
         const message = statusType === 'custom'
             ? (customMessage.trim() || 'Temporary notice')
             : (selectedOption?.defaultMsg || statusType);
+
+        const confirmed = await Dialog.confirm({
+            title: 'Show this status to customers?',
+            content: `Customers will see "${message}" until ${formatDateTime(expiresAt, 'datetime', formatter)}.`,
+            confirmText: 'Show to customers',
+            cancelText: 'Cancel',
+        });
+        if (!confirmed) return;
+
+        setIsLoading(true);
 
         const newStatus = {
             type: statusType,
@@ -147,14 +155,24 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
         } finally {
             setIsLoading(false);
         }
-    }, [exactExpiryAt, customMessage, setStoreDetails, statusType, storeDetails, t]);
+    }, [exactExpiryAt, customMessage, formatter, setStoreDetails, statusType, storeDetails, t]);
 
     const handleClear = useCallback(async () => {
+        const prevStatus = storeDetails?.tempStatus;
+        const confirmed = await Dialog.confirm({
+            title: 'Clear customer status?',
+            content: prevStatus?.message
+                ? `Customers will no longer see "${prevStatus.message}" on your public page.`
+                : 'Customers will no longer see the temporary status on your public page.',
+            confirmText: 'Clear status',
+            cancelText: 'Cancel',
+        });
+        if (!confirmed) return;
+
         setIsLoading(true);
 
-        const prevStatus = storeDetails?.tempStatus;
         setStoreDetails((prev: any) => {
-            const { tempStatus, ...rest } = prev;
+            const { tempStatus, ...rest } = prev || {};
             return rest;
         });
         Toast.show({ content: t('statusCleared'), icon: 'success', duration: 1500 });

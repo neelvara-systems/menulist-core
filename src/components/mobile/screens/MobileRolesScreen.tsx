@@ -190,7 +190,12 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                         <Title level={5} style={{ margin: 0 }}>
                             {t('permissions')}
                         </Title>
-                        <Text type="secondary">Turn on only the actions this role should be allowed to do inside the app.</Text>
+                        <Card size="small" style={{ backgroundColor: token.colorFillQuaternary }}>
+                            <Flex gap={4} vertical>
+                                <Text strong>Custom roles start with no access.</Text>
+                                <Text type="secondary">Turn on only the actions this person should handle.</Text>
+                            </Flex>
+                        </Card>
 
                         {PERMISSION_CATEGORIES_CONFIG.map((category, index) => {
                             const allEnabled = category.permissions.every((permKey) => Boolean((editingRole.permissions as any)?.[permKey]));
@@ -312,6 +317,13 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
             />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                <Card>
+                    <Flex gap={8} vertical>
+                        <Text strong>Use the simple roles first</Text>
+                        <Text type="secondary">Owner manages everything. Manager handles daily updates. Staff gets only the access you assign.</Text>
+                    </Flex>
+                </Card>
+
                 {roles.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>

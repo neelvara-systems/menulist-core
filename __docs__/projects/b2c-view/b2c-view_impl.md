@@ -197,6 +197,7 @@ The current design presentation contract lives in `b2cView/designSystem/index.ts
 - `normalizeMenuLayout()` falls back to the default compatible layout when a saved layout is unsupported for the selected mood.
 - Legacy saved `tabs` layout values are mapped into `showCategoryTabs` and normalized away from the layout field.
 - `getMoodWithBrandColor()` runs accent and price colors through contrast enforcement before public output.
+- `MenuStylePresetPreview` renders a small visual strip for recommended-style cards from the existing preset fields: mood, layout, accent color, item prices, item images, category icons, and category tabs. This visual preset preview does not add a new public theme contract, click path, or free-form style surface.
 
 Desktop and mobile editors both use the same helper contracts. The public renderer calls `normalizeMenuMood()` and `normalizeMenuLayout()` before reading `MENU_LAYOUTS`, so stale saved values do not become unsupported customer output.
 
@@ -297,6 +298,7 @@ const ShareModal = ({ projectId, isOpen, onClose }) => {
 | Owner-selectable layouts | `OWNER_SELECTABLE_MENU_LAYOUTS` excludes legacy tabs | `src/lib/menu/menuDesignPresets.ts` | Source-gated |
 | Desktop controls | mood change resets to preferred compatible layout | `menuPageSettingsNew.tsx` | Source-gated |
 | Mobile controls | same helper contracts and publish path | `MobileDesignEditorScreen.tsx` | Source-gated |
+| Visual preset preview parity | desktop and mobile recommended-style cards use `MenuStylePresetPreview` | `src/components/shared/menuDesign/MenuStylePresetPreview.tsx` | Source-gated |
 | Public output | normalized mood/layout, image caps, price visibility, category-tabs toggle | `menuPageNew.tsx` | Source-gated |
 | Publish/cache path | `publishProject()` revalidates public menu/client cache | `src/database/projects/index.ts` | Source-gated |
 | External release | External Certification Runbook, Digital Menu Output Constitution checks, browser/mobile customer-menu QA | audit/runbook | Pending |

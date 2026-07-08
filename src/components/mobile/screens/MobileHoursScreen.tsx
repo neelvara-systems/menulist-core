@@ -30,9 +30,9 @@ import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
 import { getExportMethod, getMealName, getShortButtonText } from '@util/campaignUtils';
-import { fromNativeDateTimeInputValue, toDate } from '@util/dateTime';
+import { formatDateTime, fromNativeDateTimeInputValue, toDate } from '@util/dateTime';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuInfo, LuMessageCircle, LuPower, LuPowerOff, LuQrCode, LuSticker, LuTent, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, Title, Toast } from '../antd';
@@ -153,6 +153,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const tToday = useTranslations('MobileToday');
     const tDesign = useTranslations('MobileDesignEditor');
     const tMore = useTranslations('MobileMore');
+    const formatter = useFormatter();
     const { activeSubscription, storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const storeBrandColor = useMemo(() => resolveStoreBrandColor(storeDetails as any), [storeDetails]);
     const storeLogoUrl = (storeDetails as any)?.logo || undefined;
@@ -518,12 +519,8 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         });
     };
 
-    const handleSaveTodayHours = async () => {
+    const saveTodayHours = async () => {
         if (!storeDetails?.storeId) return;
-        if (!todayOpenTime || !todayCloseTime) {
-            Toast.show({ content: 'Please select both opening and closing time', duration: 1500 });
-            return;
-        }
 
         setIsSavingTodayHours(true);
         const previousHours = storeDetails.workingHours || {};
@@ -561,6 +558,21 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         }
     };
 
+    const handleSaveTodayHours = () => {
+        if (!todayOpenTime || !todayCloseTime) {
+            Toast.show({ content: 'Please select both opening and closing time', duration: 1500 });
+            return;
+        }
+
+        void Dialog.confirm({
+            cancelText: 'Cancel',
+            confirmText: 'Publish hours',
+            content: `Customers will see ${todayOpenTime} - ${todayCloseTime} every ${todayLabel} from now on. Use Temporary Status for a one-day change.`,
+            onConfirm: saveTodayHours,
+            title: `Publish regular ${todayLabel} hours?`,
+        });
+    };
+
     const tempStatusPreviewMessage = tempStatusType === 'custom'
         ? (customTempStatusMessage.trim() || 'Temporary notice')
         : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === tempStatusType)?.defaultMsg || tempStatusType);
@@ -573,12 +585,20 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             return;
         }
 
-        setIsTempStatusLoading(true);
         const message = tempStatusPreviewMessage;
+        const confirmed = await Dialog.confirm({
+            cancelText: 'Cancel',
+            confirmText: 'Show to customers',
+            content: `Customers will see "${message}" until ${formatDateTime(expiresAt, 'datetime', formatter)}.`,
+            title: 'Show this status to customers?',
+        });
+        if (!confirmed) return;
+
+        setIsTempStatusLoading(true);
         const newStatus = { type: tempStatusType, message, expiresAt, createdAt: new Date().toISOString() };
         const prevStatus = storeDetails?.tempStatus;
         setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
-        Toast.show({ content: 'Status set', icon: 'success', duration: 1500 });
+        Toast.show({ content: 'Customers can see this now', icon: 'success', duration: 1500 });
         try {
             const res = await fetch('/api/store/temp-status', {
                 ...AUTH_BROWSER_REQUEST_POLICY,
@@ -608,16 +628,29 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                 hasCustomMessage: Boolean(customTempStatusMessage.trim()),
             });
             setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
-            Toast.show({ content: 'Failed to set status', duration: 2000 });
+            Toast.show({ content: 'Could not set status', duration: 2000 });
         } finally {
             setIsTempStatusLoading(false);
         }
     };
 
     const handleClearTempStatus = async () => {
-        setIsTempStatusLoading(true);
         const prevStatus = storeDetails?.tempStatus;
-        setStoreDetails((prev: any) => { const { tempStatus, ...rest } = prev; return rest; });
+        const confirmed = await Dialog.confirm({
+            cancelText: 'Cancel',
+            confirmText: 'Clear status',
+            content: prevStatus?.message
+                ? `Customers will no longer see "${prevStatus.message}" on your public page.`
+                : 'Customers will no longer see the temporary status on your public page.',
+            title: 'Clear customer status?',
+        });
+        if (!confirmed) return;
+
+        setIsTempStatusLoading(true);
+        setStoreDetails((prev: any) => {
+            const { tempStatus, ...rest } = prev || {};
+            return rest;
+        });
         Toast.show({ content: 'Status cleared', icon: 'success', duration: 1500 });
         try {
             const res = await fetch('/api/store/temp-status', {
@@ -641,7 +674,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                 const { tempStatus, ...rest } = prev || {};
                 return rest;
             });
-            Toast.show({ content: 'Failed to clear status', duration: 2000 });
+            Toast.show({ content: 'Could not clear status', duration: 2000 });
         } finally {
             setIsTempStatusLoading(false);
         }
@@ -868,6 +901,16 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     </Flex>
                     <Flex gap={12} style={{ overflowY: 'auto', padding: 14 }} vertical>
                         <Text type="secondary">{`Set the opening and closing time used every ${todayLabel}.`}</Text>
+                        <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
+                            <Flex gap={4} vertical>
+                                <Text strong>Customer preview</Text>
+                                <Text type="secondary">
+                                    {todayOpenTime && todayCloseTime
+                                        ? `Customers will see: ${todayOpenTime} - ${todayCloseTime}`
+                                        : 'Select both times to preview what customers will see.'}
+                                </Text>
+                            </Flex>
+                        </Card>
                         <Flex align="center" gap={8}>
                             <Flex style={{ flex: 1 }} vertical>
                                 <Text type="secondary">Open</Text>
@@ -903,10 +946,10 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                             block
                             color="primary"
                             loading={isSavingTodayHours}
-                            onClick={() => void handleSaveTodayHours()}
+                            onClick={handleSaveTodayHours}
                             size="middle"
                         >
-                            Save
+                            Publish hours
                         </Button>
                     </Flex>
                 </Flex>
@@ -918,20 +961,20 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     <Flex gap={12} vertical>
                         <Flex align="center" gap={8}>
                             <LuAlertTriangle color={token.colorWarning} size={16} />
-                            <Text strong>Temporary Status</Text>
-                            {isTempActive ? <Tag color="success">Active</Tag> : null}
+                            <Text strong>Temporary status</Text>
+                            {isTempActive ? <Tag color="success">Customers see this now</Tag> : null}
                         </Flex>
                         <MobileTempStatusConfigurator
-                            activeStatusLabel="Temporary Status Active"
-                            activeTagLabel="Active"
-                            clearStatusLabel="Clear"
+                            activeStatusLabel="Customers see this now"
+                            activeTagLabel="Live"
+                            clearStatusLabel="Clear status"
                             exactExpiryAt={exactTempStatusExpiryAt}
                             exactExpiryLabel="Ends At"
                             currentStatus={currentTempStatus}
                             customMessage={customTempStatusMessage}
-                            customMessageLabel="Custom Message"
+                            customMessageLabel="Message"
                             customPlaceholder="Type your custom status"
-                            expiryLabel="Expires After"
+                            expiryLabel="Show until"
                             expiresLabel="Expires:"
                             expiryOptions={MOBILE_TEMP_STATUS_EXPIRY_OPTIONS}
                             isActive={Boolean(isTempActive)}
@@ -948,16 +991,16 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                             }}
                             onSet={() => void handleSetTempStatus()}
                             onStatusTypeChange={setTempStatusType}
-                            previewLabel="Preview"
+                            previewLabel="Customer preview"
                             previewMessage={tempStatusPreviewMessage}
                             selectedExpiryHours={selectedTempStatusExpiryHours}
                             setButtonColor="primary"
-                            setStatusLabel="Apply Status"
+                            setStatusLabel="Show to customers"
                             showActiveHeader={false}
                             activeCardVariant="default"
                             statusOptions={MOBILE_TEMP_STATUS_OPTIONS}
                             statusType={tempStatusType}
-                            statusTypeLabel="Status Type"
+                            statusTypeLabel="Status to show"
                         />
                     </Flex>
                 </Card>

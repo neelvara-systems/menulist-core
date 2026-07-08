@@ -1,7 +1,7 @@
 # MenuList Marketing Distribution - Consultant Log
 
-**Status:** Active log  
-**Created:** June 22, 2026  
+**Status:** Active log
+**Created:** June 22, 2026
 **Purpose:** Preserve marketing decisions, rationale, blockers, and verification evidence as work progresses.
 
 ## Log Rules
@@ -11,6 +11,116 @@
 - Link to files, sources, and action IDs.
 - Separate founder-side blockers from Codex-side work.
 - Do not leave important decisions only in chat.
+
+## July 7, 2026 - HyperFrames Draft Video Created
+
+### Context
+
+Founder asked whether Codex could create the MenuList video with HyperFrames and then instructed Codex to proceed without waiting.
+
+### Work Completed
+
+Created a HyperFrames project for the 30-second Launch Announcement Cut:
+
+- `__docs__/videos/hyperframes/menulist-launch-announcement-30s/`
+- `__docs__/videos/videos_hyperframes-production.md`
+
+Rendered output:
+
+- `__docs__/videos/hyperframes/menulist-launch-announcement-30s/renders/menulist-launch-announcement-30s-draft.mp4`
+
+### Environment
+
+Installed Node 22 through the existing local `nvm` install and used it only for HyperFrames commands. The MenuList app runtime and package dependencies were not changed.
+
+HyperFrames TTS failed because the local Kokoro/espeak package expected a missing `phontab` file. Used macOS `say` plus FFmpeg instead and kept only the generated `assets/narration.wav`.
+
+### Verification
+
+- `npm run check` passed inside the HyperFrames project.
+- HyperFrames lint: 0 errors.
+- HyperFrames validate: no console errors and all text passed WCAG AA.
+- HyperFrames inspect: 0 layout issues.
+- Rendered MP4: 1920 x 1080, 30fps, H.264 video, AAC audio.
+- Review frames checked at 1s, 11s, 18s, and 26s.
+
+### Boundaries
+
+The draft uses CSS-built mock UI and demo data only. It is suitable for internal production review, not public launch publishing. No public website copy, runtime app code, paid ad launch, Vercel deploy, Firebase deploy, external-platform claim, ranking claim, or AI recommendation claim was added.
+
+## July 7, 2026 - Founder Review Of Video System
+
+### Context
+
+Founder asked Codex to review the full MenuList video system as a founder/product-strategy reviewer with both MenuList doctrine and current market context in mind.
+
+### Decision
+
+Approved the launch video system for production preparation.
+
+Not approved for public publishing yet.
+
+The approved foundation remains:
+
+```text
+One approved customer link for your menu, services, and business details.
+```
+
+The approved AI-era expansion is:
+
+```text
+One approved customer link - ready for customers, search, and AI-era discovery.
+```
+
+This expansion must stay readiness/source-quality language and must never become a ranking, AI recommendation, traffic, citation, revenue, or automatic external-platform update claim.
+
+### File Added
+
+- `__docs__/videos/videos_founder-review.md`
+
+### Action Register
+
+- Added `MLD-A021` for the founder review doc.
+- Added `MLD-V022` for founder review verification.
+
+### Boundaries
+
+No runtime code, website copy, paid ad launch, production asset, external platform integration, Vercel deploy, Firebase deploy, ranking claim, AI recommendation claim, or automatic external update claim was added.
+
+## July 7, 2026 - AI-Era Video Strategy Addendum
+
+### Context
+
+Founder shared a 2026 market-positioning note arguing that MenuList should use the AI era to look more necessary and trustworthy without becoming an AI-hype product.
+
+### Decision
+
+Accepted the direction with strict wording boundaries.
+
+MenuList can use:
+
+```text
+One approved customer link - ready for customers, search, and AI-era discovery.
+```
+
+This is an expansion of the core product line, not a replacement. It means MenuList keeps business information clean, current, structured, and owner-approved so customers and discovery systems have a better source to read.
+
+MenuList must not claim guaranteed Google ranking, ChatGPT recommendations, AI citations, traffic, revenue, or automatic external-platform updates.
+
+### Files Added Or Updated
+
+- `__docs__/videos/videos_ai-era-market-strategy.md`
+- `__docs__/videos/videos_future-ai-search-ready-video.md`
+- `__docs__/videos/videos_launch-product-marketing-production-blueprint.md`
+- `__docs__/videos/videos_short-form-reels.md`
+- `__docs__/videos/videos_campaign-calendar.md`
+- `__docs__/videos/videos_01-*` through `videos_12-*`
+- `__docs__/menulist-marketing-distribution/menulist-marketing-distribution_launch-video-scripts.md`
+- `__docs__/menulist-marketing-distribution/menulist-marketing-distribution_action-register.md`
+
+### Boundaries
+
+No public website copy, runtime code, external platform integration, search-ranking claim, AI-recommendation claim, paid ad launch, Vercel deploy, Firebase deploy, or production build was added.
 
 ## June 25, 2026 - QR Print Trust-Cue Hardening
 
@@ -1074,3 +1184,194 @@ The founder shared branded QR examples and an external analysis arguing that the
 - No QR art generator was added.
 - No scan ledger, click ledger, public route, Firestore rule/index, Storage path, Cloud Function, API route, production build, Vercel deploy, or Firebase deploy was added.
 - Public claims remain proof-gated. Do not publish scan-lift or sales-lift claims without measured MenuList data.
+
+---
+
+## July 7, 2026 - Launch Video System Expanded
+
+### Context
+
+The founder shared a full MenuList launch-video strategy built around one approved menu/service list, one trusted customer link, and public surfaces staying aligned. The plan was checked against current MenuList marketing doctrine, the existing marketing/distribution docs, and the live `menulist.online` homepage, How It Works, AI Menu Manager, Official Business Page, and Multi-location positioning.
+
+### Decisions
+
+- Accepted the video angle: one approved customer link for menus, services, and business details.
+- Rejected QR-menu-only framing and generic AI restaurant software framing.
+- Expanded `menulist-marketing-distribution_launch-video-scripts.md` from a small script pack into a full video system covering the hero launch film, 30-second launch cut, 2-3 minute demo, feature videos, reels, paid cutdowns, campaign timing, visual direction, CTA language, and production gates.
+- Kept AI Menu Manager video copy centered on message in, card prepared, owner approval, and receipt after supported work.
+- Kept external-platform wording bounded: MenuList can provide the owner-approved link for places such as WhatsApp, Instagram, Google profile, QR, packaging, and print, but it must not claim automatic external-platform posting or sync.
+
+### Files Updated
+
+- `menulist-marketing-distribution_launch-video-scripts.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_consultant-log.md`
+- `README.md`
+- `../marketing/README.md`
+
+### Boundaries
+
+- No video files were created.
+- No website code, locale copy, public route, runtime feature, Firebase target, production build, Vercel deploy, paid campaign, analytics instrumentation, or external upload was changed.
+- Final production remains blocked on routed demo screenshots or approved mockups, founder voiceover/talking-head decision, final claim-boundary review, and campaign upload destinations.
+
+### Verification
+
+- Live site checked on July 7, 2026 for homepage, AI Menu Manager, Official Business Page, How It Works, and Multi-location claim fit.
+- `git diff --check` passed.
+- Targeted prohibited-claim scan found no unsafe positive claims in the launch video system doc.
+
+---
+
+## July 7, 2026 - Dedicated Video Folder Created
+
+### Context
+
+The founder asked for a dedicated folder under `__docs__/videos/` with each mentioned video type split into its own doc because all of this belongs to MenuList launch, marketing, distribution, and pre-production planning.
+
+### Decisions
+
+- Created `__docs__/videos/` as the canonical video-planning home.
+- Split the prior launch-video system into type-wise docs:
+  - launch / hero video;
+  - product demo video;
+  - feature videos;
+  - short-form reels and shorts;
+  - paid ad cutdowns;
+  - campaign calendar;
+  - production plan.
+- Kept the existing `menulist-marketing-distribution_launch-video-scripts.md` file as a compatibility pointer only.
+- Updated marketing and marketing-distribution indexes so future work lands in `__docs__/videos/`.
+
+### Files Updated
+
+- `../videos/README.md`
+- `../videos/videos_launch-hero-video.md`
+- `../videos/videos_product-demo-video.md`
+- `../videos/videos_feature-videos.md`
+- `../videos/videos_short-form-reels.md`
+- `../videos/videos_paid-ad-cutdowns.md`
+- `../videos/videos_campaign-calendar.md`
+- `../videos/videos_production-plan.md`
+- `menulist-marketing-distribution_launch-video-scripts.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_consultant-log.md`
+- `README.md`
+- `../marketing/README.md`
+
+### Boundaries
+
+- No video files were created.
+- No public website copy, locale files, routes, runtime code, Firebase target, production build, Vercel deploy, paid campaign, or external upload was changed.
+- Production still needs routed screenshots or approved mockups, founder voiceover/talking-head decision, final claim review, and campaign upload destinations.
+
+---
+
+## July 7, 2026 - 12-Video Production Handoff Blueprint
+
+### Context
+
+The founder provided a production-handoff prompt asking for a complete, design-team-ready document for 12 MenuList launch and product marketing videos. The required scope included executive summary, brand and messaging rules, visual language, production assumptions, exact A-P sections for every video, frame plans, voiceover, on-screen text, UI requirements, motion and sound direction, versioning, thumbnails, launch sequencing, review checklist, deliverables, and editor notes.
+
+### Decisions
+
+- Created `../videos/videos_launch-product-marketing-production-blueprint.md` as the master design-team handoff.
+- Covered all 12 required videos:
+  - 75-sec Product Launch / Hero Film;
+  - 2-3 min Product Demo Walkthrough;
+  - 30-sec Launch Announcement Cut;
+  - Old PDF Problem Reel;
+  - QR Stale Page Reel;
+  - Photo/PDF to Customer Link Reel;
+  - Owner Approval / Review Before Publishing Reel;
+  - One Link Everywhere Reel;
+  - AI Menu Manager Reel;
+  - Official Business Page Reel;
+  - Multi-location Reel;
+  - Founder / Brand POV Video.
+- Kept the strategy centered on public-business truth infrastructure and one approved customer link.
+- Preserved strict claim boundaries against QR-only positioning, generic AI hype, fake metrics, fake customer proof, ranking/growth claims, and automatic external-platform update claims.
+
+### Files Updated
+
+- `../videos/videos_launch-product-marketing-production-blueprint.md`
+- `../videos/README.md`
+- `menulist-marketing-distribution_launch-video-scripts.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_consultant-log.md`
+
+### Boundaries
+
+- No video files were created.
+- No public website copy, locale files, runtime code, routes, Firebase targets, production build, Vercel deploy, paid campaign, or external upload was changed.
+- The document is ready for production planning; visual production remains blocked on actual routed screenshots or approved mockups, founder footage decisions, and final asset review.
+
+---
+
+## July 7, 2026 - Individual Video Handoff Files Added
+
+### Context
+
+The founder asked whether the full production blueprint had been added to each individual type-wise file. The master blueprint already contained the full A-P sections, but the folder still needed standalone files for each of the 12 required video types.
+
+### Decisions
+
+- Added one standalone production handoff file per required video type under `__docs__/videos/`.
+- Each standalone file includes shared positioning, claim boundaries, and the full A-P production structure for that video.
+- Updated `../videos/README.md` with an individual 12-video handoff table.
+
+### Files Added
+
+- `../videos/videos_01-product-launch-hero-film.md`
+- `../videos/videos_02-product-demo-walkthrough.md`
+- `../videos/videos_03-launch-announcement-cut.md`
+- `../videos/videos_04-old-pdf-problem-reel.md`
+- `../videos/videos_05-qr-stale-page-reel.md`
+- `../videos/videos_06-photo-pdf-to-customer-link-reel.md`
+- `../videos/videos_07-owner-approval-review-before-publishing-reel.md`
+- `../videos/videos_08-one-link-everywhere-reel.md`
+- `../videos/videos_09-ai-menu-manager-reel.md`
+- `../videos/videos_10-official-business-page-reel.md`
+- `../videos/videos_11-multi-location-reel.md`
+- `../videos/videos_12-founder-brand-pov-video.md`
+
+### Boundaries
+
+- No video files were created.
+- No runtime code, public website copy, locale files, routes, deploys, paid campaigns, or external uploads were changed.
+
+---
+
+## July 7, 2026 - HyperFrames Founder POV Draft Rendered
+
+### Context
+
+The founder asked Codex to continue without waiting for more permission and act from the MenuList founder point of view. Because no founder footage was available yet, the next practical asset was a faceless Founder / Brand POV draft using the approved MenuList video doctrine, founder-style narration, and product-flow motion scenes.
+
+### Decisions
+
+- Created a dedicated HyperFrames project for the Founder / Brand POV video.
+- Kept the video centered on owner pain, scattered public information, one approved customer link, review before publishing, controlled updates, and AI-era readiness without ranking or automation promises.
+- Used generated local review narration only as a placeholder for production review.
+- Rendered a 75-second 16:9 MP4 and extracted review frames for manual visual inspection.
+
+### Files Added Or Updated
+
+- `../videos/hyperframes/menulist-founder-brand-pov/`
+- `../videos/videos_hyperframes-production.md`
+- `../videos/README.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_consultant-log.md`
+
+### Verification
+
+- HyperFrames `npm run check` passed with 0 lint warnings, no console errors, 57 WCAG-passing text elements, and 0 layout issues.
+- Rendered MP4 passed metadata check: H.264, 1920 x 1080, 30fps, 2,250 frames, 75.03 seconds.
+- Review frames were extracted and visually checked at 2s, 12s, 24s, 36s, 48s, 60s, and 70s.
+
+### Boundaries
+
+- This is still a draft, not a final public launch asset.
+- Founder audio or founder talking-head footage should replace the local generated review narration before public use.
+- Product screens remain CSS-built mockups until approved demo screenshots or final UI captures are available.
+- No public website copy, locale files, runtime code, Firebase target, production build, Vercel deploy, paid campaign, or external upload was changed.

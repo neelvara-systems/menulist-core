@@ -89,7 +89,13 @@
         "Support": "الدعم",
         "Use MenuList": "استخدم MenuList",
         "Assets": "الأصول",
-        "Growth Kits": "Growth Kits"
+        "Growth Kits": "Growth Kits",
+        "Status": "الحالة",
+        "What customers see": "ما يراه العملاء",
+        "Public links and materials": "الروابط والمواد العامة",
+        "Account and team": "الحساب والفريق",
+        "Advanced setup": "الإعداد المتقدم",
+        "Internal tools": "أدوات داخلية"
     },
     "Settings": {
         "language": "اللغة",
@@ -1665,7 +1671,7 @@
         "itemCustomerImpactFeatureLabel": "Feature level",
         "itemCustomerImpactFeatureDesc": "Guides Featured choices. It does not move the item in the menu and customers do not see this setting.",
         "deleteItemTitle": "Delete item",
-        "deleteItemConfirm": "Are you sure you want to delete \"{item}\"?",
+        "deleteItemConfirm": "Customers will no longer see \"{item}\". Delete this item? This cannot be undone.",
         "deleteItemAction": "Delete this item",
         "categoriesSummary": "{items} · {categories}",
         "categoriesCount": "{count} categories",

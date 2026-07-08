@@ -23,19 +23,28 @@
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { FEATURE_FLAGS } from '@config/features';
+import { getProjectData } from '@database/projects';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import { getStoredOwnerProjectId, setStoredOwnerProjectId } from '@lib/projects/projectSelection';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Alert, Card, Flex, Space, Typography } from 'antd';
+import {
+    getProjectPageProjectLogContext,
+    getProjectPageStoreLogContext,
+    logProjectPageFailure,
+} from '@template/main-app/projects/utils/projectPageDiagnostics';
+import { Alert, Button, Card, Flex, Space, Tag, Typography } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { LuCalendarClock, LuClock, LuEye, LuImage, LuListChecks, LuShieldCheck, LuStore, LuUtensils } from 'react-icons/lu';
 
 import DailyView from './DailyView';
 import { DashboardProjectSelector } from './DashboardProjectSelector';
 import LoadingState from './LoadingState';
 import MenuAnalyticsDetailsCard from './MenuAnalyticsDetailsCard';
 import MenuQualitySignals from '../MenuQualitySignals';
+import MenuSetupProgress from '../MenuSetupProgress';
 import MonthlyView from './MonthlyView';
 import OverallFooter from './OverallFooter';
 import OverviewView from './OverviewView';
@@ -48,11 +57,23 @@ import OBPMetricsCard from './OBPMetricsCard';
 import { BusinessHealthAnalyticsStrip } from '../../ownerBusinessAssistant/BusinessHealthAnalyticsStrip';
 import { BusinessHealthDashboardCard } from '../../ownerBusinessAssistant/BusinessHealthDashboardCard';
 import styles from './OwnerDashboard.module.scss';
+import useSWR from 'swr';
 
 const { Text, Title } = Typography;
 
+const formatRelativeUpdatedLabel = (value: unknown): string => {
+    if (!value) return 'Not updated yet';
+    const parsed = new Date(String(value));
+    if (Number.isNaN(parsed.getTime())) return 'Recently updated';
+    const days = Math.max(0, Math.floor((Date.now() - parsed.getTime()) / 86400000));
+    if (days === 0) return 'Updated today';
+    if (days === 1) return 'Updated yesterday';
+    return `Updated ${days} days ago`;
+};
+
 const OwnerDashboard: React.FC = () => {
     const t = useTranslations('Dashboard.owner');
+    const router = useRouter();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
     // Derive a fallback projectId from storeDetails immediately (no SWR wait needed)
@@ -118,6 +139,54 @@ const OwnerDashboard: React.FC = () => {
         loadHistorical: showHistorical,
     });
     const obpDashboard = useOBPDashboard({ loadHistorical: showHistorical });
+    const shouldLoadDashboardProject = Boolean(
+        activeProjectId
+        && (FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS || FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS)
+    );
+    const {
+        data: dashboardProjectData,
+        isLoading: dashboardProjectLoading,
+    } = useSWR(
+        shouldLoadDashboardProject ? ['ownerDashboardProjectSetup', activeProjectId] : null,
+        async () => {
+            try {
+                return await getProjectData(activeProjectId as string);
+            } catch (error) {
+                logProjectPageFailure('owner_dashboard_project_setup_load_failed', error, {
+                    surface: 'owner_dashboard_menu_setup_progress',
+                    ...getProjectPageProjectLogContext(activeProjectId),
+                    ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                });
+                return null;
+            }
+        },
+        { dedupingInterval: 600000, revalidateOnFocus: false }
+    );
+    const dashboardProjectForChildren = dashboardProjectLoading
+        ? null
+        : dashboardProjectData === undefined
+        ? undefined
+        : dashboardProjectData || null;
+    const hasPublicLink = Boolean(storeDetails?.customDomain || storeDetails?.subdomain);
+    const hasWorkingHours = Boolean(storeDetails?.workingHours && Object.values(storeDetails.workingHours as Record<string, unknown>).some(Boolean));
+    const menuUpdatedLabel = formatRelativeUpdatedLabel(
+        (dashboardProjectForChildren as any)?.modifiedOn
+        || (dashboardProjectForChildren as any)?.updatedAt
+        || data?.lastFetched
+    );
+    const dashboardAttentionItems = [
+        activeProjectId || dashboardProjectLoading || dashboardProjectForChildren
+            ? null
+            : { key: 'menu', path: '/projects' },
+        hasWorkingHours
+            ? null
+            : { key: 'hours', path: '/business-settings?section=hours&focus=working-hours' },
+        hasPublicLink
+            ? null
+            : { key: 'public-listing', path: '/business-settings?section=search-discovery&focus=customer-link' },
+    ].filter(Boolean) as Array<{ key: string; path: string }>;
+    const needsAttentionCount = dashboardAttentionItems.length;
+    const primaryAttentionPath = dashboardAttentionItems[0]?.path || '/projects';
 
     const hasMenuData = Boolean(data?.today || data?.overview || data?.weekly || data?.daily || data?.monthly || data?.overall);
     const hasOBPSettledData = Boolean(obpDashboard.data?.overview || obpDashboard.data?.overall);
@@ -186,7 +255,13 @@ const OwnerDashboard: React.FC = () => {
                         <Text type="secondary">{t('settledTabHelper')}</Text>
                         <OverviewView
                             data={data?.overview || null}
-                            qualitySignalsSlot={<MenuQualitySignals projectId={activeProjectId} />}
+                            qualitySignalsSlot={(
+                                <MenuQualitySignals
+                                    projectData={dashboardProjectForChildren}
+                                    projectId={activeProjectId}
+                                    projectLoading={dashboardProjectLoading}
+                                />
+                            )}
                             projectId={activeProjectId}
                         />
                         <OBPMetricsCard
@@ -276,12 +351,69 @@ const OwnerDashboard: React.FC = () => {
                     />
                 </Flex>
 
+                <Card className={styles.truthStatusCard}>
+                    <Flex align="flex-start" justify="space-between" gap={16} wrap="wrap">
+                        <Flex gap={14} style={{ flex: '1 1 420px', minWidth: 0 }} vertical>
+                            <Flex align="center" gap={10} wrap="wrap">
+                                <LuShieldCheck size={22} color={needsAttentionCount ? 'var(--ant-color-warning)' : 'var(--ant-color-success)'} />
+                                <Title level={3} style={{ margin: 0 }}>
+                                    {needsAttentionCount ? 'Needs attention' : 'Your business profile is live'}
+                                </Title>
+                                <Tag color={hasPublicLink ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
+                                    {hasPublicLink ? 'Live' : 'Not live yet'}
+                                </Tag>
+                            </Flex>
+                            <Text type="secondary" style={{ fontSize: 15 }}>
+                                {needsAttentionCount
+                                    ? 'Fix the public details customers rely on first.'
+                                    : 'No action needed. Customers can use your current public details.'}
+                            </Text>
+                            <Flex gap={8} wrap="wrap">
+                                <Tag icon={<LuUtensils size={13} />} style={{ marginInlineEnd: 0 }}>
+                                    Menu: {menuUpdatedLabel}
+                                </Tag>
+                                <Tag icon={<LuClock size={13} />} color={hasWorkingHours ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
+                                    Hours: {hasWorkingHours ? 'Set' : 'Missing'}
+                                </Tag>
+                                <Tag icon={<LuStore size={13} />} color={hasPublicLink ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
+                                    Public listing: {hasPublicLink ? 'Visible' : 'Not ready'}
+                                </Tag>
+                            </Flex>
+                        </Flex>
+                        <Flex gap={8} wrap="wrap" style={{ flex: '0 1 390px' }}>
+                            <Button icon={<LuListChecks size={16} />} onClick={() => router.push(primaryAttentionPath)} type="primary">
+                                Fix what needs attention
+                            </Button>
+                            <Button icon={<LuEye size={16} />} onClick={() => router.push('/projects?view=b2c')}>
+                                Preview public menu
+                            </Button>
+                        </Flex>
+                    </Flex>
+                </Card>
+
+                <Card className={styles.quickActionsCard} size="small" title="Common updates">
+                    <Flex gap={8} wrap="wrap">
+                        <Button icon={<LuUtensils size={15} />} onClick={() => router.push('/projects')}>Update menu</Button>
+                        <Button icon={<LuClock size={15} />} onClick={() => router.push('/business-settings?section=hours&focus=working-hours')}>Change hours</Button>
+                        <Button icon={<LuCalendarClock size={15} />} onClick={() => router.push('/business-settings?section=hours&focus=temp-status')}>Set special hours</Button>
+                        <Button icon={<LuImage size={15} />} onClick={() => router.push('/business-settings?section=business-profile&focus=official-page-photos')}>Update photos</Button>
+                    </Flex>
+                </Card>
+
                 {canShowBusinessHealthDashboardCard ? (
                     <BusinessHealthDashboardCard
                         current={businessHealthCurrent}
                         isLoading={isBusinessHealthLoading}
                         projectId={activeProjectId || undefined}
                         storeScopeKey={storeDetails?.storeId}
+                    />
+                ) : null}
+
+                {FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS ? (
+                    <MenuSetupProgress
+                        loading={dashboardProjectLoading}
+                        project={dashboardProjectForChildren}
+                        storeDetails={storeDetails as any}
                     />
                 ) : null}
 

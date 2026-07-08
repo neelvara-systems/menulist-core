@@ -5,7 +5,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
-import { Button, Card, DotLoading, Flex, Input, NavBar, Switch, Text, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Flex, Input, NavBar, Switch, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import {
     getMobileOwnerStoreLogContext,
@@ -81,20 +81,8 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
     }, null) || { open: '09:00', close: '22:00', isClosed: false };
     const isDirty = JSON.stringify(schedule) !== JSON.stringify(originalSchedule);
 
-    const handleSave = useCallback(async () => {
+    const saveWorkingHours = useCallback(async () => {
         if (!storeDetails?.storeId) return;
-
-        for (const { key } of DAYS) {
-            const daySchedule = schedule[key];
-            if (daySchedule.isClosed) continue;
-
-            const openMinutes = toMinutes(daySchedule.open);
-            const closeMinutes = toMinutes(daySchedule.close);
-            if (openMinutes === null || closeMinutes === null || openMinutes === closeMinutes) {
-                Toast.show({ content: 'Open and close times must be valid and different.', duration: 1800 });
-                return;
-            }
-        }
 
         setIsSaving(true);
         const workingHours: Record<string, string> = {};
@@ -130,6 +118,36 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
         }
     }, [schedule, setStoreDetails, storeDetails, t]);
 
+    const handleSave = useCallback(() => {
+        if (!storeDetails?.storeId) return;
+
+        for (const { key } of DAYS) {
+            const daySchedule = schedule[key];
+            if (daySchedule.isClosed) continue;
+
+            const openMinutes = toMinutes(daySchedule.open);
+            const closeMinutes = toMinutes(daySchedule.close);
+            if (openMinutes === null || closeMinutes === null || openMinutes === closeMinutes) {
+                Toast.show({ content: 'Open and close times must be valid and different.', duration: 1800 });
+                return;
+            }
+        }
+
+        const changedDays = DAYS
+            .filter(({ key }) => serializeDay(schedule[key]) !== serializeDay(originalSchedule[key]))
+            .map(({ label }) => label);
+
+        void Dialog.confirm({
+            cancelText: 'Cancel',
+            confirmText: 'Publish hours',
+            content: changedDays.length
+                ? `Customers will see the new regular hours for ${changedDays.join(', ')} from now on.`
+                : 'Customers will see these regular hours from now on.',
+            onConfirm: saveWorkingHours,
+            title: 'Publish regular hours?',
+        });
+    }, [originalSchedule, saveWorkingHours, schedule, storeDetails?.storeId]);
+
     const handleReset = useCallback(() => {
         setSchedule(originalSchedule);
     }, [originalSchedule]);
@@ -161,6 +179,15 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
                 title={t('title')}
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <Card>
+                    <Flex gap={4} vertical>
+                        <Text strong>Regular weekly hours</Text>
+                        <Text type="secondary">
+                            These are the hours customers see every week. Use temporary status for one-day changes.
+                        </Text>
+                    </Flex>
+                </Card>
+
                 <Card>
                     <Flex gap={12} vertical>
                         <Flex align="center" justify="space-between">

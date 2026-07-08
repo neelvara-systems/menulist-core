@@ -89,7 +89,13 @@
         "Support": "Support",
         "Use MenuList": "MenuList ব্যবহার করুন",
         "Assets": "অ্যাসেটস",
-        "Growth Kits": "Growth Kits"
+        "Growth Kits": "Growth Kits",
+        "Status": "অবস্থা",
+        "What customers see": "গ্রাহকরা যা দেখেন",
+        "Public links and materials": "পাবলিক লিংক ও সামগ্রী",
+        "Account and team": "অ্যাকাউন্ট ও টিম",
+        "Advanced setup": "উন্নত সেটআপ",
+        "Internal tools": "অভ্যন্তরীণ সরঞ্জাম"
     },
     "Settings": {
         "language": "Language",
@@ -1665,7 +1671,7 @@
         "itemCustomerImpactFeatureLabel": "Feature level",
         "itemCustomerImpactFeatureDesc": "Guides Featured choices. It does not move the item in the menu and customers do not see this setting.",
         "deleteItemTitle": "Delete item",
-        "deleteItemConfirm": "Are you sure you want to delete \"{item}\"?",
+        "deleteItemConfirm": "Customers will no longer see \"{item}\". Delete this item? This cannot be undone.",
         "deleteItemAction": "Delete this item",
         "categoriesSummary": "{items} · {categories}",
         "categoriesCount": "{count} categories",

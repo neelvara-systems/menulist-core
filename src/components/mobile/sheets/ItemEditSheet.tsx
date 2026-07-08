@@ -1002,126 +1002,168 @@ export default function ItemEditSheet({
                             </div>
 
                             <div style={inlineSurfaceStyle}>
-                                <Flex align="center" justify="space-between">
+                                <Flex gap={10} vertical>
+                                    <Text strong>Customer preview</Text>
                                     <Flex align="center" gap={10}>
-                                        <LuStar
-                                            size={18}
-                                            style={{
-                                                color: draftItem.isBestSeller ? token.colorWarning : token.colorTextSecondary,
-                                            }}
-                                        />
-                                        <Flex gap={2} vertical>
-                                            <Text strong>{t('bestSeller')}</Text>
-                                            <Text type="secondary">{t('bestSellerHelp')}</Text>
+                                        {itemImagePreviews[0] ? (
+                                            <Image
+                                                height={48}
+                                                preview={false}
+                                                src={itemImagePreviews[0]}
+                                                style={{ borderRadius: 8, objectFit: 'cover', width: 48 }}
+                                                width={48}
+                                            />
+                                        ) : null}
+                                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                            <Text strong>{sharableCardInput.itemName}</Text>
+                                            <Text type="secondary">
+                                                {[
+                                                    selectedCategory?.name,
+                                                    draftItem.attributes?.length ? 'Has options' : sharableCardInput.price,
+                                                    draftItem.available === false ? availabilityLabels.unavailable : null,
+                                                    draftItem.active === false ? t('hidden') : null,
+                                                ].filter(Boolean).join(' · ') || 'Saved item details'}
+                                            </Text>
                                         </Flex>
                                     </Flex>
-                                    <Switch
-                                        checked={draftItem.isBestSeller === true}
-                                        onChange={(checked) => setDraftItem((previous) => ({ ...previous, isBestSeller: checked }))}
-                                    />
                                 </Flex>
                             </div>
 
-                            <div style={inlineSurfaceStyle}>
-                                <Flex gap={12} vertical>
-                                    <Flex align="center" gap={10}>
-                                        <LuClock size={18} style={{ color: token.colorTextSecondary }} />
-                                        <Flex gap={2} vertical>
-                                            <Text strong>{t('prepTime')}</Text>
-                                            <Text type="secondary">{t('prepTimeHelp')}</Text>
-                                        </Flex>
-                                    </Flex>
-                                    <Input
-                                        max={240}
-                                        min={0}
-                                        onChange={(value) => setDraftItem((previous) => ({
-                                            ...previous,
-                                            duration: parseBoundedNumber(value, 0, 240),
-                                        }))}
-                                        placeholder={t('prepTimePlaceholder')}
-                                        step={1}
-                                        type="number"
-                                        value={draftItem.duration !== undefined ? String(draftItem.duration) : ''}
-                                    />
-                                </Flex>
-                            </div>
-
-                            <div style={inlineSurfaceStyle}>
-                                <Flex gap={12} vertical>
-                                    <Flex align="center" gap={10}>
-                                        <LuTrendingUp size={18} style={{ color: token.colorTextSecondary }} />
-                                        <Flex gap={2} vertical>
-                                            <Text strong>{t('priority')}</Text>
-                                            <Text type="secondary">{t('priorityHelp')}</Text>
-                                        </Flex>
-                                    </Flex>
-                                    <Flex gap={8}>
-                                        <Button
-                                            fill={ownerBoostLevel === 'lower' ? 'solid' : 'outline'}
-                                            onClick={() => setOwnerBoostLevel(-10)}
-                                            style={{ flex: 1 }}
-                                        >
-                                            <Flex align="center" gap={6} justify="center">
-                                                <LuMinus size={14} />
-                                                <Text>{t('lower')}</Text>
-                                            </Flex>
-                                        </Button>
-                                        <Button
-                                            fill={ownerBoostLevel === 'normal' ? 'solid' : 'outline'}
-                                            onClick={() => setOwnerBoostLevel(0)}
-                                            style={{ flex: 1 }}
-                                        >
-                                            <Text>{t('normal')}</Text>
-                                        </Button>
-                                        <Button
-                                            fill={ownerBoostLevel === 'higher' ? 'solid' : 'outline'}
-                                            onClick={() => setOwnerBoostLevel(10)}
-                                            style={{ flex: 1 }}
-                                        >
-                                            <Flex align="center" gap={6} justify="center">
-                                                <LuPlus size={14} />
-                                                <Text>{t('higher')}</Text>
-                                            </Flex>
-                                        </Button>
-                                    </Flex>
-                                    <Text type="secondary">{t('priorityRangeHelp')}</Text>
-                                </Flex>
-                            </div>
-
-                            <Collapse accordion>
+                            <Collapse>
                                 <Collapse.Panel
-                                    key="customer-impact-guide"
+                                    key="more-options"
                                     title={(
                                         <Flex gap={2} vertical>
-                                            <Text strong>{t('itemCustomerImpactTitle')}</Text>
-                                            <Text type="secondary">{t('itemCustomerImpactIntro')}</Text>
+                                            <Text strong>More options</Text>
+                                            <Text type="secondary">Popular label, prep time, and featured placement.</Text>
                                         </Flex>
                                     )}
                                 >
                                     <Flex gap={12} vertical>
-                                        {[
-                                            {
-                                                desc: t('itemCustomerImpactReorderDesc'),
-                                                label: t('itemCustomerImpactReorderLabel'),
-                                            },
-                                            {
-                                                desc: t('itemCustomerImpactBestSellerDesc'),
-                                                label: t('itemCustomerImpactBestSellerLabel'),
-                                            },
-                                            {
-                                                desc: t('itemCustomerImpactPrepTimeDesc'),
-                                                label: t('itemCustomerImpactPrepTimeLabel'),
-                                            },
-                                            {
-                                                desc: t('itemCustomerImpactFeatureDesc'),
-                                                label: t('itemCustomerImpactFeatureLabel'),
-                                            },
-                                        ].map((row) => (
-                                            <Flex gap={2} key={row.label} vertical>
-                                                <Text strong>{row.label}</Text>
-                                                <Text type="secondary">{row.desc}</Text>
+                                        <div style={inlineSurfaceStyle}>
+                                            <Flex align="center" justify="space-between">
+                                                <Flex align="center" gap={10}>
+                                                    <LuStar
+                                                        size={18}
+                                                        style={{
+                                                            color: draftItem.isBestSeller ? token.colorWarning : token.colorTextSecondary,
+                                                        }}
+                                                    />
+                                                    <Flex gap={2} vertical>
+                                                        <Text strong>{t('bestSeller')}</Text>
+                                                        <Text type="secondary">{t('bestSellerHelp')}</Text>
+                                                    </Flex>
+                                                </Flex>
+                                                <Switch
+                                                    checked={draftItem.isBestSeller === true}
+                                                    onChange={(checked) => setDraftItem((previous) => ({ ...previous, isBestSeller: checked }))}
+                                                />
                                             </Flex>
-                                        ))}
+                                        </div>
+
+                                        <div style={inlineSurfaceStyle}>
+                                            <Flex gap={12} vertical>
+                                                <Flex align="center" gap={10}>
+                                                    <LuClock size={18} style={{ color: token.colorTextSecondary }} />
+                                                    <Flex gap={2} vertical>
+                                                        <Text strong>{t('prepTime')}</Text>
+                                                        <Text type="secondary">{t('prepTimeHelp')}</Text>
+                                                    </Flex>
+                                                </Flex>
+                                                <Input
+                                                    max={240}
+                                                    min={0}
+                                                    onChange={(value) => setDraftItem((previous) => ({
+                                                        ...previous,
+                                                        duration: parseBoundedNumber(value, 0, 240),
+                                                    }))}
+                                                    placeholder={t('prepTimePlaceholder')}
+                                                    step={1}
+                                                    type="number"
+                                                    value={draftItem.duration !== undefined ? String(draftItem.duration) : ''}
+                                                />
+                                            </Flex>
+                                        </div>
+
+                                        <div style={inlineSurfaceStyle}>
+                                            <Flex gap={12} vertical>
+                                                <Flex align="center" gap={10}>
+                                                    <LuTrendingUp size={18} style={{ color: token.colorTextSecondary }} />
+                                                    <Flex gap={2} vertical>
+                                                        <Text strong>{t('priority')}</Text>
+                                                        <Text type="secondary">{t('priorityHelp')}</Text>
+                                                    </Flex>
+                                                </Flex>
+                                                <Flex gap={8}>
+                                                    <Button
+                                                        fill={ownerBoostLevel === 'lower' ? 'solid' : 'outline'}
+                                                        onClick={() => setOwnerBoostLevel(-10)}
+                                                        style={{ flex: 1 }}
+                                                    >
+                                                        <Flex align="center" gap={6} justify="center">
+                                                            <LuMinus size={14} />
+                                                            <Text>{t('lower')}</Text>
+                                                        </Flex>
+                                                    </Button>
+                                                    <Button
+                                                        fill={ownerBoostLevel === 'normal' ? 'solid' : 'outline'}
+                                                        onClick={() => setOwnerBoostLevel(0)}
+                                                        style={{ flex: 1 }}
+                                                    >
+                                                        <Text>{t('normal')}</Text>
+                                                    </Button>
+                                                    <Button
+                                                        fill={ownerBoostLevel === 'higher' ? 'solid' : 'outline'}
+                                                        onClick={() => setOwnerBoostLevel(10)}
+                                                        style={{ flex: 1 }}
+                                                    >
+                                                        <Flex align="center" gap={6} justify="center">
+                                                            <LuPlus size={14} />
+                                                            <Text>{t('higher')}</Text>
+                                                        </Flex>
+                                                    </Button>
+                                                </Flex>
+                                                <Text type="secondary">{t('priorityRangeHelp')}</Text>
+                                            </Flex>
+                                        </div>
+
+                                        <Collapse accordion>
+                                            <Collapse.Panel
+                                                key="customer-impact-guide"
+                                                title={(
+                                                    <Flex gap={2} vertical>
+                                                        <Text strong>{t('itemCustomerImpactTitle')}</Text>
+                                                        <Text type="secondary">{t('itemCustomerImpactIntro')}</Text>
+                                                    </Flex>
+                                                )}
+                                            >
+                                                <Flex gap={12} vertical>
+                                                    {[
+                                                        {
+                                                            desc: t('itemCustomerImpactReorderDesc'),
+                                                            label: t('itemCustomerImpactReorderLabel'),
+                                                        },
+                                                        {
+                                                            desc: t('itemCustomerImpactBestSellerDesc'),
+                                                            label: t('itemCustomerImpactBestSellerLabel'),
+                                                        },
+                                                        {
+                                                            desc: t('itemCustomerImpactPrepTimeDesc'),
+                                                            label: t('itemCustomerImpactPrepTimeLabel'),
+                                                        },
+                                                        {
+                                                            desc: t('itemCustomerImpactFeatureDesc'),
+                                                            label: t('itemCustomerImpactFeatureLabel'),
+                                                        },
+                                                    ].map((row) => (
+                                                        <Flex gap={2} key={row.label} vertical>
+                                                            <Text strong>{row.label}</Text>
+                                                            <Text type="secondary">{row.desc}</Text>
+                                                        </Flex>
+                                                    ))}
+                                                </Flex>
+                                            </Collapse.Panel>
+                                        </Collapse>
                                     </Flex>
                                 </Collapse.Panel>
                             </Collapse>

@@ -20,6 +20,7 @@ import {
     getProjectPageProjectLogContext,
     logProjectPageFailure,
 } from '@template/main-app/projects/utils/projectPageDiagnostics';
+import type { Project } from '@template/main-app/projects/types';
 import { Button, Card, Flex, Skeleton, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -30,7 +31,9 @@ const { Text } = Typography;
 const { useToken } = theme;
 
 interface MenuQualitySignalsProps {
+    projectData?: (Project & Record<string, any>) | null;
     projectId: string | null;
+    projectLoading?: boolean;
 }
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
@@ -45,7 +48,7 @@ const SIGNAL_ICONS: Record<string, React.ReactNode> = {
 };
 const PENDING_QUALITY_ACTION_STORAGE_KEY = 'menulist:pendingQualityAction';
 
-const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) => {
+const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectData, projectId, projectLoading = false }) => {
     const router = useRouter();
     const { token } = useToken();
     const t = useTranslations('Dashboard.owner');
@@ -55,6 +58,32 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (projectData !== undefined) {
+            if (projectLoading) {
+                setLoading(true);
+                return;
+            }
+
+            if (!projectData?.files) {
+                setSignals([]);
+                setAllSignals([]);
+                setCheckedAt(null);
+                setLoading(false);
+                return;
+            }
+
+            const computed = computeQualitySignals(projectData.files, projectData.languages, {
+                projectPublicContent: projectData,
+                showCategoryIcons: projectData?.config?.design?.menu?.showCategoryIcons ?? true,
+                showItemPrices: projectData?.config?.design?.menu?.showItemPrices ?? true,
+            });
+            setAllSignals(computed);
+            setSignals(getVisibleSignals(computed));
+            setCheckedAt(Date.now());
+            setLoading(false);
+            return;
+        }
+
         if (!projectId || !FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS) {
             setLoading(false);
             return;
@@ -89,7 +118,7 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
         loadSignals();
 
         return () => { cancelled = true; };
-    }, [projectId]);
+    }, [projectData, projectId, projectLoading]);
 
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);
     const primarySignal = useMemo(() => getPrimaryQualitySignal(allSignals), [allSignals]);

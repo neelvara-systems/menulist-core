@@ -17,7 +17,7 @@ import {
 import { normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -139,13 +139,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const sessionScope = resolveAnswerlatticeSessionScope(session);
-        const tenantId = Number(sessionScope?.tenantId);
-        const storeId = Number(sessionScope?.storeId);
         tenantIdForLog = sessionScope?.tenantId;
         storeIdForLog = sessionScope?.storeId;
-        if (!Number.isFinite(tenantId) || tenantId <= 0 || !Number.isFinite(storeId) || storeId <= 0) {
+        if (!sessionScope) {
             return NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 400 });
         }
+        const tenantId = sessionScope.tenantId;
+        const storeId = sessionScope.storeId;
 
         const { checkSafeMode } = await import('@lib/ops/safeMode');
         const safeModeResponse = await checkSafeMode();
@@ -193,11 +193,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const article = { ...articleSnap.data(), id: articleSnap.id } as KnowledgeBaseArticleType;
-        const articleTenantId = Number(article.tId);
-        const articleStoreId = Number(article.sId);
+        const articleRecord = article as unknown as Record<string, unknown>;
+        const articleTenantId = normalizeAnswerlatticeScopeDocumentId(articleRecord.tId ?? articleRecord.tenantId);
+        const articleStoreId = normalizeAnswerlatticeScopeDocumentId(articleRecord.sId ?? articleRecord.storeId);
         if (
-            !Number.isFinite(articleTenantId) ||
-            !Number.isFinite(articleStoreId) ||
+            !articleTenantId ||
+            !articleStoreId ||
             articleTenantId !== tenantId ||
             articleStoreId !== storeId
         ) {

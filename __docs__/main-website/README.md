@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.107 (Website Google Analytics Page-Location Boundary)
+**Version:** 3.6.108 (Homepage Preview Source Selector)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** July 5, 2026
+**Last Updated:** July 7, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,11 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.107** | **Website Google Analytics Page-Location Boundary** | **Google Analytics page views no longer send query strings or hash fragments as the default page location.** | **ACTIVE** |
+| **3.6.108** | **Homepage Preview Source Selector** | **The homepage preview bridge now lets owners switch between photo, owned-link, and typed-list examples before opening the signed-in setup flow.** | **ACTIVE** |
+
+Version 3.6.108 turns `CreateMenuPreviewSection` into a small browser-local proof selector for the three owner inputs that matter most before signup: a photo of the current list, an owned public link, or typed items/services/prices. The preview panel updates the sample private-preview output without uploading files, reading URLs, reserving slugs, calling providers, creating drafts, or changing the authenticated `/create-menu` flow. Guardrails remain visible: account before processing, five preview attempts per day, 24-hour draft expiry, and review before anything becomes public. This is public website component/CSS/locale/docs work only; `/create-menu` upload/link runtime, preview processing, auth, pricing/payment, owner dashboard, customer menu/OBP runtime, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
+
+Version 3.6.107 remains Website Google Analytics Page-Location Boundary and is preserved below as the previous website version note.
 
 Version 3.6.107 hardens the consent-gated Google Analytics page-view setup. `GoogleAnalytics` now fails closed unless `NEXT_PUBLIC_GA_MEASUREMENT_ID` matches the GA4 `G-...` shape, and the default `page_location` strips query strings and hash fragments before `gtag('config')` runs. This keeps public utility-route parameters, copied report hash payloads, and success-page URLs out of the default GA page-view URL while preserving explicit bounded custom-event context. `npm run verify:website-public-copy-boundary` source-gates the GA ID guard, sanitized page-location helper, raw `window.location.href` page-location exclusion, and docs/audit/changelog parity. This is public website GA configuration minimization only; Plausible event names, Google Analytics script source, resource custom-event payloads, Microsoft Clarity configuration, owner dashboard analytics, customer menu/OBP analytics, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
 

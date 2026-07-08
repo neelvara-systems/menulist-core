@@ -2,7 +2,7 @@
 
 **Feature:** Customer-Facing Digital Menu Design Presentation
 **Status:** Mobile source-boundary evidence; not current launch certification
-**Last Updated:** July 2, 2026
+**Last Updated:** July 8, 2026
 
 ## Current Launch Boundary
 
@@ -37,6 +37,7 @@ When embedded, the mobile editor sends normalized project data through `onEmbedd
 | --- | --- |
 | Mood controls | Same mood enum as desktop: Clean, Warm, Premium, Bold, Fast |
 | Layout controls | Compatible List, Grid, and Card choices only |
+| Recommended styles | Same small `MenuStylePresetPreview` visual strips as desktop, backed by the existing preset helpers; the mobile sheet avoids technical mood/color/toggle breakdowns |
 | Category tabs | Separate display/navigation toggle, not a layout template |
 | Save/publish | Uses `publishProject()` and the shared public cache invalidation path |
 | Failure handling | Acknowledgement guard prevents local success when persistence fails |
@@ -46,4 +47,4 @@ When embedded, the mobile editor sends normalized project data through `onEmbedd
 
 ## Verification
 
-`npm run verify:menu-design-presentation-boundary` checks the mobile screen for shared helper usage, compatible layout filtering, publish acknowledgement, `verifyMenuPublish()`, and embedded-state parity. This is a source gate only. It does not replace browser/mobile customer-menu QA, real-device QA, public cache/deploy evidence, target production smoke, or the External Certification Runbook.
+`npm run verify:menu-design-presentation-boundary` checks the mobile screen for shared helper usage, compatible layout filtering, visual preset preview parity, publish acknowledgement, `verifyMenuPublish()`, and embedded-state parity. This is a source gate only. It does not replace browser/mobile customer-menu QA, real-device QA, public cache/deploy evidence, target production smoke, or the External Certification Runbook.

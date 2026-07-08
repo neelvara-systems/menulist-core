@@ -78,37 +78,39 @@ export const NAVIGARIONS_ROUTINGS = {
 
 export const SKIP_CLIENT_APP_LAYOUT_ROUTINGS = [NAVIGARIONS_ROUTINGS.SIGNIN, HOME_ROUTING, NAVIGARIONS_ROUTINGS.MENU, NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD];
 
-export type NavItemType = { key?: any, label: string, route: string, defaultRoute?: string, icon: any, isChild?: boolean, subNav?: NavItemType[], showSubNav?: boolean, active?: boolean, subNavActive?: boolean, allowedPlatformRoles?: string[] };
+export type NavItemType = { key?: any, label: string, route: string, defaultRoute?: string, icon: any, isChild?: boolean, sectionLabel?: string, subNav?: NavItemType[], showSubNav?: boolean, active?: boolean, subNavActive?: boolean, allowedPlatformRoles?: string[] };
 
 export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
-    { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard },
+    { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard, sectionLabel: 'Status' },
     { label: 'Today', route: NAVIGARIONS_ROUTINGS.TODAY, icon: LuCalendarCheck2 },  // Social Content - daily action
-    { label: 'Growth Kits', route: NAVIGARIONS_ROUTINGS.GROWTH_KITS, icon: LuSparkles },
-    { label: 'Projects', route: NAVIGARIONS_ROUTINGS.PROJECTS, icon: LuFolderHeart },
+    { label: 'Projects', route: NAVIGARIONS_ROUTINGS.PROJECTS, icon: LuFolderHeart, sectionLabel: 'What customers see' },
+    { label: 'Business Settings', route: NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS, icon: LuHotel },
+    { label: 'Feedback', route: NAVIGARIONS_ROUTINGS.FEEDBACK, icon: LuTicket },
+    { label: 'Use MenuList', route: NAVIGARIONS_ROUTINGS.USE_MENULIST, icon: LuShare2, sectionLabel: 'Public links and materials' },
+    { label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE, icon: LuQrCode },
+    { label: 'Assets', route: NAVIGARIONS_ROUTINGS.ASSETS, icon: LuPrinter },
     {
         label: 'Users',
         route: NAVIGARIONS_ROUTINGS.USERS,
         defaultRoute: NAVIGARIONS_ROUTINGS.USERS_LIST,
         icon: LuUsers,
+        sectionLabel: 'Account and team',
         subNav: [
             { label: 'Users List', route: NAVIGARIONS_ROUTINGS.USERS_LIST, icon: LuUsers },
             { label: 'Roles', route: NAVIGARIONS_ROUTINGS.USERS_ROLES, icon: LuShieldCheck },
         ],
     },
-    { label: 'Use MenuList', route: NAVIGARIONS_ROUTINGS.USE_MENULIST, icon: LuShare2 },
-    { label: 'Menu Manager', route: NAVIGARIONS_ROUTINGS.AI_MENU_MANAGER, icon: LuMessageSquare },
-    { label: 'Assets', route: NAVIGARIONS_ROUTINGS.ASSETS, icon: LuPrinter },
-    { label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE, icon: LuQrCode },
-    { label: 'Feedback', route: NAVIGARIONS_ROUTINGS.FEEDBACK, icon: LuTicket },
-    { label: 'Business Settings', route: NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS, icon: LuHotel },
-    { label: 'Transactions', route: NAVIGARIONS_ROUTINGS.TRANSACTIONS, icon: LuReceipt },
     { label: 'Locations', route: NAVIGARIONS_ROUTINGS.LOCATIONS, icon: LuMapPin },
     { label: 'Billing', route: NAVIGARIONS_ROUTINGS.BILLING, icon: LuCreditCard },
+    { label: 'Transactions', route: NAVIGARIONS_ROUTINGS.TRANSACTIONS, icon: LuReceipt },
     { label: 'Help', route: NAVIGARIONS_ROUTINGS.HELP, icon: LuHeartHandshake },
+    { label: 'Menu Manager', route: NAVIGARIONS_ROUTINGS.AI_MENU_MANAGER, icon: LuMessageSquare, sectionLabel: 'Advanced setup' },
+    { label: 'Growth Kits', route: NAVIGARIONS_ROUTINGS.GROWTH_KITS, icon: LuSparkles },
     {
         label: 'Platform',
         route: NAVIGARIONS_ROUTINGS.PLATFORM,
         icon: TbSettingsHeart,
+        sectionLabel: 'Internal tools',
         allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE],
         subNav: [
             { label: 'Home', route: NAVIGARIONS_ROUTINGS.PLATFORM, icon: MdOutlineManageHistory },

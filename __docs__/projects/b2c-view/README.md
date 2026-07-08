@@ -2,6 +2,7 @@
 
 **Sub-feature of:** Projects (Menu Digitization)  
 **Status:** Implemented source evidence; not current launch certification
+**Last Updated:** July 8, 2026
 
 **Launch boundary:** This hub links B2C/customer-menu source docs; it is not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
 
@@ -9,7 +10,7 @@
 
 ## Overview
 
-The customer-facing digital menu that restaurant patrons see. Includes a controlled menu design editor for owners to choose moods, compatible layouts, branding accents, and display settings with responsive design and SEO optimization.
+The customer-facing digital menu that restaurant patrons see. Includes a controlled menu design editor for owners to choose moods, compatible layouts, branding accents, display settings, and visual preset previews with responsive design and SEO optimization.
 
 ---
 
@@ -55,6 +56,7 @@ src/components/templates/main-app/projects/b2cView/index.tsx
 src/components/templates/main-app/projects/b2cView/designSystem/index.ts
 src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx
 src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx
+src/components/shared/menuDesign/MenuStylePresetPreview.tsx
 src/components/mobile/screens/MobileDesignEditorScreen.tsx
 src/lib/menu/menuDesignPresets.ts
 src/database/projects/index.ts
@@ -73,7 +75,7 @@ src/database/projects/index.ts
 
 ## Source Gate
 
-`npm run verify:menu-design-presentation-boundary` checks mood/layout normalization, desktop and mobile design controls, public menu image/price/category-tabs behavior, the project publish/cache path, and this doc boundary. Passing this source gate is not current launch certification; release approval still needs the External Certification Runbook, Digital Menu Output Constitution checks, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.
+`npm run verify:menu-design-presentation-boundary` checks mood/layout normalization, desktop and mobile design controls, visual preset preview parity, public menu image/price/category-tabs behavior, the project publish/cache path, and this doc boundary. Passing this source gate is not current launch certification; release approval still needs the External Certification Runbook, Digital Menu Output Constitution checks, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.
 
 ---
 
@@ -96,4 +98,4 @@ src/database/projects/index.ts
 
 ---
 
-_Last Updated: January 2026_
+_Last Updated: July 8, 2026_

@@ -46,6 +46,7 @@ function requireOrder(source, tokens, label) {
 const packageJson = read('package.json');
 const designSystem = read('src/components/templates/main-app/projects/b2cView/designSystem/index.ts');
 const designPresets = read('src/lib/menu/menuDesignPresets.ts');
+const stylePresetPreview = read('src/components/shared/menuDesign/MenuStylePresetPreview.tsx');
 const desktopSettings = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx');
 const mobileDesign = read('src/components/mobile/screens/MobileDesignEditorScreen.tsx');
 const publicMenu = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
@@ -112,11 +113,24 @@ requireOrder(
 forbidToken(designPresets, "MenuLayout.TABS,", 'Owner selectable design preset helpers');
 
 [
+  "interface MenuStylePresetPreviewProps",
+  "preset: MenuDesignPreset;",
+  "const mood = MENU_MOODS[preset.mood];",
+  "const isGrid = preset.layout === MenuLayout.GRID;",
+  "preset.showCategoryTabs",
+  "preset.showImages",
+  "preset.showCategoryIcons",
+  "preset.showItemPrices",
+].forEach((token) => requireToken(stylePresetPreview, token, 'B2C visual style preset preview'));
+
+[
   "const menuDesign = resolveMenuDesignConfig(projectData?.config?.design?.menu);",
   "const recommendedPresets = getRecommendedMenuDesignPresets({ businessType, businessCategory });",
   "layout: getPreferredMenuLayoutForMood(mood),",
   "if (!getOwnerSelectableMenuLayouts(currentMood).includes(layout)) return;",
   "const patch = getMenuDesignPresetPatch(preset);",
+  "import MenuStylePresetPreview from '@/components/shared/menuDesign/MenuStylePresetPreview';",
+  "<MenuStylePresetPreview compact preset={preset} selected={isSelected} />",
   "const SERVICE_CHARGE_MAX_LENGTH = 140;",
   "const normalizedNote = note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim();",
   "maxLength={SERVICE_CHARGE_MAX_LENGTH}",
@@ -131,8 +145,19 @@ forbidToken(designPresets, "MenuLayout.TABS,", 'Owner selectable design preset h
   "const updated = await publishProject(normalizedDraft);",
   "assertProjectUpdateSucceeded(",
   "void verifyMenuPublish({",
+  "import MenuStylePresetPreview from '@/components/shared/menuDesign/MenuStylePresetPreview';",
+  "<MenuStylePresetPreview compact preset={preset} selected={isSelected} />",
   "onEmbeddedProjectDataChange?.(cloneProjectData(project))",
 ].forEach((token) => requireToken(mobileDesign, token, 'Mobile B2C design controls'));
+[
+  "selectedRecommendedPreset.mood",
+  "selectedRecommendedPreset.layout",
+  "selectedRecommendedPreset.accentColor",
+  "selectedRecommendedPreset.showItemPrices",
+  "selectedRecommendedPreset.showImages",
+  "selectedRecommendedPreset.showCategoryIcons",
+  "selectedRecommendedPreset.showCategoryTabs",
+].forEach((token) => forbidToken(mobileDesign, token, 'Mobile recommended style low-stress sheet boundary'));
 
 [
   "const resolvedMood = normalizeMenuMood(mood);",
@@ -195,6 +220,14 @@ for (const [label, content] of docs) {
   forbidToken(content, 'Smart theming', `${label} forbidden public wording`);
   forbidToken(content, 'Dynamic layouts', `${label} forbidden public wording`);
 }
+
+[
+  ['B2C README', readme],
+  ['B2C implementation', impl],
+  ['B2C mobile support', mobileDoc],
+  ['B2C helpdoc', helpDoc],
+].forEach(([label, content]) => requireToken(content, 'visual preset preview', `${label} visual preset preview boundary`));
+requireToken(mobileDoc, 'avoids technical mood/color/toggle breakdowns', 'B2C mobile low-stress recommended style boundary');
 
 [
   'Performance, device-coverage, QR adoption, indexing, sharing, and customer-behavior claims need release-specific evidence',

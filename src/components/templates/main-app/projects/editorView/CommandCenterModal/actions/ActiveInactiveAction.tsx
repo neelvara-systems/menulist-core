@@ -43,17 +43,17 @@ export default function ActiveInactiveAction({
     return (
         <Flex vertical gap={16}>
             <Flex vertical gap={8}>
-                <Text strong style={{ fontSize: 13 }}>Show or hide items permanently</Text>
+                <Text strong style={{ fontSize: 13 }}>Choose what customers can see</Text>
                 <Radio.Group
                     value={target}
                     onChange={(e) => setTarget(e.target.value)}
                 >
                     <Flex vertical gap={8}>
                         <Radio value="show" style={{ fontSize: 13 }}>
-                            Show on Menu (make active)
+                            Show to customers
                         </Radio>
                         <Radio value="hide" style={{ fontSize: 13 }}>
-                            Hide from Menu (make inactive)
+                            Hide from customers
                         </Radio>
                     </Flex>
                 </Radio.Group>
@@ -72,7 +72,7 @@ export default function ActiveInactiveAction({
                     )}
                     {preview.itemsAlreadyInState > 0 && preview.itemsToChange > 0 && (
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                            {preview.itemsAlreadyInState} already {target === 'show' ? 'visible' : 'hidden'}.
+                            {preview.itemsAlreadyInState} already {target === 'show' ? 'shown' : 'hidden'}.
                         </Text>
                     )}
                 </Flex>
@@ -88,7 +88,7 @@ export default function ActiveInactiveAction({
             )}
 
             <Text type="secondary" style={{ fontSize: 11 }}>
-                Hidden items are permanently removed from the customer menu. Use &quot;Change Availability&quot; for temporary out-of-stock items instead.
+                Hidden items do not appear for customers. Use &quot;Change Availability&quot; for temporary out-of-stock items instead.
             </Text>
         </Flex>
     );

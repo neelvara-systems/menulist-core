@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "MenuList Serif";
+        src: local("Georgia");
+      }
+
+      @font-face {
+        font-family: "MenuList Sans";
+        src: local("Avenir Next");
+      }
+
+      @font-face {
+        font-family: "MenuList Mono";
+        src: local("Menlo");
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #f8fafc;
+      }
+
+      body {
+        color: #0f172a;
+        font-family: "MenuList Sans", system-ui, sans-serif;
+      }
+
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 10% 8%, rgba(219, 234, 254, 0.92), transparent 30%),
+          radial-gradient(circle at 86% 18%, rgba(39, 168, 227, 0.22), transparent 34%),
+          linear-gradient(90deg, rgba(0, 81, 209, 0.052) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(15, 23, 42, 0.038) 1px, transparent 1px),
+          #f8fafc;
+        background-repeat: no-repeat, no-repeat, repeat, repeat, no-repeat;
+        background-size: 760px 900px, 700px 920px, 72px 72px, 72px 72px, auto;
+        background-position: left top, right top, 0 0, 0 0, 0 0;
+      }
+
+      .brand-bug {
+        position: absolute;
+        top: 54px;
+        left: 54px;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 18px 12px 12px;
+        border: 1px solid rgba(0, 81, 209, 0.16);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.09);
+      }
+
+      .brand-bug img {
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
+      }
+
+      .brand-bug span {
+        font-size: 28px;
+        font-weight: 900;
+      }
+
+      .rule {
+        position: absolute;
+        left: 54px;
+        right: 54px;
+        height: 2px;
+        background: rgba(0, 81, 209, 0.18);
+        transform-origin: left center;
+      }
+
+      .rule.top {
+        top: 144px;
+      }
+
+      .rule.bottom {
+        bottom: 132px;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .scene-content {
+        height: 100%;
+        padding: 180px 64px 180px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 42px;
+      }
+
+      .eyebrow {
+        color: #0051d1;
+        font-family: "MenuList Mono", Menlo, monospace;
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2 {
+        color: #0f172a;
+        font-family: "MenuList Serif", Georgia, serif;
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 0.94;
+      }
+
+      h1 {
+        font-size: 94px;
+      }
+
+      h2 {
+        font-size: 82px;
+      }
+
+      .body-copy {
+        color: #475569;
+        font-size: 36px;
+        font-weight: 350;
+        line-height: 1.28;
+      }
+
+      .caption {
+        position: absolute;
+        left: 54px;
+        right: 54px;
+        bottom: 176px;
+        z-index: 9;
+        padding: 22px 26px;
+        border: 1px solid rgba(0, 81, 209, 0.16);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.92);
+        color: #0f172a;
+        font-size: 34px;
+        font-weight: 750;
+        line-height: 1.16;
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+      }
+
+      .phone-stack {
+        height: 620px;
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+      }
+
+      .phone {
+        width: 305px;
+        height: 610px;
+        padding: 16px;
+        border: 9px solid #0f172a;
+        border-radius: 40px;
+        background: #0f172a;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
+      }
+
+      .screen {
+        height: 100%;
+        overflow: hidden;
+        border-radius: 28px;
+        background: #ffffff;
+      }
+
+      .mock-header {
+        padding: 22px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+      }
+
+      .mock-title {
+        font-size: 24px;
+        font-weight: 850;
+      }
+
+      .mock-subtitle {
+        margin-top: 6px;
+        color: #64748b;
+        font-size: 15px;
+      }
+
+      .mock-list {
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .tag {
+        width: max-content;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1e40af;
+        font-family: "MenuList Mono", Menlo, monospace;
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .mock-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        padding: 15px 0;
+        border-bottom: 1px solid #e2e8f0;
+        color: #0f172a;
+        font-size: 18px;
+      }
+
+      .price {
+        color: #0051d1;
+        font-family: "MenuList Mono", Menlo, monospace;
+        font-weight: 800;
+      }
+
+      .problem .price {
+        color: #dc2626;
+        text-decoration: line-through;
+      }
+
+      .source-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .source-card,
+      .preview-panel,
+      .surface,
+      .link-core {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 18px 52px rgba(15, 23, 42, 0.08);
+      }
+
+      .source-card {
+        min-height: 172px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .source-card strong {
+        font-size: 32px;
+        font-weight: 900;
+      }
+
+      .source-card span {
+        color: #64748b;
+        font-size: 20px;
+        line-height: 1.22;
+      }
+
+      .preview-panel {
+        padding: 30px;
+      }
+
+      .preview-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        padding-bottom: 22px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .preview-title {
+        font-size: 34px;
+        font-weight: 900;
+      }
+
+      .preview-state {
+        padding: 9px 12px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1e40af;
+        font-family: "MenuList Mono", Menlo, monospace;
+        font-size: 14px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .approval-list {
+        margin-top: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .approval-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 24px;
+        padding: 18px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 24px;
+      }
+
+      .approve-button,
+      .final-cta {
+        width: max-content;
+        margin-top: 24px;
+        padding: 20px 28px;
+        border-radius: 10px;
+        font-size: 28px;
+        font-weight: 900;
+      }
+
+      .approve-button {
+        border: 1px solid rgba(0, 81, 209, 0.26);
+        background: #dbeafe;
+        color: #1e40af;
+      }
+
+      .surface-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .link-core {
+        padding: 28px;
+        border: 3px solid #0051d1;
+        text-align: center;
+      }
+
+      .link-core strong {
+        display: block;
+        font-size: 34px;
+        line-height: 1.06;
+      }
+
+      .link-core span {
+        display: block;
+        margin-top: 12px;
+        color: #0051d1;
+        font-family: "MenuList Mono", Menlo, monospace;
+        font-size: 20px;
+        font-weight: 800;
+      }
+
+      .surface {
+        min-height: 132px;
+        padding: 24px;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        font-size: 30px;
+        font-weight: 900;
+      }
+
+      .logo-lockup {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .logo-lockup img {
+        width: 86px;
+        height: 86px;
+        border-radius: 20px;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.1);
+      }
+
+      .logo-name {
+        font-size: 54px;
+        font-weight: 950;
+      }
+
+      .final-cta {
+        border: 2px solid #0051d1;
+        background: #ffffff;
+        color: #0f172a;
+      }
+
+      .footnote {
+        color: #475569;
+        font-family: "MenuList Mono", Menlo, monospace;
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.26;
+      }
+
+      .wipe {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        pointer-events: none;
+      }
+
+      .wipe-panel {
+        width: 100%;
+        height: 125%;
+        background: #dbeafe;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="vertical"
+      data-start="0"
+      data-duration="30"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div class="rule top" data-layout-ignore></div>
+      <div class="rule bottom" data-layout-ignore></div>
+      <div class="brand-bug" data-layout-ignore>
+        <img src="assets/brand/menulist-icon-512.png" alt="" />
+        <span>MenuList</span>
+      </div>
+
+      <section id="scene-1" class="clip scene" data-start="0" data-duration="4.2" data-track-index="1">
+        <div class="scene-content">
+          <div class="eyebrow">MenuList launch cut</div>
+          <h1>Your menu should not live in five places.</h1>
+          <p class="body-copy">Old files keep answering customer questions after the business has moved on.</p>
+          <div class="phone-stack">
+            <div class="phone">
+              <div class="screen">
+                <div class="mock-header">
+                  <div class="mock-title">Old PDF menu</div>
+                  <div class="mock-subtitle">Saved last month</div>
+                </div>
+                <div class="mock-list">
+                  <div class="tag">stale file</div>
+                  <div class="mock-item problem"><span>Cold coffee</span><span class="price">90</span></div>
+                  <div class="mock-item"><span>Veg sandwich</span><span class="price">120</span></div>
+                  <div class="mock-item problem"><span>Lunch combo</span><span class="price">180</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="phone">
+              <div class="screen">
+                <div class="mock-header">
+                  <div class="mock-title">Shared screenshot</div>
+                  <div class="mock-subtitle">Forwarded in chat</div>
+                </div>
+                <div class="mock-list">
+                  <div class="tag">wrong version</div>
+                  <div class="mock-item problem"><span>Paneer wrap</span><span class="price">140</span></div>
+                  <div class="mock-item"><span>Masala tea</span><span class="price">30</span></div>
+                  <div class="mock-item"><span>Brownie</span><span class="price">75</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="caption">Old PDFs. Screenshots. QR pages. Shared files.</div>
+        </div>
+      </section>
+
+      <section id="scene-2" class="clip scene" data-start="4.2" data-duration="5.4" data-track-index="1">
+        <div class="scene-content">
+          <div class="eyebrow">Start from what exists</div>
+          <h2>Use the list you already have.</h2>
+          <p class="body-copy">Photo, PDF, owned public link, or typed service list. The starting point stays familiar.</p>
+          <div class="source-grid">
+            <div class="source-card"><strong>Photo</strong><span>Counter menu or rate card</span></div>
+            <div class="source-card"><strong>PDF</strong><span>Existing menu file</span></div>
+            <div class="source-card"><strong>Link</strong><span>Owned current list</span></div>
+            <div class="source-card"><strong>Typed list</strong><span>Services, packages, prices</span></div>
+          </div>
+          <div class="caption">Start with what you already have.</div>
+        </div>
+      </section>
+
+      <section id="scene-3" class="clip scene" data-start="9.6" data-duration="6.2" data-track-index="1">
+        <div class="scene-content">
+          <div class="preview-panel">
+            <div class="preview-top">
+              <div>
+                <div class="preview-title">Private customer preview</div>
+                <div class="mock-subtitle">Demo UI. Not public yet.</div>
+              </div>
+              <div class="preview-state">review first</div>
+            </div>
+            <div class="approval-list">
+              <div class="approval-row"><span>Cold coffee</span><strong>110</strong></div>
+              <div class="approval-row"><span>Veg sandwich</span><strong>130</strong></div>
+              <div class="approval-row"><span>Lunch combo</span><strong>Sold out today</strong></div>
+            </div>
+            <div class="approve-button">Approve customer link</div>
+          </div>
+          <div class="eyebrow">Owner control</div>
+          <h2>Review before anything goes public.</h2>
+          <div class="caption">Private preview first. Owner approval before publishing.</div>
+        </div>
+      </section>
+
+      <section id="scene-4" class="clip scene" data-start="15.8" data-duration="7.4" data-track-index="1">
+        <div class="scene-content">
+          <div class="eyebrow">One approved list</div>
+          <h2>QR, page, print, and actions stay tied together.</h2>
+          <div class="link-core">
+            <strong>Approved customer link</strong>
+            <span>menulist.online/demo</span>
+          </div>
+          <div class="surface-list">
+            <div class="surface">QR</div>
+            <div class="surface">Official page</div>
+            <div class="surface">Print files</div>
+            <div class="surface">Customer actions</div>
+          </div>
+          <div class="caption">One approved list. Every customer link.</div>
+        </div>
+      </section>
+
+      <section id="scene-5" class="clip scene" data-start="23.2" data-duration="6.8" data-track-index="1">
+        <div class="scene-content">
+          <div class="logo-lockup">
+            <img src="assets/brand/menulist-icon-512.png" alt="" />
+            <div class="logo-name">MenuList</div>
+          </div>
+          <h2>One approved customer link for your business.</h2>
+          <div class="final-cta">Create customer link</div>
+          <div class="footnote">Start from your current list. Review before publishing.</div>
+        </div>
+      </section>
+
+      <div id="wipe-1" class="clip wipe" data-start="3.85" data-duration="0.7" data-track-index="2">
+        <div class="wipe-panel"></div>
+      </div>
+      <div id="wipe-2" class="clip wipe" data-start="9.25" data-duration="0.7" data-track-index="2">
+        <div class="wipe-panel"></div>
+      </div>
+      <div id="wipe-3" class="clip wipe" data-start="15.45" data-duration="0.7" data-track-index="2">
+        <div class="wipe-panel"></div>
+      </div>
+      <div id="wipe-4" class="clip wipe" data-start="22.85" data-duration="0.7" data-track-index="2">
+        <div class="wipe-panel"></div>
+      </div>
+
+      <audio
+        id="master-audio"
+        data-start="0"
+        data-duration="30"
+        data-track-index="3"
+        src="assets/mix/launch-announcement-audio-v2-master.wav"
+        data-volume="1"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.from(".rule.top", { scaleX: 0.18, opacity: 0.24, duration: 0.8, ease: "power3.out" }, 0.2);
+      tl.from(".rule.bottom", { scaleX: 0.14, opacity: 0.2, duration: 0.9, ease: "expo.out" }, 0.28);
+      tl.to(".rule.top", { scaleX: 0.92, opacity: 0.48, duration: 6, ease: "sine.inOut", repeat: 4, yoyo: true }, 1);
+      tl.to(".rule.bottom", { scaleX: 0.82, opacity: 0.38, duration: 7, ease: "sine.inOut", repeat: 3, yoyo: true }, 1.2);
+
+      tl.from("#scene-1 .eyebrow", { y: 28, opacity: 0, duration: 0.45, ease: "power2.out" }, 0.18);
+      tl.from("#scene-1 h1", { y: 58, opacity: 0, scale: 0.985, duration: 0.7, ease: "expo.out" }, 0.32);
+      tl.from("#scene-1 .body-copy", { x: -28, opacity: 0, duration: 0.5, ease: "power3.out" }, 0.78);
+      tl.from("#scene-1 .phone", { y: 72, opacity: 0, rotation: -2, duration: 0.62, stagger: 0.12, ease: "back.out(1.3)" }, 0.6);
+      tl.from("#scene-1 .caption", { y: 28, opacity: 0, duration: 0.45, ease: "circ.out" }, 1.05);
+
+      tl.fromTo("#wipe-1 .wipe-panel", { yPercent: -110 }, { yPercent: 0, duration: 0.32, ease: "power3.in" }, 3.85);
+      tl.to("#wipe-1 .wipe-panel", { yPercent: 105, duration: 0.32, ease: "power3.out" }, 4.19);
+
+      tl.from("#scene-2 .eyebrow", { x: -34, opacity: 0, duration: 0.44, ease: "power2.out" }, 4.45);
+      tl.from("#scene-2 h2", { y: 48, opacity: 0, duration: 0.62, ease: "expo.out" }, 4.62);
+      tl.from("#scene-2 .body-copy", { y: 26, opacity: 0, duration: 0.48, ease: "sine.out" }, 5.05);
+      tl.from("#scene-2 .source-card", { y: 46, opacity: 0, scale: 0.965, duration: 0.5, stagger: 0.1, ease: "back.out(1.15)" }, 4.9);
+      tl.from("#scene-2 .caption", { y: 24, opacity: 0, duration: 0.42, ease: "circ.out" }, 5.72);
+
+      tl.fromTo("#wipe-2 .wipe-panel", { yPercent: -110 }, { yPercent: 0, duration: 0.32, ease: "power3.in" }, 9.25);
+      tl.to("#wipe-2 .wipe-panel", { yPercent: 105, duration: 0.32, ease: "power3.out" }, 9.59);
+
+      tl.from("#scene-3 .preview-panel", { y: 70, opacity: 0, duration: 0.62, ease: "expo.out" }, 9.82);
+      tl.from("#scene-3 .preview-state", { scale: 0.82, opacity: 0, duration: 0.42, ease: "back.out(1.4)" }, 10.2);
+      tl.from("#scene-3 .approval-row", { y: 26, opacity: 0, duration: 0.38, stagger: 0.1, ease: "power2.out" }, 10.35);
+      tl.from("#scene-3 .approve-button", { y: 22, opacity: 0, scale: 0.96, duration: 0.44, ease: "back.out(1.3)" }, 10.92);
+      tl.from("#scene-3 .eyebrow", { y: 24, opacity: 0, duration: 0.4, ease: "power3.out" }, 10.05);
+      tl.from("#scene-3 h2", { y: 52, opacity: 0, duration: 0.64, ease: "expo.out" }, 10.22);
+      tl.from("#scene-3 .caption", { y: 22, opacity: 0, duration: 0.42, ease: "circ.out" }, 11.25);
+
+      tl.fromTo("#wipe-3 .wipe-panel", { yPercent: -110 }, { yPercent: 0, duration: 0.32, ease: "power3.in" }, 15.45);
+      tl.to("#wipe-3 .wipe-panel", { yPercent: 105, duration: 0.32, ease: "power3.out" }, 15.79);
+
+      tl.from("#scene-4 .eyebrow", { y: 24, opacity: 0, duration: 0.42, ease: "power2.out" }, 16.05);
+      tl.from("#scene-4 h2", { y: 54, opacity: 0, duration: 0.68, ease: "expo.out" }, 16.22);
+      tl.from("#scene-4 .link-core", { scale: 0.9, opacity: 0, duration: 0.58, ease: "back.out(1.35)" }, 16.85);
+      tl.from("#scene-4 .surface", { y: 38, opacity: 0, scale: 0.94, duration: 0.48, stagger: 0.08, ease: "back.out(1.2)" }, 17.18);
+      tl.from("#scene-4 .caption", { y: 22, opacity: 0, duration: 0.42, ease: "circ.out" }, 18.1);
+
+      tl.fromTo("#wipe-4 .wipe-panel", { yPercent: -110 }, { yPercent: 0, duration: 0.32, ease: "power3.in" }, 22.85);
+      tl.to("#wipe-4 .wipe-panel", { yPercent: 105, duration: 0.32, ease: "power3.out" }, 23.19);
+
+      tl.from("#scene-5 .logo-lockup", { y: 34, opacity: 0, duration: 0.48, ease: "power3.out" }, 23.5);
+      tl.from("#scene-5 h2", { y: 62, opacity: 0, duration: 0.72, ease: "expo.out" }, 23.84);
+      tl.from("#scene-5 .final-cta", { y: 30, opacity: 0, scale: 0.96, duration: 0.5, ease: "back.out(1.35)" }, 24.58);
+      tl.from("#scene-5 .footnote", { y: 20, opacity: 0, duration: 0.42, ease: "sine.out" }, 25.08);
+      tl.to("#scene-5 .scene-content", { opacity: 0, y: -18, duration: 0.65, ease: "power2.in" }, 29.2);
+
+      window.__timelines["vertical"] = tl;
+    </script>
+  </body>
+</html>

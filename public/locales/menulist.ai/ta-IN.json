@@ -89,7 +89,13 @@
         "Support": "Support",
         "Use MenuList": "MenuList பயன்படுத்தவும்",
         "Assets": "அசெட்ஸ்",
-        "Growth Kits": "Growth Kits"
+        "Growth Kits": "Growth Kits",
+        "Status": "நிலை",
+        "What customers see": "வாடிக்கையாளர்கள் பார்ப்பது",
+        "Public links and materials": "பொது இணைப்புகள் மற்றும் பொருட்கள்",
+        "Account and team": "கணக்கு மற்றும் குழு",
+        "Advanced setup": "மேம்பட்ட அமைப்பு",
+        "Internal tools": "உள் கருவிகள்"
     },
     "Settings": {
         "language": "Language",
@@ -1665,7 +1671,7 @@
         "itemCustomerImpactFeatureLabel": "Feature level",
         "itemCustomerImpactFeatureDesc": "Guides Featured choices. It does not move the item in the menu and customers do not see this setting.",
         "deleteItemTitle": "Delete item",
-        "deleteItemConfirm": "Are you sure you want to delete \"{item}\"?",
+        "deleteItemConfirm": "Customers will no longer see \"{item}\". Delete this item? This cannot be undone.",
         "deleteItemAction": "Delete this item",
         "categoriesSummary": "{items} · {categories}",
         "categoriesCount": "{count} categories",

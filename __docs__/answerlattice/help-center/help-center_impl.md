@@ -1,6 +1,6 @@
 # Help Center — Technical Implementation Blueprint
 
-> **Version:** 1.0.7
+> **Version:** 1.0.8
 > **Last Updated:** 2026-07-06
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
@@ -75,6 +75,8 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 Answerlattice FAQ article reference ID boundary: FAQ-linked article references in `src/lib/answerlattice/faqRetrieval.ts` are normalized through the KB article ID boundary before related-article output or full-article Firestore reads. Invalid linked article IDs are skipped rather than becoming article document refs.
 
 Answerlattice support ticket session scope boundary: owner-side ticket reads and listeners in `src/database/tickets/index.ts` now normalize session `tId/sId` as exact positive numeric Firestore document IDs before querying `supportTickets`. Whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped scope fails before owner ticket reads. Platform ticket views keep the existing platform-wide query behavior, and valid owner ticket history remains capped to the same store-scoped latest tickets.
+
+Answerlattice KB owner content scope boundary: Help Center KB categories, article reads/writes, FAQ article-maintenance, product-surface reads, and protected article embedding now use the shared exact positive numeric Firestore document-ID scope normalizer before tenant/store-scoped Firestore refs, filters, cache-version writes, public-cache revalidation, or article embedding authorization. Malformed tenant/store values no longer reach the scoped KB/FAQ/product-surface paths through loose `Number()` coercion or partial explicit scope overrides; valid owner/admin KB behavior keeps the same read/write shapes.
 
 **Landing subcomponents:** `landing/`
 
@@ -304,6 +306,8 @@ Answerlattice support ticket session scope boundary: owner-side ticket reads and
 | `updateArticleFeedback(articleId, type, increment)` | 1        | 1      | Read-then-write (not atomic)                  |
 
 **Scope observation:** `getArticles()` is a deprecated compatibility helper. It now resolves the readable article scope before querying: non-platform sessions require tenant/store scope and platform admins can still perform the global administrative read.
+
+**Scope boundary:** `src/database/knowledgeBase/articles.ts` resolves article data scope and active-session scope through the shared Answerlattice exact positive numeric Firestore document-ID normalizer before article filters, article final guards, cache-version bumps, entity-extraction triggers, and public-cache revalidation. Bulk article delete now revalidates the public KB/context cache with the resolved tenant/store scope instead of a session fallback payload.
 
 ### 3.2 KB Categories (`src/database/knowledgeBase/categories.ts`)
 

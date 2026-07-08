@@ -1,7 +1,7 @@
 # Owner Dashboard - Single Source of Truth
 
-> **Version:** 2.1
-> **Last Updated:** July 2, 2026
+> **Version:** 2.2
+> **Last Updated:** July 8, 2026
 > **Status:** Implemented reference with localStorage caching; not current launch certification
 
 ---
@@ -21,6 +21,11 @@ The current source-backed owner dashboard is a Today-first live dashboard, not a
 - Past Activity remains disabled unless `ENABLE_PAST_ACTIVITY_HISTORY` is enabled. `/today/history` redirects to `/today` on desktop and falls back to Today in `MobileShell` when disabled.
 - `npm run verify:owner-dashboard-today-boundary` source-gates the route, hook, mobile, campaign acknowledgement, Past Activity, and docs boundary.
 - OBP overview summary read diagnostics: the settled OBP overview still builds WTD/MTD/history from daily docs if the optional `{tId}_{sId}_obp_overall_summary` read fails. That degraded path now logs bounded `owner_dashboard_obp_summary_read_failed` diagnostics with tenant/store/project/summary-doc presence-length metadata only, keeps `viewsChange` as `null`, and adds no fallback read or write.
+- Owner UX now opens with public business truth before activity: desktop and mobile show live/not-live status, menu/hours/public-page readiness, common public updates, and existing Menu setup / Menu Check primitives before period analytics.
+- Mobile dashboard keeps activity details collapsed by default. Owners can open views, item taps, calls, searches, OBP metrics, and historical tabs only after choosing Activity details.
+- Owner navigation is grouped by mental model: What customers see, Public links and materials, Account and team, and Advanced setup. The grouping keeps existing routes and permissions; it does not add backend contracts.
+- Public-impact flows now show consequence copy before publishing regular hours, and mobile item editing shows a customer preview before save while moving optional controls into More options.
+- Custom staff roles start with no permissions. Owners should use Owner, Manager, and Staff first, then add custom permissions deliberately.
 
 This section supersedes older historical examples in this document that describe an overview-first initial load.
 

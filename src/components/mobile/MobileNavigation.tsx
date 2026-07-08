@@ -19,7 +19,7 @@ interface MobileNavigationProps {
 const tabs = [
     { key: 'today' as MobileTab, title: 'Today', icon: <LuCalendarCheck size={20} /> },
     { key: 'menu' as MobileTab, title: 'Menu', icon: <LuUtensilsCrossed size={20} /> },
-    { key: 'aiMenuManager' as MobileTab, title: 'Manager', icon: <LuMessageCircle size={20} /> },
+    { key: 'aiMenuManager' as MobileTab, title: 'Menu help', icon: <LuMessageCircle size={20} /> },
     { key: 'share' as MobileTab, title: 'Share', icon: <LuQrCode size={20} /> },
     { key: 'more' as MobileTab, title: 'More', icon: <LuMoreHorizontal size={20} /> },
 ];

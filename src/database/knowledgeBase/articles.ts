@@ -6,6 +6,7 @@ import getActiveSession from "@lib/auth/getActiveSession";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
 import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
 import { getAnswerlatticeScopeLogContext, getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
+import { normalizeAnswerlatticeScopeDocumentId } from "@lib/answerlattice/sessionScope";
 import { revalidateAnswerlatticePublicClientCache } from "@lib/cache/answerlatticePublicClientCache";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -63,31 +64,38 @@ const resolveKnowledgeBaseArticleSession = async (operation: string): Promise<Kn
     }
 };
 
+const normalizeKnowledgeBaseArticleScope = (source?: Record<string, unknown> | null) => {
+    const tId = normalizeAnswerlatticeScopeDocumentId(source?.tId ?? source?.tenantId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(source?.sId ?? source?.storeId);
+    if (!tId || !sId) return null;
+    return { tId, sId };
+};
+
+const normalizeKnowledgeBaseArticleSessionScope = (session: Awaited<ReturnType<typeof getActiveSession>> | null) => {
+    const record = session as any;
+    return normalizeKnowledgeBaseArticleScope({
+        tId: record?.tId ?? record?.tenantId ?? record?.user?.tenantId,
+        sId: record?.sId ?? record?.storeId ?? record?.user?.storeId,
+    });
+};
+
 const resolveArticleScope = async (data?: Partial<KnowledgeBaseArticleType> | null) => {
-    const dataTId = Number(data?.tId);
-    const dataSId = Number(data?.sId);
-    if (Number.isFinite(dataTId) && dataTId > 0 && Number.isFinite(dataSId) && dataSId > 0) {
-        return { tId: dataTId, sId: dataSId };
-    }
+    const dataScope = normalizeKnowledgeBaseArticleScope(data as Record<string, unknown> | null);
+    if (dataScope) return dataScope;
 
     const { session } = await resolveKnowledgeBaseArticleSession('resolve_article_scope');
-    const sessionTId = Number(session?.tId);
-    const sessionSId = Number(session?.sId);
-    if (Number.isFinite(sessionTId) && sessionTId > 0 && Number.isFinite(sessionSId) && sessionSId > 0) {
-        return { tId: sessionTId, sId: sessionSId };
-    }
+    const sessionScope = normalizeKnowledgeBaseArticleSessionScope(session);
+    if (sessionScope) return sessionScope;
 
     return null;
 };
 
 const resolveReadableArticleScope = async (): Promise<ReadableArticleScope> => {
     const { session } = await resolveKnowledgeBaseArticleSession('resolve_readable_article_scope');
-    const tId = Number(session?.tId);
-    const sId = Number(session?.sId);
+    const scope = normalizeKnowledgeBaseArticleSessionScope(session);
     return {
         isPlatform: (session as any)?.platformRole === 'PLATFORM',
-        ...(Number.isFinite(tId) && tId > 0 ? { tId } : {}),
-        ...(Number.isFinite(sId) && sId > 0 ? { sId } : {}),
+        ...(scope ? { tId: scope.tId, sId: scope.sId } : {}),
     };
 };
 
@@ -177,11 +185,12 @@ const readableScopeAllowsArticle = (scope: ReadableArticleScope, article: Partia
     if (scope.isPlatform) {
         return true;
     }
+    const record = article as Record<string, unknown> | null | undefined;
     return Boolean(
         scope.tId
         && scope.sId
-        && Number(article?.tId) === scope.tId
-        && Number(article?.sId) === scope.sId
+        && normalizeAnswerlatticeScopeDocumentId(record?.tId ?? record?.tenantId) === scope.tId
+        && normalizeAnswerlatticeScopeDocumentId(record?.sId ?? record?.storeId) === scope.sId
     );
 };
 
@@ -200,6 +209,8 @@ const bumpKnowledgeBaseVersion = async (
         sourceId,
         sourceType: 'kb_article',
     });
+
+    return scope;
 };
 
 /**
@@ -411,13 +422,13 @@ export const deleteMultipleArticles = async (ids: string[]) => {
             if (!ids || ids.length === 0) return;
 
             const batch = writeBatch(answerlatticeFirebaseClient);
-            await bumpKnowledgeBaseVersion(null, 'article_bulk_delete');
+            const scope = await bumpKnowledgeBaseVersion(null, 'article_bulk_delete');
             for (const id of ids) {
                 const docRef = await getDocRef(id);
                 batch.delete(docRef);
             }
             await batch.commit();
-            await revalidateAnswerlatticePublicClientCache(undefined, ['kb', 'context'], 'deleteMultipleArticles');
+            await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'deleteMultipleArticles');
             return null;
         },
         ids,
@@ -580,7 +591,7 @@ function _triggerEntityExtraction(article: KnowledgeBaseArticleType): void {
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ONTOLOGY) return;
 
         const { session } = await resolveKnowledgeBaseArticleSession('entity_extraction_trigger');
-        if (!session?.tId || !session?.sId) return;
+        if (!normalizeKnowledgeBaseArticleSessionScope(session)) return;
 
         const response = await fetch('/api/answerlattice/articles/extract-entities', {
             ...ARTICLE_ENTITY_EXTRACTION_REQUEST_POLICY,

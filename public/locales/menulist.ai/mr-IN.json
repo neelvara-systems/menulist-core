@@ -89,7 +89,13 @@
         "Support": "Support",
         "Use MenuList": "MenuList वापरा",
         "Assets": "एसेट्स",
-        "Growth Kits": "Growth Kits"
+        "Growth Kits": "Growth Kits",
+        "Status": "स्थिती",
+        "What customers see": "ग्राहक काय पाहतात",
+        "Public links and materials": "सार्वजनिक लिंक आणि सामग्री",
+        "Account and team": "खाते आणि टीम",
+        "Advanced setup": "प्रगत सेटअप",
+        "Internal tools": "अंतर्गत साधने"
     },
     "Settings": {
         "language": "Language",
@@ -1665,7 +1671,7 @@
         "itemCustomerImpactFeatureLabel": "Feature level",
         "itemCustomerImpactFeatureDesc": "Guides Featured choices. It does not move the item in the menu and customers do not see this setting.",
         "deleteItemTitle": "Delete item",
-        "deleteItemConfirm": "Are you sure you want to delete \"{item}\"?",
+        "deleteItemConfirm": "Customers will no longer see \"{item}\". Delete this item? This cannot be undone.",
         "deleteItemAction": "Delete this item",
         "categoriesSummary": "{items} · {categories}",
         "categoriesCount": "{count} categories",

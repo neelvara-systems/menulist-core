@@ -140,6 +140,7 @@ const RESELLER_MORE_SCREENS: MoreSubScreen[] = [
     'resellerOnboarding',
 ];
 const SELECTED_PROJECT_DATA_MORE_SCREENS: MoreSubScreen[] = [
+    'main',
     'dashboard',
     'businessHealth',
     'aiMenuManager',
@@ -533,7 +534,16 @@ export default function MobileShell() {
     const screen = activeTab === 'today'
         ? (
             todayScreen === 'dashboard'
-                ? <MobileDashboardScreen onBack={() => setTodayScreen('main')} onOpenBusinessHealth={handleOpenBusinessHealth} onOpenDesignEditor={handleOpenDesignEditor} />
+                ? (
+                    <MobileDashboardScreen
+                        onBack={() => setTodayScreen('main')}
+                        onOpenBusinessHealth={handleOpenBusinessHealth}
+                        onOpenDesignEditor={handleOpenDesignEditor}
+                        onOpenMenuTab={handleOpenMenuTab}
+                        onOpenMoreScreen={handleOpenMoreScreen}
+                        onOpenShareTab={handleOpenShareTab}
+                    />
+                )
                 : todayScreen === 'history' && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY
                     ? <MobileTodayHistoryScreen onBack={() => setTodayScreen('main')} />
                     : (
@@ -551,14 +561,14 @@ export default function MobileShell() {
                     )
         )
         : activeTab === 'share'
-            ? <MobileShareScreen onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenPosSync={handleOpenPosSync} onOpenPrintAssets={handleOpenPrintAssets} onOpenPrintMenu={handleOpenPrintMenu} />
+            ? <MobileShareScreen onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenMenuTab={handleOpenMenuTab} onOpenOfficialPage={() => handleOpenMoreScreen('officialPage')} onOpenPosSync={handleOpenPosSync} onOpenPrintAssets={handleOpenPrintAssets} onOpenPrintMenu={handleOpenPrintMenu} />
         : activeTab === 'aiMenuManager'
             ? <MobileAiMenuManagerScreen />
         : activeTab === 'more' && moreScreen === 'businessHealth'
             ? <MobileBusinessHealthScreen onBack={() => handleOpenMoreScreen('main')} onOpenMenuTab={handleOpenMenuTab} onOpenMoreScreen={handleOpenMoreScreen} onOpenShareTab={handleOpenShareTab} />
         : activeTab === 'more'
             ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onOpenShareTab={handleOpenShareTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
-                : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} onOpenPrintMenu={handleOpenPrintMenu} />;
+                : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} onOpenOfficialPage={() => handleOpenMoreScreen('officialPage')} onOpenPrintMenu={handleOpenPrintMenu} onOpenShare={handleOpenShareTab} />;
 
     if (activeSubscriptionLoading && !hasSubscription && !hasStarterAccess && !shouldBypassSubscriptionGate) {
         return <BrandedPageLoader page="Mobile App" />;

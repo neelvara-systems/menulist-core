@@ -200,6 +200,7 @@ function disabledButtonStyles(token: ReturnType<typeof theme.useToken>['token'],
 
 type ButtonProps = {
     'aria-label'?: string;
+    'aria-pressed'?: boolean;
     ariaLabel?: string;
     block?: boolean;
     children?: ReactNode;
@@ -216,7 +217,7 @@ type ButtonProps = {
     title?: string;
 };
 
-export function Button({ 'aria-label': ariaLabelAttribute, ariaLabel, block, children, className, color, disabled, fill = 'solid', htmlType, icon, loading, onClick, size, style, title }: ButtonProps) {
+export function Button({ 'aria-label': ariaLabelAttribute, 'aria-pressed': ariaPressed, ariaLabel, block, children, className, color, disabled, fill = 'solid', htmlType, icon, loading, onClick, size, style, title }: ButtonProps) {
     const { token } = theme.useToken();
     const antType = fill === 'solid' ? 'primary' : 'default';
     const antSize = size === 'mini' ? 'small' : size || 'middle';
@@ -229,6 +230,7 @@ export function Button({ 'aria-label': ariaLabelAttribute, ariaLabel, block, chi
     return (
         <AntButton
             aria-label={ariaLabel ?? ariaLabelAttribute}
+            aria-pressed={ariaPressed}
             block={block}
             className={className}
             danger={color === 'danger'}

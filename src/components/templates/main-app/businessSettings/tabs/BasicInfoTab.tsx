@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import React, { forwardRef, memo, useMemo } from 'react';
 import { LuBuilding2, LuMail, LuMapPin } from 'react-icons/lu';
 
-const { Title } = Typography;
+const { Text, Title } = Typography;
 
 interface BasicInfoTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
@@ -55,6 +55,44 @@ const BasicInfoTab = forwardRef<HTMLDivElement, BasicInfoTabProps>(({ scrollRef 
         <Card size='small' ref={ref || scrollRef}>
             <Title level={5} style={{ margin: "unset" }}>{t('basicInformation')}</Title>
             <Divider />
+
+            <Form.Item
+                noStyle
+                shouldUpdate={(previous, current) => (
+                    previous.tenantName !== current.tenantName
+                    || previous.name !== current.name
+                    || previous.email !== current.email
+                    || previous.phoneNumber !== current.phoneNumber
+                    || previous.dialCode !== current.dialCode
+                )}
+            >
+                {({ getFieldValue }) => {
+                    const brandName = getFieldValue('tenantName') || 'Brand name';
+                    const locationName = getFieldValue('name') || 'Location name';
+                    const dialCode = getFieldValue('dialCode') || '';
+                    const phoneNumber = getFieldValue('phoneNumber') || '';
+                    const publicPhone = [dialCode, phoneNumber].filter(Boolean).join(' ') || 'Phone not set';
+                    const publicEmail = getFieldValue('email') || 'Email not set';
+
+                    return (
+                        <div style={{
+                            background: 'rgba(0,0,0,0.02)',
+                            border: '1px solid rgba(0,0,0,0.08)',
+                            borderRadius: 8,
+                            marginBottom: 16,
+                            padding: 12,
+                        }}>
+                            <Text strong>Customer preview</Text>
+                            <div style={{ marginTop: 6 }}>
+                                <Text>{brandName} - {locationName}</Text>
+                            </div>
+                            <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                                Public contact: {publicPhone} - {publicEmail}
+                            </Text>
+                        </div>
+                    );
+                }}
+            </Form.Item>
 
             <Row gutter={[16, 0]}>
                 <Col xs={24} md={12}>

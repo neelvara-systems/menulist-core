@@ -76,6 +76,7 @@ const MenuUploadSheet = dynamic(() => import('../sheets/MenuUploadSheet'), { ssr
 const ExtractionReviewSheet = dynamic(() => import('../sheets/ExtractionReviewSheet'), { ssr: false });
 const BulkActionsSheet = dynamic(() => import('../sheets/BulkActionsSheet'), { ssr: false });
 const MobileMenuQualitySignals = dynamic(() => import('../components/MenuQualitySignals'), { ssr: false });
+const MobileMenuSetupProgress = dynamic(() => import('../components/MenuSetupProgress'), { ssr: false });
 const CategoryManagerSheet = dynamic(() => import('../sheets/CategoryManagerSheet'), { ssr: false });
 const ManageLanguagesSheet = dynamic(() => import('../sheets/ManageLanguagesSheet'), { ssr: false });
 const GenerateDescriptionsSheet = dynamic(() => import('../sheets/GenerateDescriptionsSheet'), { ssr: false });
@@ -479,10 +480,12 @@ function formatSpecialMenuWindow(start?: string, end?: string): string | null {
 
 interface MobileMenuScreenProps {
     onOpenDesignEditor?: () => void;
+    onOpenOfficialPage?: () => void;
     onOpenPrintMenu?: () => void;
+    onOpenShare?: () => void;
 }
 
-export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }: MobileMenuScreenProps) {
+export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPage, onOpenPrintMenu, onOpenShare }: MobileMenuScreenProps) {
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const t = useTranslations('MobileMenu');
@@ -2997,6 +3000,24 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
                                 </Text>
                             </Flex>
                         </Card>
+                    ) : null}
+
+                    {menuData ? (
+                        <MobileMenuSetupProgress
+                            onOpenMenu={() => {
+                                if (isFirstRunProject || !menuData?.files?.length) {
+                                    handleOpenUploadSheet();
+                                    return;
+                                }
+                                requestAnimationFrame(() => {
+                                    menuContentTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                });
+                            }}
+                            onOpenOfficialPage={onOpenOfficialPage}
+                            onOpenShare={onOpenShare}
+                            project={menuData}
+                            storeDetails={storeDetails as any}
+                        />
                     ) : null}
 
                     {menuData?.files && !isFirstRunProject ? (
