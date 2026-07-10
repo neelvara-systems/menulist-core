@@ -160,6 +160,46 @@
       ]
     },
     {
+      "collectionGroup": "ownerReferrals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "referrerTenantId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "referrerStoreId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ownerReferrals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "referrerTenantId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "referrerStoreId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "referredFirstPaidAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "subscriptionPayments",
       "queryScope": "COLLECTION",
       "fields": [

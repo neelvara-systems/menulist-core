@@ -1,10 +1,12 @@
 # Compliance Pages — Implementation Plan
 
-**Status:** 🟢 Runtime implemented; source gate active
-**Version:** 1.2
-**Date:** July 2, 2026
+**Status:** Runtime implemented source evidence; not current launch or legal certification
+**Version:** 1.3
+**Date:** July 10, 2026
 **Audience:** Developers
 **Local Source Gate:** `npm run verify:compliance-pages-boundary`
+
+> **Launch boundary:** Not current launch certification or deploy approval. This implementation plan is source-gated route, sanitizer, API, renderer, owner-editor, and persistence evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:compliance-pages-boundary`, browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`, authenticated desktop/mobile owner save/reset QA, owner/legal review of final generated or custom policy text, DNS/custom-domain verification, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 

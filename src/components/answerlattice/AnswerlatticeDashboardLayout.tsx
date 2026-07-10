@@ -54,9 +54,16 @@ const ANSWERLATTICE_CUSTOMER_ROUTE_OWNER_FALLBACKS: Partial<Record<string, strin
     [ANSWERLATTICE_ROUTES.SUPPORT]: ANSWERLATTICE_ROUTES.TICKETS,
 };
 
-export default function AnswerlatticeDashboardLayout({ children }: { children: React.ReactNode }) {
+export default function AnswerlatticeDashboardLayout({
+    children,
+    globalOverlays,
+}: {
+    children: React.ReactNode;
+    globalOverlays?: React.ReactNode;
+}) {
     return (
         <AntdThemeProvider>
+            {globalOverlays}
             <AnswerlatticeAccessProvider>
                 <AnswerlatticeDashboardLayoutContent>{children}</AnswerlatticeDashboardLayoutContent>
             </AnswerlatticeAccessProvider>

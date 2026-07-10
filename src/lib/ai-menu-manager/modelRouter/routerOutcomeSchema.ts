@@ -58,6 +58,7 @@ export interface AiMenuManagerModelRouteResult {
     clarification?: {
         options: Array<{
             entityId?: string;
+            entityType?: 'item' | 'category';
             label: string;
             prompt?: string;
         }>;
@@ -71,6 +72,11 @@ export interface AiMenuManagerModelRouteResult {
         reason: string;
         requiresApproval: boolean;
     };
+    suggestedReplies?: Array<{
+        helper?: string;
+        label: string;
+        prompt: string;
+    }>;
     targets?: AiMenuManagerModelTarget[];
     toolName?: AiMenuManagerSafeModelTool;
     values?: Record<string, unknown>;

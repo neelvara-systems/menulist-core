@@ -173,7 +173,12 @@ export type AssetSlot = {
 | `menulist.home.analytics.status-proof` | Draft/supporting | Must not imply real customer metrics. |
 | `menulist.launch.social.square` | Generated | Maps existing launch square image. |
 | `menulist.launch.social.linkedin` | Generated | Maps existing LinkedIn image. |
-| `menulist.home.hero.business-truth-loop` | Missing | Future video slot, founder review required. |
+| `menulist.launch.device.owner-pwa-dashboard` | Approved | Tracks the mounted owner-PWA device proof using categorical demo states only. |
+| `menulist.home.hero.business-truth-loop` | Approved | Local HyperFrames/FFmpeg motion loop wired into the MenuList homepage hero with poster fallback. |
+| `menulist.launch.video.frame.approved-source` | Approved | Opening launch-video frame extracted from the approved MenuList hero motion. |
+| `menulist.launch.video.frame.public-surfaces` | Approved | Public-surfaces launch-video frame extracted from the approved MenuList hero motion. |
+| `menulist.launch.video.frame.stable-loop` | Approved | Stable-loop launch-video frame extracted from the approved MenuList hero motion. |
+| `menulist.launch.video.frame.final-proof` | Approved | Closing proof launch-video frame extracted from the approved MenuList hero motion. |
 
 ## First Answerlattice Slots
 
@@ -183,9 +188,9 @@ export type AssetSlot = {
 | `answerlattice.brand.logo.mark` | Generated | Maps current SVG/PNG logo mark assets. |
 | `answerlattice.pwa.icons` | Generated | Maps `public/answerlattice-icon-*.png`. |
 | `answerlattice.pwa.splash` | Generated | Maps `public/answerlattice-splash/apple-splash-*.png`. |
-| `answerlattice.home.hero.support-control-motion` | Missing | Future abstract motion, founder required. |
-| `answerlattice.home.section.authority-transfer` | Missing | Future abstract motion, founder required. |
-| `answerlattice.product.page-aware-widget.clip` | Missing | Future product proof clip, founder review required. |
+| `answerlattice.home.hero.support-control-motion` | Approved | Local HyperFrames/FFmpeg motion layer wired into the Answerlattice homepage hero with poster fallback. |
+| `answerlattice.home.section.authority-transfer` | Approved | Local HyperFrames/FFmpeg authority-transfer motion wired into the Answerlattice learning-loop section. |
+| `answerlattice.product.page-aware-widget.clip` | Approved | Local HyperFrames/FFmpeg product proof clip wired into the page-aware widget product page. |
 
 ## Audit Algorithm
 

@@ -6,6 +6,8 @@
 **Last Updated:** June 30, 2026
 **Audience:** Engineering, Founder, Cost Auditors
 
+**Launch boundary:** Not current launch certification or deploy approval. This Firebase cost doc is source-gated runtime/cost evidence; Customer App release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:customer-app-pwa`, real browser/device Customer App QA, scoped scheduler deploy evidence where relevant, analytics rollup evidence, and production-host smoke.
+
 ---
 
 ## Summary

@@ -490,7 +490,7 @@ Before deploying:
 
 - [OWASP CORS Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Origin_Resource_Sharing_Cheat_Sheet.html)
 - [MDN: CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
-- [assessment-05-security.md](../../projects/Assessments/assessment-05-security.md#2-missing-cors-validation-) - Issue #2
+- [assessment-05-security.md](../../projects/assessments/assessment-05-security.md#2-missing-cors-validation-) - Issue #2
 
 ---
 

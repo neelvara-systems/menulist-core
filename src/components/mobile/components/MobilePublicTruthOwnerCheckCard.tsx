@@ -40,7 +40,7 @@ function getStatus(report: OwnerPublicTruthReadinessReport) {
             color: 'success' as const,
             icon: <LuCheckCircle2 size={20} />,
             label: 'Ready',
-            message: 'Your public source has the basics customers need.',
+            message: 'Your official customer source has the basics customers need.',
         };
     }
     if (report.status === 'missing_basics') {
@@ -48,7 +48,7 @@ function getStatus(report: OwnerPublicTruthReadinessReport) {
             color: 'warning' as const,
             icon: <LuAlertCircle size={20} />,
             label: 'Missing basics',
-            message: 'Some public facts need attention.',
+            message: 'Menu, hours, prices, actions, or customer link details need attention.',
         };
     }
     return {
@@ -97,7 +97,7 @@ export default function MobilePublicTruthOwnerCheckCard({
                     </Flex>
                     <Flex flex={1} gap={6} style={{ minWidth: 0 }} vertical>
                         <Flex align="center" gap={8} justify="space-between">
-                            <Text type="secondary" style={{ fontSize: 12 }}>Public Truth Check</Text>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Official customer source</Text>
                             {status ? <Tag color={status.color}>{status.label}</Tag> : <Tag color="default">Checking</Tag>}
                         </Flex>
                         <Text strong>{status?.message || 'Checking MenuList public facts...'}</Text>
@@ -107,7 +107,7 @@ export default function MobilePublicTruthOwnerCheckCard({
                             </Text>
                         ) : null}
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            No external sites scanned.
+                            External platforms stay owner-confirmed.
                         </Text>
                     </Flex>
                 </Flex>
@@ -133,7 +133,7 @@ export default function MobilePublicTruthOwnerCheckCard({
                     >
                         <Flex align="center" gap={6}>
                             <LuListChecks color={token.colorTextSecondary} size={15} />
-                            <Text strong>Fix list</Text>
+                            <Text strong>Next public fixes</Text>
                             <Tag color="default">{setupJobs.length}</Tag>
                         </Flex>
                         {setupJobs.slice(0, 4).map((job) => {

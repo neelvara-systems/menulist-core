@@ -201,8 +201,25 @@ function compactMessages(params: {
         {
             messageId: `${params.messageId}_manager`,
             role: 'menu_manager' as const,
+            kind: 'reply' as const,
             text: params.managerText,
             createdAt,
+        },
+    ].slice(-MAX_COMPACT_MESSAGES);
+}
+
+function appendCompactReceipt(
+    existing: AiMenuManagerCompactMessage[] | undefined,
+    receipt: AiMenuManagerReceipt,
+) {
+    return [
+        ...(existing || []),
+        {
+            messageId: `${receipt.receiptId}_manager`,
+            role: 'menu_manager' as const,
+            kind: 'receipt' as const,
+            text: receipt.message,
+            createdAt: receipt.executedAt,
         },
     ].slice(-MAX_COMPACT_MESSAGES);
 }
@@ -424,6 +441,7 @@ export async function updateAiMenuManagerProposalStatus(params: {
                 pendingCardSummaries: (session.pendingCardSummaries || [])
                     .filter((entry) => entry.proposalId !== params.proposalId),
                 ...(receipt ? {
+                    compactMessages: appendCompactReceipt(session.compactMessages, receipt),
                     recentReceiptSummaries: [
                         receipt,
                         ...(session.recentReceiptSummaries || []).filter((entry) => entry.proposalId !== params.proposalId),
@@ -631,6 +649,7 @@ export async function completeAiMenuManagerProposal(params: {
                     receipt,
                     ...(session.recentReceiptSummaries || []).filter((entry) => entry.proposalId !== params.proposalId),
                 ].slice(0, MAX_RECEIPTS),
+                compactMessages: appendCompactReceipt(session.compactMessages, receipt),
                 counters: {
                     commands: session.counters?.commands || 0,
                     proposalsCreated: session.counters?.proposalsCreated || 0,

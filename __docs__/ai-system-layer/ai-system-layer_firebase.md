@@ -4,6 +4,8 @@
 **Status:** ✅ CURRENT CODEBASE TRUTH — Existing ledgers plus daily provider health records
 **Last Updated:** July 5, 2026
 
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI ledger, provider-health, and Firebase cost behavior only. Current approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, scoped Firebase deploy evidence for affected Functions, provider smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke.
+
 ---
 
 ## Summary

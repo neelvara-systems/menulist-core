@@ -538,7 +538,7 @@ export const updateTimeSlotPresets = async (storeId: number, timeSlotPresets: Ti
 // @see __docs__/menu-presence-monitor/menu-presence-monitor_impl.md
 // ============================
 
-export type MenuPresenceSurface = 'googleBusiness' | 'instagramBio' | 'whatsappProfile';
+export type MenuPresenceSurface = 'googleBusiness' | 'appleBusiness' | 'bingPlaces' | 'instagramBio' | 'whatsappProfile';
 
 export type MenuPresenceUpdateResult = {
     success: true;

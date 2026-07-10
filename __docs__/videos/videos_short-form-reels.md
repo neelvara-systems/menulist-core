@@ -92,7 +92,7 @@ One approved list. Every customer link.
 | Time | Visual | Voiceover / text |
 | --- | --- | --- |
 | 0-3s | Existing printed menu or service list | Text: Already have a menu? Start there. |
-| 3-8s | Upload photo / PDF / paste owned link / typed list | Take a photo, upload a PDF, paste your existing menu link, or type your list. |
+| 3-8s | Upload menu photos / PDF / paste owned link | Upload menu photos, a PDF, or the owned link you already use. No typing required to start. |
 | 8-14s | MenuList prepares items and categories | MenuList prepares the customer-facing version. |
 | 14-20s | Owner review screen | You review before publishing. |
 | 20-25s | Customer link live | Text: Create your customer link. |

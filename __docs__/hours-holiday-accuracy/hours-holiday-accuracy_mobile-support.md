@@ -3,6 +3,8 @@
 **Last Updated:** July 2, 2026
 **Decision:** ✅ MOBILE SUPPORTED — Hours display and editing implemented
 
+> **Launch boundary:** Not current launch certification or deploy approval. This mobile-support doc is source-gated mobile working-hours evidence only; Hours mobile release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated mobile working-hours and Today quick-hours save QA, customer-facing public menu/OBP hours output QA, cache/deploy evidence for store-output writes, and production-host smoke.
+
 ---
 
 ## Source Gate

@@ -1,7 +1,7 @@
 # Website Asset Operating System - Validation
 
-**Validation date:** May 31, 2026
-**Status:** Internal v1 implemented; current Answerlattice asset review required
+**Validation date:** July 10, 2026
+**Status:** Internal v1 implemented; current motion and coordinated launch-pack assets approved and wired
 **Public runtime:** None
 **Firebase deploy:** Not required
 
@@ -32,12 +32,12 @@ Original v1 verification:
 | `npm run assets:brief -- --all` | Pass | Generated briefs for all 17 declared slots under `packages/asset-factory/briefs/`. |
 | `npm run assets:generate:missing -- --slot answerlattice.home.hero.support-control-motion` | Pass | Generated `packages/asset-factory/published/placeholders/answerlattice.home.hero.support-control-motion.svg`. |
 | `npm run assets:fingerprint` | Pass | Locked watched source hashes for 13 non-missing asset slots. |
-| `npm run assets:audit` | Pass | 0 errors, 11 expected warnings, no stale/oversized/disconnected findings. |
-| `npm run assets:review` | Pass | 0 blocked, 7 founder-review/founder-required items. |
+| `npm run assets:audit` | Pass | Historical v1 baseline; current healthy result is recorded below. |
+| `npm run assets:review` | Pass | Historical v1 baseline; current healthy result is recorded below. |
 | `npx tsc --noEmit --incremental false` | Pass | TypeScript completed with no output. |
 | `git diff --check` | Pass | No whitespace errors. |
 
-Current re-check after Answerlattice website docs changed:
+Intermediate stale-detection check after Answerlattice website docs changed:
 
 | Command | Result | Notes |
 | --- | --- | --- |
@@ -45,14 +45,17 @@ Current re-check after Answerlattice website docs changed:
 | `npm run assets:review` | Blocked by same stale Answerlattice fingerprints | Answerlattice OG, logo mark, PWA icons, and splash assets require review before they can be treated as current again. |
 | `git diff --check` | Pass | No whitespace errors in the current docs update. |
 
-## Expected Warnings
+## Current Healthy Result
 
-The audit intentionally reports 11 warnings:
+After the local HyperFrames/FFmpeg motion pass and the coordinated MenuList launch-pack update, the current verified result is:
 
-- 4 planned missing motion/clip slots that are not public yet.
-- 7 founder-review or founder-required slots that cannot be treated as approved.
-
-These warnings preserve the internal-only gate. They are not implementation failures.
+- `npm run assets:audit`: 0 errors, 0 warnings.
+- `npm run assets:review`: 0 blocked, 0 need founder review.
+- The manifest contains 22 active slots: 15 MenuList slots and 7 Answerlattice slots.
+- MenuList hero motion and the three Answerlattice motion clips are generated, approved, fingerprinted, and wired into their target public website surfaces with poster fallbacks.
+- The MenuList launch pack coordinates the website motion, LinkedIn and square social assets, owner-PWA device proof, and four approved launch-video frames.
+- Launch-pack status visuals use categorical demo states and do not invent customer counts, percentages, or performance claims.
+- Fourteen unrelated public website files remain informationally disconnected from AssetOS. They are not required by the current launch pack and do not block audit or review.
 
 ## Files Created Or Modified
 
@@ -84,4 +87,4 @@ Website Asset Operating System v1 is ready for internal use on MenuList and Answ
 
 It is implemented as a separate-product-style internal architecture, with no public product launch, no MenuList owner UI, no Answerlattice runtime behavior, and no Firebase cost change.
 
-The current package does not need an architecture or code change for the Answerlattice-adjacent decision. The next operational action is Answerlattice asset review: the package correctly detects that Answerlattice website truth changed after four approved asset fingerprints were locked.
+The current package does not need an architecture or code change for the Answerlattice-adjacent decision. The current operational action is normal AssetOS use: regenerate or relock assets only after source-truth changes are reviewed, then run audit and review before treating public website media as current.

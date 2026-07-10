@@ -206,6 +206,7 @@ export interface AiMenuManagerBeforeAfterSummary {
 }
 
 export interface AiMenuManagerSuggestedReply {
+    composerContext?: AiMenuManagerCommandContextSelection;
     helper?: string;
     label: string;
     prompt: string;
@@ -278,6 +279,7 @@ export interface AiMenuManagerCardPayload {
 export interface AiMenuManagerCompactMessage {
     messageId: string;
     role: "owner" | "menu_manager" | "system";
+    kind?: "reply" | "receipt" | "status";
     text: string;
     createdAt: string;
 }
@@ -294,6 +296,9 @@ export interface AiMenuManagerCardSummary {
 
 export interface AiMenuManagerPendingOperation {
     operationId: string;
+    commandGroupId?: string;
+    commandGroupSize?: number;
+    sourceFingerprint?: string;
     sessionId: string;
     tId: number | string;
     sId: number | string;
@@ -351,6 +356,12 @@ export interface AiMenuManagerSessionDoc {
         proposalsCreated: number;
         approvals: number;
         executions: number;
+        compoundCommands?: number;
+        deterministicRoutes?: number;
+        plannerAttempts?: number;
+        plannerAccepted?: number;
+        plannerFallbacks?: number;
+        clarifications?: number;
     };
     artifactRefs?: Array<Record<string, unknown>>;
     createdAt: unknown;

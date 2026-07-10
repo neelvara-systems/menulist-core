@@ -1,6 +1,11 @@
 export const dynamic = 'force-dynamic';
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
+    CANCELLATION_REASON,
+    normalizeCancellationReasonCode,
+    sanitizeCancellationReasonDetail,
+} from "@lib/billing/cancellationReasons";
+import {
     getDirectActiveProductSubscriptionForStore,
     getProductSubscriptionById,
     resolveBillingScopeFromSession,
@@ -93,6 +98,21 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const { reason, otherReason, consent, subscriptionId } = validation.data;
+        const isLegacyMobileCancellation = reason === 'mobile_cancellation';
+        const cancellationReasonCode = normalizeCancellationReasonCode(reason);
+        const cancellationReasonDetail = cancellationReasonCode === CANCELLATION_REASON.OTHER
+            ? sanitizeCancellationReasonDetail(otherReason)
+            : undefined;
+        if (
+            !cancellationReasonCode
+            || (
+                cancellationReasonCode === CANCELLATION_REASON.OTHER
+                && !cancellationReasonDetail
+                && !isLegacyMobileCancellation
+            )
+        ) {
+            return NextResponse.json({ error: "Choose a valid cancellation reason." }, { status: 400 });
+        }
 
         // 2. Find the user's active subscription in our database
         const internalSub = subscriptionId
@@ -160,6 +180,12 @@ export const POST = withAuth(async (request, session) => {
                 return NextResponse.json({ error: "Subscription state changed while cancelling. Please refresh and try again." }, { status: 409 });
             }
             await updateProductSubscription(productId, internalSub.id, {
+                cancellation: {
+                    reasonCode: cancellationReasonCode,
+                    ...(cancellationReasonDetail ? { detail: cancellationReasonDetail } : {}),
+                    requestedAt: Timestamp.now(),
+                    source: 'owner',
+                },
                 status: targetStatus,
                 cycleEndDate: internalSub.cycleEndDate,
                 subscriptionEndDate: internalSub.cycleEndDate,
@@ -172,7 +198,7 @@ export const POST = withAuth(async (request, session) => {
                         currency: internalSub.currency,
                         remark: targetStatus === 'completed'
                             ? "Subscription was already completed at payment gateway"
-                            : `Cancelled by user, reason: ${reason}, otherReason: ${otherReason}, consent: ${consent ? "Yes" : "No"}`,
+                            : `Cancelled by owner, reason code: ${cancellationReasonCode}, consent: ${consent ? "Yes" : "No"}`,
                     },
                 ],
             });
@@ -182,6 +208,7 @@ export const POST = withAuth(async (request, session) => {
                 'api:cancel-subscription',
             );
             await recordFounderSubscriptionChurn({
+                cancellationReasonCode,
                 productId,
                 source: 'api:cancel-subscription',
                 subscription: { ...internalSub, status: targetStatus },

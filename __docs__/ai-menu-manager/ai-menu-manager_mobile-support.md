@@ -2,7 +2,7 @@
 
 **Status:** Required mobile support plan
 **Decision:** Partial mobile support inside MobileShell with a guarded bottom-tab entry
-**Last Updated:** June 30, 2026
+**Last Updated:** July 10, 2026
 
 ---
 
@@ -40,7 +40,7 @@ Exact per-action mobile handling is tracked in [ai-menu-manager_action-type-chec
 - View pending approvals.
 - Approve/cancel/edit light cards.
 - Type short commands.
-- Voice transcript input when flag is enabled.
+- Voice control remains hidden while `ENABLE_AI_MENU_MANAGER_VOICE_INPUT` is false. A future transcript adapter must enter the same command/card/approval path.
 - Approve price/availability only after clear before/after.
 - Restore sold-out item.
 - Mark manual task done.
@@ -112,7 +112,7 @@ Broad More commands that have fixed manual choices use the same guided-choice pa
 - "Show menu on TV" asks for Copy screen link, Open screen setup, Update slides, or Pause screen.
 - "Manage feedback" asks for Copy feedback link, Download feedback QR, Open feedback inbox, or Prepare reply.
 
-Choosing one option on a clarification card submits the selected answer, replaces the clarification, and creates the next card. It does not execute, approve, publish, or write business truth unless the resulting card follows the normal approval/execution flow.
+Choosing one option on a clarification card submits the selected answer and its validated item/category ID when present, replaces the clarification, and creates the next card. The same structured scope is used on desktop and inside MobileShell. It does not execute, approve, publish, or write business truth unless the resulting card follows the normal approval/execution flow.
 
 When the owner sends "Copy menu link", "Download menu QR", "Copy official page link", "Download official page QR", "Copy feedback link", "Download feedback QR", "Copy customer app install link", "Copy digital screen link", "Copy POS setup details", "Copy POS technical summary", or "Download POS sample payload", AMM prepares the matching browser-local export card for the selected context. The card shows copy/open/download controls where available. This stays inside `MobileShell`, creates no menu-truth write, and does not store generated QR image or text export data in Firestore.
 
@@ -124,10 +124,10 @@ The suggestion launcher uses the same two-layer pattern for owner-friendly disco
 - starter cards and final sheet selections fill the composer; they do not send, approve, or mutate data.
 - the mobile version stays inside the `MobileShell` bottom sheet with large touch rows and back navigation.
 
-The composer Work on picker is separate from suggestions:
+The composer uses one `+` tool entry for Work on and Suggestions:
 
 - it opens as a MobileShell bottom sheet.
-- its launcher sits beside Suggestions as a composer tool, not inside the suggestion list.
+- the sheet first asks whether the owner wants to Work on a menu area or open Suggestions.
 - opening Work on closes the suggestion sheet, and opening Suggestions closes Work on.
 - top-level targets are Item, Category, Menu design, Digital menu, Official page, Digital screens, Feedback, and Store settings.
 - Item supports multi-select for selected-item operations, such as choosing three tea items and sending "increase price by 10".
@@ -141,6 +141,7 @@ Selected-menu answer cards also run on mobile:
 - answer cards are built from the selected project/menu data already available in the mobile context.
 - they do not need approval, do not write menu truth, do not create pending proposal summaries, and do not call an AI/provider or external lookup.
 - suggested next actions fill the composer only; the owner still sends the follow-up and approves any resulting proposal card.
+- when one message prepares multiple independent selected-project cards, MobileShell shows the same cards plus a 44px **Approve all** control. It performs one existing project save and one compact completion write; individual card approval/cancel remains available.
 - generic questions such as weather, news, sports, or unrelated advice show an out-of-scope card.
 
 ---
@@ -155,7 +156,7 @@ Implementation must:
 - use existing mobile providers for selected project/store context.
 - show the current selected project and allow project switching through existing mobile project selector behavior before preparing project-scoped cards.
 - avoid `window.location` route bypass from mobile tab actions.
-- use `antd-mobile` and Tailwind for mobile UI.
+- use the current Tailwind-driven mobile shell and shared components. Do not add `antd-mobile` without an explicit dependency decision.
 - use shared DAL/hooks/action adapters.
 - use `react-icons/lu` only.
 
@@ -170,9 +171,10 @@ MobileShell
   -> AMM screen
      -> compact store/project bar
      -> project selector for current menu context
-     -> pending card stack
-     -> conversation snippets
-     -> bottom composer
+     -> loaded-project status
+     -> conversation snippets and inline receipts
+     -> pending card stack above composer
+     -> bottom composer with one + tool entry
      -> bottom-sheet card actions
 ```
 
@@ -184,7 +186,9 @@ Rules:
 - Use before/after rows.
 - Use bottom sheets for edit/scope/time.
 - Show contextual suggestion groups in a bottom sheet; selecting a suggestion fills the composer and does not submit.
+- Open Work on and Suggestions from one `+` tool sheet so permanent composer controls stay minimal.
 - Clarification card option rows resolve the pending clarification into the next card; they do not approve or execute work.
+- Keep compact receipts in the conversation timeline instead of a separate receipt panel.
 - Optimistic UI only after backend accepts approval lock.
 - Non-blocking retry for failed completion.
 - No red/alarming copy unless destructive action requires it.

@@ -1,7 +1,7 @@
 # Tools Hub - Implementation
 
 **Status:** Implemented
-**Last Updated:** July 4, 2026
+**Last Updated:** July 9, 2026
 **Local Source Gate:** `npm run verify:tools-hub`
 
 ## Runtime Files
@@ -38,7 +38,7 @@ ENABLE_PUBLIC_TRUTH_TOOLS: true
 
 `TOOLS_HUB_GROUPS` lives in the component because this is a static website index, not a shared runtime registry. Do not extract it into a generalized plugin system until at least two non-website surfaces need the same grouped navigation contract.
 
-The registry must stay an exact set with the implemented public tool family. `npm run verify:tools-hub` compares the literal `href` and `key` values in `TOOLS_HUB_GROUPS` against the expected sixteen public routes and locale keys, so a stale card for an unimplemented tool fails even if every expected card is still present.
+The registry must stay an exact set with the implemented public tool family. `npm run verify:tools-hub` compares the literal `href` and `key` values in `TOOLS_HUB_GROUPS` against the expected 21 public routes and locale keys, so a stale card for an unimplemented tool fails even if every expected card is still present.
 
 ## Runtime Boundary
 
@@ -68,7 +68,7 @@ The hub is not allowed to:
 
 - route exists and is feature-flagged
 - component uses `Website.ToolsHubPage` locale copy
-- all 16 current tool routes are listed, with no extra stale cards
+- all 21 current tool routes are listed, with no extra stale cards
 - no API/report/contact/runtime fetch path exists
 - docs live under `__docs__/menulist-tools/tools-hub/`
 - header/footer/discovery/sitemap/LLM context are wired

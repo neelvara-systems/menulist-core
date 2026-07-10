@@ -45,6 +45,19 @@ export interface FounderMonitorRevenueSummary {
   arpaPaise: number;
   arpsPaise: number;
   revenuePerTrustedLiveStorePaise: number;
+  churnReasons: Record<string, number>;
+}
+
+export interface FounderMonitorGrowthSourceSummary {
+  draftsCreated: number;
+  businessesClaimed: number;
+}
+
+export interface FounderMonitorGrowthSummary {
+  draftsCreated: number;
+  businessesClaimed: number;
+  draftToClaimRatePercent: number;
+  bySource: Record<string, FounderMonitorGrowthSourceSummary>;
 }
 
 export interface FounderMonitorStoreTruthSummary {
@@ -116,6 +129,7 @@ export interface FounderMonitorData {
   status: FounderMonitorStatus;
   scorecard: FounderMonitorScorecard;
   revenue: FounderMonitorRevenueSummary;
+  growth: FounderMonitorGrowthSummary;
   storeTruth: FounderMonitorStoreTruthSummary;
   onboarding: FounderMonitorOnboardingSummary;
   support: FounderMonitorSupportSummary;

@@ -149,7 +149,7 @@ function verifyPublicApiAndWidgetIsolation() {
   const dataInventoryMap = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_data-map.md');
   const dataInventoryEvidence = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_evidence.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
 
   assertIncludes(publicAnswers, 'authenticateAnswerlatticePublicApi', 'Answerlattice public answers API');
@@ -317,6 +317,7 @@ function verifyPublicApiAndWidgetIsolation() {
 function verifyAnswerlatticeDashboardFailureCopy() {
   const dashboard = read('src/app/(answerlattice)/answerlattice/dashboard/page.tsx');
   const accessProvider = read('src/providers/answerlatticeAccessProvider.tsx');
+  const accessControl = read('src/lib/answerlattice/accessControl.ts');
   const settings = read('src/components/templates/answerlattice/AnswerlatticeSettings.tsx');
   const activation = read('src/components/templates/answerlattice/activation/AnswerlatticeActivationCommandCenter.tsx');
   const operations = read('src/components/templates/answerlattice/activation/AnswerlatticeOperationsPanel.tsx');
@@ -331,7 +332,7 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   const staffAccessImpl = read('__docs__/answerlattice/staff-access-control/staff-access-control_impl.md');
   const staffAccessFirebase = read('__docs__/answerlattice/staff-access-control/staff-access-control_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
   const installCenter = read('src/components/templates/answerlattice/install/AnswerlatticeInstallCenter.tsx');
   const multiLanguageArticles = read('src/components/templates/answerlattice/governance/MultiLanguageArticles.tsx');
@@ -352,6 +353,15 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   assertNotIncludes(accessProvider, 'response.json().catch(() => ({}))', 'Answerlattice access provider direct JSON fallback');
   assertNotIncludes(accessProvider, "data.error || 'Could not load Answerlattice access'", 'Answerlattice access provider raw response error copy');
   assertNotIncludes(accessProvider, 'loadError?.message', 'Answerlattice access provider raw browser exception copy');
+  assertIncludes(accessControl, "import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from './sessionScope';", 'Answerlattice access control imports strict scope helpers');
+  assertIncludes(accessControl, 'const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);', 'Answerlattice access control normalizes store tenant scope');
+  assertIncludes(accessControl, 'if (storeTenantId !== scope.tenantId) return null;', 'Answerlattice access control fails closed on store tenant mismatch');
+  assertIncludes(accessControl, 'normalizeAnswerlatticeScopeDocumentId(userData.tenantId ?? userData.tId) !== scope.tenantId', 'Answerlattice access control normalizes user tenant scope');
+  assertIncludes(accessControl, 'const userStoreIds = getUserStoreIds(userData);', 'Answerlattice access control normalizes user store memberships');
+  assertIncludes(accessControl, "throw new Error('answerlattice_store_scope_invalid');", 'Answerlattice role normalizer fails closed on malformed store scope');
+  assertNotIncludes(accessControl, 'const storeTenantId = Number(storeData.tenantId || storeData.tId);', 'Answerlattice access control must not loosely coerce store tenant scope');
+  assertNotIncludes(accessControl, 'userData.storeIds.map(Number)', 'Answerlattice access control must not loosely coerce store membership IDs');
+  assertNotIncludes(accessControl, 'Number(store?.storeId) === Number(scope.storeId)', 'Answerlattice access control must not loosely compare store-role scope');
   assertIncludes(settings, 'ANSWERLATTICE_PROFILE_LOAD_FAILED', 'Answerlattice settings fixed profile-load copy');
   assertIncludes(settings, 'ANSWERLATTICE_PROFILE_SAVE_FAILED', 'Answerlattice settings fixed profile-save copy');
   assertIncludes(settings, 'ANSWERLATTICE_INTEGRATIONS_LOAD_FAILED', 'Answerlattice settings fixed integrations-load copy');
@@ -482,6 +492,15 @@ function verifyAnswerlatticeDashboardFailureCopy() {
     ['lowercase changelog', lowercaseChangelog],
   ].forEach(([label, content]) => {
     assertIncludes(content, 'Answerlattice staff user ID boundary', `Answerlattice staff user ID boundary documented in ${label}`);
+  });
+  [
+    ['staff access implementation docs', staffAccessImpl],
+    ['staff access Firebase docs', staffAccessFirebase],
+    ['production readiness audit', productionAudit],
+    ['CHANGELOG', changelog],
+    ['lowercase changelog', lowercaseChangelog],
+  ].forEach(([label, content]) => {
+    assertIncludes(content, 'Answerlattice management access scope boundary', `Answerlattice management access scope boundary documented in ${label}`);
   });
   assertNotIncludes(staffAccessServer, 'accounts:sendOobCode?key=${apiKey}', 'Answerlattice staff reset must not interpolate Firebase API keys into provider URLs');
   assertNotIncludes(staffAccessServer, 'data?.error?.message', 'Answerlattice staff reset must not retain Firebase Auth provider failure text');
@@ -785,7 +804,7 @@ function verifyAnswerlatticeSupportBoardRelatedEntityBoundary() {
   const supportBoardImpl = read('__docs__/answerlattice/support-board/support-board_impl.md');
   const dataInventoryEvidence = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_evidence.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
 
   assertIncludes(supportBoardCardIdBoundary, "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';", 'Answerlattice Support Board card ID boundary imports shared Firestore guard');
@@ -1004,7 +1023,7 @@ function verifyProtectedReadRateLimitGuards() {
   const activationCommandCenterImpl = read('__docs__/answerlattice/client-activation-command-center/client-activation-command-center_impl.md');
   const helpWidgetFirebase = read('__docs__/answerlattice/help-widget/help-widget_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
   const publicContent = read('src/app/api/answerlattice/public-content/route.ts');
   const publicContentCache = read('src/lib/answerlattice/publicContentCache.ts');
@@ -1023,6 +1042,7 @@ function verifyProtectedReadRateLimitGuards() {
   assertIncludes(helpWidgetImpl, 'exact positive numeric Firestore document IDs before widget activity reads', 'Help widget docs must document shared session scope boundary');
   assertIncludes(ownerSupportAssistantImpl, 'tenant/store scope is accepted only as exact positive numeric Firestore document IDs', 'Owner Support Assistant docs must document shared session scope boundary');
   assertIncludes(activationCommandCenterImpl, 'accepts only exact positive numeric Firestore document IDs for tenant/store scope', 'Activation Command Center docs must document shared session scope boundary');
+  assertIncludes(activationCommandCenterImpl, 'management route persisted scope checks fail closed', 'Activation Command Center docs must document management route persisted scope boundary');
   assertIncludes(productionAudit, 'Answerlattice shared session scope boundary checkpoint: fixed in source.', 'Production readiness audit must document shared Answerlattice session scope hardening');
   assertIncludes(changelog, 'Answerlattice Shared Session Scope Boundary', 'Changelog must document shared Answerlattice session scope hardening');
 
@@ -1037,6 +1057,9 @@ function verifyProtectedReadRateLimitGuards() {
 
   assertIncludes(activationSummary, "applyAnswerlatticeDashboardReadRateLimit(_request, session, 'activation-summary')", 'Answerlattice activation summary read limiter');
   assertIncludes(activationSummary, "logRuntimeFailure('answerlattice_activation_summary_route_failed'", 'Answerlattice activation summary bounded diagnostics');
+  assertIncludes(activationSummary, 'normalizeAnswerlatticeScopeDocumentId(data.tenantId ?? data.tId) === tId', 'Answerlattice activation summary legacy subscription tenant scope normalization');
+  assertIncludes(activationSummary, 'const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);', 'Answerlattice activation summary store tenant scope normalization');
+  assertIncludes(activationSummary, 'if (storeTenantId !== tId)', 'Answerlattice activation summary fail-closed store tenant guard');
   assertOrder(
     activationSummary,
     [
@@ -1050,6 +1073,8 @@ function verifyProtectedReadRateLimitGuards() {
     'Answerlattice activation summary read limiter before permission and Firestore reads',
   );
   assertNotIncludes(activationSummary, "secureError('[Answerlattice Activation] Failed to load summary'", 'Answerlattice activation summary raw secureError');
+  assertNotIncludes(activationSummary, 'const storeTenantId = Number(storeData.tenantId || storeData.tId);', 'Answerlattice activation summary must not loosely coerce store tenant scope');
+  assertNotIncludes(activationSummary, 'Number.isFinite(storeTenantId) && storeTenantId !== tId', 'Answerlattice activation summary must not allow malformed store tenant scope');
 
   assertIncludes(widgetActivity, "applyAnswerlatticeDashboardReadRateLimit(request, session, 'widget-activity')", 'Answerlattice widget activity read limiter');
   assertIncludes(widgetActivity, "logRuntimeFailure('answerlattice_widget_activity_route_failed'", 'Answerlattice widget activity bounded diagnostics');
@@ -1057,6 +1082,8 @@ function verifyProtectedReadRateLimitGuards() {
   assertIncludes(widgetActivity, 'canonicalIsoTimestampToMillis', 'Answerlattice widget activity canonical timestamp normalizer');
   assertIncludes(widgetActivity, 'new Date(millis).toISOString() === normalized', 'Answerlattice widget activity timestamp round-trip guard');
   assertIncludes(widgetActivity, 'timestampLikeToMillis(value)', 'Answerlattice widget activity shared timestamp normalization');
+  assertIncludes(widgetActivity, 'normalizeAnswerlatticeScopeDocumentId(data.tId) === tenantId', 'Answerlattice widget activity fallback tenant scope normalization');
+  assertIncludes(widgetActivity, 'normalizeAnswerlatticeScopeDocumentId(data.sId) === storeId', 'Answerlattice widget activity fallback store scope normalization');
   assertOrder(
     widgetActivity,
     [
@@ -1070,13 +1097,20 @@ function verifyProtectedReadRateLimitGuards() {
     'Answerlattice widget activity read limiter before permission and search-history reads',
   );
   assertNotIncludes(widgetActivity, "secureError('[Answerlattice Widget Activity] Failed to load recent widget questions'", 'Answerlattice widget activity raw secureError');
+  assertNotIncludes(widgetActivity, 'Number(data.tId) === tenantId', 'Answerlattice widget activity must not loosely coerce fallback tenant scope');
+  assertNotIncludes(widgetActivity, 'Number(data.sId) === storeId', 'Answerlattice widget activity must not loosely coerce fallback store scope');
   assertNotIncludes(widgetActivity, 'Date.parse(String(value))', 'Answerlattice widget activity permissive string timestamp parser');
   assertNotIncludes(widgetActivity, 'new Date(value)', 'Answerlattice widget activity permissive date constructor parser');
   assertIncludes(helpWidgetImpl, 'widget activity timestamp boundary', 'Help Widget implementation docs record widget activity timestamp boundary');
+  assertIncludes(helpWidgetImpl, 'widget management persisted scope checks fail closed', 'Help Widget implementation docs record widget management persisted scope boundary');
   assertIncludes(helpWidgetFirebase, 'Widget activity timestamp normalization', 'Help Widget Firebase docs record widget activity timestamp boundary');
+  assertIncludes(helpWidgetFirebase, 'Widget management persisted scope checks fail closed', 'Help Widget Firebase docs record widget management persisted scope boundary');
   assertIncludes(productionAudit, 'Answerlattice widget activity timestamp boundary checkpoint', 'Production audit records widget activity timestamp boundary');
+  assertIncludes(productionAudit, 'Answerlattice management route persisted scope checkpoint', 'Production audit records management route persisted scope boundary');
   assertIncludes(changelog, 'Answerlattice Widget Activity Timestamp Boundary', 'Changelog records widget activity timestamp boundary');
+  assertIncludes(changelog, 'Answerlattice Management Route Persisted Scope Boundary', 'Changelog records management route persisted scope boundary');
   assertIncludes(lowercaseChangelog, 'Answerlattice Widget Activity Timestamp Boundary', 'Lowercase changelog records widget activity timestamp boundary');
+  assertIncludes(lowercaseChangelog, 'Answerlattice Management Route Persisted Scope Boundary', 'Lowercase changelog records management route persisted scope boundary');
 
   assertIncludes(intakeEntities, "applyAnswerlatticeDashboardReadRateLimit(request, session, 'knowledge-intake-entities')", 'Answerlattice intake entity lookup read limiter');
   assertIncludes(intakeEntities, "logRuntimeFailure('answerlattice_intake_entity_lookup_failed'", 'Answerlattice intake entity lookup bounded diagnostics');
@@ -1096,6 +1130,9 @@ function verifyProtectedReadRateLimitGuards() {
   assertIncludes(operationsStatus, "logRuntimeFailure('answerlattice_operations_status_load_failed'", 'Answerlattice operations status bounded diagnostics');
   assertIncludes(operationsStatus, "getBoundedRuntimeStringContext('tenantId', tId)", 'Answerlattice operations status bounded tenant metadata');
   assertIncludes(operationsStatus, "getBoundedRuntimeStringContext('storeId', sId)", 'Answerlattice operations status bounded store metadata');
+  assertIncludes(operationsStatus, 'const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);', 'Answerlattice operations status store tenant scope normalization');
+  assertIncludes(operationsStatus, 'normalizeAnswerlatticeScopeDocumentId(run.tId) === tId', 'Answerlattice operations status run-log tenant scope normalization');
+  assertIncludes(operationsStatus, 'normalizeAnswerlatticeScopeDocumentId(run.sId) === sId', 'Answerlattice operations status run-log store scope normalization');
   assertOrder(
     operationsStatus,
     [
@@ -1109,6 +1146,8 @@ function verifyProtectedReadRateLimitGuards() {
     'Answerlattice operations status read limiter before permission and Firestore reads',
   );
   assertNotIncludes(operationsStatus, "secureError('[Answerlattice Operations] Failed to load scheduler status'", 'Answerlattice operations status raw secureError');
+  assertNotIncludes(operationsStatus, 'Number.isFinite(storeTenantId) && storeTenantId !== tId', 'Answerlattice operations status must not allow malformed store tenant scope');
+  assertNotIncludes(operationsStatus, 'Number(run.tId) === tId && Number(run.sId) === sId', 'Answerlattice operations status must not loosely coerce run-log scope');
 
   assertIncludes(aiOperations, "logRuntimeFailure('answerlattice_ai_operations_load_failed'", 'Answerlattice AI operations bounded diagnostics');
   assertIncludes(aiOperations, "getBoundedRuntimeStringContext('tenantId', tenantIdForLog)", 'Answerlattice AI operations bounded tenant diagnostic metadata');
@@ -1274,6 +1313,7 @@ function verifyAnswerlatticeRebuildSyncRouteGuards() {
   assertIncludes(bundleRebuild, "logRuntimeFailure('answerlattice_context_bundle_manual_rebuild_failed'", 'Answerlattice bundle rebuild bounded diagnostics');
   assertIncludes(bundleRebuild, "getBoundedRuntimeStringContext('tenantId', tenantId)", 'Answerlattice bundle rebuild bounded tenant metadata');
   assertIncludes(bundleRebuild, "getBoundedRuntimeStringContext('storeId', storeId)", 'Answerlattice bundle rebuild bounded store metadata');
+  assertIncludes(bundleRebuild, 'const { tenantId, storeId } = scope;', 'Answerlattice bundle rebuild uses normalized session scope directly');
   assertOrder(
     bundleRebuild,
     [
@@ -1291,6 +1331,8 @@ function verifyAnswerlatticeRebuildSyncRouteGuards() {
   assertNotIncludes(bundleRebuild, "secureError('[Answerlattice Bundles] Failed to rebuild compiled context'", 'Answerlattice bundle rebuild raw secureError');
   assertNotIncludes(bundleRebuild, "requestedBy: session.user?.id || session.user?.email || 'owner'", 'Answerlattice bundle rebuild raw requester persistence');
   assertNotIncludes(bundleRebuild, 'reason: z.string().trim().min(1).max(80)', 'Answerlattice bundle rebuild arbitrary reason text');
+  assertNotIncludes(bundleRebuild, 'const tenantId = Number(scope?.tenantId);', 'Answerlattice bundle rebuild must not loosely coerce session tenant scope');
+  assertNotIncludes(bundleRebuild, 'const storeId = Number(scope?.storeId);', 'Answerlattice bundle rebuild must not loosely coerce session store scope');
 
   assertIncludes(surfaceSummaryRebuild, 'const PRODUCT_SURFACE_SUMMARY_REBUILD_MAX_BODY_BYTES = 2 * 1024;', 'Answerlattice product-surface summary rebuild body cap');
   assertIncludes(surfaceSummaryRebuild, "const PRODUCT_SURFACE_SUMMARY_REBUILD_REASON_CODES = ['manual'] as const;", 'Answerlattice product-surface summary rebuild reason allowlist');
@@ -1301,6 +1343,7 @@ function verifyAnswerlatticeRebuildSyncRouteGuards() {
   assertIncludes(surfaceSummaryRebuild, "logRuntimeFailure('answerlattice_product_surface_summary_rebuild_failed'", 'Answerlattice product-surface summary bounded diagnostics');
   assertIncludes(surfaceSummaryRebuild, "getBoundedRuntimeStringContext('tenantId', tenantId)", 'Answerlattice product-surface summary bounded tenant metadata');
   assertIncludes(surfaceSummaryRebuild, "getBoundedRuntimeStringContext('storeId', storeId)", 'Answerlattice product-surface summary bounded store metadata');
+  assertIncludes(surfaceSummaryRebuild, 'const { tenantId, storeId } = scope;', 'Answerlattice product-surface summary uses normalized session scope directly');
   assertOrder(
     surfaceSummaryRebuild,
     [
@@ -1317,8 +1360,12 @@ function verifyAnswerlatticeRebuildSyncRouteGuards() {
   );
   assertNotIncludes(surfaceSummaryRebuild, "secureError('[Answerlattice Product Surfaces] Failed to rebuild context summary'", 'Answerlattice product-surface summary raw secureError');
   assertNotIncludes(surfaceSummaryRebuild, 'reason: z.string().trim().max(80)', 'Answerlattice product-surface summary arbitrary reason text');
+  assertNotIncludes(surfaceSummaryRebuild, 'const tenantId = Number(scope?.tenantId);', 'Answerlattice product-surface summary must not loosely coerce session tenant scope');
+  assertNotIncludes(surfaceSummaryRebuild, 'const storeId = Number(scope?.storeId);', 'Answerlattice product-surface summary must not loosely coerce session store scope');
 
   assertIncludes(tenantSummary, 'const TENANT_SUMMARY_SYNC_MAX_BODY_BYTES = 2 * 1024;', 'Answerlattice tenant-summary sync body cap');
+  assertIncludes(tenantSummary, 'const AnswerlatticeScopeIdSchema = z.preprocess(', 'Answerlattice tenant-summary strict body scope schema');
+  assertIncludes(tenantSummary, 'normalizeAnswerlatticeScopeDocumentId(value) ?? undefined', 'Answerlattice tenant-summary body scope uses strict document-ID normalizer');
   assertIncludes(tenantSummary, 'readBoundedJsonBody(request, TENANT_SUMMARY_SYNC_MAX_BODY_BYTES', 'Answerlattice tenant-summary bounded body');
   assertIncludes(tenantSummary, 'hashPublicRateLimitValue(session?.user?.id || session?.user?.email || \'unknown\')', 'Answerlattice tenant-summary hashed rate-limit identity');
   assertIncludes(tenantSummary, "logRuntimeFailure('answerlattice_tenant_summary_sync_failed'", 'Answerlattice tenant-summary bounded diagnostics');
@@ -1350,6 +1397,9 @@ function verifyAnswerlatticeRebuildSyncRouteGuards() {
   );
   assertNotIncludes(tenantSummary, "secureError('[Answerlattice Tenant Summary] Sync failed'", 'Answerlattice tenant-summary raw secureError');
   assertNotIncludes(tenantSummary, "String(session?.user?.id || session?.user?.email || 'unknown')", 'Answerlattice tenant-summary raw rate-limit identity');
+  assertNotIncludes(tenantSummary, 'z.coerce.number().int().positive()', 'Answerlattice tenant-summary must not loosely coerce body scope');
+  assertNotIncludes(tenantSummary, 'const tenantId = Number(answerlatticeScope?.tenantId);', 'Answerlattice tenant-summary must not loosely coerce session tenant scope');
+  assertNotIncludes(tenantSummary, 'const storeId = Number(answerlatticeScope?.storeId);', 'Answerlattice tenant-summary must not loosely coerce session store scope');
   assertNotIncludes(tenantSummaryClient, 'Answerlattice tenant summary sync failed: ${response.status}', 'Answerlattice tenant-summary client raw status throw');
   assertNotIncludes(tenantSummaryClient, 'if (!response.ok) {\\n        throw new Error', 'Answerlattice tenant-summary client status-only acknowledgement');
 }
@@ -1365,6 +1415,8 @@ function verifyAnswerlatticeSettingsRouteGuards() {
   assertIncludes(workspaceProfile, "logRuntimeFailure('answerlattice_workspace_profile_tenant_summary_sync_failed'", 'Answerlattice workspace profile tenant-summary bounded diagnostics');
   assertIncludes(workspaceProfile, "logRuntimeFailure('answerlattice_workspace_profile_compiled_context_stale_mark_failed'", 'Answerlattice workspace profile compiled-context bounded diagnostics');
   assertIncludes(workspaceProfile, "logRuntimeFailure('answerlattice_workspace_profile_save_failed'", 'Answerlattice workspace profile save bounded diagnostics');
+  assertIncludes(workspaceProfile, 'const tenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);', 'Answerlattice workspace profile store tenant scope normalization');
+  assertIncludes(workspaceProfile, 'if (tenantId !== scope.tenantId)', 'Answerlattice workspace profile fail-closed store tenant guard');
   assertOrder(
     workspaceProfile,
     [
@@ -1378,11 +1430,14 @@ function verifyAnswerlatticeSettingsRouteGuards() {
     'Answerlattice workspace profile read limiter before permission and store read',
   );
   assertNotIncludes(workspaceProfile, "secureError('[Answerlattice Workspace Profile]", 'Answerlattice workspace profile raw secureError');
+  assertNotIncludes(workspaceProfile, 'Number.isFinite(tenantId) && tenantId !== scope.tenantId', 'Answerlattice workspace profile must not allow malformed store tenant scope');
 
   assertIncludes(widgetConfig, "applyAnswerlatticeDashboardReadRateLimit(_request, session, 'widget-config')", 'Answerlattice widget config read limiter');
   assertIncludes(widgetConfig, "logRuntimeFailure('answerlattice_widget_config_settings_load_failed'", 'Answerlattice widget config load bounded diagnostics');
   assertIncludes(widgetConfig, "logRuntimeFailure('answerlattice_widget_config_compiled_context_stale_mark_failed'", 'Answerlattice widget config compiled-context bounded diagnostics');
   assertIncludes(widgetConfig, "logRuntimeFailure('answerlattice_widget_config_settings_save_failed'", 'Answerlattice widget config save bounded diagnostics');
+  assertIncludes(widgetConfig, 'const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);', 'Answerlattice widget config store tenant scope normalization');
+  assertIncludes(widgetConfig, 'if (storeTenantId !== scope.tenantId)', 'Answerlattice widget config fail-closed store tenant guard');
   assertOrder(
     widgetConfig,
     [
@@ -1396,6 +1451,7 @@ function verifyAnswerlatticeSettingsRouteGuards() {
     'Answerlattice widget config read limiter before permission and store read',
   );
   assertNotIncludes(widgetConfig, "secureError('[Answerlattice Widget Config]", 'Answerlattice widget config raw secureError');
+  assertNotIncludes(widgetConfig, 'Number.isFinite(storeTenantId) && storeTenantId !== scope.tenantId', 'Answerlattice widget config must not allow malformed store tenant scope');
 
   assertIncludes(integrations, "applyAnswerlatticeDashboardReadRateLimit(_request, session, 'integrations')", 'Answerlattice integrations read limiter');
   assertIncludes(integrations, 'ownerSafeIntegrationError(adapters.slack?.lastError)', 'Answerlattice integrations safe Slack health error');
@@ -1427,6 +1483,9 @@ function verifyAnswerlatticeSettingsRouteGuards() {
   assertIncludes(hostedHelp, "...getHostedHelpProviderErrorContext(addResult.data)", 'Answerlattice hosted help flattened provider diagnostics');
   assertIncludes(hostedHelp, "getBoundedRuntimeStringContext('domain', normalized)", 'Answerlattice hosted help bounded registry domain metadata');
   assertIncludes(hostedHelp, "getBoundedRuntimeStringContext('domain', domain)", 'Answerlattice hosted help bounded removal domain metadata');
+  assertIncludes(hostedHelp, 'normalizeAnswerlatticeScopeDocumentId(registry?.tId) === scope.tenantId', 'Answerlattice hosted help registry tenant scope normalization');
+  assertIncludes(hostedHelp, 'normalizeAnswerlatticeScopeDocumentId(registry?.sId) === scope.storeId', 'Answerlattice hosted help registry store scope normalization');
+  assertIncludes(hostedHelp, 'const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);', 'Answerlattice hosted help store tenant scope normalization');
   assertOrder(
     hostedHelp,
     [
@@ -1441,6 +1500,8 @@ function verifyAnswerlatticeSettingsRouteGuards() {
   );
   assertNotIncludes(hostedHelp, "secureError('[Answerlattice Hosted Help]", 'Answerlattice hosted help raw secureError');
   assertNotIncludes(hostedHelp, 'provider: getHostedHelpProviderErrorContext(addResult.data)', 'Answerlattice hosted help nested provider diagnostic object');
+  assertNotIncludes(hostedHelp, 'Number(registry?.tId) === Number(scope.tenantId)', 'Answerlattice hosted help must not loosely coerce registry tenant scope');
+  assertNotIncludes(hostedHelp, 'Number.isFinite(storeTenantId) && storeTenantId !== Number(scope.tenantId)', 'Answerlattice hosted help must not allow malformed store tenant scope');
 }
 
 function verifyAnswerlatticePaidPlanPackaging() {
@@ -1508,7 +1569,7 @@ function verifyAnswerlatticeTransactionsDiagnostics() {
   const billingReadme = read('__docs__/answerlattice/billing/README.md');
   const billingImpl = read('__docs__/answerlattice/billing/answerlattice-billing_impl.md');
   const billingFirebase = read('__docs__/answerlattice/billing/answerlattice-billing_firebase.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const boundaryLabel = 'Answerlattice transactions raw load-reason diagnostics boundary';
 
@@ -1538,7 +1599,7 @@ function verifyAnswerlatticeWebsiteAnalyticsUrlBoundary() {
   const websiteReadme = read('__docs__/answerlattice/answerlattice-website/README.md');
   const websiteSpec = read('__docs__/answerlattice/answerlattice-website/answerlattice-website_spec.md');
   const websiteImpl = read('__docs__/answerlattice/answerlattice-website/answerlattice-website_impl.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const boundaryLabel = 'Answerlattice website analytics URL minimization boundary';
 
@@ -1588,6 +1649,34 @@ function verifyAnswerlatticeWebsiteAnalyticsUrlBoundary() {
   [websiteReadme, websiteSpec, websiteImpl, changelog, productionAudit].forEach((content, index) => {
     assertIncludes(content, boundaryLabel, `Answerlattice website analytics URL boundary docs ${index + 1}`);
   });
+
+  assertIncludes(
+    websiteSpec,
+    'Explain the implemented Slack/email workflow notification path without turning AnswerLattice into a broad integration marketplace or implying broad adapter certification.',
+    'Answerlattice website integrations bounded source-verified wording',
+  );
+  assertIncludes(
+    websiteReadme,
+    'implemented and source-verified for bounded buyer-facing claims',
+    'Answerlattice website README bounded buyer-facing claims wording',
+  );
+  [
+    websiteReadme,
+    websiteSpec,
+  ].forEach((content, index) => {
+    assertNotIncludes(content, 'production-ready workflow notification path', `Answerlattice website stale production-ready workflow wording ${index + 1}`);
+    assertNotIncludes(content, 'production-ready enough for buyer-facing claims', `Answerlattice website stale buyer-facing readiness wording ${index + 1}`);
+  });
+  assertIncludes(
+    productionAudit,
+    'Answerlattice website integrations readiness wording checkpoint:',
+    'Production readiness audit Answerlattice website readiness wording checkpoint',
+  );
+  assertIncludes(
+    changelog,
+    'Answerlattice website integrations wording stays source-verified',
+    'Changelog Answerlattice website readiness wording entry',
+  );
 }
 
 function verifyAnswerlatticeProtectedActionRouteGuards() {
@@ -1701,7 +1790,7 @@ function verifyAnswerlatticeOnboardRouteGuards() {
   const billingFirebase = read('__docs__/answerlattice/billing/answerlattice-billing_firebase.md');
   const websiteImpl = read('__docs__/answerlattice/answerlattice-website/answerlattice-website_impl.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
 
   assertIncludes(onboardingUserIdBoundary, "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';", 'Answerlattice onboarding user ID boundary imports shared Firestore document ID guard');
@@ -1832,7 +1921,7 @@ function verifyProtectedAiRequestAdmission() {
   const dataInventoryMap = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_data-map.md');
   const dataInventoryEvidence = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_evidence.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
 
   assertIncludes(entityExtraction, 'const ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES = 256 * 1024;', 'Answerlattice entity extraction body cap');
@@ -2263,7 +2352,7 @@ function verifySearchAndRetrievalTruth() {
   const firebaseCostAudit = read('__docs__/answerlattice/firebase-cost-optimization-audit.md');
   const dataInventoryEvidence = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_evidence.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
 
   assertIncludes(searchCore, ".where('tId', '==', tId)", 'Answerlattice search tenant-scoped vector lookup');
@@ -2834,7 +2923,7 @@ function verifyHostedHelpRegistryTruth() {
   const vercelDomains = read('src/lib/domains/vercelDomains.ts');
   const hostedHelpFirebase = read('__docs__/answerlattice/hosted-help/hosted-help_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const page = read('src/app/answerlattice-hosted-help/[[...segments]]/page.tsx');
   const client = read('src/components/templates/answerlattice/hostedHelp/HostedHelpClient.tsx');
   const publicRichText = read('src/lib/answerlattice/publicRichText.ts');
@@ -3027,7 +3116,7 @@ function verifyKnowledgeIntakeSafeErrorResponses() {
   const intakeImplDoc = read('__docs__/answerlattice/knowledge-intake-command-center/knowledge-intake-command-center_impl.md');
   const intakeFirebaseDoc = read('__docs__/answerlattice/knowledge-intake-command-center/knowledge-intake-command-center_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
   const routeFiles = listRouteFiles('src/app/api/answerlattice/knowledge-intake');
 
@@ -3246,7 +3335,7 @@ function verifyPredictiveTriggerPublicSummary() {
   const predictiveFirebase = read('__docs__/answerlattice/predictive-support/predictive-support_firebase.md');
   const dataInventoryEvidence = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_evidence.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
 
   assertIncludes(predictiveEngine, ".doc(`predictiveTriggers_${tId}_${sId}`)", 'Answerlattice predictive runtime summary read');
@@ -3301,7 +3390,7 @@ function verifyCompiledContextBundleTruth() {
   const compiledContextImpl = read('__docs__/answerlattice/compiled-context-distribution/compiled-context-distribution_impl.md');
   const compiledContextFirebase = read('__docs__/answerlattice/compiled-context-distribution/compiled-context-distribution_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(compiledContext, 'maxPrivateObjectBytes: 2 * 1024 * 1024', 'Answerlattice context bundle private object byte ceiling');
   assertIncludes(builder, 'const storeTenantId = Number(storeData.tId || storeData.tenantId)', 'Answerlattice context bundle store tenant resolution');
@@ -3779,7 +3868,7 @@ function verifyChatAnalyticsDiagnostics() {
   const helpCenterImpl = read('__docs__/answerlattice/help-center/help-center_impl.md');
   const helpCenterFirebase = read('__docs__/answerlattice/help-center/help-center_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertNoDirectConsole(chatAnalytics, 'Answerlattice chat analytics DAL');
   assertIncludes(chatAnalytics, 'logChatAnalyticsFailure', 'Answerlattice chat analytics bounded diagnostics');
@@ -3880,7 +3969,7 @@ function verifyAnswerlatticeRuntimeDiagnostics() {
   const billingFirebase = read('__docs__/answerlattice/billing/answerlattice-billing_firebase.md');
   const knowledgeIntakeFirebase = read('__docs__/answerlattice/knowledge-intake-command-center/knowledge-intake-command-center_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
 
   assertNoDirectConsole(diagnostics, 'Answerlattice runtime diagnostics helper');
@@ -4308,7 +4397,7 @@ function verifyAnswerlatticeNightlySchedulerDiagnostics() {
   const founderTrustImpl = read('__docs__/answerlattice/founder-trust-layer/founder-trust-layer_impl.md');
   const dataInventoryEvidence = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_evidence.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(nightly, "const ANSWERLATTICE_SCHEDULER_TASK_FAILED = 'ANSWERLATTICE_SCHEDULER_TASK_FAILED';", 'Answerlattice nightly fixed scheduler task failure code');
   assertIncludes(nightly, "const ANSWERLATTICE_SCHEDULER_RUN_LOG_WRITE_FAILED = 'ANSWERLATTICE_SCHEDULER_RUN_LOG_WRITE_FAILED';", 'Answerlattice nightly run-log write failure code');
@@ -4507,7 +4596,7 @@ function verifyAnswerlatticePredictiveTriggerDiagnostics() {
   const predictiveTriggerSync = read('functions-answerlattice/src/answerlattice/predictiveTriggerSync.ts');
   const dataInventoryEvidence = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_evidence.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
 
   assertIncludes(predictiveTriggerSync, "const ANSWERLATTICE_PREDICTIVE_TRIGGER_AUTOGENERATE_FAILED = 'ANSWERLATTICE_PREDICTIVE_TRIGGER_AUTOGENERATE_FAILED';", 'Answerlattice predictive trigger auto-generation failure code');
@@ -4580,7 +4669,7 @@ function verifyAnswerlatticeSupportBoardSyncDiagnostics() {
   const supportBoardReadme = read('__docs__/answerlattice/support-board/README.md');
   const supportBoardImpl = read('__docs__/answerlattice/support-board/support-board_impl.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(entityIdBoundary, 'ANSWERLATTICE_FUNCTION_ENTITY_ID_MAX_LENGTH = 180', 'Answerlattice Functions entity ID length cap');
   assertIncludes(entityIdBoundary, "entityId.includes('/')", 'Answerlattice Functions entity ID path separator guard');
@@ -4632,7 +4721,7 @@ function verifyAnswerlatticeReleaseActivationDiagnostics() {
   const architectureEvolution = read('__docs__/answerlattice/doctrine/05-architecture-evolution.md');
   const dataInventoryMap = read('__docs__/answerlattice/data-inventory/answerlattice-data-inventory_data-map.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
 
   assertIncludes(releaseIdBoundary, "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';", 'Answerlattice release ID boundary imports shared Firestore guard');

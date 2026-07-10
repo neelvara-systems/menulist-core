@@ -26,6 +26,8 @@ export const STARTER_ACTIVATION_SIGNALS = {
     NATIVE_SHARE_COMPLETED: 'native_share_completed',
     WHATSAPP_SHARE_STARTED: 'whatsapp_share_started',
     GOOGLE_BUSINESS_MARKED: 'google_business_marked',
+    APPLE_BUSINESS_MARKED: 'apple_business_marked',
+    BING_PLACES_MARKED: 'bing_places_marked',
     INSTAGRAM_BIO_MARKED: 'instagram_bio_marked',
     WHATSAPP_PROFILE_MARKED: 'whatsapp_profile_marked',
 } as const;
@@ -35,6 +37,8 @@ export type StarterActivationSignal =
 
 export const STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE = {
     googleBusiness: STARTER_ACTIVATION_SIGNALS.GOOGLE_BUSINESS_MARKED,
+    appleBusiness: STARTER_ACTIVATION_SIGNALS.APPLE_BUSINESS_MARKED,
+    bingPlaces: STARTER_ACTIVATION_SIGNALS.BING_PLACES_MARKED,
     instagramBio: STARTER_ACTIVATION_SIGNALS.INSTAGRAM_BIO_MARKED,
     whatsappProfile: STARTER_ACTIVATION_SIGNALS.WHATSAPP_PROFILE_MARKED,
 } as const;
@@ -78,6 +82,16 @@ export const STARTER_ACTIVATION_SIGNAL_DETAILS: Record<
         evidenceType: 'owner_confirmed_external',
         howKnown: 'The owner marked Google Business as added.',
         label: 'Google Business marked',
+    },
+    [STARTER_ACTIVATION_SIGNALS.APPLE_BUSINESS_MARKED]: {
+        evidenceType: 'owner_confirmed_external',
+        howKnown: 'The owner marked Apple Business Connect as added.',
+        label: 'Apple Business marked',
+    },
+    [STARTER_ACTIVATION_SIGNALS.BING_PLACES_MARKED]: {
+        evidenceType: 'owner_confirmed_external',
+        howKnown: 'The owner marked Bing Places as added.',
+        label: 'Bing Places marked',
     },
     [STARTER_ACTIVATION_SIGNALS.INSTAGRAM_BIO_MARKED]: {
         evidenceType: 'owner_confirmed_external',

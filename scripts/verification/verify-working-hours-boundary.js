@@ -214,6 +214,8 @@ function verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHou
 
 function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, marketingDoc, inventory, report, audit, changelog) {
   [
+    '**Launch boundary:** Not current launch certification or deploy approval.',
+    'This README is source-gated working-hours and time-slot evidence only; Hours release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, and production-host smoke.',
     '## Source Gate',
     '`npm run verify:working-hours-boundary`',
     'Current Source Contract',
@@ -230,6 +232,8 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
   ].forEach((token) => assertIncludes(spec, token, 'Working hours spec source boundary'));
 
   [
+    '**Launch boundary:** Not current launch certification or deploy approval.',
+    'This implementation doc is source-gated working-hours runtime evidence only; Hours release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, and production-host smoke.',
     '## Source Gate',
     'This implementation doc is source-gated by `npm run verify:working-hours-boundary`.',
     'Historical blueprint sections below are not launch approval',
@@ -237,6 +241,8 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
   ].forEach((token) => assertIncludes(impl, token, 'Working hours implementation source gate'));
 
   [
+    '**Launch boundary:** Not current launch certification or deploy approval.',
+    'This Firebase cost doc is source-gated working-hours and time-slot cost evidence only; Hours release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, and production-host smoke.',
     '## Source Gate',
     '`npm run verify:working-hours-boundary`',
     'updateTimeSlotPresets()',
@@ -244,6 +250,8 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'Working hours Firebase source gate'));
 
   [
+    '**Launch boundary:** Not current launch certification or deploy approval.',
+    'This mobile-support doc is source-gated mobile working-hours evidence only; Hours mobile release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated mobile working-hours and Today quick-hours save QA, customer-facing public menu/OBP hours output QA, cache/deploy evidence for store-output writes, and production-host smoke.',
     '## Source Gate',
     '`npm run verify:working-hours-boundary`',
     'MobileWorkingHoursEditScreen',
@@ -291,6 +299,7 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
 
   [
     'Working Hours public claim boundary checkpoint',
+    'Working Hours technical-doc top-boundary checkpoint',
     '`npm run verify:working-hours-boundary`',
   ].forEach((token) => assertIncludes(audit, token, 'Production audit working-hours public claim boundary'));
 
@@ -302,6 +311,7 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
 
   [
     'Working Hours Public Claim Boundary',
+    'Working Hours technical docs have top launch boundaries',
     '`npm run verify:working-hours-boundary`',
   ].forEach((token) => assertIncludes(changelog, token, 'Changelog working-hours public claim boundary'));
 
@@ -385,7 +395,7 @@ function main() {
   const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
   const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   verifyPackageScript(packageJson);
   verifyStoreDal(storesDal);

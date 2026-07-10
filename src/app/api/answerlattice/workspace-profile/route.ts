@@ -11,7 +11,7 @@ import {
     normalizeAnswerlatticeBusinessDayEndTime,
     normalizeAnswerlatticeTimeZone,
 } from '@lib/answerlattice/schedulerSettings';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { upsertAnswerlatticeTenantSummaryAdmin } from '@lib/answerlattice/tenantSummaryAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -47,10 +47,7 @@ const WorkspaceProfileSchema = z.object({
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const scope = resolveAnswerlatticeSessionScope(session);
     if (!scope) return null;
-    const tenantId = Number(scope.tenantId);
-    const storeId = Number(scope.storeId);
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return null;
-    return { tenantId, storeId };
+    return { tenantId: scope.tenantId, storeId: scope.storeId };
 };
 
 const getAnswerlatticeDb = () => {
@@ -105,8 +102,8 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
         const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId)).get();
         if (!storeSnap.exists) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
         const storeData = storeSnap.data() || {};
-        const tenantId = Number(storeData.tenantId || storeData.tId);
-        if (Number.isFinite(tenantId) && tenantId !== scope.tenantId) {
+        const tenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+        if (tenantId !== scope.tenantId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
         return NextResponse.json({ profile: buildProfileResponse(storeData) }, {
@@ -162,8 +159,8 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         const storeSnap = await storeRef.get();
         if (!storeSnap.exists) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
         const storeData = storeSnap.data() || {};
-        const tenantId = Number(storeData.tenantId || storeData.tId);
-        if (Number.isFinite(tenantId) && tenantId !== scope.tenantId) {
+        const tenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+        if (tenantId !== scope.tenantId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

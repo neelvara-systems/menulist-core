@@ -261,7 +261,7 @@ Different business types get tailored image generation options:
 | **Reference Image** | Existing image used as style guide for generation |
 | **Cloud Task** | Google service for background job processing |
 | **Gemini** | Google's AI model used for image generation |
-| **Imagen** | Google's dedicated image generation model |
+| **Gemini Image** | Google's Gemini image-generation model family used for MenuList image generation and editing |
 
 ---
 

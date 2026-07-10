@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { upsertAnswerlatticeTenantSummaryAdmin } from '@lib/answerlattice/tenantSummaryAdmin';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -20,9 +20,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
+const AnswerlatticeScopeIdSchema = z.preprocess(
+    (value) => normalizeAnswerlatticeScopeDocumentId(value) ?? undefined,
+    z.number().int().positive(),
+);
 const TenantSummarySyncSchema = z.object({
-    tId: z.coerce.number().int().positive(),
-    sId: z.coerce.number().int().positive(),
+    tId: AnswerlatticeScopeIdSchema,
+    sId: AnswerlatticeScopeIdSchema,
     hasEntities: z.boolean().optional().default(true),
     source: z.enum(['entity_created', 'candidate_promoted']).optional().default('entity_created'),
 });
@@ -30,13 +34,11 @@ const TENANT_SUMMARY_SYNC_MAX_BODY_BYTES = 2 * 1024;
 
 const getSessionScope = (session: any) => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
-    const tenantId = Number(answerlatticeScope?.tenantId);
-    const storeId = Number(answerlatticeScope?.storeId);
     const platformRole = String(session?.platformRole ?? session?.user?.platformRole ?? '').toUpperCase();
 
     return {
-        tenantId: Number.isFinite(tenantId) ? tenantId : null,
-        storeId: Number.isFinite(storeId) ? storeId : null,
+        tenantId: answerlatticeScope?.tenantId ?? null,
+        storeId: answerlatticeScope?.storeId ?? null,
         isPlatform: platformRole === 'PLATFORM',
         userKey: hashPublicRateLimitValue(session?.user?.id || session?.user?.email || 'unknown'),
     };

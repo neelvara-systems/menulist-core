@@ -20,6 +20,7 @@ import {
     createSignalDeskDailyGrowthMissionServer,
     createSignalDeskExperimentCardServer,
     prepareSignalDeskChannelHandoffServer,
+    qualifySignalDeskRevenueAccountServer,
     createSignalDeskProviderEvaluationServer,
     createSignalDeskResearchAgentRunServer,
     createSignalDeskDraftServer,
@@ -34,11 +35,13 @@ import {
     exportSignalDeskMessageServer,
     importSignalDeskTargetsServer,
     recommendSignalDeskMarketPodPlanServer,
+    reviewSignalDeskMarketPodServer,
     recordSignalDeskTrustPartnerDeliverableServer,
     recordSignalDeskTrustPartnerMetricsServer,
     recordSignalDeskContentPerformanceServer,
     refreshSignalDeskProviderSourceRetentionServer,
     recordSignalDeskOutcomeServer,
+    refreshSignalDeskActivationWatchServer,
     runSignalDeskEnrichmentWaterfallServer,
     reviewSignalDeskExperimentCardServer,
     reviewSignalDeskGrowthMissionServer,
@@ -56,12 +59,15 @@ import {
     upsertSignalDeskBudgetPolicyServer,
     upsertSignalDeskChannelWindowStateServer,
     upsertSignalDeskConnectorSettingServer,
+    upsertSignalDeskCommercialOfferServer,
+    upsertSignalDeskCommercialOpportunityServer,
     scheduleSignalDeskContentDistributionDraftServer,
     upsertSignalDeskEnrichmentWaterfallServer,
     upsertSignalDeskModelRouteServer,
     upsertSignalDeskProviderAccountServer,
     upsertSignalDeskTeamMemberServer,
     upsertSignalDeskOfferCtaServer,
+    upsertSignalDeskOperatingEnvelopeServer,
     upsertSignalDeskReplyPlaybookServer,
     upsertSignalDeskSelfServiceCtaServer,
     upsertSignalDeskSenderDomainServer,
@@ -100,6 +106,7 @@ const ActionEnvelopeSchema = z.object({
         "upsert-enrichment-waterfall",
         "upsert-audience-segment",
         "recommend-market-pod-plan",
+        "review-market-pod",
         "upsert-sender-domain",
         "upsert-self-service-cta",
         "create-daily-growth-mission",
@@ -107,6 +114,11 @@ const ActionEnvelopeSchema = z.object({
         "create-experiment-card",
         "review-experiment-card",
         "upsert-offer-cta",
+        "qualify-revenue-account",
+        "upsert-commercial-opportunity",
+        "upsert-commercial-offer",
+        "upsert-operating-envelope",
+        "refresh-activation-watch",
         "upsert-reply-playbook",
         "create-source-quality-snapshot",
         "create-research-agent-run",
@@ -336,6 +348,12 @@ const MarketPodRecommendationSchema = z.object({
     marketPodId: z.string().trim().min(3).max(160).optional(),
 });
 
+const MarketPodReviewSchema = z.object({
+    decision: z.enum(["approved", "held", "rejected"]),
+    marketPodId: z.string().trim().min(3).max(160),
+    reason: z.string().trim().min(3).max(500),
+});
+
 const ProviderSourceRetentionRefreshSchema = z.object({
     notes: z.string().trim().max(500).optional(),
     providerSourceRetentionId: z.string().trim().min(3).max(180),
@@ -441,6 +459,68 @@ const ReplyPlaybookSchema = z.object({
     status: z.enum(["active", "inactive", "hold", "blocked"]),
     suppressionRequired: z.boolean(),
     title: z.string().trim().min(2).max(160),
+});
+
+const RevenueAccountQualificationSchema = z.object({
+    locationType: z.enum(["single-location", "headquarters", "branch"]),
+    organizationName: z.string().trim().max(160).optional(),
+    targetId: z.string().trim().min(3).max(180),
+});
+
+const CommercialOpportunitySchema = z.object({
+    commercialOfferId: z.string().trim().max(180).optional(),
+    expectedCloseAt: z.string().datetime().optional(),
+    founderAttentionMinutes: z.number().int().min(0).max(100000),
+    nextAction: z.string().trim().min(3).max(500),
+    nextActionDueAt: z.string().datetime().optional(),
+    opportunityId: z.string().trim().min(3).max(180),
+    probabilityPercent: z.number().int().min(0).max(100),
+    stage: z.enum(["qualified", "discovery", "offer", "decision", "won", "lost", "nurture"]),
+    stalledReason: z.string().trim().max(500).optional(),
+    status: z.enum(["open", "won", "lost", "nurture"]),
+    valueMinor: z.number().int().min(0).max(1000000000),
+    winLossReason: z.string().trim().max(500).optional(),
+});
+
+const CommercialOfferSchema = z.object({
+    allowedDiscountBps: z.number().int().min(0).max(10000),
+    billingCadence: z.enum(["one-time", "monthly", "annual"]),
+    commercialOfferId: z.string().trim().max(180).optional(),
+    contents: z.array(z.string().trim().min(1).max(240)).min(1).max(30),
+    currency: z.string().trim().regex(/^[A-Za-z]{3}$/),
+    eligibilitySummary: z.string().trim().min(3).max(1000),
+    founderApprovalConditions: z.array(z.string().trim().min(1).max(300)).min(1).max(20),
+    name: z.string().trim().min(2).max(160),
+    offerCtaId: z.string().trim().max(180).optional(),
+    priceMinor: z.number().int().min(0).max(1000000000),
+    status: z.enum(["active", "inactive", "hold", "blocked"]),
+    version: z.number().int().min(1).max(10000),
+});
+
+const OperatingEnvelopeSchema = z.object({
+    budgetPolicyId: z.string().trim().max(180).optional(),
+    channel: z.enum(["email", "manual", "content", "partner", "referral"]),
+    commercialOfferId: z.string().trim().min(3).max(180),
+    dailyVolumeCap: z.number().int().min(1).max(500),
+    expiresAt: z.string().datetime(),
+    fallbackAction: z.enum(["hold", "pause", "founder-review"]),
+    marketPodId: z.string().trim().min(3).max(180),
+    maxCostUsd: z.number().min(0).max(1000000),
+    name: z.string().trim().min(2).max(160),
+    operatingEnvelopeId: z.string().trim().max(180).optional(),
+    requestedApprovalMode: z.enum(["manual", "recommendation-only", "prepare-and-approve-each", "approve-batch", "approve-sample", "exception-only"]),
+    senderDomainId: z.string().trim().max(180).optional(),
+    sourcePolicyIds: z.array(z.string().trim().min(3).max(180)).min(1).max(10),
+    startsAt: z.string().datetime(),
+    status: z.enum(["draft", "shadow", "approved", "held", "paused", "expired"]),
+    stopConditions: z.array(z.string().trim().min(3).max(300)).min(1).max(20),
+    templateIds: z.array(z.string().trim().min(3).max(180)).min(1).max(10),
+    totalVolumeCap: z.number().int().min(1).max(5000),
+    version: z.number().int().min(1).max(10000),
+});
+
+const ActivationWatchSchema = z.object({
+    targetId: z.string().trim().min(3).max(180),
 });
 
 const SourceQualitySnapshotSchema = z.object({
@@ -646,6 +726,7 @@ const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["actio
     if (action === "upsert-enrichment-waterfall") return "source.configure";
     if (action === "upsert-audience-segment") return "source.configure";
     if (action === "recommend-market-pod-plan") return "source.configure";
+    if (action === "review-market-pod") return "signaldesk.configure";
     if (action === "upsert-sender-domain") return "channel.configure";
     if (action === "upsert-self-service-cta") return "signaldesk.configure";
     if (action === "create-daily-growth-mission") return "target.review";
@@ -653,6 +734,11 @@ const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["actio
     if (action === "create-experiment-card") return "target.review";
     if (action === "review-experiment-card") return "target.review";
     if (action === "upsert-offer-cta") return "signaldesk.configure";
+    if (action === "qualify-revenue-account") return "target.review";
+    if (action === "upsert-commercial-opportunity") return "target.review";
+    if (action === "upsert-commercial-offer") return "policy.approve";
+    if (action === "upsert-operating-envelope") return "policy.approve";
+    if (action === "refresh-activation-watch") return "target.review";
     if (action === "upsert-reply-playbook") return "draft.create";
     if (action === "create-source-quality-snapshot") return "source.configure";
     if (action === "create-research-agent-run") return "source.configure";
@@ -715,8 +801,10 @@ const SIGNALDESK_MOBILE_ACTION_CLASS: Record<z.infer<typeof ActionEnvelopeSchema
     "import-targets": "configure",
     "prepare-channel-handoff": "export",
     "recommend-market-pod-plan": "configure",
+    "review-market-pod": "approve",
     "record-content-performance": "configure",
     "record-outcome": "configure",
+    "refresh-activation-watch": "configure",
     "record-trust-partner-deliverable": "configure",
     "record-trust-partner-metrics": "configure",
     "refresh-provider-source-retention": "provider_run",
@@ -742,6 +830,10 @@ const SIGNALDESK_MOBILE_ACTION_CLASS: Record<z.infer<typeof ActionEnvelopeSchema
     "upsert-enrichment-waterfall": "provider_run",
     "upsert-model-route": "provider_run",
     "upsert-offer-cta": "configure",
+    "qualify-revenue-account": "configure",
+    "upsert-commercial-opportunity": "configure",
+    "upsert-commercial-offer": "mutate_policy",
+    "upsert-operating-envelope": "mutate_policy",
     "upsert-provider-account": "configure",
     "upsert-reply-playbook": "configure",
     "upsert-self-service-cta": "configure",
@@ -810,6 +902,28 @@ const SAFE_ACTION_ERRORS = new Set([
     "SignalDesk assisted channels are disabled",
     "SignalDesk Firebase is not configured",
     "SignalDesk Operating Layer is disabled",
+    "SignalDesk Revenue Operating Layer is disabled",
+    "Revenue account not found",
+    "Target source policy changed; retry qualification",
+    "Commercial opportunity not found",
+    "Commercial opportunity stage and status do not match",
+    "Commercial opportunity win or loss reason is required",
+    "Commercial offer is required for valued opportunity",
+    "Commercial opportunity currency does not match revenue pipeline",
+    "Commercial offer is not active",
+    "Commercial offer approval conditions are required",
+    "Commercial offer ID does not match name and version",
+    "Commercial offer version already exists with different terms",
+    "Market pod is required for operating envelope",
+    "Market pod is not active",
+    "Operating envelope dates are invalid",
+    "Operating envelope total volume must cover the daily cap",
+    "Revenue budget policy is not active",
+    "Budget policy is not eligible for revenue envelope",
+    "Operating envelope exceeds the remaining budget policy",
+    "Operating envelope version already exists with different terms",
+    "Operating envelope ID does not match name and version",
+    "Sender domain is required for email envelope",
     "SignalDesk provider send is disabled",
     "SignalDesk research agent table is disabled",
     "SignalDesk team member cannot deactivate own access",
@@ -1095,6 +1209,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await recommendSignalDeskMarketPodPlanServer(accessResult.access, payload.data as any) });
         }
+        if (envelope.data.action === "review-market-pod") {
+            const payload = validatePayload(MarketPodReviewSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await reviewSignalDeskMarketPodServer(accessResult.access, payload.data as any) });
+        }
         if (envelope.data.action === "upsert-sender-domain") {
             const payload = validatePayload(SenderDomainSchema, envelope.data.payload, {
                 action: envelope.data.action,
@@ -1157,6 +1280,51 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await upsertSignalDeskOfferCtaServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "qualify-revenue-account") {
+            const payload = validatePayload(RevenueAccountQualificationSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await qualifySignalDeskRevenueAccountServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "upsert-commercial-opportunity") {
+            const payload = validatePayload(CommercialOpportunitySchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await upsertSignalDeskCommercialOpportunityServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "upsert-commercial-offer") {
+            const payload = validatePayload(CommercialOfferSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await upsertSignalDeskCommercialOfferServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "upsert-operating-envelope") {
+            const payload = validatePayload(OperatingEnvelopeSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await upsertSignalDeskOperatingEnvelopeServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "refresh-activation-watch") {
+            const payload = validatePayload(ActivationWatchSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await refreshSignalDeskActivationWatchServer(accessResult.access, payload.data as any) });
         }
         if (envelope.data.action === "upsert-reply-playbook") {
             const payload = validatePayload(ReplyPlaybookSchema, envelope.data.payload, {

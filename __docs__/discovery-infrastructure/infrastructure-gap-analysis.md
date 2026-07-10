@@ -3,6 +3,8 @@
 > **24-Layer Infrastructure Audit Against Canonical SMB Truth Architecture**
 > Date: March 10, 2026 | Source: External Outlook + Full Codebase Audit
 
+> **Launch boundary:** Not current launch certification or deploy approval. This file is a historical 24-layer gap analysis and conditional design inventory only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:public-business-truth`, `npm run verify:agent-readiness`, public tenant menu/Official Business Page discovery smoke, applicable target deploy evidence, and production-host smoke. Taxonomy, provenance, semantic-attribute, and discovery-index flags remain off; no conditional item in this analysis is approved for implementation or activation without a scoped proposal, owner-value review, security review, Firebase cost note, docs parity, and source-gate coverage.
+
 ---
 
 ## Table of Contents

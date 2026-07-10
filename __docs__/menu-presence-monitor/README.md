@@ -10,7 +10,7 @@
 
 A simple status checklist that answers one question for the owner: **"Is my menu visible everywhere customers look?"**
 
-Shows deployment status across key surfaces — Google Business, Instagram, WhatsApp, QR, Screens — using manual confirmation (owner marks "I added it") plus automatic detection where possible.
+Shows deployment status across key surfaces — Google Business, Apple Business Connect, Bing Places, Instagram, WhatsApp, QR, Screens — using manual confirmation (owner marks "I added it") plus automatic detection where possible.
 
 **Not** analytics. **Not** a dashboard. **Not** marketing. Just simple status signals: ✓ Active / ⚠ Missing.
 
@@ -33,13 +33,15 @@ Presence confirmations and starter activation signals are owner-local writes. `u
 The monitor now shows an activation-proof summary through the shared `buildStarterActivationSummary()` helper. It separates:
 
 - MenuList-recorded owner actions such as copy, WhatsApp share, QR download, Menu Kit download, or native share;
-- owner-confirmed external placements such as Google Business, Instagram Bio, and WhatsApp Profile.
+- owner-confirmed external placements such as Google Business, Apple Business Connect, Bing Places, Instagram Bio, and WhatsApp Profile.
 
 ## Surface Checklist
 
 | Surface | Detection Method | Status Values |
 |---------|-----------------|---------------|
 | Google Business | Manual confirmation | ✓ Added / ⚠ Not added |
+| Apple Business Connect | Manual confirmation | ✓ Added / ⚠ Not added |
+| Bing Places | Manual confirmation | ✓ Added / ⚠ Not added |
 | Instagram Bio | Manual confirmation | ✓ Added / ⚠ Not added |
 | WhatsApp Profile | Manual confirmation | ✓ Added / ⚠ Not added |
 | Table QR | Auto readiness from published menu/share surface | ✓ Ready / ⚠ Not set up |
@@ -91,4 +93,4 @@ Run `npm run verify:menu-presence-monitor-boundary` after changes to Presence Mo
 ---
 
 **Created:** March 15, 2026
-**Last Updated:** July 2, 2026
+**Last Updated:** July 10, 2026

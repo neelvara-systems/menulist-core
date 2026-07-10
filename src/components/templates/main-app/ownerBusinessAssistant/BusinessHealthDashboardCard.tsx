@@ -20,10 +20,10 @@ const getDashboardFeedbackLine = (current: OwnerBusinessHealthCurrentDoc) => {
   if (!feedback) return null;
   const needsAttention = feedback.periods.last30Days?.needsAttentionCount ?? feedback.latestNeedsAttention.length;
   if (needsAttention > 0) {
-    return `${needsAttention} guest feedback ${needsAttention === 1 ? 'item needs' : 'items need'} checking`;
+    return `${needsAttention} private feedback ${needsAttention === 1 ? 'item needs' : 'items need'} checking before guests leave public reviews`;
   }
   const total = feedback.periods.last30Days?.totalCount ?? feedback.sampledCount;
-  return total > 0 ? 'Guest feedback is clear' : null;
+  return total > 0 ? 'Private feedback is clear' : null;
 };
 
 export function BusinessHealthDashboardCard({ current: providedCurrent, isLoading: providedIsLoading, projectId, storeScopeKey }: {

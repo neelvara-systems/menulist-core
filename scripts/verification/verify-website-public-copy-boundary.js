@@ -211,7 +211,7 @@ function verifyWebsiteAnalyticsBoundary() {
   const mainWebsiteImpl = read('__docs__/main-website/main-website_impl.md');
   const mainWebsiteContent = read('__docs__/main-website/main-website_content.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(
     websiteLayout,
@@ -442,7 +442,7 @@ function verifyDocsBoundary() {
   );
   const seoVerification = read('__docs__/menulist-seo-launch/menulist-seo-launch_verification.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(
     mainWebsiteReadme,

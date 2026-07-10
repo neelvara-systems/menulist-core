@@ -244,7 +244,7 @@ function verifyBrowserDirectFirebaseFunctionsCallableBoundary() {
 }
 
 function verifyBrowserDirectFirebaseFunctionsCallableBoundaryDocs() {
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
 
   [
@@ -505,7 +505,7 @@ function verifyCoreAuthHelpers() {
     'production audit store permission document-ID boundary',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Store Permission Scope Document ID Boundary',
       'Shared store-permission scope is guarded',
@@ -681,7 +681,7 @@ function verifyOwnerSelectedScopeRoutes() {
     'AI Menu Manager route ID audit evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'AI Menu Manager Route ID Boundary',
       'AMM fallback IDs are shape-checked before reads',
@@ -737,7 +737,7 @@ function verifyOwnerSelectedScopeRoutes() {
     'AI Menu Manager scope document-ID audit evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'AI Menu Manager Server DAL ID Boundary',
       'AMM server DAL normalizes IDs before document refs',
@@ -745,7 +745,7 @@ function verifyOwnerSelectedScopeRoutes() {
     'AI Menu Manager server DAL ID primary changelog evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'AI Menu Manager Scope Document ID Boundary',
       'AMM tenant/store scope is guarded',
@@ -1062,7 +1062,7 @@ function verifyCallerSuppliedTenantStoreRoutes() {
     'production audit master job status store-link boundary evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Master Job Status Store-Link Boundary',
       'Master Job Status Project ID Boundary',
@@ -1559,7 +1559,7 @@ function verifySessionScopedPublicTruthRoutes() {
   assert(!read('src/app/api/auth/switch-store/route.ts').includes('db.doc(`${DB_COLLECTIONS.STORES}/${targetStoreId}`).get()'), 'switch-store must not read target store through raw request target IDs');
   assert(read('__docs__/multi-outlet-consistency/multi-outlet-consistency_firebase.md').includes('Switch-store scope document ID boundary'), 'multi-outlet Firebase docs must document switch-store scope document ID boundary');
   assert(read('__docs__/audits/menulist-production-readiness-audit.md').includes('Switch-store scope document ID boundary checkpoint'), 'production audit must document switch-store scope document ID boundary');
-  assert(read('__docs__/CHANGELOG.md').includes('Switch-Store Scope Document ID Boundary'), 'changelog must document switch-store scope document ID boundary');
+  assert(read('__docs__/changelog.md').includes('Switch-Store Scope Document ID Boundary'), 'changelog must document switch-store scope document ID boundary');
 
   assertIncludes(
     'src/app/api/public/create-menu/route.ts',
@@ -1756,7 +1756,7 @@ function verifySessionScopedPublicTruthRoutes() {
     'Production audit must record Public Truth Monitor project/scope ID boundaries',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Public Truth Monitor Project ID Boundary',
       'Public Truth Monitor Server DAL ID Normalization',
@@ -1856,7 +1856,7 @@ function verifySessionScopedPublicTruthRoutes() {
     'production audit custom domain session document ID boundary evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Custom Domain Session Document ID Boundary',
       '`/api/domain` validates session tenant/store IDs with the shared Firestore document-ID guard',
@@ -1963,7 +1963,7 @@ function verifySessionScopedPublicTruthRoutes() {
     'production audit compliance session document ID boundary evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Compliance Pages Session Document ID Boundary',
       '`/api/compliance` validates session tenant/store IDs with the shared Firestore document-ID guard',
@@ -2114,7 +2114,7 @@ function verifyPlatformAdminMutationBoundedBodies() {
     ['URL routing README', read('__docs__/url-routing-architecture/README.md')],
     ['URL routing Firebase docs', read('__docs__/url-routing-architecture/url-routing-architecture_firebase.md')],
     ['Production-readiness audit', read('__docs__/audits/menulist-production-readiness-audit.md')],
-    ['Changelog', read('__docs__/CHANGELOG.md')],
+    ['Changelog', read('__docs__/changelog.md')],
     ['Lowercase changelog', read('__docs__/changelog.md')],
   ].forEach(([label, content]) => {
     assert(content.includes('Admin Subdomain Rename Rate-Limit and Scope Boundary') || content.includes('Admin subdomain rename rate-limit and scope boundary'), `${label} documents admin subdomain rename rate-limit and scope boundary`);
@@ -2559,7 +2559,7 @@ function verifyAuthClaimAndCacheBoundaries() {
   const setClaimsAuthFirebaseDoc = read('__docs__/auth/auth_firebase.md');
   const setClaimsFirebaseAuthSyncDoc = read('__docs__/auth/firebase-auth-sync.md');
   const setClaimsProductionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const setClaimsChangelog = read('__docs__/CHANGELOG.md');
+  const setClaimsChangelog = read('__docs__/changelog.md');
   const setClaimsLowercaseChangelog = read('__docs__/changelog.md');
   assert(!setClaimsRoute.includes('secureLog('), 'set-claims route must use bounded auth diagnostics instead of raw secureLog');
   assert(!setClaimsRoute.includes('secureError('), 'set-claims route must use bounded auth diagnostics instead of raw secureError');
@@ -2623,7 +2623,7 @@ function verifyAuthClaimAndCacheBoundaries() {
   const revalidateRateLimitConfigs = read('src/lib/rateLimit/configs.ts');
   const revalidateClientMenuFirebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
   const revalidateProductionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const revalidateChangelog = read('__docs__/CHANGELOG.md');
+  const revalidateChangelog = read('__docs__/changelog.md');
   const revalidateLowercaseChangelog = read('__docs__/changelog.md');
   assertIncludes(
     'src/app/api/revalidate/menu/route.ts',
@@ -2904,7 +2904,7 @@ function verifyPublicTruthMutationBoundedBodies() {
     'production audit linked outlet save session store boundary evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Linked Outlet Save Session Store ID Boundary',
       'Linked outlet save caller-store scope is exact',
@@ -2922,7 +2922,7 @@ function verifyPublicTruthMutationBoundedBodies() {
     'mirrored changelog linked outlet save session store boundary entry',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Outlet Lifecycle Session Document ID Boundary',
       'validate session tenant/store IDs with the shared Firestore document-ID guard',
@@ -3187,7 +3187,7 @@ function verifyPublicCustomerSignalBoundedBodies() {
   const analyticsImplDoc = read('__docs__/client-menu/analytics-tracking/_impl.md');
   const analyticsFirebaseDoc = read('__docs__/client-menu/analytics-tracking/analytics-tracking_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
   assert(!analyticsRoute.includes('req.json()'), 'public analytics track must not parse unbounded JSON');
   assertOrder(
@@ -3409,7 +3409,7 @@ function verifyAnalyticsErrorBoundary() {
   const aiSystemImplDoc = read('__docs__/ai-system-layer/ai-system-layer_impl.md');
   const aiSystemFirebaseDoc = read('__docs__/ai-system-layer/ai-system-layer_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const legacyAnalyticsRoutes = [
     ['src/app/api/analytics/route.ts', 'analytics_realtime_api_failed', 'overview'],
     ['src/app/api/analytics/locations/route.ts', 'analytics_locations_api_failed', 'locations'],
@@ -3500,7 +3500,7 @@ function verifyAnalyticsErrorBoundary() {
     'production audit Google provider query boundary evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Owner Google Analytics Provider Query Boundary',
       'Google Analytics Configured-Store Scope Boundary',
@@ -3778,7 +3778,7 @@ function verifyAnalyticsErrorBoundary() {
     'production audit AI operation transaction-history query boundary evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'AI Operation Transaction-History Query Boundary',
       'Transaction-history cursors are shape-checked',
@@ -4237,7 +4237,7 @@ function verifyAnalyticsErrorBoundary() {
     'production audit ROI query boundary evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'ROI Metrics Query Parameter Boundary',
       'ROI override values are finite and bounded',
@@ -6232,7 +6232,7 @@ function verifyOwnerUtilitySecureLogging() {
   const ownerBusinessAssistantFirebaseDoc = read('__docs__/owner-business-assistant/owner-business-assistant_firebase.md');
   const ownerBusinessAssistantValidationDoc = read('__docs__/owner-business-assistant/owner-business-assistant_validation.md');
   const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   assertIncludes(
     'src/lib/ownerBusinessAssistant/server/apiGuards.ts',
     [
@@ -6790,7 +6790,7 @@ function verifyOwnerUtilitySecureLogging() {
     'production audit review states session document ID boundary evidence',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Review States Session Document ID Boundary',
       '`GET /api/reviews/states` validates session tenant/store IDs with the shared Firestore document-ID guard',
@@ -7656,7 +7656,7 @@ function verifyPaymentMutationBoundedJson() {
   assert(read('__docs__/razorpay/razorpay_firebase.md').includes('payment verification rate-limit boundary'), 'Razorpay Firebase docs must record the payment verification rate-limit boundary');
   assert(read('__docs__/razorpay/razorpay_impl.md').includes('Payment verification rate-limit boundary'), 'Razorpay implementation docs must record the payment verification rate-limit boundary');
   assert(read('__docs__/audits/menulist-production-readiness-audit.md').includes('Razorpay payment verification rate-limit boundary checkpoint'), 'Production audit must record the payment verification rate-limit boundary');
-  assert(read('__docs__/CHANGELOG.md').includes('Razorpay Payment Verification Rate-Limit Boundary'), 'Changelog must record the payment verification rate-limit boundary');
+  assert(read('__docs__/changelog.md').includes('Razorpay Payment Verification Rate-Limit Boundary'), 'Changelog must record the payment verification rate-limit boundary');
   assert(read('__docs__/changelog.md').includes('Razorpay Payment Verification Rate-Limit Boundary'), 'Lowercase changelog must record the payment verification rate-limit boundary');
 
   [
@@ -7748,7 +7748,7 @@ function verifyPaymentMutationBoundedJson() {
     'Production audit billing mutation scope boundary',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Billing Mutation Scope Document ID Boundary',
       'Shared billing mutation scope is guarded',
@@ -7951,7 +7951,7 @@ function verifyPaymentMutationBoundedJson() {
       'production audit onboarding user ID boundary evidence',
     );
     assertIncludes(
-      '__docs__/CHANGELOG.md',
+      '__docs__/changelog.md',
       [
         'Onboarding Strict User ID Helper Boundary',
         'Onboarding Compensation Scope Boundary',
@@ -8979,7 +8979,7 @@ function verifyStaffTenantBoundary() {
     'production-readiness audit records staff document-ID boundaries',
   );
   assertIncludes(
-    '__docs__/CHANGELOG.md',
+    '__docs__/changelog.md',
     [
       'Staff Mutation User ID Boundary',
       'Staff Mutation Strict User ID Boundary',

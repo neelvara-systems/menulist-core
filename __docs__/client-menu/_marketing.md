@@ -314,7 +314,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 **Response:**
 
-> "If they have a phone, they can scan a QR. No app download, no login. And for customers who prefer paper, you can still have both. But 80% of customers now prefer scanning."
+> "Customers can open the current menu without an app or login. Keep paper available for customers who prefer it; the QR is simply another way to reach the same current menu."
 
 ---
 

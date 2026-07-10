@@ -34,7 +34,7 @@ Required boundaries:
 
 ### A. Purpose
 
-This reel makes setup feel easy by showing that the owner can start from what they already have.
+This reel makes setup feel easy by showing that the owner can upload menu photos or a PDF instead of typing the menu into another tool.
 
 ### B. Audience
 
@@ -59,18 +59,18 @@ Owners with paper menus, PDFs, screenshots, rate cards, service lists, catalogs,
 
 ### E. Core Message
 
-Already have a menu or service list? Start there and turn it into a customer link.
+Already have a menu or service list? Upload photos and turn it into a customer link.
 
 ### F. Emotional Job
 
-The viewer should feel: "I do not need to rebuild everything manually."
+The viewer should feel: "I do not need to type or rebuild the menu manually."
 
 ### G. Narrative Arc
 
 1. Hook: Already have a menu? Start there.
 2. Problem: Owners think setup means manual entry.
-3. Product entry: Photo, PDF, owned link, typed list.
-4. Proof: Private preview appears.
+3. Product entry: Upload menu photos, PDF, or owned link.
+4. Proof: Private preview appears in minutes.
 5. Outcome: Customer link goes live after review.
 6. CTA: Create customer link.
 
@@ -79,8 +79,8 @@ The viewer should feel: "I do not need to rebuild everything manually."
 | Timecode | Duration | Frame / Visual | Camera / UI direction | Voiceover | On-screen text | Motion / Transition | Design notes | Assets needed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 0:00-0:03 | 3s | Owner holding paper menu or service list | Top-down phone shot | Already have a menu? Start there. | Already have a menu? Start there. | Cut from paper to phone | Familiar owner action | Paper menu/service list |
-| 0:03-0:08 | 5s | Upload photo, upload PDF, paste owned link, type list | Four UI cards | Take a photo, upload a PDF, paste your existing menu link, or type your list. | Photo. PDF. Link. Typed list. | Cards slide into place | Show options quickly | Intake UI |
-| 0:08-0:14 | 6s | MenuList prepares categories and items | UI transforms from source to structured list | MenuList prepares the customer-facing version. | Customer-facing version prepared. | Source-to-structure transition | Keep factual | Preview UI |
+| 0:03-0:08 | 5s | Upload menu photos, upload PDF, paste owned link | Three UI cards | Upload menu photos, a PDF, or the owned link you already use. | Upload photos. No typing required. | Cards slide into place | Remove setup fear | Intake UI |
+| 0:08-0:14 | 6s | MenuList prepares categories and items | UI transforms from source to structured list | MenuList prepares the customer-facing preview in minutes. | Preview prepared in minutes. | Source-to-structure transition | Keep factual | Preview UI |
 | 0:14-0:20 | 6s | Owner reviews prices/categories | Tap through item and price | You review before publishing. | Review before publishing. | Tap highlight | Approval safety | Review UI |
 | 0:20-0:25 | 5s | Customer link live on phone | End card with link | Then put one trusted customer link online. | Create your customer link. | Link reveal | Strong CTA | Customer link UI, logo |
 
@@ -89,9 +89,11 @@ The viewer should feel: "I do not need to rebuild everything manually."
 ```text
 Already have a menu? Start there.
 
-Take a photo, upload a PDF, paste your existing menu link, or type your list.
+Upload menu photos, a PDF, or the owned link you already use.
 
-MenuList prepares the customer-facing version.
+No typing required to start.
+
+MenuList prepares the customer-facing preview in minutes.
 
 You review before publishing.
 
@@ -101,8 +103,8 @@ Then put one trusted customer link online.
 ### J. On-Screen Text List
 
 1. Already have a menu? Start there.
-2. Photo. PDF. Link. Typed list.
-3. Customer-facing version prepared.
+2. Upload photos. No typing required.
+3. Preview prepared in minutes.
 4. Review before publishing.
 5. Create your customer link.
 
@@ -111,7 +113,7 @@ Then put one trusted customer link online.
 - upload photo screen;
 - upload PDF screen;
 - paste existing owned link screen;
-- typed list input;
+- service list/rate-card import screen if needed;
 - private preview;
 - review screen;
 - customer link live screen.

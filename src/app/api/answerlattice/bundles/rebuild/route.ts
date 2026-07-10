@@ -26,11 +26,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const scope = resolveAnswerlatticeSessionScope(session);
-    const tenantId = Number(scope?.tenantId);
-    const storeId = Number(scope?.storeId);
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) {
+    if (!scope) {
         return NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 400 });
     }
+    const { tenantId, storeId } = scope;
 
     const rateLimit = await checkRateLimit({
         key: buildAnswerlatticeRateLimitKey('answerlattice-context-bundle:rebuild', tenantId, storeId),

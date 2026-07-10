@@ -481,6 +481,8 @@ function verifyDocsAndPackage(
   ].forEach((token) => assertIncludes(specDoc, token, 'Owner notification spec docs'));
 
   [
+    'Launch boundary:** Not current launch certification or deploy approval.',
+    'This implementation plan is source-gated owner-notification runtime evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.',
     'Queue-first',
     'copied byte-for-byte to `functions/src/sharedData/ownerNotificationRegistry.ts`',
     'platformRole === \'PLATFORM\'',
@@ -501,6 +503,8 @@ function verifyDocsAndPackage(
   ].forEach((token) => assertIncludes(implDoc, token, 'Owner notification implementation docs'));
 
   [
+    'Launch boundary:** Not current launch certification or deploy approval.',
+    'This Firebase/cost plan is source-gated owner-notification runtime and cost evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.',
     'canonical top-level `stores/{storeId}` first',
     'The July 5 template output boundary update adds no Firestore reads/writes/deletes',
     'The July 5 Answerlattice template output boundary update also adds no Firestore reads/writes/deletes',
@@ -537,7 +541,9 @@ function verifyDocsAndPackage(
 
   [
     'Source-bounded help draft; not current support-publication approval',
+    'not current launch approval',
     'Current publication boundary (July 2, 2026)',
+    'It is not current launch approval, support-publication approval, or website approval.',
     '`npm run verify:owner-notifications-boundary`',
     'SMTP/WhatsApp provider smoke where enabled',
     'authenticated owner settings/status QA for the target surface',
@@ -554,6 +560,7 @@ function verifyDocsAndPackage(
 			  [
 			    'Owner notification boundary source gate: `npm run verify:owner-notifications-boundary`',
 			    'Owner notification recipient scope document-ID boundary checkpoint',
+			    'Owner Notifications technical-doc top-boundary checkpoint',
 			    'Owner notification ops event-id boundary checkpoint',
 			    'source-only owner-notification registry/API/processor/monitor/docs gate',
 			    'Legacy lifecycle event/status diagnostics checkpoint',
@@ -572,6 +579,7 @@ function verifyDocsAndPackage(
 
 			  [
 			    'Legacy Lifecycle Event/Status Diagnostics',
+			    'Owner Notifications technical docs have top launch boundaries',
 			    'Owner Notification Recipient Scope Document ID Boundary',
 			    'raw event/status strings',
 			    'Owner Notification Flag and Trigger Diagnostics',
@@ -649,7 +657,7 @@ function verifyOwnerNotificationsBoundary() {
     mobileDoc: read('__docs__/owner-notifications/owner-notifications_mobile-support.md'),
     helpDoc: read('__docs__/owner-notifications/owner-notifications_helpdoc.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
-    changelogDoc: read('__docs__/CHANGELOG.md'),
+    changelogDoc: read('__docs__/changelog.md'),
   };
 
   verifyRegistryMirror(files.appRegistry, files.functionsRegistry);

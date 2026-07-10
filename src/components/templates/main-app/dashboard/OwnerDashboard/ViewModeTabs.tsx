@@ -10,7 +10,7 @@ import { OwnerDashboardViewMode } from '@template/main-app/projects/types';
 import { Segmented } from 'antd';
 import { useTranslations } from 'next-intl';
 import React from 'react';
-import { LuBarChart3, LuCalendar, LuClock, LuLayoutDashboard, LuLineChart, LuTrophy } from 'react-icons/lu';
+import { LuAreaChart, LuBarChart3, LuCalendar, LuClock, LuLayoutDashboard, LuLineChart, LuTrophy } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
 interface ViewModeTabsProps {
@@ -18,6 +18,7 @@ interface ViewModeTabsProps {
     onModeChange: (mode: OwnerDashboardViewMode) => void;
     hasToday?: boolean;
     hasOverview?: boolean;
+    hasGraph?: boolean;
     hasDaily?: boolean;
     hasWeekly?: boolean;
     hasMonthly?: boolean;
@@ -29,6 +30,7 @@ const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
     onModeChange,
     hasToday = true,
     hasOverview = true,
+    hasGraph = false,
     hasDaily = true,
     hasWeekly = true,
     hasMonthly = true,
@@ -54,6 +56,15 @@ const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
             value: 'overview',
             disabled: !hasOverview,
         },
+        ...(hasGraph ? [{
+            label: (
+                <span className={activeMode === 'graph' ? styles.activeTab : styles.secondaryTab}>
+                    <LuAreaChart size={15} /> Graphs
+                </span>
+            ),
+            value: 'graph',
+            disabled: false,
+        }] : []),
         {
             label: (
                 <span className={activeMode === 'daily' ? styles.activeTab : styles.secondaryTab}>

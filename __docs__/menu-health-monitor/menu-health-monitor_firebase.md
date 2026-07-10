@@ -2,6 +2,8 @@
 
 **Created:** February 20, 2026
 
+**Launch boundary:** Not current launch certification or deploy approval. This Firebase cost doc describes source/cost behavior; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped Functions deploy evidence, post-publish smoke, browser/device QA where relevant, and production-host smoke.
+
 ---
 
 ## Cost Model

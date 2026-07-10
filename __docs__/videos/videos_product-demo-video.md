@@ -21,7 +21,7 @@ Start with your current list. Review the customer version. Put one trusted custo
 | Time | Section | Voiceover / screen direction |
 | --- | --- | --- |
 | 0-15s | Problem | Most businesses already have a menu or service list. The problem is that customers keep finding different versions: old PDFs, screenshots, QR pages, social links, and printed copies. |
-| 15-35s | Start | MenuList starts from what you already have: a photo, PDF, existing public link you own, or typed list. Show the setup/import flow. |
+| 15-35s | Start | MenuList starts from what you already have: menu photos, a PDF, an existing public link you own, or a service list. Show the setup/import flow and emphasize no typing required to start. |
 | 35-60s | Review | MenuList prepares the menu structure for owner review. Show items, prices, categories, and business details before anything goes live. |
 | 60-90s | Publish | After approval, the public customer link goes live. The same approved list can support the QR menu, Official Business Page, print files, and sharing links. |
 | 90-120s | Customer experience | Show search, section jumps, language selection where available, business identity, open status, prices, item details, and actions like call, WhatsApp, directions, booking, or ordering links. |
@@ -35,7 +35,7 @@ Start with your current list. Review the customer version. Put one trusted custo
    - photo upload;
    - PDF upload;
    - owned public link input;
-   - typed list fallback.
+   - service list/rate-card fallback if needed.
 2. Private preview
    - items;
    - categories;

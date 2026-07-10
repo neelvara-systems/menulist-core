@@ -27,7 +27,7 @@ Desktop copy and WhatsApp handoff failures now log `use_menulist_communication_k
 
 Today-hours diagnostics are browser-local only. Invalid timezone fallback logs bounded `communication_kit_today_hours_timezone_fallback_failed` metadata, and malformed current-day time ranges log bounded `communication_kit_today_hours_range_invalid` metadata before hours copy is omitted.
 
-This adds no Firestore reads/writes, Storage operations, Cloud Functions, API routes, durable artifacts, cache invalidations, indexes, rules, Firebase deploy requirement, Vercel deploy action, or owner-facing settings. Message generation, clipboard writes, native share, and WhatsApp handoff remain browser-local owner actions.
+Staff Daily Replies are generated from the same already-loaded store/menu fields as the customer reply templates. This adds no Firestore reads/writes, Storage operations, Cloud Functions, API routes, durable artifacts, cache invalidations, indexes, rules, Firebase deploy requirement, Vercel deploy action, or owner-facing settings. Message generation, clipboard writes, native share, and WhatsApp handoff remain browser-local owner actions.
 
 ## Source Gate
 

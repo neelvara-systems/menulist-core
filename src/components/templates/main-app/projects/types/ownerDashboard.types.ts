@@ -19,7 +19,7 @@
 // VIEW MODES
 // ================================================================
 
-export type OwnerDashboardViewMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly' | 'overall';
+export type OwnerDashboardViewMode = 'today' | 'overview' | 'graph' | 'daily' | 'weekly' | 'monthly' | 'overall';
 
 export const VIEW_MODE_CONFIG = {
     today: {
@@ -30,6 +30,11 @@ export const VIEW_MODE_CONFIG = {
     overview: {
         label: 'Overview',
         description: 'Settled status check - is everything working?',
+        isPrimary: false,
+    },
+    graph: {
+        label: 'Graphs',
+        description: 'Visual summary from settled dashboard data',
         isPrimary: false,
     },
     daily: {
@@ -392,6 +397,43 @@ export interface HistoricalWeek {
     isCurrentWeek: boolean;
 }
 
+export type OwnerDashboardTrendMetric =
+    | 'menu_activity'
+    | 'customer_actions'
+    | 'search_demand'
+    | 'item_interest'
+    | 'unavailable_demand'
+    | 'missing_searches';
+export type OwnerDashboardTrendPeriod = 'week' | 'month';
+export type OwnerDashboardTrendStatus = 'up' | 'down' | 'stable' | 'not_enough_data';
+
+export interface OwnerDashboardTrendComparison {
+    metric: OwnerDashboardTrendMetric;
+    period: OwnerDashboardTrendPeriod;
+    label: string;
+    status: OwnerDashboardTrendStatus;
+    message: string;
+    currentValue: number;
+    previousValue: number;
+    changePct: number | null;
+    currentStart: string;
+    currentEnd: string;
+    previousStart: string;
+    previousEnd: string;
+    currentDaysWithData: number;
+    previousDaysWithData: number;
+}
+
+export interface OwnerDashboardTrendSummary {
+    source: 'dashboard_summary' | 'daily30d_fallback';
+    lastSettledLocalDate?: string;
+    generatedForLocalDate?: string;
+    primary: OwnerDashboardTrendComparison;
+    weekly: OwnerDashboardTrendComparison[];
+    monthly: OwnerDashboardTrendComparison[];
+    enoughData: boolean;
+}
+
 // ================================================================
 // OVERVIEW DATA (Hero view - single glance)
 // ================================================================
@@ -474,6 +516,10 @@ export interface OwnerDashboardData {
 
     // Historical comparison
     historicalWeeks: HistoricalWeek[];
+
+    // Cached settled daily rows from the dashboard summary document.
+    daily30d?: DailyViewData[];
+    trendSummary?: OwnerDashboardTrendSummary;
 
     // Lifetime footer
     overall: OverallData | null;

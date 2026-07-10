@@ -27,7 +27,7 @@ Route permission note: `/assets`, `/use-menulist/print-assets`, and `/use-menuli
 | Store brand colors are resolved from existing store fields. | `src/lib/menu-kit/brandTokens.ts:113` |
 | Physical print card face already supports logo, name, QR, plan branding. | `src/lib/print-menu-surfaces/templates/printMenuCardFace.ts:98` |
 | Mobile maps owner routes into `MobileShell`. | `src/components/mobile/MobileShell.tsx:36` |
-| Mobile More exposes Assets. | `src/components/mobile/screens/MobileMoreScreen.tsx:450` |
+| Mobile More exposes `QR and print assets`. | `src/components/mobile/screens/MobileMoreScreen.tsx` |
 
 ## Implementation Principle
 

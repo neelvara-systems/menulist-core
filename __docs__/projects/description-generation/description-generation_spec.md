@@ -292,7 +292,7 @@ MenuList positions itself as **infrastructure**, not a tool. These constraints p
 | -------------------------------------------------------- | -------------------------------- |
 | `description-generation_impl.md`                         | Technical implementation details |
 | `description-generation_marketing.md`                    | Sales and marketing copy         |
-| `../Assessments/assessment-09-description-generation.md` | Original security assessment     |
+| `../assessments/assessment-09-description-generation.md` | Original security assessment     |
 
 ---
 

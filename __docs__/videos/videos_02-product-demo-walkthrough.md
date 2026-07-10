@@ -80,7 +80,7 @@ The viewer should feel: "This is practical, I can start from what I already have
 | Timecode | Duration | Frame / Visual | Camera / UI direction | Voiceover | On-screen text | Motion / Transition | Design notes | Assets needed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 0:00-0:15 | 15s | Old PDF, WhatsApp screenshot, QR page, printed menu | Quick problem montage, then freeze on scattered versions | Most businesses already have a menu or service list. The problem is that customers keep finding different versions. | Old files keep circulating. | Direct cuts | Show recognizable owner reality | PDF, WhatsApp, QR, print mockups |
-| 0:15-0:35 | 20s | Source intake screen | Screen recording, cursor/tap through photo/PDF/link/typed list options | MenuList starts from what you already have: a photo, PDF, existing public link you own, or typed list. | Start with your current list. | Smooth UI pan | Keep UI labels readable | Upload UI, link input, typed list |
+| 0:15-0:35 | 20s | Source intake screen | Screen recording, cursor/tap through menu-photo/PDF/link/service-list options | MenuList starts from what you already have: menu photos, a PDF, an existing public link you own, or a service list. | Upload photos. No typing required. | Smooth UI pan | Keep UI labels readable; make setup feel easy | Upload UI, image upload, PDF upload, link input |
 | 0:35-1:00 | 25s | Prepared structure: categories, items, prices, details | Highlight item name, price, category, business details | MenuList prepares the customer-facing version for owner review. You check items, prices, categories, and business details before anything goes live. | Private preview first. | Cursor highlight | Show not-public state | Private preview UI |
 | 1:00-1:30 | 30s | Approval and publish flow; customer link generated | Click approve, show live link, QR, Official Business Page, print files | After approval, the public customer link goes live. The same approved list can support your QR menu, official page, print files, and sharing links. | Owner approval. Customer link live. | Approval click to link reveal | Keep approval central | Approval UI, link, QR, OBP, print |
 | 1:30-2:00 | 30s | Customer browsing mobile page | Phone frame; search, sections, language, call, WhatsApp, directions | Customers can search, jump sections, switch language when available, and use actions like call, WhatsApp, directions, booking, or ordering links. | Customers find the current version. | Tap indicators | Product clarity over speed | Customer page |
@@ -94,7 +94,9 @@ Most businesses already have a menu or service list.
 
 The problem is that customers keep finding different versions: old PDFs, screenshots, QR pages, social links, and printed copies.
 
-MenuList starts from what you already have: a photo, PDF, existing public link you own, or typed list.
+MenuList starts from what you already have: menu photos, a PDF, an existing public link you own, or a service list.
+
+No typing is required to start. MenuList prepares the customer-facing version for owner review.
 
 MenuList prepares the customer-facing version for owner review.
 
@@ -116,8 +118,8 @@ Start with your current list. Review the customer version. Put one trusted custo
 ### J. On-Screen Text List
 
 1. Old files keep circulating.
-2. Start with your current list.
-3. Photo. PDF. Existing link. Typed list.
+2. Upload photos. No typing required.
+3. Menu photos. PDF. Existing link.
 4. Private preview first.
 5. Owner approval.
 6. Customer link live.

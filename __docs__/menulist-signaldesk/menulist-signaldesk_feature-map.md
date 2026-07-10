@@ -2,6 +2,7 @@
 
 **Status:** Runtime-aligned feature inventory
 **Created:** June 23, 2026
+**Last Updated:** July 10, 2026
 **Source:** 164-message ChatGPT transcript plus corrected private internal-tool review.
 
 ## Purpose
@@ -47,8 +48,10 @@ No module gets `_website.md` or public `_helpdoc.md` unless the project boundary
 | P0 | Human approval queue | Spec 13, 23, 26 | Required before any send or risky action. Keeps the system human-controlled. | Runtime implemented; doc set created |
 | P0 | Email/export rail | Spec 13, 19, 23, 24 | First controllable outbound rail. Requires sender domain, unsubscribe, suppression, bounce/complaint handling. Provider send remains gated. | Export and owned sequencer queue implemented; real send gated |
 | P0 | Unified inbox and reply classifier | Spec 14, 15, 16, 17 | Needed once replies arrive. Classify interested, DNC, unsubscribe, wrong contact, pricing, objection, human review. | Runtime implemented for manual and signed provider webhook intake; doc set created |
+| P0 | Founder-reviewed market pod | Revenue Operating Layer | Separate research recommendation from strategy authority; pod activation requires founder approve/hold/reject evidence before an envelope can use it. | Runtime implemented; research/recommendation remains held and zero-budget |
 | P0 | MenuList outcome bridge and attribution | Spec 9, 22, 32, 35 | Rename onboarding router to outcome/link bridge. SignalDesk must not own MenuList onboarding or truth. | Runtime implemented as manual outcome capture and summaries; doc set created |
 | P0 | Demand signal capture | Spec 32, 33, 34, 35 | Warmer than cold outreach. Use MenuList-controlled surfaces, links, QR, shares, and claim attempts. | Runtime implemented as bounded internal capture; doc set created |
+| P0 | Revenue operating layer | July 10 revenue-system review plus existing outcome/offer/control doctrine | Link qualified targets to one revenue account, commercial opportunity, immutable standard offer, bounded operating envelope, activation watch, and compact revenue summary without owning MenuList truth. | Runtime implemented at `/signaldesk/revenue`; exception-only remains held and provider send remains false |
 | P0 | Channel health, cost, safety dashboard | Spec 23, 24, 27, 29 | Keeps growth from becoming expensive or reputation-damaging noise. Summary docs only. | Runtime implemented; doc set created |
 | P1 | Assisted WhatsApp | Spec 6, 7, 8, 13, 23 | Use owner-initiated, consented, ad-click, or founder-led contexts. No cold WhatsApp. | Gated handoff plumbing implemented; direct provider send remains disabled |
 | P1 | Instagram/Messenger response routing | Spec 6, 7, 8, 14, 15, 37 | Inbox/response channel first, not mass cold-DM automation. | Gated webhook and handoff plumbing implemented; cold DM automation remains blocked |
@@ -59,7 +62,7 @@ No module gets `_website.md` or public `_helpdoc.md` unless the project boundary
 | P1 | Daily Growth Mission | ChatGPT feedback review, owner-control doctrine | Convert dashboards into a ranked daily owner decision queue with at most five actions. | Runtime implemented through Operating Layer docs and `/signaldesk/mission` |
 | P1 | Research Agent Table | Origami product review, owner-control doctrine | Convert one prompt into a governed provider run, table rows, enrichment columns, pass/fail/unsure decisions, source transparency, and market-pod mapping. | Runtime implemented through Operating Layer `signaldeskResearchRuns` and `signaldeskResearchTableRows` |
 | P1 | Offer and CTA OS | ChatGPT feedback review, self-service CTA model | Define what SignalDesk asks a restaurant owner to do and match offers to segment, proof, and objection state. | Runtime implemented through Operating Layer `signaldeskOfferCtas` |
-| P1 | Reply-to-Conversion Assistant | ChatGPT feedback review, inbox module | Turn reply classifications into approved playbooks with route/CTA attachment and suppression-safe edge-case approval. | Runtime implemented as approved reply playbooks; replies remain manual/approval controlled |
+| P1 | Reply-to-Conversion Assistant | ChatGPT feedback review, inbox module | Turn reply classifications into approved playbooks with route/CTA attachment and suppression-safe edge-case approval. | Runtime implemented as approved reply playbooks; an interested reply now creates/reuses eligible revenue state automatically, while response content and edge cases remain manual/approval controlled |
 | P1 | Experiment cards | ChatGPT feedback review, campaign-builder gate | Controlled test cards with hypothesis, pod, source, CTA, proof, stop rule, result, and repeat/narrow/stop decision. | Runtime implemented through Operating Layer experiment cards |
 | P1 | Source quality learning | ChatGPT feedback review, source-policy and outcome specs | Score sources by activation quality, not raw lead volume. | Runtime implemented through Operating Layer source quality snapshots |
 | P1 | Campaign builder and experiments | Spec 20, 21 | Requires one working channel and one working pod. Avoid early campaign complexity. | Gated |
@@ -159,6 +162,7 @@ Still excluded from the implemented slice:
 | 18 | `menulist-activation-concierge` | Adopted MenuList-side activation-support backlog for upload, parse, preview, owner approval, publish, QR, WhatsApp, Google/Profile, staff-share, and two-surface checklist outputs. |
 | 19 | `signaldesk-demand-listener` | Adopted only as a future source-policy-gated opportunity digest; no auto-replies, scraping, or bulk social activity. |
 | 20 | `signaldesk-proof-asset-generator` | Adopted only after approved MenuList proof exists; output feeds approval-gated content drafts. |
+| 21 | `signaldesk-revenue-operating-layer` | Runtime implemented for revenue accounts/opportunities/offers/envelopes, interested-reply qualification, automatic outcome-to-activation projection, read-time seven-day stall detection, and founder attention/spend summaries. |
 
 ## Open Documentation Questions
 

@@ -90,6 +90,9 @@ export const DB_COLLECTIONS = {
     OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS: "ownerBusinessAssistantAnswerEvents",
     OWNER_BUSINESS_ASSISTANT_FEEDBACK: "ownerBusinessAssistantFeedback",
 
+    // Owner-to-owner referral attribution and reward issue state.
+    OWNER_REFERRALS: "ownerReferrals",
+
     // AI Menu Manager / Menu Manager
     // Compact proposal-driven owner operation layer.
     // Path: aiMenuManagerSessions/{sessionId}

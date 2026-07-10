@@ -20,7 +20,10 @@
 | Dashboard lead batch | Latest pass/unsure research rows appear as up to 30 lead cards with evidence, contact path, share message, and next action. |
 | Failed research rows | Remain in Research Output but are excluded from Today's Lead Batch. |
 | Fallback target batch | Includes only clear, non-held, non-rejected targets. |
-| Market prompt presets | Fill area/category prompt, research type, and 30-row cap without bypassing source policy. |
+| Market prompt presets | Fill the approved Bengaluru area/category prompt, research type, and 25-row first-trial batch without bypassing the 30-row hard cap or source policy. |
+| Bengaluru first-trial defaults | Presets, manual experiment, candidate count, stop rule, and activation target match the approved Indiranagar/Koramangala trial. |
+| Evidence-only manual default | Public-business research is selected before a contact-enabled policy and strips contact fields from candidate imports. |
+| Zero-spend partner default | First trust-partner learning test carries zero daily, monthly, and per-run budget. |
 | Duplicate research idempotency key | Returns existing research run/rows and creates no duplicate rows. |
 | Research run updates market pod | Writes or updates the pod map with pass/unsure/fail counts and recommendation reason. |
 

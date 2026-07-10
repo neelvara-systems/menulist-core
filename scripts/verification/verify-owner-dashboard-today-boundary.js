@@ -54,6 +54,8 @@ const ownerDashboardHook = read('src/hooks/useOwnerDashboard.ts');
 const obpDashboardHook = read('src/hooks/useOBPDashboard.ts');
 const ownerDashboardDb = read('src/database/ownerDashboard/index.ts');
 const ownerDashboardTypes = read('src/components/templates/main-app/projects/types/ownerDashboard.types.ts');
+const ownerDashboardGraph = read('src/components/templates/main-app/dashboard/OwnerDashboard/OwnerDashboardGraphMode.tsx');
+const dashboardSummaryAggregation = read('functions/src/analytics/dashboardSummaryAggregation.ts');
 const mobileShell = read('src/components/mobile/MobileShell.tsx');
 const mobileHours = read('src/components/mobile/screens/MobileHoursScreen.tsx');
 const mobileDashboard = read('src/components/mobile/screens/MobileDashboardScreen.tsx');
@@ -66,7 +68,7 @@ const mobileSupportDoc = read('__docs__/mobile-operational-support/mobile-operat
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 
 requireToken(
   packageJson,
@@ -91,7 +93,7 @@ requireToken(
 ].forEach((token) => requireToken(todayHistoryRoute, token, 'desktop Today history route'));
 
 [
-  "export type OwnerDashboardViewMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly' | 'overall';",
+  "export type OwnerDashboardViewMode = 'today' | 'overview' | 'graph' | 'daily' | 'weekly' | 'monthly' | 'overall';",
   'today: {',
   "label: 'Today',",
   'isPrimary: true,',
@@ -109,6 +111,7 @@ requireToken(
   "canFetch && loadHistorical && viewMode === 'monthly'",
   "case 'today':",
   'return todayData || null;',
+  'trendSummary: settledData?.trendSummary',
   'await Promise.all(loadHistorical ? [mutateSettled(), mutateToday()] : [mutateToday()]);',
 ].forEach((token) => requireToken(ownerDashboardHook, token, 'owner dashboard hook'));
 forbidToken(ownerDashboardHook, "Default view is now 'overview'", 'owner dashboard hook stale default-view comment');
@@ -132,6 +135,7 @@ forbidToken(ownerDashboardHook, 'Fetches overview + overall on initial load', 'o
   'const docId = getDocId.daily(tId, sId, OBP_PROJECT_ID, todayDate);',
   'export async function getOBPDashboardData(',
   'const summaryDocId = getDocId.dashboardSummary(tId, sId, OBP_PROJECT_ID);',
+  'normalizeTrendSummary(data.trendSummary)',
   'const OWNER_ACTION_MARK_DONE_RESPONSE_JSON_MAX_BYTES = 16 * 1024;',
   'readJsonResponseWithLimit<unknown>(response, OWNER_ACTION_MARK_DONE_RESPONSE_JSON_MAX_BYTES)',
   'const MAX_OBP_DASHBOARD_SUMMARY_READ_DIAGNOSTICS = 25;',
@@ -144,6 +148,55 @@ forbidToken(ownerDashboardHook, 'Fetches overview + overall on initial load', 'o
   'logOBPDashboardSummaryReadFailure(error, { tId, sId, summaryDocId });',
 ].forEach((token) => requireToken(ownerDashboardDb, token, 'owner dashboard DAL'));
 forbidToken(ownerDashboardDb, '} catch {\n                // Non-critical\n            }', 'owner dashboard OBP summary read silent catch');
+
+[
+  'OwnerDashboardTrendSummary',
+  'OwnerDashboardTrendComparison',
+  "source: 'dashboard_summary' | 'daily30d_fallback'",
+  "'item_interest'",
+  "'unavailable_demand'",
+  "'missing_searches'",
+  'trendSummary?: OwnerDashboardTrendSummary;',
+].forEach((token) => requireToken(ownerDashboardTypes, token, 'owner dashboard trend types'));
+
+[
+  'function buildOwnerDashboardTrendSummary(',
+  'availableStartDate',
+  "'item_interest'",
+  "'unavailable_demand'",
+  "'missing_searches'",
+  'const trendSummary = buildOwnerDashboardTrendSummary(dailyMap, settlementDate);',
+  'trendSummary,',
+  'monthly',
+].forEach((token) => requireToken(dashboardSummaryAggregation, token, 'dashboard summary trend cache'));
+
+[
+  'buildFallbackTrendSummary(fallbackTrendSummaryRows)',
+  'fallbackTrendSummaryRows',
+  'availableStartDate',
+  'const trendSummary = data?.trendSummary || fallbackTrendSummary;',
+  "source: 'daily30d_fallback'",
+  'Trend summary',
+  'Updated after your store day closes.',
+  'Comparison charts',
+  'comparisonChartGrid',
+  'TREND_SIGNAL_METRICS',
+  'missingSearches: metricValue(day,',
+  "metric: 'item_interest'",
+  "metric: 'unavailable_demand'",
+  "metric: 'missing_searches'",
+  "tone: 'problem'",
+  'renderComparisonBadge',
+  "findTrendComparison(trendSummary, chart.metric, 'week')",
+  "findTrendComparison(trendSummary, chart.metric, 'month')",
+].forEach((token) => requireToken(ownerDashboardGraph, token, 'owner dashboard graph mode trend summary'));
+[
+  'Branch Selection',
+  'Export Excel',
+  'Show Report',
+  'Total Sale',
+  'APC',
+].forEach((token) => forbidToken(ownerDashboardGraph, token, 'owner dashboard graph mode must not copy sales report controls'));
 
 [
   'const [showHistorical, setShowHistorical] = useState(false);',
@@ -237,7 +290,19 @@ forbidToken(mobileHours, 'console.error(', 'mobile Today raw error logging');
   'MobileOwnerActionPlanCard',
   'MobileOBPMetricsCard',
   'MobileMenuAnalyticsDetailsCard data={today}',
+  'const ownerActionLayer = useMemo(() => (',
+  'const handleOwnerAction = useCallback((item: OwnerActionItem) => {',
 ].forEach((token) => requireToken(mobileDashboard, token, 'mobile dashboard screen'));
+requireOrder(
+  mobileDashboard,
+  [
+    'const businessHealthFreshnessNote = getOwnerBusinessHealthFreshnessNote(businessHealthCurrent);',
+    'const ownerActionLayer = useMemo(() => (',
+    'const handleOwnerAction = useCallback((item: OwnerActionItem) => {',
+    'if (loadingProjects || (!selectedProjectId && loadingProjects)) {',
+  ],
+  'mobile dashboard owner-action hook order',
+);
 
 [
   'usePastActivity(selectedProjectId)',
@@ -261,6 +326,11 @@ forbidToken(mobileHours, 'console.error(', 'mobile Today raw error logging');
   'Today-first live dashboard',
   'loadHistorical: showHistorical',
   'OBP overview summary read diagnostics',
+  'cached `trendSummary`',
+  'cached weekly/monthly movement labels',
+  'small comparison chart cards',
+  'item interest, unavailable demand, and missing-search trends',
+  'export controls, branch filters, date-range report builders',
   'owner_dashboard_obp_summary_read_failed',
   'viewsChange` as `null`',
   'Past Activity remains disabled unless `ENABLE_PAST_ACTIVITY_HISTORY` is enabled',
@@ -295,10 +365,12 @@ forbidToken(ownerDashboardDoc, 'Overview data (fetched on initial load)', 'owner
   ['report', report, '`npm run verify:owner-dashboard-today-boundary`'],
   ['audit', audit, 'Owner Dashboard Today boundary checkpoint'],
   ['audit', audit, 'Owner Dashboard OBP summary read diagnostics checkpoint'],
+  ['audit', audit, 'Mobile Dashboard owner-action hook-order checkpoint'],
   ['audit', audit, 'owner_dashboard_obp_summary_read_failed'],
   ['audit', audit, '`npm run verify:owner-dashboard-today-boundary`'],
   ['changelog', changelog, 'Owner Dashboard Today Boundary'],
   ['changelog', changelog, 'Owner Dashboard OBP Summary Read Diagnostics'],
+  ['changelog', changelog, 'Mobile dashboard owner-action hooks are order-safe'],
   ['changelog', changelog, 'owner_dashboard_obp_summary_read_failed'],
   ['changelog', changelog, '`npm run verify:owner-dashboard-today-boundary`'],
 ].forEach(([label, source, token]) => requireToken(source, token, `owner dashboard Today ledger ${label}`));

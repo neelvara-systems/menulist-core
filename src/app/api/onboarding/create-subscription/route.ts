@@ -15,6 +15,13 @@ import { razorpayClient } from "@lib/razorpay/razorpay";
 import { getBoundedRazorpayStringContext, getRazorpayFailureLogData } from "@lib/billing/razorpayDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
+import {
+    clearOwnerReferralCookie,
+    readOwnerReferralCookie,
+    resolveOwnerReferralCookieForAttribution,
+    setOwnerReferralAttributionInTransaction,
+} from "@lib/ownerReferral/ownerReferralAttributionServer";
+import { isOwnerReferralAcquisitionEnabled } from '@lib/ownerReferral/ownerReferralFeature';
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { OnboardingSubscriptionSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
@@ -151,6 +158,7 @@ export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     const userId = session.user.id;
     let onboardingLogContext = getOnboardingSubscriptionLogContext({ userId });
+    let clearReferralCookieOnSuccess = false;
 
     try {
         // 1. CRITICAL: Verify user does NOT already have tenant/store
@@ -217,6 +225,11 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const { businessName, businessIndustry, planId, interval, currency, userType, timeZone, businessDayEndTime } = validation.data;
+        const referralCookiePresent = Boolean(readOwnerReferralCookie(request));
+        const resolvedReferral = isOwnerReferralAcquisitionEnabled()
+            ? await resolveOwnerReferralCookieForAttribution(request)
+            : null;
+        if (referralCookiePresent && !resolvedReferral) clearReferralCookieOnSuccess = true;
         onboardingLogContext = getOnboardingSubscriptionLogContext({
             businessName,
             businessIndustry,
@@ -266,7 +279,18 @@ export const POST = withAuth(async (request, session) => {
             // Update User with tenant/store IDs
             updateUserWithTenantStore(transaction, db, userId, core);
 
-            return { tenantId: core.tenantId, storeId: core.storeId };
+            const referralBound = resolvedReferral
+                ? Boolean(setOwnerReferralAttributionInTransaction({
+                    transaction,
+                    db,
+                    referredBusinessName: businessName,
+                    referredScope: { tenantId: core.tenantId, storeId: core.storeId },
+                    resolvedToken: resolvedReferral,
+                    onboardingSource: 'WEBSITE_ONBOARDING',
+                }))
+                : false;
+
+            return { tenantId: core.tenantId, storeId: core.storeId, referralBound };
         });
 
         await writeLogEntry({
@@ -459,11 +483,14 @@ export const POST = withAuth(async (request, session) => {
         }));
 
         // 7. Return subscription + new IDs for session update
-        return NextResponse.json({
+        if (result.referralBound) clearReferralCookieOnSuccess = true;
+        const response = NextResponse.json({
             subscription: razorpaySubscription,
             tenantId: result.tenantId,
             storeId: result.storeId
         });
+        if (clearReferralCookieOnSuccess) clearOwnerReferralCookie(response);
+        return response;
 
     } catch (error) {
         const failureData = getRazorpayFailureLogData(

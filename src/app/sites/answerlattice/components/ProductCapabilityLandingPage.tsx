@@ -1,10 +1,11 @@
 import AnswerlatticeLink from './AnswerlatticeLink';
 import { AnswerlatticeSequenceDiagram } from './AnswerlatticeFlowDiagram';
 import AnswerlatticeAssetImage from './AnswerlatticeAssetImage';
+import AnswerlatticeMotionAsset from './AnswerlatticeMotionAsset';
 import AnswerlatticePageStructuredData from './PageStructuredData';
 import PageProofStrip from './PageProofStrip';
 import SectionHeader from './SectionHeader';
-import { ANSWERLATTICE_PRODUCT_AREA_ASSETS } from '../answerlatticeWebsiteAssets';
+import { ANSWERLATTICE_PRODUCT_AREA_ASSETS, type AnswerlatticeWebsiteMotionAsset } from '../answerlatticeWebsiteAssets';
 
 export type ProductCapabilityCard = {
     title: string;
@@ -31,6 +32,8 @@ export type ProductCapabilityLandingPageProps = {
     basePath?: string;
     canonicalPath?: string;
     proofItems?: ProductCapabilityMetric[];
+    motionAsset?: AnswerlatticeWebsiteMotionAsset;
+    motionAssetSlotId?: string;
 };
 
 const CAPABILITY_SUITE_ITEMS = [
@@ -100,6 +103,8 @@ export default function ProductCapabilityLandingPage({
         { label: 'Review', value: 'Owner approval before official guidance' },
         { label: 'Runtime', value: 'Widget, hosted help, tickets, and signals share reviewed truth' },
     ],
+    motionAsset,
+    motionAssetSlotId,
 }: ProductCapabilityLandingPageProps) {
     const canvasAsset = ANSWERLATTICE_PRODUCT_AREA_ASSETS[activeTab as keyof typeof ANSWERLATTICE_PRODUCT_AREA_ASSETS];
     const canvasAssetSlotId = CAPABILITY_ASSET_SLOT_IDS[activeTab];
@@ -165,12 +170,21 @@ export default function ProductCapabilityLandingPage({
                     <PageProofStrip items={proofItems} className="mx-auto mt-8 max-w-6xl" />
 
                     <div className="mx-auto mt-10 max-w-6xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
-                        <AnswerlatticeAssetImage
-                            asset={canvasAsset}
-                            assetSlotId={canvasAssetSlotId}
-                            assetRole="product-area-hero-canvas"
-                            className="rounded-[1.5rem] border border-white/[0.08]"
-                        />
+                        {motionAsset ? (
+                            <AnswerlatticeMotionAsset
+                                asset={motionAsset}
+                                assetSlotId={motionAssetSlotId || canvasAssetSlotId}
+                                assetRole="product-area-hero-motion"
+                                className="rounded-[1.5rem] border border-white/[0.08]"
+                            />
+                        ) : (
+                            <AnswerlatticeAssetImage
+                                asset={canvasAsset}
+                                assetSlotId={canvasAssetSlotId}
+                                assetRole="product-area-hero-canvas"
+                                className="rounded-[1.5rem] border border-white/[0.08]"
+                            />
+                        )}
                     </div>
                 </div>
             </section>

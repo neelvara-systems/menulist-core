@@ -38,7 +38,7 @@
 
 | Scenario | Expected |
 | --- | --- |
-| More tab | Assets opens inside MobileShell. |
+| More tab | `QR and print assets` opens Assets inside MobileShell. |
 | Share tab | Assets shortcut opens inside MobileShell. |
 | Direct `/assets` | Maps into mobile shell state. |
 | Back action | Returns to previous mobile screen without reload. |

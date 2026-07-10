@@ -17,6 +17,7 @@ import { NextResponse } from "next/server";
 const SECTIONS = new Set<SignalDeskSection>([
     "dashboard",
     "mission",
+    "revenue",
     "targets",
     "imports",
     "approvals",

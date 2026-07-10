@@ -1431,7 +1431,7 @@ function verifyDocsAlignment() {
   const websiteUseCases = read("src/constants/campaigncue/websiteUseCases.ts");
   const productFirebaseDoc = read("__docs__/campaigncue/campaigncue-product/campaigncue-product_firebase.md");
   const websiteDoc = read("__docs__/campaigncue/campaigncue-product/campaigncue-product_website.md");
-  const changelog = read("__docs__/CHANGELOG.md");
+  const changelog = read("__docs__/changelog.md");
 
   assertIncludes(publicSite, "Print and staff pack", "CampaignCue public site exposes print and staff pack output");
   assertIncludes(publicSite, "CAMPAIGNCUE_WEBSITE_FEATURE_PATHS", "CampaignCue public homepage links capabilities to dedicated feature pages");

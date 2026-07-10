@@ -2,9 +2,11 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Marketing & Sales Strategy  
-**Status:** Source-backed marketing draft; publish/use with current Customer App runtime boundary
+**Status:** Source-backed marketing draft; not current sales, publication, or launch certification
 **Last Updated:** July 4, 2026
 **Audience:** Sales, Marketing, CEO
+
+> **Launch Boundary:** This marketing draft is source evidence only. Current sales, publication, or release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:customer-app-pwa`, browser/device Customer App QA, approved live evidence for metrics or quotes, target deploy evidence, and production-host smoke.
 
 ---
 

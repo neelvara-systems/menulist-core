@@ -43,7 +43,7 @@ function forbidToken(source, token, label) {
   'FEATURE_SWEEP_MASTER_INVENTORY.md',
   'FEATURE_SWEEP_MASTER_REPORT.md',
   '__docs__/audits/menulist-production-readiness-audit.md',
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
 ].forEach(read);
 
 const packageJson = read('package.json');
@@ -77,6 +77,8 @@ const desktopPresence = read('src/components/templates/main-app/useMenuList/Pres
   'shouldRecordStarterActivationSignal',
   'STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE',
   "action: 'confirm' | 'copy' | 'open' | 'remove'",
+  "id: 'appleBusiness'",
+  "id: 'bingPlaces'",
 ].forEach((token) => requireToken(desktopPresence, token, 'desktop Presence Monitor'));
 [
   'catch {',
@@ -114,6 +116,8 @@ const mobilePresence = read('src/components/mobile/components/PresenceMonitor.ts
   'Popup',
   'NavBar',
   'minHeight: 44',
+  "id: 'appleBusiness'",
+  "id: 'bingPlaces'",
 ].forEach((token) => requireToken(mobilePresence, token, 'mobile Presence Monitor'));
 [
   'catch {',
@@ -197,6 +201,8 @@ const starterActivation = read('src/lib/onboarding/starterActivation.ts');
 [
   'buildStarterActivationSummary',
   'STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE',
+  'APPLE_BUSINESS_MARKED',
+  'BING_PLACES_MARKED',
   'ownerConfirmedCount',
   'systemRecordedCount',
   "evidenceType === 'menulist_recorded'",
@@ -230,7 +236,7 @@ const marketing = read('__docs__/menu-presence-monitor/menu-presence-monitor_mar
 [
   'Current Sales/Launch Boundary',
   'MenuList records owner actions where the product can observe them and stores owner confirmations for external placements.',
-  'Do not claim instant visibility, zero setup for external placement, automatic Google/Instagram/WhatsApp verification, one-tap external deployment, or every-surface visibility without release-specific evidence.',
+  'Do not claim instant visibility, zero setup for external placement, automatic Google/Apple/Bing/Instagram/WhatsApp verification, one-tap external deployment, or every-surface visibility without release-specific evidence.',
   'MenuList recorded',
   'Owner confirmed',
 ].forEach((token) => requireToken(marketing, token, 'Menu Presence Monitor marketing doc'));
@@ -256,7 +262,7 @@ const website = read('__docs__/menu-presence-monitor/menu-presence-monitor_websi
 
 const helpdoc = read('__docs__/menu-presence-monitor/menu-presence-monitor_helpdoc.md');
 [
-  'does not crawl or verify Google Business, Instagram, or WhatsApp for you',
+  'does not crawl or verify Google Business, Apple Business Connect, Bing Places, Instagram, or WhatsApp for you',
   'Review the status as MenuList-recorded or owner-confirmed',
   'MenuList recorded the action/readiness, or you confirmed an external placement',
 ].forEach((token) => requireToken(helpdoc, token, 'Menu Presence Monitor help doc'));
@@ -322,7 +328,7 @@ const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
   'No Menu Presence Monitor runtime behavior',
 ].forEach((token) => requireToken(audit, token, 'production readiness audit'));
 
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 [
   'July 2, 2026 - Menu Presence Monitor Boundary',
   'Menu Presence Monitor Copy Claim Boundary',

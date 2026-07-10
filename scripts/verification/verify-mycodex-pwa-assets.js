@@ -173,7 +173,7 @@ function verifyMetadataAndRegistration() {
   const shellImplDoc = read('__docs__/mycodex-pwa-shell/mycodex-pwa-shell_impl.md');
   const shellFirebaseDoc = read('__docs__/mycodex-pwa-shell/mycodex-pwa-shell_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const apiSchemas = read('src/lib/validation/apiSchemas.ts');
   const billingPlans = read('src/lib/billing/productBillingPlans.ts');
   const billingServer = read('src/lib/billing/productBillingServer.ts');

@@ -4,6 +4,7 @@ import { getSubscriptionById, updateSubscription } from "@database/subscriptions
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { logger } from "@lib/monitoring/logger";
+import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -104,6 +105,18 @@ export const POST = withAuth(async (request, session) => {
             { ...subscription, id: subscriptionId, status: 'active' },
             'api:reseller-confirm-payment',
         );
+        await safelyRecordOwnerReferralPaymentAndRepair({
+            paidScope: {
+                tenantId: Number(subscription.tenantId),
+                storeId: Number(subscription.storeId),
+            },
+            evidence: {
+                paidAt: new Date(),
+                paymentEvidenceId: subscriptionId,
+                source: 'api:reseller-confirm-payment',
+                subscriptionId,
+            },
+        });
 
         return NextResponse.json({
             success: true,

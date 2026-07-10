@@ -36,6 +36,7 @@ import {
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
+import { isOwnerReferralAcquisitionEnabledForStore } from '@lib/ownerReferral/ownerReferralFeature';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -76,6 +77,7 @@ import {
     LuShield,
     LuSmartphone,
     LuTag,
+    LuUserPlus,
     LuX,
 } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
@@ -85,6 +87,7 @@ import MobileLinkCard from '../components/MobileLinkCard';
 import MobileMenuSetupProgress from '../components/MenuSetupProgress';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
+import MobileOwnerReferralSheet from '../sheets/MobileOwnerReferralSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import {
     getBoundedMobileOwnerStringContext,
@@ -255,6 +258,7 @@ export default function MobileShareScreen({
     const { isCompactHandheld } = useViewportInfo();
     const { isMasterUser, storeDetails, tenantDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
+    const referralT = useTranslations('OwnerReferral');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const labels = useOfferingLabels();
     const {
@@ -282,6 +286,7 @@ export default function MobileShareScreen({
         menuBoardLink: null,
     });
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
+    const [ownerReferralOpen, setOwnerReferralOpen] = useState(false);
     const previewRequestRef = useRef(0);
     const previewUrlRef = useRef<string | null>(null);
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
@@ -1478,6 +1483,18 @@ export default function MobileShareScreen({
                 />
             ) : null}
 
+            {isOwnerReferralAcquisitionEnabledForStore(storeDetails?.storeId) ? (
+                <Button
+                    block
+                    fill="outline"
+                    icon={<LuUserPlus size={18} />}
+                    onClick={() => setOwnerReferralOpen(true)}
+                    size="large"
+                >
+                    {referralT('title')}
+                </Button>
+            ) : null}
+
             {data.hasFeedbackEnabled && data.feedbackLink ? (
                 <MobileLinkCard
                     compact={isCompactHandheld}
@@ -1907,6 +1924,10 @@ export default function MobileShareScreen({
                 url={qrSheet?.url || ''}
                 activePlanType={(storeDetails as any)?.activePlanType}
                 visible={isQrSheetOpen}
+            />
+            <MobileOwnerReferralSheet
+                onClose={() => setOwnerReferralOpen(false)}
+                visible={ownerReferralOpen}
             />
         </Flex>
     );

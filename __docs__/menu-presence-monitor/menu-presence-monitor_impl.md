@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Implementation Plan
 
 > **Version:** 2.7 (focused boundary source gate)
-> **Last Updated:** July 2, 2026
+> **Last Updated:** July 10, 2026
 > **Audience:** Developers
 
 ---
@@ -29,12 +29,14 @@ Failed desktop copy/confirm/remove actions use `use_menulist_presence_official_l
 
 ### 2.1 Store Document Extension
 
-Timestamp-only schema. Exists = confirmed, missing = not confirmed. Surface IDs are IMMUTABLE — never rename. Max 6 surfaces forever.
+Timestamp-only schema. Exists = confirmed, missing = not confirmed. Surface IDs are IMMUTABLE — never rename. Five manual discovery placements are approved; desktop also derives three product-readiness surfaces and mobile derives two.
 
 ```typescript
 // On StoreDataType (src/types/platform/store.ts)
 menuPresence?: {
   googleBusiness?: string;   // ISO 8601 timestamp when owner confirmed
+  appleBusiness?: string;    // ISO 8601 timestamp when owner confirmed
+  bingPlaces?: string;       // ISO 8601 timestamp when owner confirmed
   instagramBio?: string;     // ISO 8601 timestamp when owner confirmed
   whatsappProfile?: string;  // ISO 8601 timestamp when owner confirmed
 }
@@ -166,7 +168,7 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 1. Create `presenceTypes.ts` with `PresenceSurface` and `SurfaceStatus` types
 2. Create `PresenceMonitor.tsx`:
    - Receives `UseMenuListData` + store's `menuPresence` field
-   - Builds surface list: 3 auto-detected + 3 manual
+   - Builds surface list: 3 auto-detected + 5 manual
    - Renders compact Card with rows: icon + label + status + action button
    - "I added it" button -> calls `updateMenuPresence(surface, true)` and asserts the typed acknowledgement before local success state
    - Remove button on confirmed rows -> calls `updateMenuPresence(surface, false)` and asserts the typed acknowledgement before local removal state

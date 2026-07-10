@@ -3,6 +3,8 @@
 **Last Updated:** July 2, 2026 (v4 — dedicated Digital Screens boundary source gate)
 **Decision:** ✅ MOBILE SUPPORTED — Owner can set up and manage TV screens from phone
 
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated mobile support and desktop/mobile parity evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:digital-screens-boundary`, browser TV smoke for Menu Board and Highlights modes, authenticated desktop/mobile owner settings QA, physical-device TV/tablet/browser QA, target Firebase deploy evidence where rules, indexes, Storage, or Functions change, target Vercel deploy evidence where app routes or display clients change, and production-host smoke for the target tenant and screen URL.
+
 ---
 
 ## Feature Admission Test (Re-evaluated with "no desktop at all" lens)

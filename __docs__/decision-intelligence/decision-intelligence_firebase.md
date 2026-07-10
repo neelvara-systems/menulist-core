@@ -5,6 +5,8 @@
 **Last Updated:** June 11, 2026
 **Priority:** HIGH — Timezone-aware Cloud Function scoring + project-embedded customer-facing read model.
 
+> **Launch boundary:** Not current launch certification or deploy approval. This Firebase cost doc is source-gated scheduler/cost evidence only; Decision Intelligence release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped Functions deploy evidence for the scheduler bundle, browser/mobile customer-menu QA, public-cache evidence, provider/runtime smoke where relevant, and production-host smoke.
+
 ---
 
 ## Summary

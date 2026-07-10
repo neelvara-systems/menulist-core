@@ -1,8 +1,10 @@
 # Compliance Pages — Mobile Support Assessment
 
-**Version:** 1.2
-**Date:** July 2, 2026
+**Version:** 1.3
+**Date:** July 10, 2026
 **Local Source Gate:** `npm run verify:compliance-pages-boundary`
+
+> **Launch boundary:** Not current launch certification or deploy approval. This assessment is source-gated mobile owner-editor and public-page parity evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:compliance-pages-boundary`, browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`, authenticated desktop/mobile owner save/reset QA, owner/legal review of final generated or custom policy text, DNS/custom-domain verification, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 

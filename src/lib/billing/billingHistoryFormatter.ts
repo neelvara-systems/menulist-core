@@ -116,6 +116,22 @@ export const formatBillingHistoryEvents = (
                 };
             }
 
+            if (event.event === 'owner_referral.reward_issued' && event.transactionType === 'reward_credit') {
+                const credits = asNumber(event.credits ?? event.creditAmount, 0);
+                if (credits <= 0) return null;
+
+                return {
+                    id: String(event.id || event.rewardIssueId),
+                    type: 'Referral reward',
+                    date: toMilliseconds(event.created_at),
+                    description: 'Owner referral reward',
+                    amount: 0,
+                    currency: 'CREDITS',
+                    status: String(event.status || 'credited'),
+                    credits,
+                };
+            }
+
             return null;
         })
         .filter((item): item is BillingHistoryItem => Boolean(item));

@@ -1,11 +1,13 @@
 # Compliance Pages — Domain Activation Infrastructure
 
-**Status:** 🟢 Runtime implemented; source verifiers active
+**Status:** Runtime implemented source evidence; not current launch or legal certification
 **Feature Flag:** `ENABLE_COMPLIANCE_PAGES`
-**Version:** 1.2
-**Date:** July 2, 2026
-**Last Hardened:** July 2, 2026
+**Version:** 1.3
+**Date:** July 10, 2026
+**Last Hardened:** July 10, 2026
 **Local Source Gate:** `npm run verify:compliance-pages-boundary`
+
+> **Launch boundary:** Not current launch certification or deploy approval. This README is source-gated Compliance Pages route, renderer, owner-editor, and document-contract evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:compliance-pages-boundary`, browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`, authenticated desktop/mobile owner save/reset QA, owner/legal review of final generated or custom policy text, DNS/custom-domain verification, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 ---
 

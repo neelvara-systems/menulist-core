@@ -806,9 +806,9 @@ function drawMiniSurface(ctx, x, y, w, h, title, kind) {
     text(ctx, 'Readable public page data', x + 42, y + 84, { size: 13, color: C.muted });
     text(ctx, 'No ranking promises', x + 22, y + 142, { size: 14, color: C.muted, maxWidth: w - 44, lineHeight: 20 });
   } else if (kind === 'activity') {
-    text(ctx, 'Views', x + 22, y + 80, { size: 13, color: C.muted, weight: 800 });
-    text(ctx, '186', x + 22, y + 105, { size: 34, color: C.ink, weight: 800 });
-    pill(ctx, 'Freshness visible', x + 118, y + 112, { fill: C.greenSoft, stroke: '#bbf7d0', color: '#166534', size: 12 });
+    text(ctx, 'Customer activity', x + 22, y + 80, { size: 13, color: C.muted, weight: 800 });
+    text(ctx, 'Available', x + 22, y + 109, { size: 24, color: C.ink, weight: 800 });
+    pill(ctx, 'Freshness visible', x + 154, y + 108, { fill: C.greenSoft, stroke: '#bbf7d0', color: '#166534', size: 12 });
   } else if (kind === 'issues') {
     let cy = y + 72;
     demo.issueTypes.forEach((issue) => {
@@ -889,23 +889,30 @@ function drawDashboardProof() {
   });
   rounded(ctx, 90, 220, 1020, 560, 28, C.white, C.border);
   text(ctx, 'Today', 132, 260, { size: 30, weight: 800 });
-  const metricCards = [
-    ['Menu opens', '186', '+14%'],
-    ['Official page views', '74', '+8%'],
-    ['QR/link activity', '39', 'stable'],
+  const statusCards = [
+    ['Menu activity', 'Available', 'Current'],
+    ['Official page', 'Visible', 'Ready'],
+    ['QR/link activity', 'Available', 'Ready'],
   ];
-  for (let i = 0; i < metricCards.length; i += 1) {
+  for (let i = 0; i < statusCards.length; i += 1) {
     const x = 132 + i * 300;
     rounded(ctx, x, 325, 260, 128, 20, '#f8fafc', C.border);
-    text(ctx, metricCards[i][0], x + 22, 349, { size: 15, color: C.muted, weight: 700 });
-    text(ctx, metricCards[i][1], x + 22, 382, { size: 36, weight: 800, color: C.ink });
-    text(ctx, metricCards[i][2], x + 170, 395, { size: 14, color: C.green, weight: 800 });
+    text(ctx, statusCards[i][0], x + 22, 349, { size: 15, color: C.muted, weight: 700 });
+    text(ctx, statusCards[i][1], x + 22, 390, { size: 24, weight: 800, color: C.ink });
+    text(ctx, statusCards[i][2], x + 172, 396, { size: 13, color: C.green, weight: 800 });
   }
   rounded(ctx, 132, 500, 420, 204, 20, '#f8fafc', C.border);
-  text(ctx, 'Top customer actions', 160, 530, { size: 19, weight: 800 });
-  ['Viewed menu', 'Tapped directions', 'Opened WhatsApp'].forEach((label, i) => {
+  text(ctx, 'Customer action signals', 160, 530, { size: 19, weight: 800 });
+  ['Menu activity', 'Directions activity', 'WhatsApp activity'].forEach((label, i) => {
     text(ctx, label, 160, 575 + i * 36, { size: 15, color: C.muted });
-    rounded(ctx, 330, 578 + i * 36, 150 - i * 28, 10, 5, i === 0 ? C.blue : '#bfdbfe');
+    pill(ctx, 'Available', 380, 566 + i * 36, {
+      fill: i === 0 ? C.blueSoft : C.white,
+      stroke: i === 0 ? '#bfdbfe' : C.border,
+      color: i === 0 ? C.blueDark : C.muted,
+      size: 11,
+      padX: 9,
+      padY: 5,
+    });
   });
   rounded(ctx, 590, 500, 450, 204, 20, C.blueSoft, '#bfdbfe');
   text(ctx, 'Menu state is stable', 620, 535, { size: 24, weight: 800, color: C.blueDark });
@@ -937,6 +944,57 @@ function drawLaunchSquare() {
   return canvas;
 }
 
+function drawLinkedInLaunch() {
+  const { canvas, ctx } = makeCanvas(1200, 630, '#f8fbff');
+  logoMark(ctx, 70, 58, 48);
+  text(ctx, 'MenuList', 132, 66, { size: 25, weight: 800, color: C.ink });
+  text(ctx, 'One approved source for what customers see.', 70, 150, {
+    size: 48,
+    weight: 800,
+    maxWidth: 500,
+    lineHeight: 56,
+  });
+  text(ctx, 'Review the current menu, publish the customer link, then reuse that same source for QR and print.', 72, 350, {
+    size: 20,
+    color: C.muted,
+    maxWidth: 500,
+    lineHeight: 29,
+  });
+  pill(ctx, 'Review before publishing', 70, 520, {
+    fill: C.white,
+    stroke: C.border,
+    color: C.ink,
+    size: 14,
+  });
+  pill(ctx, 'Owner-approved publishing', 285, 520, {
+    fill: C.white,
+    stroke: C.border,
+    color: C.ink,
+    size: 14,
+  });
+
+  drawSourceCard(ctx, 640, 88, 245, 260, demo.source);
+  rounded(ctx, 640, 382, 245, 118, 20, C.blueSoft, '#bfdbfe');
+  text(ctx, 'Customer link', 662, 405, { size: 13, weight: 800, color: C.blueDark });
+  text(ctx, demo.url, 662, 438, {
+    size: 14,
+    weight: 700,
+    color: C.ink,
+    maxWidth: 200,
+    lineHeight: 18,
+  });
+  pill(ctx, 'Current', 662, 466, {
+    fill: C.greenSoft,
+    stroke: '#bbf7d0',
+    color: '#166534',
+    size: 11,
+    padX: 9,
+    padY: 5,
+  });
+  drawPublicMenuPhone(ctx, 922, 64, 220, 540, true, { maxItems: 3 });
+  return canvas;
+}
+
 async function save(canvas, filename, type) {
   const mime = type === 'webp' ? 'image/webp' : 'image/png';
   const buffer = canvas.toBuffer(mime);
@@ -959,7 +1017,7 @@ async function main() {
   outputs.push(await save(drawSurfaceMatrix(), 'menulist-public-surfaces-matrix.webp', 'webp'));
   outputs.push(await save(drawDashboardProof(), 'menulist-analytics-proof.webp', 'webp'));
   outputs.push(await save(drawLaunchSquare(), 'menulist-launch-square.png', 'png'));
-  outputs.push(await save(drawOgImage(), 'menulist-linkedin-launch.png', 'png'));
+  outputs.push(await save(drawLinkedInLaunch(), 'menulist-linkedin-launch.png', 'png'));
 
   await fs.copyFile(
     path.join(publicDir, 'menulist-og-official-source.png'),

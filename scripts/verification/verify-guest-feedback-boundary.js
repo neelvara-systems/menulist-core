@@ -296,6 +296,7 @@ function verifyOwnerDesktopMobile() {
   const desktopCard = read('src/components/templates/main-app/feedback/FeedbackCard.tsx');
   const desktopQr = read('src/components/templates/main-app/feedback/FeedbackQrDownload.tsx');
   const desktopDiagnostics = read('src/components/templates/main-app/feedback/feedbackInboxDiagnostics.ts');
+  const replyTemplates = read('src/lib/feedback/feedbackReplyTemplates.ts');
   const mobile = read('src/components/mobile/screens/MobileFeedbackScreen.tsx');
   const mobileDetail = read('src/components/mobile/screens/MobileFeedbackDetail.tsx');
   const mobileShellVerifier = read('scripts/verification/verify-mobile-shell-route-map.js');
@@ -309,9 +310,17 @@ function verifyOwnerDesktopMobile() {
   assertIncludes(desktop, 'logFeedbackInboxFailure', 'Guest Feedback desktop bounded diagnostics');
   assertIncludes(desktopCard, 'generateWhatsAppLink', 'Guest Feedback desktop WhatsApp contact helper');
   assertIncludes(desktopCard, 'isValidWhatsAppNumber', 'Guest Feedback desktop WhatsApp validation');
+  assertIncludes(desktopCard, 'buildFeedbackReplyTemplates', 'Guest Feedback desktop reply draft helper');
+  assertIncludes(desktopCard, 'copyFeedbackReplyToClipboard', 'Guest Feedback desktop acknowledged reply copy helper');
+  assertIncludes(desktopCard, 'desktop_feedback_reply_copy_failed', 'Guest Feedback desktop reply copy diagnostic');
   assertIncludes(desktopDiagnostics, "secureError('[Feedback Inbox] Operation failed'", 'Guest Feedback desktop secure diagnostics');
   assertNotIncludes(desktop, 'console.', 'Guest Feedback desktop direct console diagnostics');
   assertNotIncludes(desktopCard, 'console.', 'Guest Feedback card direct console diagnostics');
+
+  assertIncludes(replyTemplates, 'export function buildFeedbackReplyTemplates', 'Guest Feedback deterministic reply template helper');
+  assertIncludes(replyTemplates, 'No provider send, no AI call, no Firestore read/write.', 'Guest Feedback reply template no-new-cost comment');
+  assertNotIncludes(replyTemplates, 'fetch(', 'Guest Feedback reply templates must not call providers');
+  assertNotIncludes(replyTemplates, 'firebase/firestore', 'Guest Feedback reply templates must not import Firestore');
 
   assertIncludes(desktopQr, 'copyFeedbackTextToClipboard', 'Guest Feedback desktop acknowledged copy helper');
   assertIncludes(desktopQr, "const copied = document.execCommand('copy');", 'Guest Feedback desktop copy fallback acknowledgement');
@@ -333,6 +342,8 @@ function verifyOwnerDesktopMobile() {
   assertIncludes(mobileDetail, 'assertFeedbackStatusUpdateSucceeded(', 'Guest Feedback mobile detail status acknowledgement');
   assertIncludes(mobileDetail, 'mobile_feedback_status_update_rejected', 'Guest Feedback mobile status rejection code');
   assertIncludes(mobileDetail, 'mobile_feedback_reply_save_rejected', 'Guest Feedback mobile reply rejection code');
+  assertIncludes(mobileDetail, 'buildFeedbackReplyTemplates', 'Guest Feedback mobile reply draft helper');
+  assertIncludes(mobileDetail, 'replyTemplates.map', 'Guest Feedback mobile reply draft selector');
   assertIncludes(mobileDetail, 'maxLength={500}', 'Guest Feedback mobile reply cap');
   assertNotIncludes(mobile, 'console.', 'Guest Feedback mobile direct console diagnostics');
   assertNotIncludes(mobileDetail, 'console.', 'Guest Feedback mobile detail direct console diagnostics');
@@ -348,7 +359,7 @@ function verifyDocsParity() {
   const helpdoc = read('__docs__/projects/internal-feedback-system/internal-feedback-system_helpdoc.md');
   const website = read('__docs__/projects/internal-feedback-system/internal-feedback-system_website.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     [readme, 'Guest Feedback README'],
@@ -386,7 +397,12 @@ function verifyDocsParity() {
   assertIncludes(firebase, '`.doc(data.projectId)` remains excluded', 'Guest Feedback Firebase raw project document ref exclusion');
   assertIncludes(firebase, 'guest_feedback_review_url_parse_failed', 'Guest Feedback Firebase review URL parse diagnostic boundary');
   assertIncludes(mobile, 'Mobile shell route-map source gate', 'Guest Feedback mobile route-map gate');
+  assertIncludes(mobile, 'feedbackReplyTemplates.ts', 'Guest Feedback mobile reply draft helper doc');
   assertIncludes(helpdoc, 'Private feedback', 'Guest Feedback helpdoc private feedback wording');
+  assertIncludes(helpdoc, 'Use reply drafts', 'Guest Feedback helpdoc reply drafts');
+  assertIncludes(firebase, 'Feedback reply drafts are Firebase-cost neutral', 'Guest Feedback Firebase reply draft boundary');
+  assertIncludes(readme, 'feedbackReplyTemplates.ts', 'Guest Feedback README reply template helper');
+  assertIncludes(impl, 'feedbackReplyTemplates.ts', 'Guest Feedback implementation reply template helper');
   assertIncludes(website, 'Review URL safety', 'Guest Feedback website review URL safety');
   assertIncludes(audit, 'Guest Feedback strict project ID boundary checkpoint', 'Production readiness audit Guest Feedback strict project ID checkpoint');
   assertIncludes(audit, 'whitespace-mutated', 'Production readiness audit Guest Feedback strict project ID evidence');

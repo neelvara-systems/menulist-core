@@ -1,7 +1,7 @@
 # Print Assets Implementation
 
 **Status:** Implemented
-**Last Updated:** June 21, 2026
+**Last Updated:** July 9, 2026
 
 ## Architecture
 
@@ -61,6 +61,8 @@ Mobile routes `/assets` and `/use-menulist/print-assets` map to:
 ```
 
 `MobileMoreScreen` renders `MobilePrintAssetsScreen`, which reuses `MobileShareScreen` in focused `printAssets` mode. This preserves existing mobile project selection and download handlers. Template rows open an in-shell bottom sheet with the preview already visible and separate PDF/image download actions. Individual file downloads use the shared printable renderer, matching desktop output without generating the full ZIP first unless the owner chooses Complete Menu Kit. Mobile does not expose drag/resize editing, but it uses the same editor-backed document renderer for supported single assets, including campaign flyers, gift certificates, front/back business cards, ID cards, invitations, postcards, product tags, and campaign posters. Business Card image download also downloads both front and back PNG files on mobile.
+
+The More entry label is `QR and print assets`; compatibility route names and docs can still use Print Assets for the implementation boundary.
 
 Mobile preview stays inside the same in-shell bottom sheet. It must not route to the desktop print-assets page from inside the PWA shell.
 

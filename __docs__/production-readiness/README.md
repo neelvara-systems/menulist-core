@@ -6,6 +6,8 @@
 **Source:** ChatGPT launch infra review → Cascade critical review  
 **Governance:** Constitution §13 — Operational Infrastructure Doctrine
 
+**Launch boundary:** Not current launch certification or deploy approval. This checklist records row-level source, static, platform, and setup evidence; the current launch verdict still requires External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
+
 ---
 
 ## Purpose
@@ -13,6 +15,26 @@
 Structured pre-launch verification checklist. Run through each section before onboarding real SMB users. Items marked ✅ are already confirmed. Items marked ☐ need verification.
 
 For the remaining external/runtime gates that local source checks cannot prove, use [External Certification Runbook](./external-certification-runbook.md).
+
+Status meaning: ✅ means the repository, static configuration, or documented platform capability is currently confirmed for that row. It does not override missing deploy, provider, browser/device, owner-controlled setup, or production-host evidence. When a row depends on those external conditions, the matching External Certification Runbook gate remains the launch authority.
+
+## Current External Certification Snapshot (July 9, 2026)
+
+The local source boundary is green, but this is not launch approval. `npm run verify:production-readiness-local` passes with 95/95 checks, including 91 child root `verify:*` scripts, docs links, typecheck, lint, and `git diff --check`. The following external gates still decide production certification:
+
+| Gate | Current state | External blocker |
+|------|---------------|------------------|
+| Gate 1 Firebase Functions deploy | Blocked | Scoped `menulist-qa` deploy preflight passes, then Firebase Cloud Resource Manager returns HTTP 403 before upload. |
+| Gate 2 Tenant-block mirror backfill | Blocked | Safety verifier passes, but the bounded read-only `menulist-qa` dry run cannot review the target dataset because Firebase project access returns permission denied. |
+| Gate 2A Firebase Storage rules deploy | Blocked | `npm run verify:storage-paths` passes, but scoped `menulist-qa` Storage deploy stops at Service Usage HTTP 403 before rules upload. |
+| Gate 3 True mobile/browser QA | Blocked | Authenticated owner-shell mobile QA has source harness coverage but still needs an eligible non-production owner store with active subscription or unexpired starter activation; real-device QA remains pending. |
+| Gate 4 Razorpay sandbox smoke | Partial only | Read-only test-mode provider credential auth passed; full checkout, payment verification, webhook, compensation, top-up, reseller, state-parity, and no-real-charge smoke remains pending. |
+| Gate 5 WhatsApp provider smoke | Blocked | Checked local/functions dotenv files keep messaging onboarding absent or disabled and contain no WhatsApp provider secrets; non-production Meta app, secrets, deployed webhook, registration, and target enablement remain pending. |
+| Gate 6 POS webhook provider smoke | Blocked | `npm run verify:pos-sync-boundary` passes, but controlled public HTTPS receiver, receiver-side signature verification, test delivery, publish delivery, failed-endpoint evidence, and secret-rotation proof remain pending. |
+| Gate 7 Batch image worker | Blocked | Root `.env` has project/location/queue/HTTPS worker URL but lacks `BATCH_IMAGE_GENERATION_WORKER_SECRET`; worker deploy and controlled Cloud Tasks enqueue/worker smoke remain pending. |
+| Gate 8 Production host smoke | Blocked | Vercel deploy, production-host smoke, production env verification, custom-domain routing, CDN behavior, and production Firebase access require explicit owner approval and evidence. |
+
+Do not convert this table into ✅ status until the corresponding runbook gate has pass evidence recorded in `__docs__/audits/menulist-production-readiness-audit.md`.
 
 ---
 
@@ -32,8 +54,8 @@ For the remaining external/runtime gates that local source checks cannot prove, 
 | SAFE_MODE circuit breaker verified | ☐ | Core code exists and menu extraction worker coverage is source-gated. Before launch, verify `/ops` toggle, AI route `503`, public menu/OBP unaffected, budget webhook activation, deployed worker behavior, and any newly added direct Function paths. |
 | Environment variables set in Vercel | ☐ | All secrets configured |
 | Dependency/package freeze gate passes | ✅ | `npm run verify:dependency-freeze` pins root, MenuList Functions, and Answerlattice Functions package declarations to their existing lockfile-resolved versions and blocks drift from the current runtime set. |
-| Firebase Functions deploy evidence captured | ☐ | Gate 1 in [External Certification Runbook](./external-certification-runbook.md): run `npm run verify:functions-deploy-preflight` before the scoped Firebase deploy retry. Local gates pass, but latest documented `menulist-qa` deploy attempts for the source-file path hardening subset, `processMenuImagesJob`, `menulistMaintenanceScheduler`, staleness lifecycle delivery, scheduler-hour diagnostics, Maps Place Check raw provider output, owner-notification template-output, owner-notification flag/trigger diagnostics, and legacy lifecycle event/status diagnostics completed predeploy lint/build and then failed with Cloud Resource Manager HTTP 403 caller permission. |
-| Firebase Storage rules cutover deployed | ☐ | Gate 2A in [External Certification Runbook](./external-certification-runbook.md): local gates pass, but latest `menulist-qa` deploy failed before rules upload with Service Usage HTTP 403 project access/availability blocker; production requires QA evidence and explicit production approval. |
+| Firebase Functions deploy evidence captured | ☐ | Gate 1 in [External Certification Runbook](./external-certification-runbook.md): run `npm run verify:functions-deploy-preflight` before the scoped Firebase deploy retry. Local gates pass, but the latest package-local scoped retry `npm --prefix functions run deploy:menulist-qa` targeted the current Gate 1 function set, completed predeploy lint/build, and then failed before upload with Cloud Resource Manager HTTP 403 caller permission. |
+| Firebase Storage rules cutover deployed | ☐ | Gate 2A in [External Certification Runbook](./external-certification-runbook.md): `npm run verify:storage-paths` passes, but the latest scoped `menulist-qa` deploy failed before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403 project access/availability blocker; production requires QA evidence and explicit production approval. |
 | Firestore indexes deployed | ☐ | Use `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json` after `npm run verify:env-targets` passes; production index deploy requires QA evidence and explicit production approval. |
 
 ---
@@ -213,6 +235,8 @@ Each must:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.55 | July 9, 2026 | Clarified checklist status semantics: ✅ rows confirm repo/static/platform evidence only for that row and do not override missing deploy, provider, browser/device, owner-controlled setup, or production-host evidence from the External Certification Runbook |
+| 1.54 | July 9, 2026 | Added the current external certification snapshot: local source gates pass with 95/95 checks, while Gate 1 Functions, Gate 2 backfill, Gate 2A Storage, Gate 3 mobile/browser QA, Gate 4 full Razorpay sandbox, Gate 5 WhatsApp provider setup, Gate 6 POS receiver smoke, Gate 7 batch worker secret/Cloud Tasks smoke, and Gate 8 production-host smoke remain blocked or partial until runbook evidence is recorded |
 | 1.53 | July 2, 2026 | Clarified mobile operational specs, strategy bucket-list, and Multi-Outlet AI extraction analysis: mobile screen/navigation specs are reference docs pending active audit, External Certification Runbook evidence, `verify:mobile-shell-route-map`, feature-specific mobile/source gates, owner-shell mobile QA, real-device QA where relevant, target deploy evidence, and production-host smoke; future strategy candidates are not implementation approval; Multi-Outlet AI extraction analysis remains historical pending multi-location/menu-extraction source gates, linked outlet extraction QA, provider smoke, deploy evidence where rules/functions change, and target smoke |
 | 1.52 | July 2, 2026 | Clarified PONR onboarding, Physical Surfaces, and Image Editing historical readiness labels: PONR remains historical strategy evidence pending current implementation docs, onboarding/auth/payment source gates, desktop/mobile onboarding QA, public-surface cache/deploy evidence where relevant, target deploy evidence, and production-host smoke; Physical Surfaces remains a legacy spec superseded by Menu Kit/Menu Card Export pending output and print-review evidence; Image Editing assessment grade remains historical evidence pending browser/mobile editor QA, Storage deploy evidence, provider smoke where relevant, target smoke, and External Certification Runbook evidence |
 | 1.51 | July 2, 2026 | Clarified Projects marketing collateral docs: AI Data Extraction, Upload/File Processing, Description Generation, and Multi-Language Translation marketing drafts are historical positioning evidence, not current sales, publication, or launch approval; current collateral use still requires active audit evidence, External Certification Runbook evidence, menu-extraction/agent-readiness/AI-accounting source gates as relevant, provider smoke, browser/mobile upload/extraction/editor/translated-output QA, Storage/deploy evidence, production-host smoke, and release-specific evidence for numeric claims |

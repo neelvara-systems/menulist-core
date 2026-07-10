@@ -280,6 +280,7 @@ const ACTIVE_TOOL_DOC_DIRS = [
 const CURRENT_DOC_DATE = 'July 4, 2026';
 const DOC_DATE_OVERRIDES = {
   '__docs__/menulist-tools/shareable-tool-reports': 'July 5, 2026',
+  '__docs__/menulist-tools/tools-hub': 'July 9, 2026',
   '__docs__/menulist-tools/whatsapp-action-link-check': 'July 5, 2026',
 };
 

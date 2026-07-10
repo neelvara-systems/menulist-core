@@ -45,7 +45,7 @@ Applied changes:
 
 Verification completed in this pass:
 
-- `git diff --check -- src/app/sites/neelvara src/app/sites/neelvara/[...missing]/route.ts __docs__/neelvara-main-website __docs__/CHANGELOG.md public/fonts/neelvara`: pass.
+- `git diff --check -- src/app/sites/neelvara src/app/sites/neelvara/[...missing]/route.ts __docs__/neelvara-main-website __docs__/changelog.md public/fonts/neelvara`: pass.
 - Runtime font-family scan: pass for Neelvara source and active website docs; the old Instrument Serif, JetBrains Mono, Georgia, and Google Fonts runtime stack is not present in Neelvara runtime source.
 - Font asset validation: pass; `public/fonts/neelvara/akshar-300.ttf`, `akshar-400.ttf`, `akshar-500.ttf`, `akshar-600.ttf`, and `akshar-700.ttf` are valid TrueType files and served locally as `font/ttf`.
 - `npm run lint -- --dir src/app/sites/neelvara --file src/app/layout.tsx --file src/middleware.ts`: pass.
@@ -74,7 +74,7 @@ Verification completed in this pass:
 
 - `npm run lint -- --dir src/app/sites/neelvara --file src/app/layout.tsx --file src/middleware.ts`: pass.
 - `npx tsc --noEmit --incremental false --pretty false`: pass.
-- `git diff --check -- src/app/sites/neelvara src/app/layout.tsx src/constants/neelvara __docs__/neelvara-main-website __docs__/CHANGELOG.md public/neelvara*`: pass.
+- `git diff --check -- src/app/sites/neelvara src/app/layout.tsx src/constants/neelvara __docs__/neelvara-main-website __docs__/changelog.md public/neelvara*`: pass.
 - Old saturated-gradient color scan over Neelvara runtime, logo SVGs, and website docs: pass; no `#1457D9`, `#2384FF`, `#2737C8`, or `#6542E8` remnants were found.
 - Taste hard-tell scan over Neelvara runtime: pass for visible em-dashes/en-dashes, numbered eyebrows, Acme/Lorem/Oops placeholder copy, startup cliches, old saturated colors, `100vh`, and cookie/storage banner strings.
 - Local route smoke through `http://127.0.0.1:3000`: Home, Products, Contact, About, Legal, Privacy, Terms return `200`; missing route returns `404`.
@@ -104,7 +104,7 @@ Verification completed in this pass:
 - `npm run lint -- --dir src/app/sites/neelvara --file src/app/layout.tsx --file src/middleware.ts`: pass.
 - `npx tsc --noEmit --incremental false --pretty false`: pass.
 - `node scripts/verification/verify-agent-readiness.js --env-targets-only`: pass.
-- `git diff --check -- src/app/sites/neelvara src/app/layout.tsx src/constants/neelvara __docs__/neelvara-main-website __docs__/CHANGELOG.md public/neelvara*`: pass.
+- `git diff --check -- src/app/sites/neelvara src/app/layout.tsx src/constants/neelvara __docs__/neelvara-main-website __docs__/changelog.md public/neelvara*`: pass.
 - HTTP smoke through `http://localhost:3000` for `/__neelvara`, `/__neelvara/`, `/__neelvara/home`, Products, About, Contact, Legal, Privacy, Terms, robots, sitemap, security.txt, and a missing route: pass.
 - CSS delivery smoke: `/_next/static/css/app/layout.css` returns `200` and contains `.neelvara-site`, `.nv-page-prism`, and `.nv-marquee`.
 - Logo-gradient smoke: Neelvara source, rendered Home/Products/404 HTML, and emitted CSS contain the logo palette and no `#1457D9`, `#2384FF`, `#2737C8`, or `#6542E8` gradient/color-chip remnants.
@@ -460,7 +460,7 @@ Current Chrome DevTools Protocol checks passed for `/legal`, `/privacy`, `/terms
 ## Validation Commands
 
 ```bash
-git diff --check -- src/app/sites/neelvara src/app/layout.tsx src/constants/neelvara __docs__/neelvara-main-website __docs__/CHANGELOG.md public/neelvara*
+git diff --check -- src/app/sites/neelvara src/app/layout.tsx src/constants/neelvara __docs__/neelvara-main-website __docs__/changelog.md public/neelvara*
 npx tsc --noEmit --incremental false --pretty false
 npm run lint -- --dir src/app/sites/neelvara --file src/app/layout.tsx --file src/middleware.ts
 node scripts/verification/verify-agent-readiness.js --env-targets-only

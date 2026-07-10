@@ -3,6 +3,8 @@
 **Last Updated:** July 2, 2026
 **Current Source Contract:** Working-hours status and time-slot presets are implemented from existing store/project truth. Holiday calendars and exception managers are not shipped runtime.
 
+> **Launch boundary:** Not current launch certification or deploy approval. This README is source-gated working-hours and time-slot evidence only; Hours release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, and production-host smoke.
+
 ## Source Gate
 
 - Local source gate: `npm run verify:working-hours-boundary`

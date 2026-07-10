@@ -6,10 +6,11 @@ The monitor is platform-only and manual-refresh. It reads precomputed sources:
 
 - `platformSummary/founderMonitorSnapshot`: 1 document
 - `platformSummary/founderMonitorRevenue`: 1 document
+- `platformSummary/founderMonitorGrowth`: 1 document
 - `platformSummary/founderMonitorRevenueDaily_YYYY-MM-DD`: 1 document per selected day
 - `founderRevenueMovements`: capped at 40 documents
 
-Worst-case manual refresh budget: 2 summary reads, up to 90 daily summary reads, and 40 capped movement reads. There are no listeners and no hot-path platform collection fan-out from the API.
+Worst-case manual refresh budget: 3 summary reads, up to 90 daily summary reads, and 40 capped movement reads. There are no listeners and no hot-path platform collection fan-out from the API.
 
 ## Writes
 
@@ -21,6 +22,9 @@ Revenue runtime writes:
 - `founderOnboardingTransitions/{storeId}`: seeded with `paymentAt` on new MRR movement when a store ID is present.
 - `platformSummary/founderMonitorRevenue`: live summary counters updated by the same transaction.
 - `platformSummary/founderMonitorRevenueDaily_YYYY-MM-DD`: daily summary counters updated by the same transaction.
+- `publicMenuDrafts/{draftId}.growthTelemetry` plus `platformSummary/founderMonitorGrowth`: one temporary marker update and one counter merge for each allowlisted attributed draft/claim. Existing 24-hour draft cleanup removes the marker.
+
+Structured cancellation reason counters are nested fields in the existing founder revenue summary writes. They do not add a read, write, collection, query, index, listener, or scheduled function beyond the existing first accepted churn movement.
 
 Scheduler writes every 30 minutes from the 30-minute `menulistMaintenanceScheduler` task `founder_monitor_snapshot`:
 

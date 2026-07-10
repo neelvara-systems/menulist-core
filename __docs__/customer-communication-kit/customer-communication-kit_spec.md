@@ -167,6 +167,21 @@ Please share this link with any customer who asks for the {offering}.
 This link always shows the latest version.
 ```
 
+### Template 7: Staff Daily Replies
+
+**Use case:** Owner gives staff one current handoff for menu, address, and hours questions.
+
+```
+Team - customer replies for today
+
+{offering_title}: {menu_link}
+Address: {address}
+Hours today: {today_hours}
+
+When a customer asks for the {offering}, send the link above.
+Use the same details in calls, WhatsApp, and counter replies.
+```
+
 ---
 
 ## 6. Data Sources

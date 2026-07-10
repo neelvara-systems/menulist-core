@@ -1,0 +1,29 @@
+{
+  "slot": "answerlattice.home.section.authority-transfer",
+  "title": "Answerlattice Authority Transfer",
+  "durationSeconds": 6,
+  "dimensions": {
+    "width": 1280,
+    "height": 720
+  },
+  "dataPolicy": "Synthetic demo data only. No real customer, tenant, ticket, review, or private business data.",
+  "renderPolicy": "Local HyperFrames plus FFmpeg. No cloud video renderer required.",
+  "shots": [
+    {
+      "time": "0.0-1.2",
+      "beat": "Incoming questions enter as unresolved support demand."
+    },
+    {
+      "time": "1.2-3.0",
+      "beat": "Review steps map each question to a product surface and approved wording."
+    },
+    {
+      "time": "3.0-4.8",
+      "beat": "Reviewed answers become hosted help and widget-safe support knowledge."
+    },
+    {
+      "time": "4.8-6.0",
+      "beat": "The loop ends with governance state, version, and citation visible."
+    }
+  ]
+}

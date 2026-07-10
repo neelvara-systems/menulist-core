@@ -5,6 +5,8 @@
 **Last Audit:** July 2, 2026 (dedicated `npm run verify:digital-screens-boundary` source gate added for screen-token route, public-safe listener mirror, seen-signal cheap-fail ordering, screen cache invalidation touches, owner copy/open acknowledgement guards, and docs parity)
 **Applies:** 3-Year Architecture Freeze Rule
 
+> **Launch boundary:** Not current launch certification or deploy approval. This implementation document records source-gated Digital Screens runtime evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:digital-screens-boundary`, browser TV smoke for Menu Board and Highlights modes, authenticated desktop/mobile owner settings QA, physical-device TV/tablet/browser QA, target Firebase deploy evidence where rules, indexes, Storage, or Functions change, target Vercel deploy evidence where app routes or display clients change, and production-host smoke for the target tenant and screen URL.
+
 ---
 
 ## Architecture Overview

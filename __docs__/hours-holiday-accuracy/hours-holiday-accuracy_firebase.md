@@ -5,6 +5,8 @@
 **Last Updated:** July 2, 2026
 **Priority:** LOW — Reads existing store data. No new collections or writes.
 
+> **Launch boundary:** Not current launch certification or deploy approval. This Firebase cost doc is source-gated working-hours and time-slot cost evidence only; Hours release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, and production-host smoke.
+
 ---
 
 ## Source Gate

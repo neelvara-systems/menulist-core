@@ -257,15 +257,15 @@ match /publicMenuDrafts/{draftId}/{fileName} {
 
 ## 8. Physical Claim Print Pilot Notes
 
-The current `/create-menu` route can receive print-driven traffic with UTM parameters at no additional Firestore cost beyond the existing Public Menu Entry journey.
+The current `/create-menu` route accepts allowlisted attribution combinations. An attributed new draft adds one temporary idempotency-marker update on the existing 24-hour draft and one merge to `platformSummary/founderMonitorGrowth`; claim adds the same two-write pattern once. Unattributed traffic adds no growth write, and no permanent growth-event collection is created.
 
 Example interim pilot URL:
 
 ```text
-/create-menu?utm_source=print&utm_medium=postcard&utm_campaign=pilot
+/create-menu?utm_source=physical_partner&utm_medium=partner_handoff&utm_campaign=bengaluru_pilot_2026
 ```
 
-Offer/no-offer print variants can add `utm_content=offer` or `utm_content=no_offer`. Public menu and OBP analytics persist this as a bounded `viewsByContent.{variant}` counter on existing view writes, so there is no additional write operation.
+The first founder-led cohort uses `/create-menu?utm_source=founder_pilot&utm_medium=manual_handoff&utm_campaign=bengaluru_pilot_2026`. Arbitrary sources, per-customer identifiers, and `utm_content` are not persisted by this growth contract.
 
 Unsupported in the current implementation:
 

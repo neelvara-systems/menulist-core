@@ -315,7 +315,7 @@ function verifyPlatformEntityBlocksBoundary() {
     mobilePlatformInternal: read('src/components/mobile/screens/MobilePlatformInternalScreen.tsx'),
     opsDoc: read('__docs__/ops-control-room/ops-control-room_impl.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
-    changelog: read('__docs__/CHANGELOG.md'),
+    changelog: read('__docs__/changelog.md'),
     lowercaseChangelog: read('__docs__/changelog.md'),
   };
 

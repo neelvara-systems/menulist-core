@@ -346,6 +346,13 @@
   gap: 14px;
 }
 
+.readOnlyFieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
 .panelWide {
   grid-column: 1 / -1;
   border: 1px solid #d8dedb;

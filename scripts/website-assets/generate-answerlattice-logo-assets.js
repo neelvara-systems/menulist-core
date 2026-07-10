@@ -47,6 +47,73 @@ async function renderSvgBuffer(svgBuffer, width, height, background) {
   return canvas.toBuffer('image/png');
 }
 
+async function renderOgBuffer(sourceBuffer) {
+  const width = 1200;
+  const height = 630;
+  const canvas = createCanvas(width, height);
+  const context = canvas.getContext('2d');
+
+  context.fillStyle = '#070714';
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = 'rgba(94, 234, 212, 0.12)';
+  for (let y = 6; y < height; y += 64) {
+    for (let x = 6; x < width; x += 64) {
+      context.beginPath();
+      context.arc(x, y, 2, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+
+  const rightGlow = context.createRadialGradient(978, 116, 0, 978, 116, 258);
+  rightGlow.addColorStop(0, 'rgba(6, 78, 59, 0.56)');
+  rightGlow.addColorStop(1, 'rgba(6, 78, 59, 0)');
+  context.fillStyle = rightGlow;
+  context.fillRect(720, 0, 480, 374);
+
+  const leftGlow = context.createRadialGradient(170, 535, 0, 170, 535, 220);
+  leftGlow.addColorStop(0, 'rgba(15, 118, 110, 0.24)');
+  leftGlow.addColorStop(1, 'rgba(15, 118, 110, 0)');
+  context.fillStyle = leftGlow;
+  context.fillRect(0, 315, 390, 315);
+
+  const logo = await loadImage(sourceBuffer);
+  const logoPlacement = fitContain(150, 93, logo.width || SVG_WIDTH, logo.height || SVG_HEIGHT);
+  context.drawImage(logo, 82 + logoPlacement.x, 82 + logoPlacement.y, logoPlacement.width, logoPlacement.height);
+
+  const titleGradient = context.createLinearGradient(82, 0, 650, 0);
+  titleGradient.addColorStop(0, '#ffffff');
+  titleGradient.addColorStop(0.52, '#ccfbf1');
+  titleGradient.addColorStop(1, '#5eead4');
+
+  context.textBaseline = 'alphabetic';
+  context.fillStyle = titleGradient;
+  context.font = '800 78px Arial, Helvetica, sans-serif';
+  context.fillText('Answerlattice', 82, 245);
+
+  context.fillStyle = '#ffffff';
+  context.font = '700 56px Arial, Helvetica, sans-serif';
+  context.fillText('Page-aware support', 82, 330);
+  context.fillText('knowledge for SaaS', 82, 394);
+
+  context.fillStyle = '#a0a0c0';
+  context.font = '400 30px Arial, Helvetica, sans-serif';
+  context.fillText('Correct, approved answers connected to the product screen.', 82, 472);
+
+  context.strokeStyle = 'rgba(255, 255, 255, 0.09)';
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(82, 555);
+  context.lineTo(1118, 555);
+  context.stroke();
+
+  context.fillStyle = '#5eead4';
+  context.font = '800 24px Arial, Helvetica, sans-serif';
+  context.fillText('answerlattice.com', 82, 590);
+
+  return canvas.toBuffer('image/png');
+}
+
 function writePng(relativePath, buffer) {
   const fullPath = outputPath(relativePath);
   fs.mkdirSync(path.dirname(fullPath), { recursive: true });
@@ -116,7 +183,7 @@ async function main() {
   }
 
   const refreshedOgSvg = refreshOgSvg(sourceSvg);
-  writePng('public/answerlattice-og-image.png', await renderSvgBuffer(Buffer.from(refreshedOgSvg), 1200, 630, '#070714'));
+  writePng('public/answerlattice-og-image.png', await renderOgBuffer(sourceBuffer));
 }
 
 main().catch((error) => {

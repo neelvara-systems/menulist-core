@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
-import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, CHARGE_PER_IMAGEN_IMAGE, TOKENS_PER_CREDIT, TOKENS_PER_IMAGEN_IMAGE } from "@constant/common";
+import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { PERMISSIONS } from "@constant/permissions";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
@@ -181,7 +181,6 @@ export const POST = withAuth(async (request, session) => {
         const startTime = new Date().getTime();
 
         const promptRun = await runImageGenerationPrompts({
-            aiModel: AI_MODEL,
             generationConfig,
             logFile: LOG_FILE,
             prompts: promptsToExecute,
@@ -229,26 +228,18 @@ export const POST = withAuth(async (request, session) => {
         };
 
         if (generatedImagesResponse?.length > 0) {
+            generatedImagesResponse.forEach((response) => {
+                const usageMetadata = response.usageMetadata;
+                if (usageMetadata) {
+                    transactionObject.promptTokenCount += usageMetadata.promptTokenCount || 0;
+                    transactionObject.candidatesTokenCount += usageMetadata.candidatesTokenCount || 0;
+                    transactionObject.totalTokenCount += usageMetadata.totalTokenCount || 0;
+                }
+            });
 
-            if (AI_MODEL === "GEMINI") {
-                // Process Gemini usage metadata
-                generatedImagesResponse.forEach((response) => {
-                    const usageMetadata = 'usageMetadata' in response ? response.usageMetadata : undefined;
-                    if (usageMetadata) {
-                        transactionObject.promptTokenCount += usageMetadata.promptTokenCount || 0;
-                        transactionObject.candidatesTokenCount += usageMetadata.candidatesTokenCount || 0;
-                        transactionObject.totalTokenCount += usageMetadata.totalTokenCount || 0;
-                    }
-                });
-
-                // Calculate total credits and charge based on cumulative tokens
-                transactionObject.totalCredits = transactionObject.totalTokenCount / TOKENS_PER_CREDIT;
-                transactionObject.totalCharge = CHARGE_PER_CREDIT * transactionObject.totalCredits; // in paise
-            } else {
-                const generatedImageCount = genratedImages.length;
-                transactionObject.totalCredits = generatedImageCount * TOKENS_PER_IMAGEN_IMAGE;
-                transactionObject.totalCharge = CHARGE_PER_IMAGEN_IMAGE * transactionObject.totalCredits;
-            }
+            // Calculate total credits and charge based on cumulative Gemini tokens.
+            transactionObject.totalCredits = transactionObject.totalTokenCount / TOKENS_PER_CREDIT;
+            transactionObject.totalCharge = CHARGE_PER_CREDIT * transactionObject.totalCredits; // in paise
 
             const billableImageCount = Math.max(genratedImages.length, promptRun.promptCount, 1);
             const realCostPaise = getRealCostPaise(AI_ACTIONS_TYPES.IMAGE_GENERATION) * billableImageCount;

@@ -2,9 +2,11 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Public Website Content  
-**Status:** Source-backed website draft; publish/use with current Customer App runtime boundary
+**Status:** Source-backed website draft; not current publication or launch certification
 **Last Updated:** July 4, 2026
 **Audience:** Potential customers visiting menulist.ai
+
+> **Launch Boundary:** This website draft is source evidence only. Current publication or release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:customer-app-pwa`, browser/device Customer App QA, approved live evidence for metrics or quotes, target deploy evidence, and production-host smoke.
 
 ---
 

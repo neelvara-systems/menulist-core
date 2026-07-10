@@ -1,11 +1,14 @@
 'use client';
 
+import { DEFAULT_DARK_COLOR, DEFAULT_LIGHT_COLOR } from '@constant/common';
 import { NAVIGARIONS_ROUTINGS } from '@constant/navigations';
+import { useAppSelector } from '@hook/useAppSelector';
 import { logAuthFailure } from '@lib/auth/authDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { signOutSession } from '@lib/auth/client';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
-import { Button, Flex, Modal, Typography } from 'antd';
+import { getDarkColorState, getDarkModeState, getLightColorState } from '@reduxSlices/clientThemeConfig';
+import { Button, ConfigProvider, Flex, Modal, theme, Typography } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -26,6 +29,19 @@ type AccessStatusResponse = {
     valid?: boolean;
     reason?: unknown;
     message?: unknown;
+};
+type SessionExpiryModalMode = 'expired' | 'access-ended';
+
+type AccessEndedCopy = {
+    description: string;
+    title: string;
+};
+
+type SessionExpiryDialogProps = {
+    accessEndedCopy: AccessEndedCopy;
+    modalMode: SessionExpiryModalMode;
+    onGoToLogin: () => void;
+    open: boolean;
 };
 
 const getAccessStatusReason = (value: unknown, fallback: string): string => (
@@ -93,6 +109,76 @@ const getAccessEndedCopy = (reason?: string) => {
     };
 };
 
+function SessionExpiryDialog({
+    accessEndedCopy,
+    modalMode,
+    onGoToLogin,
+    open,
+}: SessionExpiryDialogProps) {
+    const { token } = theme.useToken();
+    const isAccessEnded = modalMode === 'access-ended';
+    const Icon = isAccessEnded ? LuShield : LuClock;
+    const iconColor = isAccessEnded ? token.colorError : token.colorWarning;
+
+    return (
+        <Modal
+            open={open}
+            onCancel={onGoToLogin}
+            closable={false}
+            maskClosable={false}
+            centered
+            width={520}
+            style={{ maxWidth: 'calc(100vw - 32px)' }}
+            styles={{
+                content: {
+                    background: token.colorBgElevated,
+                    border: `1px solid ${token.colorBorderSecondary}`,
+                    boxShadow: token.boxShadowSecondary,
+                },
+                body: {
+                    background: token.colorBgElevated,
+                    padding: '28px 24px 18px',
+                },
+                footer: {
+                    background: token.colorBgElevated,
+                    borderTop: 0,
+                    marginTop: 0,
+                    padding: '0 24px 24px',
+                },
+                mask: {
+                    backdropFilter: 'blur(2px)',
+                },
+            }}
+            footer={[
+                <Button
+                    key="login"
+                    type="primary"
+                    icon={<LuLogOut />}
+                    onClick={onGoToLogin}
+                    size="large"
+                >
+                    Go to Login
+                </Button>
+            ]}
+        >
+            <Flex vertical gap={16} align="center" style={{ padding: '4px 0 10px', textAlign: 'center' }}>
+                <Icon size={48} style={{ color: iconColor }} aria-hidden="true" />
+                <Title level={3} style={{ color: token.colorText, lineHeight: 1.2, margin: 0 }}>
+                    {isAccessEnded ? accessEndedCopy.title : 'Session Expired'}
+                </Title>
+                <Flex vertical gap={8} align="center">
+                    <Text type="secondary" style={{ fontSize: 15, textAlign: 'center' }}>
+                        {isAccessEnded ? accessEndedCopy.description : 'Your session has expired for security reasons.'}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 14, textAlign: 'center' }}>
+                        Please log in again to continue.
+                    </Text>
+                </Flex>
+            </Flex>
+        </Modal>
+    );
+}
+
 /**
  * SessionExpiryMonitor Component
  * 
@@ -115,8 +201,11 @@ export default function SessionExpiryMonitor() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const [showExpiryModal, setShowExpiryModal] = useState(false);
-    const [modalMode, setModalMode] = useState<'expired' | 'access-ended'>('expired');
+    const [modalMode, setModalMode] = useState<SessionExpiryModalMode>('expired');
     const [accessEndedReason, setAccessEndedReason] = useState<string | undefined>();
+    const isDarkMode = useAppSelector(getDarkModeState);
+    const darkThemeColor = useAppSelector(getDarkColorState);
+    const lightThemeColor = useAppSelector(getLightColorState);
     const hasShownModal = useRef(false);
     const wasAuthenticated = useRef(false);
     const accessCheckInFlight = useRef(false);
@@ -282,42 +371,27 @@ export default function SessionExpiryMonitor() {
     };
 
     const accessEndedCopy = getAccessEndedCopy(accessEndedReason);
+    const primaryColor = isDarkMode
+        ? darkThemeColor || DEFAULT_DARK_COLOR
+        : lightThemeColor || DEFAULT_LIGHT_COLOR;
 
     return (
-        <Modal
-            open={showExpiryModal}
-            onCancel={handleGoToLogin}
-            closable={false}
-            maskClosable={false}
-            centered
-            footer={[
-                <Button
-                    key="login"
-                    type="primary"
-                    icon={<LuLogOut />}
-                    onClick={handleGoToLogin}
-                    size="large"
-                >
-                    Go to Login
-                </Button>
-            ]}
+        <ConfigProvider
+            theme={{
+                algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                token: {
+                    borderRadius: 8,
+                    colorPrimary: primaryColor,
+                    fontSize: 13,
+                },
+            }}
         >
-            <Flex vertical gap={16} align="center" style={{ padding: '20px 0' }}>
-                {modalMode === 'access-ended'
-                    ? <LuShield size={48} style={{ color: '#dc2626' }} />
-                    : <LuClock size={48} style={{ color: '#faad14' }} />}
-                <Title level={3} style={{ margin: 0 }}>
-                    {modalMode === 'access-ended' ? accessEndedCopy.title : 'Session Expired'}
-                </Title>
-                <Flex vertical gap={8} align="center">
-                    <Text type="secondary" style={{ textAlign: 'center', fontSize: 15 }}>
-                        {modalMode === 'access-ended' ? accessEndedCopy.description : 'Your session has expired for security reasons.'}
-                    </Text>
-                    <Text type="secondary" style={{ textAlign: 'center', fontSize: 14 }}>
-                        Please log in again to continue.
-                    </Text>
-                </Flex>
-            </Flex>
-        </Modal>
+            <SessionExpiryDialog
+                accessEndedCopy={accessEndedCopy}
+                modalMode={modalMode}
+                onGoToLogin={handleGoToLogin}
+                open={showExpiryModal}
+            />
+        </ConfigProvider>
     );
 }

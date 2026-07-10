@@ -25,6 +25,12 @@ function assertNotIncludes(content, needle, label) {
   assert(!content.includes(needle), `${label} must not include ${needle}`);
 }
 
+function assertDocsNotInclude(relPaths, needle, label) {
+  for (const relPath of relPaths) {
+    assertNotIncludes(read(relPath), needle, `${label} (${relPath})`);
+  }
+}
+
 function assertSameSet(actual, expected, label) {
   const actualSet = new Set(actual);
   const expectedSet = new Set(expected);
@@ -238,13 +244,20 @@ for (const locale of [enUS, hiIN]) {
 
 assertIncludes(readmeDoc, '## Version Ladder', 'Tools Hub README');
 assertIncludes(specDoc, 'The hub is an index, not a report runner', 'Tools Hub spec boundary');
+assertIncludes(specDoc, `All ${TOOL_ROUTES.length} current public tool routes are visible.`, 'Tools Hub spec current route count');
 assertIncludes(implDoc, 'No report builder, API route, Firebase read/write, provider call, crawler, upload, or contact handoff is added', 'Tools Hub implementation boundary');
+assertIncludes(implDoc, `expected ${TOOL_ROUTES.length} public routes`, 'Tools Hub implementation current route count');
+assertIncludes(implDoc, `all ${TOOL_ROUTES.length} current tool routes are listed`, 'Tools Hub verification current route count');
 assertIncludes(firebaseDoc, 'Firestore reads | 0', 'Tools Hub Firebase reads boundary');
 assertIncludes(firebaseDoc, 'External URL fetches | 0', 'Tools Hub external fetch boundary');
 assertIncludes(firebaseDoc, 'AI/provider calls | 0', 'Tools Hub provider boundary');
 assertIncludes(mobileDoc, 'The public hub is responsive website UI only', 'Tools Hub mobile boundary');
 assertIncludes(testCasesDoc, 'TH-001', 'Tools Hub test cases');
+assertIncludes(testCasesDoc, `All ${TOOL_ROUTES.length} current public tool routes are present`, 'Tools Hub test cases current route count');
 assertIncludes(validationDoc, 'npm run verify:tools-hub', 'Tools Hub validation source gate');
+assertDocsNotInclude(REQUIRED_DOCS, 'All 13 current public tool routes', 'Tools Hub active docs stale 13-route count');
+assertDocsNotInclude(REQUIRED_DOCS, 'expected sixteen public routes', 'Tools Hub active docs stale sixteen-route count');
+assertDocsNotInclude(REQUIRED_DOCS, 'all 16 current tool routes', 'Tools Hub active docs stale 16-route count');
 assertIncludes(toolsReadmeDoc, '[tools-hub](./tools-hub/README.md)', 'MenuList Tools README link');
 assertIncludes(familyReadmeDoc, '/tools', 'Public Truth Tools family hub route');
 assertIncludes(familyImplDoc, 'Tools Hub', 'Public Truth Tools implementation hub note');

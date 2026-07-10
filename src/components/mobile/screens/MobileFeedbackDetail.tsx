@@ -1,11 +1,12 @@
 'use client'
 
 import { assertFeedbackStatusUpdateSucceeded, updateFeedbackStatus } from '@database/guestFeedback';
+import { buildFeedbackReplyTemplates } from '@lib/feedback/feedbackReplyTemplates';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useContext, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import { LuCheck, LuMail, LuPhone, LuStar } from 'react-icons/lu';
 import { Button, Card, Flex, NavBar, Tag, Text, TextArea, Title, Toast } from '../antd';
 import type { MobileFeedbackItemType } from '../types';
@@ -28,6 +29,11 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [replyText, setReplyText] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const replyTemplates = useMemo(() => buildFeedbackReplyTemplates({
+        customerName: feedback.customerName,
+        rating: feedback.rating,
+        storeName: storeDetails?.name,
+    }), [feedback.customerName, feedback.rating, storeDetails?.name]);
 
     const getFeedbackWriteLogContext = (nextStatus: 'new' | 'resolved', replyLength?: number) => ({
         ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
@@ -172,6 +178,22 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                             <Flex gap={4} vertical>
                                 <Title level={5} style={{ margin: 0 }}>{t('reply')}</Title>
                                 <Text type="secondary">{t('replyHint')}</Text>
+                            </Flex>
+                            <Flex gap={8} vertical>
+                                <Text strong>{t('replyDrafts')}</Text>
+                                <Flex gap={8} wrap="wrap">
+                                    {replyTemplates.map((replyTemplate) => (
+                                        <Button
+                                            fill={replyText === replyTemplate.message ? 'solid' : 'outline'}
+                                            key={replyTemplate.id}
+                                            onClick={() => setReplyText(replyTemplate.message)}
+                                            size="small"
+                                            style={{ minHeight: 44 }}
+                                        >
+                                            {replyTemplate.title}
+                                        </Button>
+                                    ))}
+                                </Flex>
                             </Flex>
                             <TextArea
                                 maxLength={500}

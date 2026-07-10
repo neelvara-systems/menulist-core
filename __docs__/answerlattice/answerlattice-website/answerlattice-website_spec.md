@@ -225,7 +225,7 @@ Stability:
 - The Public API remains secondary/account-gated unless enabled for the account.
 
 ### 4A. Integrations (`/integrations`)
-**Goal:** Explain the production-ready workflow notification path without turning AnswerLattice into a broad integration marketplace.
+**Goal:** Explain the implemented Slack/email workflow notification path without turning AnswerLattice into a broad integration marketplace or implying broad adapter certification.
 
 **Sections:**
 - Slack alerts

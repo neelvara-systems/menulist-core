@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import AnswerlatticeFooter from '../../components/Footer';
 import AnswerlatticeHeader from '../../components/Header';
 import ProductCapabilityLandingPage from '../../components/ProductCapabilityLandingPage';
+import { ANSWERLATTICE_PAGE_AWARE_WIDGET_MOTION } from '../../answerlatticeWebsiteAssets';
 import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
@@ -56,6 +57,8 @@ export default function PageAwareWidgetProductPage() {
                     { title: 'Enable prompts where useful', description: 'Use active triggers for pages that benefit from proactive help; inactive workspaces skip those calls.' },
                     { title: 'Review gaps', description: 'Use fallback and feedback signals to improve approved answers, owner FAQs, and source articles over time.' },
                 ]}
+                motionAsset={ANSWERLATTICE_PAGE_AWARE_WIDGET_MOTION}
+                motionAssetSlotId="answerlattice.product.page-aware-widget.clip"
             />
             <AnswerlatticeFooter basePath={basePath} />
         </>

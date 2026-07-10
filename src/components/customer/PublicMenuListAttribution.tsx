@@ -1,4 +1,8 @@
 import { getPublicBaseUrl } from '@constant/urls';
+import {
+    PUBLIC_SURFACE_GROWTH_ATTRIBUTION,
+    appendGrowthAcquisitionToUrl,
+} from '@lib/growth/acquisitionAttribution';
 import { resolveMenuListAttributionPolicy } from '@lib/platform/menuListBranding';
 import type { CSSProperties } from 'react';
 
@@ -73,8 +77,11 @@ export default function PublicMenuListAttribution({
     const isCompact = mode === 'compact';
     const markHeight = isCompact ? 12 : 14;
     const appUrl = getPublicBaseUrl();
-    const poweredByHref = appUrl;
-    const ctaHref = `${appUrl}/create-menu`;
+    const poweredByHref = appendGrowthAcquisitionToUrl(
+        `${appUrl}/create-menu`,
+        PUBLIC_SURFACE_GROWTH_ATTRIBUTION,
+    );
+    const ctaHref = poweredByHref;
 
     return (
         <div
@@ -105,7 +112,7 @@ export default function PublicMenuListAttribution({
                     margin: 0,
                     textDecoration: 'none',
                 }}
-                aria-label="Open MenuList app"
+                aria-label="Create an official customer link with MenuList"
             >
                 <MenuListLogoMark height={markHeight} />
                 <span>{surfaceLabel}{rightsLabel ? `. ${rightsLabel}` : ''}</span>

@@ -1,6 +1,6 @@
 import AnswerlatticeLink from './AnswerlatticeLink';
-import AnswerlatticeAssetImage from './AnswerlatticeAssetImage';
-import { ANSWERLATTICE_HOME_HERO_ASSET } from '../answerlatticeWebsiteAssets';
+import AnswerlatticeMotionAsset from './AnswerlatticeMotionAsset';
+import { ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION } from '../answerlatticeWebsiteAssets';
 import {
     LuArrowRight,
     LuFileInput,
@@ -82,10 +82,10 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                 </div>
 
                 <article className="relative mx-auto min-w-0 w-full max-w-full rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:max-w-2xl lg:max-w-none" aria-label="Sample AnswerLattice workspace preview">
-                    <AnswerlatticeAssetImage
-                        asset={ANSWERLATTICE_HOME_HERO_ASSET}
-                        assetSlotId="home.hero.product-loop"
-                        assetRole="shared-hero-product-scene"
+                    <AnswerlatticeMotionAsset
+                        asset={ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION}
+                        assetSlotId="answerlattice.home.hero.support-control-motion"
+                        assetRole="home-hero-support-control-motion"
                         priority
                         className="rounded-[1.5rem] border border-white/[0.08]"
                     />

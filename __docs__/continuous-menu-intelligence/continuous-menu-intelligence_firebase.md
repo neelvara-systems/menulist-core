@@ -5,6 +5,8 @@
 **Last Updated:** June 11, 2026
 **Priority:** HIGH — Unified scheduler reads project data and compact analytics snapshots, then writes Decision Blocks and Menu Intelligence.
 
+> **Launch boundary:** Not current launch certification or deploy approval. This Firebase cost doc is source-gated scheduler/cost evidence only; CMI release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped Functions deploy evidence for `computeDecisionBlocksScores` and related scheduler triggers, runtime/provider smoke where relevant, downstream consumer certification, and production-host smoke.
+
 > Autonomous action observations are computed and logged, but MenuList uses CMI as an observation and priority layer. Optimization actions remain GrowthOS-deferred.
 
 ---

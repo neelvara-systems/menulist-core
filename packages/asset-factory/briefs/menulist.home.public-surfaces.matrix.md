@@ -1,8 +1,8 @@
 # Asset Brief - menulist.home.public-surfaces.matrix
 
-**Generated:** 2026-05-31
+**Generated:** 2026-07-10
 **Brand:** menulist
-**Status:** generated
+**Status:** approved
 **Approval:** automatic
 **Autonomy level:** 2
 **Output file:** packages/asset-factory/briefs/menulist.home.public-surfaces.matrix.md

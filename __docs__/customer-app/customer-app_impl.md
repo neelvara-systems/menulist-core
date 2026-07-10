@@ -6,6 +6,8 @@
 **Last Updated:** June 30, 2026
 **Audience:** Engineers, Technical Leads
 
+**Launch boundary:** Not current launch certification or deploy approval. This implementation contract is source-gated runtime evidence; Customer App release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:customer-app-pwa`, real browser/device Customer App QA, target deploy evidence where relevant, and production-host smoke.
+
 ---
 
 ## Validation Note

@@ -3,7 +3,13 @@
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Production-audited
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** July 2, 2026
+**Last Updated:** July 10, 2026
+
+## Growth Attribution Boundary
+
+`/create-menu` accepts only the fixed source/medium/campaign combinations defined in `src/lib/growth/acquisitionAttribution.ts`. Supported values survive sign-in and are stored on new drafts, claimed projects, and newly-created tenant/store records. Reused drafts keep their original first-touch attribution.
+
+Attributed draft and claim events are recorded idempotently through `src/lib/ops/founderGrowthReadModel.ts`, using markers on the existing draft record rather than a separate event collection. The markers share the parent draft's existing lifecycle. Telemetry failure does not block source processing or claim. No tenant, store, menu, customer, referrer, or owner identifier is placed in acquisition URLs or aggregate source maps.
 
 ---
 

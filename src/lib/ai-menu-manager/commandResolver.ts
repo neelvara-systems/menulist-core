@@ -112,6 +112,10 @@ function itemSuggestionReplies(
         .filter((item) => item.active !== false)
         .slice(0, limit)
         .map((item) => ({
+            composerContext: {
+                target: 'item',
+                selectedEntityIds: [item.id],
+            },
             label: item.name,
             prompt: buildPrompt(item),
             helper,
@@ -154,6 +158,10 @@ function buildItemCandidateClarification(params: {
         title: params.title,
         message: `I found more than one item matching "${params.itemName}". Choose the exact item so Menu Manager can prepare the card.`,
         suggestedReplies: params.items.slice(0, 5).map((item) => ({
+            composerContext: {
+                target: 'item',
+                selectedEntityIds: [item.id],
+            },
             label: item.name,
             prompt: params.buildPrompt(item),
             helper: params.helper,
@@ -174,6 +182,10 @@ function buildCategoryCandidateClarification(params: {
         title: params.title,
         message: `I found more than one category matching "${params.categoryName}". Choose the exact category so Menu Manager can prepare the card.`,
         suggestedReplies: params.categories.slice(0, 5).map((category) => ({
+            composerContext: {
+                target: 'category',
+                selectedEntityIds: [category.id],
+            },
             label: category.name,
             prompt: params.buildPrompt(category),
             helper: params.helper,
@@ -477,6 +489,118 @@ function resolveSelectedItemsCommand(
         });
     }
 
+    const item = parsed.items.length === 1 ? parsed.items[0] : null;
+    if (item) {
+        const renameMatch = parsed.command.match(/^\s*(?:rename|change|update|set)?\s*(?:item\s+)?(?:name\s*)?(?:to|as)\s+(.+)$/i);
+        if (renameMatch?.[1]?.trim()) {
+            const nextName = renameMatch[1].trim();
+            return buildItemUpdate({
+                actionType: 'item_name_update',
+                title: `Rename ${item.name}`,
+                message: `${item.name} will be renamed to ${nextName}.`,
+                context,
+                item,
+                beforeAfterSummary: {
+                    title: item.name,
+                    beforeLabel: 'Current name',
+                    afterLabel: 'New name',
+                    beforeValue: item.name,
+                    afterValue: nextName,
+                },
+                updates: { name: localizedUpdate(context, nextName) },
+            });
+        }
+
+        const descriptionMatch = parsed.command.match(/^\s*(?:set|change|update|add|write)?\s*(?:description|desc)\s*(?::|-|to|as)\s*(.+)$/i);
+        if (descriptionMatch?.[1]?.trim() && descriptionMatch[1].trim().length >= 3) {
+            const nextDescription = descriptionMatch[1].trim();
+            return buildItemUpdate({
+                actionType: 'item_description_update',
+                title: `Update ${item.name} description`,
+                message: `${item.name} description will be updated on the selected menu.`,
+                context,
+                item,
+                beforeAfterSummary: {
+                    title: item.name,
+                    beforeLabel: 'Current description',
+                    afterLabel: 'New description',
+                    beforeValue: item.hasDescription ? 'Has description' : 'No description',
+                    afterValue: nextDescription,
+                },
+                updates: {
+                    description: localizedUpdate(context, nextDescription),
+                    descriptionSource: 'manual',
+                },
+            });
+        }
+
+        const categoryMatch = parsed.command.match(/^\s*(?:move|put|shift)\s+(?:to|into|under)\s+(.+)$/i);
+        if (categoryMatch?.[1]?.trim()) {
+            const categoryName = stripCommandWords(categoryMatch[1], /\b(?:category|section|menu)\b/g);
+            const category = findAiMenuManagerCategoryByName(context, categoryName);
+            if (category) {
+                return buildItemUpdate({
+                    actionType: 'item_category_update',
+                    title: `Move ${item.name}`,
+                    message: `${item.name} will move from ${item.categoryName} to ${category.name}.`,
+                    context,
+                    item,
+                    beforeAfterSummary: {
+                        title: item.name,
+                        beforeLabel: 'Current category',
+                        afterLabel: 'New category',
+                        beforeValue: item.categoryName,
+                        afterValue: category.name,
+                    },
+                    updates: { category: category.id },
+                });
+            }
+        }
+
+        if (/\b(best seller|bestseller|popular)\b/.test(normalized)) {
+            const nextValue = !/\b(remove|unmark|clear|not)\b/.test(normalized);
+            return buildItemUpdate({
+                actionType: 'item_bestseller_update',
+                title: `${nextValue ? 'Mark bestseller' : 'Remove bestseller'}: ${item.name}`,
+                message: `${item.name} will ${nextValue ? 'be marked as a bestseller' : 'no longer be marked as a bestseller'}.`,
+                context,
+                item,
+                beforeAfterSummary: {
+                    title: item.name,
+                    beforeLabel: 'Current bestseller flag',
+                    afterLabel: 'New bestseller flag',
+                    beforeValue: item.isBestSeller ? 'Marked' : 'Not marked',
+                    afterValue: nextValue ? 'Marked' : 'Not marked',
+                },
+                updates: { isBestSeller: nextValue },
+            });
+        }
+
+        if (/\b(feature|featured|promote|highlight|spotlight)\b/.test(normalized)) {
+            return buildFeaturedSectionUpdate(context, item);
+        }
+
+        const prepTimeMatch = normalized.match(/(?:prep time|preparation time|duration|takes)?\s*(?:to|is|as)?\s*(\d{1,3})\s*(?:min|mins|minute|minutes)$/i);
+        const minutes = Number(prepTimeMatch?.[1]);
+        if (/\b(prep time|preparation time|duration|takes)\b/.test(normalized) && Number.isFinite(minutes) && minutes > 0) {
+            return buildItemUpdate({
+                actionType: 'item_prep_time_update',
+                title: `Update ${item.name} prep time`,
+                message: `${item.name} preparation time will change to ${minutes} minutes.`,
+                context,
+                item,
+                beforeAfterSummary: {
+                    title: item.name,
+                    beforeLabel: 'Current prep time',
+                    afterLabel: 'New prep time',
+                    beforeValue: item.duration ? `${item.duration} minutes` : 'Not set',
+                    afterValue: `${minutes} minutes`,
+                },
+                updates: { duration: minutes },
+            });
+        }
+    }
+
     return buildGuidedClarification({
         context,
         title: 'Choose what to change',
@@ -606,7 +730,7 @@ function resolvePriceCommand(text: string, context: AiMenuManagerContextPacket):
 
 function extractAvailabilityItemName(normalized: string) {
     return normalized
-        .replace(/\b(?:sold out|out of stock|not available|unavailable|over|finished|khatam hai|khatam|available again|back in stock|back|available|in stock)\b/g, ' ')
+        .replace(/\b(?:sold out|out of stock|not available|unavailable|over|finished|khatam hai|khatam|available again|back in stock|back|available|in stock|restore)\b/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
 }
@@ -614,7 +738,8 @@ function extractAvailabilityItemName(normalized: string) {
 function resolveAvailabilityCommand(text: string, context: AiMenuManagerContextPacket): AiMenuManagerResolvedCommand | null {
     const normalized = normalizeText(text);
     const makesUnavailable = /\b(sold out|out of stock|not available|unavailable|over|finished|khatam hai|khatam)\b/.test(normalized);
-    const makesAvailable = /\b(available again|back in stock|back|available|in stock)\b/.test(normalized);
+    const mentionsRestore = /\brestore\b/.test(normalized);
+    const makesAvailable = /\b(available again|back in stock|back|available|in stock|restore)\b/.test(normalized);
     if (!makesUnavailable && !makesAvailable) return null;
 
     const itemName = extractAvailabilityItemName(normalized);
@@ -632,6 +757,31 @@ function resolveAvailabilityCommand(text: string, context: AiMenuManagerContextP
             });
         }
         return null;
+    }
+
+    if (mentionsRestore) {
+        if (!item.available && !item.active) {
+            return buildGuidedClarification({
+                context,
+                title: `Restore ${item.name}`,
+                message: `${item.name} is both hidden and sold out. Choose what should change first.`,
+                suggestedReplies: [
+                    {
+                        composerContext: { target: 'item', selectedEntityIds: [item.id] },
+                        helper: 'Change availability only',
+                        label: 'Mark available',
+                        prompt: 'Mark available',
+                    },
+                    {
+                        composerContext: { target: 'item', selectedEntityIds: [item.id] },
+                        helper: 'Change visibility only',
+                        label: 'Show on menu',
+                        prompt: 'Show item',
+                    },
+                ],
+            });
+        }
+        if (item.available || !item.active) return null;
     }
 
     const nextValue = makesAvailable && !makesUnavailable;
@@ -933,29 +1083,10 @@ function findItemNameById(context: AiMenuManagerContextPacket, itemId?: string) 
     return context.items.find((item) => item.id === itemId)?.name;
 }
 
-function resolveFeaturedSectionCommand(text: string, context: AiMenuManagerContextPacket): AiMenuManagerResolvedCommand | null {
-    const normalized = normalizeText(text);
-    const mentionsFeatured = /\b(featured|feature|promote|highlight|spotlight)\b/.test(normalized);
-    if (!mentionsFeatured) return null;
-    if (/\b(what|which|suggest|recommend|should i|can i)\b/.test(normalized)) return null;
-
-    const itemName = normalized
-        .replace(/\b(?:show|add|set|make|put|pin|promote|highlight|spotlight|feature|featured|choice|section|menu|item|this|in|on|as|to|the)\b/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    const item = itemName ? findAiMenuManagerItemByName(context, itemName) : null;
-    if (!item && /\b(this item|which item|promote item|feature item|highlight item)\b/.test(normalized)) {
-        return buildGuidedClarification({
-            context,
-            title: 'Choose item to feature',
-            message: 'Pick the item Menu Manager should put in the Featured section.',
-            suggestedReplies: itemSuggestionReplies(
-                context,
-                (entry) => `Feature ${entry.name}`,
-                'Feature this item',
-            ),
-        });
-    }
+function buildFeaturedSectionUpdate(
+    context: AiMenuManagerContextPacket,
+    item: AiMenuManagerContextItem | null,
+): AiMenuManagerResolvedCommand {
     const definition = getAiMenuManagerActionDefinition('decision_blocks_update');
     const currentPinnedName = findItemNameById(context, context.decisionBlocks.pinnedPopular);
     const nextFeaturedLabel = item?.name || currentPinnedName || 'MenuList chooses automatically';
@@ -998,6 +1129,32 @@ function resolveFeaturedSectionCommand(text: string, context: AiMenuManagerConte
         patchHash: withPatchHash(patch),
         executionMode: definition.executionMode,
     };
+}
+
+function resolveFeaturedSectionCommand(text: string, context: AiMenuManagerContextPacket): AiMenuManagerResolvedCommand | null {
+    const normalized = normalizeText(text);
+    const mentionsFeatured = /\b(featured|feature|promote|highlight|spotlight)\b/.test(normalized);
+    if (!mentionsFeatured) return null;
+    if (/\b(what|which|suggest|recommend|should i|can i)\b/.test(normalized)) return null;
+
+    const itemName = normalized
+        .replace(/\b(?:show|add|set|make|put|pin|promote|highlight|spotlight|feature|featured|choice|section|menu|item|this|in|on|as|to|the)\b/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const item = itemName ? findAiMenuManagerItemByName(context, itemName) : null;
+    if (!item && /\b(this item|which item|promote item|feature item|highlight item)\b/.test(normalized)) {
+        return buildGuidedClarification({
+            context,
+            title: 'Choose item to feature',
+            message: 'Pick the item Menu Manager should put in the Featured section.',
+            suggestedReplies: itemSuggestionReplies(
+                context,
+                (entry) => `Feature ${entry.name}`,
+                'Feature this item',
+            ),
+        });
+    }
+    return buildFeaturedSectionUpdate(context, item);
 }
 
 function resolveSpecialNoteCommand(text: string, context: AiMenuManagerContextPacket): AiMenuManagerResolvedCommand | null {

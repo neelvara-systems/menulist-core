@@ -100,7 +100,7 @@ const tracker = read('__docs__/production-readiness/infrastructure-risk-tracker.
 const uploadImpl = read('__docs__/projects/upload-file-processing/upload-file-processing_impl.md');
 const extractionSecurityAudit = read('__docs__/projects/ai-data-extraction/security-surface-audit-mar13-2026.md');
 const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 const packageJson = JSON.parse(read('package.json'));
 
 verifyMenuListBrowserSurfacesDoNotMutateStorageDirectly();

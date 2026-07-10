@@ -1,7 +1,8 @@
 # MenuList SignalDesk - Firebase Cost Plan
 
-**Status:** Foundation config, connector settings, Apify source broker, owned email sequencer queue, gated provider/source/AI/channel runtime, content distribution rail, and investment-control ledgers implemented; deploy skipped in this session
+**Status:** Foundation config, governed workflow rails, investment controls, and bounded Revenue Operating Layer implemented and locally verified; cloud deploy remains owner-access blocked
 **Created:** June 23, 2026
+**Last Updated:** July 10, 2026
 **Cost impact now:** Local verification only; no deployed SignalDesk project or production data writes.
 **Runtime posture:** Dedicated SignalDesk Firebase projects are configured in code but still need owner-side project creation/access before deployment.
 
@@ -57,6 +58,7 @@ Hard rules:
 18. No trust-partner deal, brief, deliverable, or metrics dashboard should read raw social payloads by default.
 19. No content distribution screen should auto-publish or read raw third-party social payloads by default.
 20. No SignalDesk action or kill-switch route may parse unbounded JSON; the shared API guard caps JSON bodies at 256KB before validation, access checks, provider/source work, AI work, or SignalDesk Firestore writes.
+21. No revenue screen scans raw messages/events or MenuList store/project trees; it reads bounded SignalDesk records plus `signaldeskRevenueControlSummaries/current`.
 
 The corrected review explicitly recommends summary docs such as `leadSummaries`, `targetSummaries`, `conversationSummaries`, `campaignSummaries`, `channelHealthSummaries`, `costDailySummaries`, and `sourceRunSummaries` (`../growth-engine/growth-engine_private-internal-tool-review-2026-06-23.md:359`).
 
@@ -80,6 +82,7 @@ Client DAL response note: SignalDesk overview, workspace, action, and kill-switc
 | `/signaldesk/sources` | `signaldeskProviderSourceRetention`, `signaldeskProviderEvaluations`, `signaldeskSourceRunSummaries`, `signaldeskVendorRuns`, `signaldeskEnrichmentResults` | Provider-source refresh status and evaluation summaries only; no raw provider payloads |
 | `/signaldesk/content` | `signaldeskContentSources`, `signaldeskContentAssets`, `signaldeskContentDistributionDrafts`, `signaldeskContentCalendarItems`, `signaldeskContentPerformanceSummaries`, plus CTA/market-pod summaries | Draft body is internal review material only; no auto-publish and no raw social payloads |
 | `/signaldesk/partners` | `signaldeskTrustPartnerProfiles`, `signaldeskTrustPartnerNicheTests`, `signaldeskTrustPartnerDeals`, `signaldeskTrustPartnerBriefs`, `signaldeskTrustPartnerDeliverables`, `signaldeskTrustPartnerMetrics`, `signaldeskTrustPartnerRenewalDecisions` summaries | Brief/deal/metric detail only after opening a record; no raw social payloads |
+| `/signaldesk/revenue` | `signaldeskRevenueControlSummaries/current` plus bounded revenue accounts, commercial opportunities/offers, operating envelopes, activation watches, and referenced policy summaries | No raw messages/events and no MenuList store/project/menu/billing reads |
 | `/signaldesk/control-room` | Control-room, channel, source, AI, queue, cost summaries | Raw incident/debug reads only after admin drill-down |
 
 No default screen may subscribe to a raw collection with a real-time listener.
@@ -120,13 +123,19 @@ No default screen may subscribe to a raw collection with a real-time listener.
 | `signaldeskModelRoutes` | AI task route, provider/model, status, cost cap | Small policy/admin list |
 | `signaldeskModelEvals` | AI route quality summary | AI/admin summary list |
 | `signaldeskApprovalPackets` | Owner-ready decision packet | Approval queue/detail list |
-| `signaldeskMarketPods` | Founder-approved pod plan | Attribution/control-room summary |
+| `signaldeskMarketPods` | System recommendation plus explicit founder approve/hold/reject evidence; unreviewed pods remain held and zero-budget | Attribution/control-room summary and envelope policy check |
 | `signaldeskAudienceSegments` | Dynamic signal/source/outcome criteria | Attribution/control-room summary |
 | `signaldeskSequencerHandoffs` | Owned email queue plus optional external execution-rail readiness | Channels summary list |
 | `signaldeskSequencerSteps` | Owned email step state, schedule, body preview, send status | Channels summary list and reserved due-step worker |
 | `signaldeskSenderDomains` | Sender auth/ramp/bounce/complaint/unsubscribe/risk | Channels/control-room summary |
 | `signaldeskRunTimelines` | Founder-readable run trace | Control-room bounded list |
 | `signaldeskSelfServiceCtas` | Proof/activation CTA copy | Template/control-room summary |
+| `signaldeskRevenueAccounts` | Organization/location-aware commercial identity linked to existing targets | Revenue bounded list and point detail |
+| `signaldeskCommercialOpportunities` | Qualified commercial stage, offer-derived currency/value, probability, next action, reasons, and founder attention | Revenue bounded list and account detail |
+| `signaldeskCommercialOffers` | Immutable standard offer versions, price, discount authority, eligibility, and founder conditions | Small policy/offer registry |
+| `signaldeskOperatingEnvelopes` | Referenced source/offer/pod/budget/sender/template controls, caps, approval mode, and execution boundary | Small current/recent policy list |
+| `signaldeskActivationWatches` | Activation state automatically derived through indexed latest/earliest/terminal SignalDesk outcome-summary reads; elapsed deadlines are annotated stalled on bounded reads | Revenue bounded list and target point detail |
+| `signaldeskRevenueControlSummaries` | One-currency pipeline, weighted value, wins/losses, activation/stall, and founder-attention totals | One `current` summary document |
 | `signaldeskContentSources` | Source registry for owned proof and content inputs | Content summary list |
 | `signaldeskContentAssets` | Canonical content messages, proof level, CTA, audience, and risk notes | Content summary list |
 | `signaldeskContentDistributionDrafts` | Platform-ready drafts with approval and schedule state | Content review list |
@@ -159,6 +168,8 @@ Each mutation should write in one bounded unit of work:
 5. cost ledger record when AI, provider, import, webhook, or export work runs.
 
 Use server transactions only when state consistency requires them. Use batched writes for import rows and summary updates. Do not add new API routes that only re-read Firestore data already available through a product-local DAL.
+
+Operating-envelope writes use a server transaction that rereads the current source policies, offer, founder-approved pod, optional revenue budget, sender identity, templates, and immutable envelope version before any write.
 
 ## Import Optimization
 

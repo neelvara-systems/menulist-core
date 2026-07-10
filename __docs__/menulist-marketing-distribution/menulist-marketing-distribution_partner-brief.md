@@ -9,7 +9,7 @@
 
 ## Purpose
 
-This document gives agencies, freelancers, and local consultants a simple way to understand where MenuList fits.
+This document gives agencies, freelancers, local consultants, print shops, menu photographers, and QR/signage suppliers a simple way to understand where MenuList fits.
 
 It is a draft. Do not send as a formal partner program until pricing, terms, support scope, and referral handling are approved.
 
@@ -30,6 +30,8 @@ MenuList helps SMB clients turn their current menu, service list, package list, 
 | Pet grooming, auto detailing, classes, local services | Customers ask for rates or packages before calling or booking |
 | Florist, boutique, catalog-lite SMB | Customers need a current public catalog or offer list |
 | Multi-location SMB | Branches show inconsistent menus, services, prices, hours, or actions |
+
+Priority pilot partners are local printers, menu/food photographers, hospitality setup consultants, and QR/table-card/signage suppliers already receiving current lists from SMB owners. See `menulist-marketing-distribution_physical-partner-pilot.md` for the bounded ten-business test.
 
 Not a good fit:
 
@@ -61,6 +63,7 @@ Recommended first placements:
 - WhatsApp reply/status/template;
 - Instagram bio, story highlight, caption, or DM reply;
 - Google Business Profile or public profile link where applicable;
+- Apple Business Connect or Bing Places where relevant;
 - business website/link page;
 - print material;
 - staff reply script;
@@ -100,10 +103,10 @@ Do not use:
 | Asset | Status |
 | --- | --- |
 | Demo screenshots | Pending approved demo tenant/screenshots |
-| One-page PDF/visual brief | Not created |
-| Pricing/referral terms | Founder decision needed |
-| Support handoff rules | Founder decision needed |
-| Partner intake form | Not created |
+| One-page PDF/visual brief | Source brief ready; designed PDF pending |
+| Pricing/referral terms | Pilot defaults to approved flat completion fee or no-fee learning; formal terms pending |
+| Support handoff rules | Defined for pilot in physical partner doc |
+| Partner intake form | Ten-business board fields ready; external form intentionally deferred |
 | Example client before/after pack | Demo universe ready; visuals pending |
 
 ---
@@ -118,4 +121,3 @@ Ask before offering anything formal:
 4. Who will collect source material and corrections?
 5. Who will place the public link on QR, WhatsApp, Instagram, Google/profile links, websites, or print?
 6. Do you need referral, reseller, or done-with-you setup terms?
-

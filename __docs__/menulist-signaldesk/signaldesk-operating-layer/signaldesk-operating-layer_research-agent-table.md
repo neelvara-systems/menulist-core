@@ -111,11 +111,13 @@ If no research table rows exist yet, the dashboard falls back to clear, non-held
 
 Dashboard/Mission search includes internal presets for common MenuList operating loops:
 
-- Hadapsar cafes;
-- Pune QSR;
-- partner list.
+- Indiranagar cafes and dessert shops;
+- Koramangala QSRs;
+- Bengaluru menu-photographer and restaurant-consultant partner list.
 
-Each preset fills the prompt and sets the batch cap to 30. The source-policy/provider gates still decide whether a run is allowed.
+Each approved Bengaluru preset fills the prompt and sets the first-trial batch to 25. The runtime hard limit remains 30 for a later separately approved use. The source-policy/provider gates still decide whether a run is allowed.
+
+The approved first trial uses the evidence-only public-business manual policy for candidate imports. Market Search remains blocked until a matching provider policy, provider readiness, and separate budget approval exist; the Bengaluru presets do not grant provider or contact permission.
 
 ## Boundaries
 

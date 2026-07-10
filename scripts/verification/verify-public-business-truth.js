@@ -119,7 +119,7 @@ function verifyMenuListBrowserSurfacesDoNotWriteFirestoreDirectly() {
   }
 
   const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assert(
     failures.length === 0,
@@ -188,7 +188,7 @@ function verifyMenuListBrowserSurfacesUseAllowedFirestoreReadsOnly() {
   }
 
   const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assert(
     failures.length === 0,
@@ -486,7 +486,7 @@ function verifyHoursDoNotInventOpenState() {
   const hoursImplDoc = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_impl.md');
   const hoursFirebaseDoc = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const { getStoreStatus } = require('../../src/lib/hours/hoursEngine');
   const { resolveHoursOutput } = require('../../src/lib/outputControl/hoursConfidence');
 
@@ -540,7 +540,7 @@ function verifyTimedCategoriesUseStoreTruth() {
   const readme = read('__docs__/client-menu/README.md');
   const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(menuPage, 'activeItemCategoryIds.has(cat.id)', 'Public menu category visibility');
   assertIncludes(menuPage, 'isCategoryVisibleByTime(cat, storeDetails?.timeZone)', 'Public menu category timezone');
@@ -577,7 +577,7 @@ function verifyDomainOwnershipComparisonIsTypeSafe() {
 function verifyVercelDomainPathSegmentsAreEncoded() {
   const helper = read('src/lib/domains/vercelDomains.ts');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const storesFirebase = read('__docs__/stores-management/stores-management_firebase.md');
   const urlRoutingFirebase = read('__docs__/url-routing-architecture/url-routing-architecture_firebase.md');
 
@@ -619,7 +619,7 @@ function verifyVercelDomainPathSegmentsAreEncoded() {
 
 function verifyCustomDomainDocsMatchVerificationBoundary() {
   const website = read('__docs__/client-menu/client-menu_website.md');
-  const architecture = read('__docs__/client-menu/MULTI-TENANT-ARCHITECTURE.md');
+  const architecture = read('__docs__/client-menu/multi-tenant-architecture.md');
   const route = read('src/app/api/domain/route.ts');
   const helper = read('src/lib/domains/vercelDomains.ts');
   const lookup = read('src/lib/firestore/clientStoreLookup.ts');
@@ -731,7 +731,7 @@ function verifyPublicStoreLookupUsesDenormalizedTenantBlockState() {
   assertNotIncludes(helper, '.doc(String(tenantId))', 'Public store lookup must not read tenant-block fallback through raw tenant IDs');
   assertNotIncludes(helper, "const normalizedStoreId = String(storeId || '').trim();", 'Public store-id lookup must not use loose numeric string normalization');
   assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'Public client store lookup scope document ID boundary checkpoint', 'Production audit documents public client store lookup scope boundary');
-  assertIncludes(read('__docs__/CHANGELOG.md'), 'Public Client Store Lookup Scope Document ID Boundary', 'Changelog documents public client store lookup scope boundary');
+  assertIncludes(read('__docs__/changelog.md'), 'Public Client Store Lookup Scope Document ID Boundary', 'Changelog documents public client store lookup scope boundary');
   assertIncludes(read('__docs__/changelog.md'), 'Public Client Store Lookup Scope Document ID Boundary', 'Lowercase changelog documents public client store lookup scope boundary');
   assertIncludes(read('__docs__/official-business-page/official-business-page_firebase.md'), 'Public client store lookup scope document ID boundary', 'OBP Firebase docs document public client store lookup scope boundary');
   assertIncludes(read('__docs__/client-menu/client-menu_firebase.md'), 'Public client store lookup scope document ID boundary', 'Client menu Firebase docs document public client store lookup scope boundary');
@@ -918,7 +918,7 @@ function verifyPublicTruthWritesInvalidateScreenData() {
 function verifyPublicMenuResolutionLoggingIsBounded() {
   const page = read('src/app/client/[[...slug]]/page.tsx');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const obpFirebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
   const clientMenuImplDoc = read('__docs__/client-menu/_impl.md');
   const clientMenuFirebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
@@ -978,7 +978,7 @@ function verifyOBPAnalyticsLoggingIsBounded() {
   const implDoc = read('__docs__/official-business-page/official-business-page_impl.md');
   const firebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(component, "import { secureError } from '@lib/security/secureLogger';", 'OBP analytics secure logging');
   assertIncludes(component, 'logOBPAnalyticsFailure', 'OBP analytics bounded failure logger');
@@ -1080,7 +1080,7 @@ function verifyOBPResolvedSurfaceFallbackLoggingIsBounded() {
   const implDoc = read('__docs__/official-business-page/official-business-page_impl.md');
   const firebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'logOBPResolvedSurfaceFailure',
@@ -1114,7 +1114,7 @@ function verifyPublicMenuSearchFocusLoggingIsBounded() {
   const implDoc = read('__docs__/client-menu/_impl.md');
   const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'public_menu_search_focus_prevent_scroll_failed',
@@ -1146,7 +1146,7 @@ function verifyPublicMenuGradientParserLoggingIsBounded() {
   const implDoc = read('__docs__/client-menu/_impl.md');
   const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'public_menu_gradient_parse_failed',
@@ -1177,7 +1177,7 @@ function verifyPublicMenuBreadcrumbLanguageLoggingIsBounded() {
   const readme = read('__docs__/client-menu/README.md');
   const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'public_menu_breadcrumb_language_preserve_failed',
@@ -1205,7 +1205,7 @@ function verifyPublicMenuLanguageStorageLoggingIsBounded() {
   const readme = read('__docs__/client-menu/README.md');
   const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'public_menu_language_storage_read_failed',
@@ -1238,7 +1238,7 @@ function verifyPublicMenuFeedbackNudgeStorageLoggingIsBounded() {
   const feedbackReadme = read('__docs__/projects/internal-feedback-system/README.md');
   const feedbackFirebaseDoc = read('__docs__/projects/internal-feedback-system/internal-feedback-system_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'public_menu_feedback_nudge_storage_read_failed',
@@ -1272,7 +1272,7 @@ function verifyPublicMenuExternalLinksAreNormalized() {
   const readme = read('__docs__/client-menu/README.md');
   const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'normalizeOBPGoogleMapsUrl(publicPresence?.googleMapsUrl)',
@@ -1324,7 +1324,7 @@ function verifyPublicMenuFooterFreshnessLoggingIsBounded() {
   const readme = read('__docs__/client-menu/README.md');
   const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'public_menu_footer_freshness_relative_failed',
@@ -1380,7 +1380,7 @@ function verifyOBPCustomerQuickAnswersAreVisibleAndBounded() {
 function verifyPublicFaqSchemaFreshnessCopyIsBounded() {
   const schema = read('src/lib/schema/index.ts');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const localeDir = path.join(ROOT, 'public/locales/menulist.ai');
   const stalePublicFaqFreshnessPhrases = [
     'It is always up to date',
@@ -1454,7 +1454,7 @@ function verifyPublicMenuAnalyticsLoggingIsBounded() {
   const obpImplDoc = read('__docs__/official-business-page/official-business-page_impl.md');
   const obpFirebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'GA4_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/',
@@ -1683,7 +1683,7 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
   const multiOutletHelpdoc = read('__docs__/multi-outlet-consistency/multi-outlet-consistency_helpdoc.md');
   const posWebhookWebsite = read('__docs__/pos-webhook-sync/pos-webhook-sync_website.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const behaviorEngineeringReadme = read('__docs__/behavior-engineering/README.md');
   const behaviorEngineeringSpec = read('__docs__/behavior-engineering/behavior-engineering_spec.md');
   const behaviorEngineeringImpl = read('__docs__/behavior-engineering/behavior-engineering_impl.md');
@@ -1961,7 +1961,7 @@ function verifyPresenceDominanceDocsUsePublicSourceBoundaries() {
     website: read('__docs__/presence-dominance/presence-dominance_website.md'),
     marketing: read('__docs__/presence-dominance/presence-dominance_marketing.md'),
     audit: read('__docs__/audits/menulist-production-readiness-audit.md'),
-    changelog: read('__docs__/CHANGELOG.md'),
+    changelog: read('__docs__/changelog.md'),
   };
 
   [
@@ -2162,7 +2162,7 @@ function verifyMenuCorrectnessEngineDocsMatchRuntime() {
   const marketing = read('__docs__/menu-correctness-engine/menu-correctness-engine_marketing.md');
   const helpdoc = read('__docs__/menu-correctness-engine/menu-correctness-engine_helpdoc.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(features, 'ENABLE_MCE: true', 'MCE runtime feature flag');
   assertIncludes(projectDal, 'if (FEATURE_FLAGS.ENABLE_MCE && data.projectId)', 'MCE updateProject runtime hook');
@@ -2261,7 +2261,7 @@ function verifyMenuCorrectnessEngineDocsMatchRuntime() {
 function verifySilentCorrectionDocsUseSupportedSurfaceBoundaries() {
   const spec = read('__docs__/silent-correction-systems/silent-correction-systems_spec.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'they ensure customers never see wrong hours, wrong prices, broken menus, or inconsistent data',
@@ -2294,7 +2294,7 @@ function verifyTruthAccuracyDominanceDocsMatchRuntime() {
     firebase: read('__docs__/truth-accuracy-dominance/truth-accuracy-dominance_firebase.md'),
     mobile: read('__docs__/truth-accuracy-dominance/truth-accuracy-dominance_mobile-support.md'),
     audit: read('__docs__/audits/menulist-production-readiness-audit.md'),
-    changelog: read('__docs__/CHANGELOG.md'),
+    changelog: read('__docs__/changelog.md'),
   };
 
   assertIncludes(features, 'ENABLE_MCE: true', 'Truth Accuracy Dominance MCE runtime flag');
@@ -2398,6 +2398,9 @@ function verifyDiscoveryInfrastructureDocsMatchRuntime() {
     originalReadme: read('__docs__/discovery-infrastructure/seo-aeo-original-readme.md'),
     taxonomy: read('__docs__/discovery-infrastructure/taxonomy-system.md'),
   };
+  const seoLaunchRegister = read('__docs__/menulist-seo-launch/menulist-seo-launch_action-register.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(features, 'ENABLE_PUBLIC_API: true', 'Public discovery contract public API flag');
   assertIncludes(features, 'ENABLE_INFRASTRUCTURE_TAXONOMY: false', 'Discovery taxonomy disabled flag');
@@ -2438,6 +2441,20 @@ function verifyDiscoveryInfrastructureDocsMatchRuntime() {
   assertIncludes(docs.seoGuide, 'GeoCoordinates` when `store.geo` has latitude/longitude', 'Client menu SEO guide geo runtime parity');
   assertIncludes(docs.seoGuide, 'production-readiness audit and the External Certification Runbook', 'Client menu SEO guide certification boundary');
   assertIncludes(docs.seoGuide, 'Tenant sitemap read diagnostics', 'Client menu SEO guide tenant sitemap diagnostics');
+  [
+    'Launch boundary:** Not current launch certification or deploy approval',
+    'source-gated public-menu and Official Business Page SEO/runtime evidence only',
+    '`npm run verify:production-readiness-local`',
+    '`npm run verify:public-business-truth`',
+    '`npm run verify:agent-readiness`',
+    '`npm run verify:website-resource-locales`',
+    'public tenant menu and Official Business Page browser smoke',
+    'canonical-host alignment',
+    'applicable target Firebase/Vercel deploy evidence',
+    'production-host smoke',
+    'Search Console property and sitemap submission evidence',
+    'external-system outcomes',
+  ].forEach((token) => assertIncludes(docs.seoGuide, token, 'Client menu SEO guide top launch boundary'));
   assertNotIncludes(docs.seoGuide, '/app/(website)/menu/[projectId]/page.tsx', 'Client menu SEO guide stale route path');
   assertNotIncludes(docs.seoGuide, 'Implementation Progress: ✅ 98% Complete', 'Client menu SEO guide stale percent status');
 
@@ -2453,6 +2470,21 @@ function verifyDiscoveryInfrastructureDocsMatchRuntime() {
   assertIncludes(docs.dataConsumers, 'Conditional Work (Only With Scoped Approval)', 'Data consumers doc conditional-work boundary');
   assertIncludes(docs.gapAnalysis, 'Conditional Gap Register', 'Infrastructure gap analysis conditional register');
   assertIncludes(docs.gapAnalysis, 'not current launch scope and is not release certification', 'Infrastructure gap analysis launch-certification boundary');
+  [
+    'Launch boundary:** Not current launch certification or deploy approval',
+    'historical 24-layer gap analysis and conditional design inventory only',
+    '`npm run verify:production-readiness-local`',
+    '`npm run verify:public-business-truth`',
+    '`npm run verify:agent-readiness`',
+    'public tenant menu/Official Business Page discovery smoke',
+    'applicable target deploy evidence',
+    'production-host smoke',
+    'Taxonomy, provenance, semantic-attribute, and discovery-index flags remain off',
+    'scoped proposal, owner-value review, security review, Firebase cost note, docs parity, and source-gate coverage',
+  ].forEach((token) => assertIncludes(docs.gapAnalysis, token, 'Infrastructure gap analysis top launch boundary'));
+  assertIncludes(seoLaunchRegister, 'Added verifier-enforced top launch boundaries to the public-menu SEO source guide', 'SEO launch register public SEO/discovery top-boundary checkpoint');
+  assertIncludes(productionAudit, 'Public SEO/discovery top-boundary checkpoint', 'Production audit public SEO/discovery top-boundary checkpoint');
+  assertIncludes(changelog, 'Public SEO and Discovery Analysis Top Boundary', 'Changelog public SEO/discovery top-boundary checkpoint');
   assertIncludes(docs.provenance, 'Conditional scheduler', 'Provenance doc scheduler boundary');
   assertIncludes(docs.semantics, 'no writer runs while `ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX` is off', 'Semantic attributes doc index disabled boundary');
   assertIncludes(docs.originalReadme, 'Historical implementation evidence through Feb 22, 2026', 'Original SEO/AEO README historical-evidence boundary');
@@ -2501,9 +2533,9 @@ function verifyGbpSyncDocsMatchDisabledRuntime() {
     helpdoc: read('__docs__/gbp-sync/gbp-sync_helpdoc.md'),
     marketing: read('__docs__/gbp-sync/gbp-sync_marketing.md'),
     validation: read('__docs__/gbp-sync/gbp-sync_validation.md'),
-    criticalReview: read('__docs__/gbp-sync/GBP-CHATGPT-CRITICAL-REVIEW.md'),
+    criticalReview: read('__docs__/gbp-sync/gbp-chatgpt-critical-review.md'),
     audit: read('__docs__/audits/menulist-production-readiness-audit.md'),
-    changelog: read('__docs__/CHANGELOG.md'),
+    changelog: read('__docs__/changelog.md'),
   };
 
   assertIncludes(features, 'ENABLE_GBP_SYNC: false', 'GBP Sync feature flag disabled runtime');
@@ -2587,7 +2619,7 @@ function verifyProjectPersistenceDiagnosticsAreBounded() {
   const projectDal = read('src/database/projects/index.ts');
   const diagnostics = read('src/database/projects/diagnostics.ts');
   const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const urlRoutingImpl = read('__docs__/url-routing-architecture/url-routing-architecture_impl.md');
   const urlRoutingFirebase = read('__docs__/url-routing-architecture/url-routing-architecture_firebase.md');
 
@@ -2681,7 +2713,7 @@ function verifyMenuChangeLogDiagnosticsAreBounded() {
   const diagnostics = read('src/database/menuChangeLog/menuChangeLogDiagnostics.ts');
   const dataEditorFirebase = read('__docs__/projects/data-editor/data-editor_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(diagnostics, 'secureError', 'Menu change log diagnostics secure logging');
   assertIncludes(diagnostics, 'secureLog', 'Menu change log bounded diagnostic logging');
@@ -3133,7 +3165,7 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   const mobilePosSync = read('src/components/mobile/screens/MobilePosSyncScreen.tsx');
   const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
   const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const domainRoute = read('src/app/api/domain/route.ts');
   const desktopDomainSettings = read('src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx');
   const desktopPosSync = read('src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx');
@@ -4371,7 +4403,7 @@ function verifyProjectShareModalDiagnosticsAreBounded() {
   const clientMenuImpl = read('__docs__/client-menu/_impl.md');
   const clientMenuFirebase = read('__docs__/client-menu/client-menu_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(exportDiagnostics, 'copyExportTextToClipboard', 'Export clipboard copy acknowledgement helper');
   assertIncludes(exportDiagnostics, 'EXPORT_CLIPBOARD_COPY_UNAVAILABLE', 'Export unavailable clipboard code');

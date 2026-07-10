@@ -760,8 +760,7 @@ Treat QR tent and TV image as separate scoped additions; do not imply they are a
 ```typescript
 // Already built in:
 - Gemini 2.5 Flash for OCR & text generation
-- Gemini 2.0 Flash Preview for image generation
-- Imagen 3 for high-quality images
+- Gemini image model for image generation through `GEMINI_MODELS.IMAGE_GEN`
 - Rate limiting (5 req/min)
 - Cost tracking per operation
 ```
@@ -1037,8 +1036,7 @@ Build in that order. With that restraint.
 | Model            | Current Use         | Cost (per 1M tokens)      |
 | ---------------- | ------------------- | ------------------------- |
 | Gemini 2.5 Flash | OCR, descriptions   | ~₹8.50 input / ₹34 output |
-| Gemini 2.0 Flash | Image generation    | ~₹17 input / ₹34 output   |
-| Imagen 3         | High-quality images | ~₹3.40 per image          |
+| Gemini image model | Image generation | See `src/constants/AI/unitCosts.ts` |
 
 ### Social Content Incremental Cost
 

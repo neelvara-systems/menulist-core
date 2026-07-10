@@ -13,14 +13,30 @@
 
 const fs = require("fs");
 const path = require("path");
+const { spawnSync } = require("child_process");
 
 const DOCS_DIR = path.join(__dirname, "../__docs__");
+const ROOT_DIR = path.join(DOCS_DIR, "..");
 const IGNORE_DIRS = ["Single Source of Truth", "archive", "_archive"];
+const HYPERFRAMES_CONVENTION_FILES = new Set([
+    "AGENTS.md",
+    "CLAUDE.md",
+    "DESIGN.md",
+    "LICENSES.md",
+]);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function shouldIgnore(filePath) {
     return IGNORE_DIRS.some((d) => filePath.includes(d));
+}
+
+function isHyperFramesConventionFile(filePath) {
+    const relativePath = path.relative(DOCS_DIR, filePath).split(path.sep).join("/");
+    return (
+        relativePath.startsWith("videos/hyperframes/") &&
+        HYPERFRAMES_CONVENTION_FILES.has(path.basename(filePath))
+    );
 }
 
 function getAllMarkdownFiles(dir) {
@@ -40,6 +56,23 @@ function getAllMarkdownFiles(dir) {
     }
     walk(dir);
     return results;
+}
+
+function getTrackedMarkdownFiles() {
+    const result = spawnSync("git", ["ls-files", "__docs__"], {
+        cwd: ROOT_DIR,
+        encoding: "utf8",
+    });
+
+    if (result.status !== 0 || result.signal) {
+        throw new Error(
+            `Failed to list tracked docs${result.stderr ? `: ${result.stderr.trim()}` : ""}`
+        );
+    }
+
+    return result.stdout
+        .split(/\r?\n/)
+        .filter((filePath) => filePath.endsWith(".md"));
 }
 
 function extractLinks(content, filePath) {
@@ -92,6 +125,30 @@ function extractLinks(content, filePath) {
     return links;
 }
 
+function existsWithExactCase(targetPath) {
+    if (!fs.existsSync(targetPath)) {
+        return false;
+    }
+
+    const absolutePath = path.resolve(targetPath);
+    const { root } = path.parse(absolutePath);
+    const parts = path
+        .relative(root, absolutePath)
+        .split(path.sep)
+        .filter(Boolean);
+    let currentPath = root;
+
+    for (const part of parts) {
+        const entries = fs.readdirSync(currentPath);
+        if (!entries.includes(part)) {
+            return false;
+        }
+        currentPath = path.join(currentPath, part);
+    }
+
+    return true;
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 console.log("🔍 Scanning __docs__/ for broken links...\n");
@@ -109,12 +166,36 @@ const namingViolations = [];
 for (const filePath of allFiles) {
     const basename = path.basename(filePath);
     if (basename === "README.md") continue;
+    if (isHyperFramesConventionFile(filePath)) continue;
 
     // Check for uppercase or spaces
     if (/[A-Z]/.test(basename) || / /.test(basename)) {
         namingViolations.push({
             file: path.relative(DOCS_DIR, filePath),
             issue: "Contains uppercase or spaces",
+        });
+    }
+}
+
+for (const trackedPath of getTrackedMarkdownFiles()) {
+    if (
+        trackedPath.startsWith("__docs__/archive/") ||
+        trackedPath.includes("/_archive/")
+    ) {
+        continue;
+    }
+    const basename = path.basename(trackedPath);
+    if (basename === "README.md") continue;
+    if (
+        trackedPath.startsWith("__docs__/videos/hyperframes/") &&
+        HYPERFRAMES_CONVENTION_FILES.has(basename)
+    ) {
+        continue;
+    }
+    if (/[A-Z]/.test(basename) || / /.test(basename)) {
+        namingViolations.push({
+            file: path.relative("__docs__", trackedPath),
+            issue: "Tracked filename contains uppercase or spaces",
         });
     }
 }
@@ -140,7 +221,7 @@ for (const filePath of allFiles) {
             targetPath = path.resolve(dir, link.target);
         }
 
-        if (!fs.existsSync(targetPath)) {
+        if (!existsWithExactCase(targetPath)) {
             brokenLinks++;
             brokenReport.push({
                 source: path.relative(DOCS_DIR, filePath),

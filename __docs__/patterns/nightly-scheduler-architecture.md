@@ -5,6 +5,8 @@
 > **Entry Point:** `functions/src/decisionBlocksScoring.ts`
 > **Schedule:** Every hour at :30 (timezone-aware, filters by store `timeZone` + `businessDayEndTime`; `schedulerHour` is fallback only)
 
+**Launch boundary:** Not current launch certification or deploy approval. This scheduler architecture doc describes source design and current deploy routing; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped Functions deploy evidence, scheduler runtime evidence, and production-host smoke where relevant.
+
 ---
 
 ## 1. Architecture Overview

@@ -4,6 +4,8 @@
 
 **Audit status:** Controlled owner testing ready for the audited runtime slice as of June 11, 2026. Full MenuList production certification is still pending the remaining feature-by-feature audit and global validation.
 
+> **Launch boundary:** Not current launch certification or deploy approval. This README documents source-gated Decision Blocks behavior only; release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped scheduler deploy evidence, browser/mobile customer-menu QA, provider/runtime smoke where relevant, public-cache evidence, and production-host smoke.
+
 ---
 
 ## What This Is

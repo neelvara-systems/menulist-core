@@ -19,6 +19,7 @@ Restaurant owners answer the same questions 20-50 times daily: "Send menu", "Whe
 - "Customer asks for menu on WhatsApp? One tap — message is ready with your link, address, and hours."
 - "No more typing the same reply 30 times a day."
 - "Your staff can use the same messages — everyone sends a consistent, professional response."
+- "One staff handoff covers today's link, address, and hours."
 - "Works on your phone during busy service — just copy and paste."
 
 ## Approved Language
@@ -31,3 +32,4 @@ Restaurant owners answer the same questions 20-50 times daily: "Send menu", "Whe
 ---
 
 **Created:** March 15, 2026
+**Last Updated:** July 9, 2026

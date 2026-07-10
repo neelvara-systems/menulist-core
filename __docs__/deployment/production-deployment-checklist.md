@@ -1,8 +1,10 @@
 # Production Deployment Checklist
 
 **Status:** Active handoff checklist
-**Last updated:** July 1, 2026
+**Last updated:** July 9, 2026
 **Primary runbook:** [External Certification Runbook](../production-readiness/external-certification-runbook.md)
+
+**Launch boundary:** Not current launch certification or deploy approval. This checklist is a handoff map for the External Certification Runbook; production deployment approval still requires current production-readiness audit evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, required provider/browser/device QA, and production-host smoke.
 
 ---
 
@@ -43,7 +45,7 @@ npm run verify:functions-deploy-preflight
 Current MenuList QA retry target:
 
 ```bash
-firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:verifyMenuPublish --non-interactive
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish --non-interactive
 ```
 
 If certification is retrying only the July 2 source-file path hardening slice, use the exact changed subset from the External Certification Runbook instead of broadening the deploy:

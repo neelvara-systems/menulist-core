@@ -837,7 +837,7 @@ function verifyMultiLocationBoundary() {
     multiChainVerificationDoc: read('__docs__/multi-chain-permissions/multi-chain-permissions_verification.md'),
     multiChainMarketingDoc: read('__docs__/multi-chain-permissions/multi-chain-permissions_marketing.md'),
     rolesPermissionsFirebaseDoc: read('__docs__/roles-permissions/roles-permissions_firebase.md'),
-    changelogDoc: read('__docs__/CHANGELOG.md'),
+    changelogDoc: read('__docs__/changelog.md'),
   };
 
   verifyOutletSessionScopeHelper(files.outletSessionScope);

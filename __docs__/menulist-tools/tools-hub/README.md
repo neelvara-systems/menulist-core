@@ -3,7 +3,7 @@
 > **Feature:** MenuList Tools Hub
 > **Route:** `/tools`
 > **Status:** Implemented static website index
-> **Last Updated:** July 4, 2026
+> **Last Updated:** July 9, 2026
 
 ---
 
@@ -45,6 +45,8 @@ End users can reach the public Tools Hub without logging in through:
 | V2 | Paid add-on behavior | Can later surface recurring monitor, history, multi-location, and agency report packaging after those modules exist |
 
 Tools Hub is V0 public website infrastructure. It is not a paid add-on by itself.
+
+The current owner-product tightening maps V1 owner jobs into existing surfaces instead of creating a new report layer: Public readiness on the dashboard, Share and place the link in Mobile More / Use MenuList / Presence Monitor, Menu trust check for prices and availability, and Private feedback for guest issues before public reviews. This does not change the V0 public tool boundary.
 
 ---
 

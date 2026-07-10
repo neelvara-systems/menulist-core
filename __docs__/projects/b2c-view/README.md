@@ -83,7 +83,7 @@ src/database/projects/index.ts
 
 | Legacy File                             | Status         |
 | --------------------------------------- | -------------- |
-| `Assessments/assessment-11-b2c-view.md` | → Consolidated |
+| `assessments/assessment-11-b2c-view.md` | → Consolidated |
 | `__docs__/client-menu/`                 | → Referenced   |
 
 ---

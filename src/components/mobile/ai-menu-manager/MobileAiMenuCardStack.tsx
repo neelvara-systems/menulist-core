@@ -1,7 +1,8 @@
 'use client';
 
-import type { AiMenuManagerCardPayload } from '@type/aiMenuManager';
+import type { AiMenuManagerCardPayload, AiMenuManagerSuggestedReply } from '@type/aiMenuManager';
 import { normalizeAiMenuManagerLocalActionUrl } from '@lib/ai-menu-manager/localActionUrl';
+import { shouldShowAiMenuManagerApprovalReason } from '@lib/ai-menu-manager/presentation';
 import {
     getBoundedRuntimeStringContext,
     hasRuntimeClipboardWrite,
@@ -9,7 +10,20 @@ import {
     logRuntimeFailure,
 } from '@lib/runtime/runtimeDiagnostics';
 import { Button, Card, Flex, Space, Tag, Text, Toast } from '../antd';
-import { LuCheck, LuCopy, LuDownload, LuExternalLink, LuPencil, LuX } from 'react-icons/lu';
+import {
+    LuArrowRight,
+    LuCheck,
+    LuCircleSlash,
+    LuClipboardCheck,
+    LuCopy,
+    LuDownload,
+    LuExternalLink,
+    LuHelpCircle,
+    LuInfo,
+    LuListChecks,
+    LuPencil,
+    LuX,
+} from 'react-icons/lu';
 import { theme } from 'antd';
 
 type LocalAction = NonNullable<AiMenuManagerCardPayload['localActions']>[number];
@@ -18,6 +32,24 @@ function riskColor(risk: AiMenuManagerCardPayload['risk']) {
     if (risk === 'high') return 'red';
     if (risk === 'medium') return 'gold';
     return 'green';
+}
+
+function getCardKindLabel(card: AiMenuManagerCardPayload) {
+    if (card.localActions?.length) return 'Ready to use';
+    if (card.kind === 'clarification') return 'Choose one';
+    if (card.kind === 'manual_task') return 'Manual step';
+    if (card.kind === 'unsupported') return 'Not available here';
+    if (card.kind === 'answer') return 'Answer';
+    return 'Prepared update';
+}
+
+function getCardKindIcon(card: AiMenuManagerCardPayload) {
+    if (card.localActions?.length) return <LuDownload size={17} />;
+    if (card.kind === 'clarification') return <LuHelpCircle size={17} />;
+    if (card.kind === 'manual_task') return <LuListChecks size={17} />;
+    if (card.kind === 'unsupported') return <LuCircleSlash size={17} />;
+    if (card.kind === 'answer') return <LuInfo size={17} />;
+    return <LuClipboardCheck size={17} />;
 }
 
 async function copyTextToClipboard(value: string) {
@@ -110,7 +142,7 @@ export default function MobileAiMenuCardStack({
     onCancel: (card: AiMenuManagerCardPayload) => void;
     onDraftPrompt?: (prompt: string) => void;
     onEdit?: (card: AiMenuManagerCardPayload) => void;
-    onResolveClarification?: (card: AiMenuManagerCardPayload, prompt: string) => void;
+    onResolveClarification?: (card: AiMenuManagerCardPayload, reply: AiMenuManagerSuggestedReply) => void;
 }) {
     const { token } = theme.useToken();
 
@@ -160,25 +192,60 @@ export default function MobileAiMenuCardStack({
     };
 
     if (!cards.length) {
-        return (
-            <Card>
-                <Text type="secondary">No pending cards.</Text>
-            </Card>
-        );
+        return null;
     }
 
     return (
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
             {cards.map((card) => (
-                <Card key={card.cardId} style={{ borderRadius: 8 }}>
-                    <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                        <Flex gap={6} wrap="wrap">
-                            <Tag color={riskColor(card.risk)}>{card.risk}</Tag>
-                            <Tag>{card.scope.label}</Tag>
-                        </Flex>
-                        <div>
-                            <Text strong style={{ display: 'block', fontSize: 16 }}>{card.title}</Text>
-                            <Text type="secondary">{card.message}</Text>
+                <Card
+                    key={card.cardId}
+                    style={{
+                        borderColor: card.risk === 'high' ? token.colorErrorBorder : token.colorBorderSecondary,
+                        borderRadius: 8,
+                        boxShadow: token.boxShadowTertiary,
+                    }}
+                >
+                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <span
+                                aria-hidden
+                                style={{
+                                    alignItems: 'center',
+                                    background: token.colorFillSecondary,
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 999,
+                                    color: token.colorPrimary,
+                                    display: 'inline-flex',
+                                    flexShrink: 0,
+                                    height: 32,
+                                    justifyContent: 'center',
+                                    marginTop: 2,
+                                    width: 32,
+                                }}
+                            >
+                                {getCardKindIcon(card)}
+                            </span>
+                            <div style={{ minWidth: 0 }}>
+                                <Flex gap={6} wrap="wrap" style={{ marginBottom: 6 }}>
+                                    <Tag color={riskColor(card.risk)} style={{ borderRadius: 999 }}>
+                                        {getCardKindLabel(card)}
+                                    </Tag>
+                                    <Tag
+                                        style={{
+                                            borderRadius: 999,
+                                            lineHeight: '20px',
+                                            maxWidth: '100%',
+                                            whiteSpace: 'normal',
+                                            wordBreak: 'break-word',
+                                        }}
+                                    >
+                                        {card.scope.label}
+                                    </Tag>
+                                </Flex>
+                                <Text strong style={{ display: 'block', fontSize: 16, lineHeight: 1.25 }}>{card.title}</Text>
+                                <Text type="secondary">{card.message}</Text>
+                            </div>
                         </div>
                         <div
                             style={{
@@ -190,60 +257,81 @@ export default function MobileAiMenuCardStack({
                         >
                             <Text strong>{card.beforeAfterSummary.title}</Text>
                             {card.beforeAfterSummary.beforeValue || card.beforeAfterSummary.afterValue ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-                                    <div>
+                                <div
+                                    style={{
+                                        alignItems: 'center',
+                                        display: 'grid',
+                                        gap: 8,
+                                        gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+                                        marginTop: 8,
+                                    }}
+                                >
+                                    <div style={{ minWidth: 0 }}>
                                         <Text type="secondary">{card.beforeAfterSummary.beforeLabel || 'Before'}</Text>
-                                        <Text style={{ display: 'block' }}>{card.beforeAfterSummary.beforeValue || '-'}</Text>
+                                        <Text style={{ display: 'block', wordBreak: 'break-word' }}>{card.beforeAfterSummary.beforeValue || '-'}</Text>
                                     </div>
-                                    <div>
+                                    <LuArrowRight color={token.colorTextQuaternary} size={16} />
+                                    <div style={{ minWidth: 0 }}>
                                         <Text type="secondary">{card.beforeAfterSummary.afterLabel || 'After'}</Text>
-                                        <Text strong style={{ display: 'block' }}>{card.beforeAfterSummary.afterValue || '-'}</Text>
+                                        <Text strong style={{ display: 'block', wordBreak: 'break-word' }}>{card.beforeAfterSummary.afterValue || '-'}</Text>
                                     </div>
                                 </div>
                             ) : null}
                             {card.beforeAfterSummary.rows?.map((row) => (
                                 <div key={`${row.label}:${row.after}`} style={{ marginTop: 6 }}>
                                     <Text type="secondary">{row.label}: </Text>
-                                    <Text>{row.before ? `${row.before} -> ` : ''}<strong>{row.after || '-'}</strong></Text>
+                                    <Text>
+                                        {row.before ? <>{row.before} <LuArrowRight size={13} style={{ verticalAlign: '-2px' }} /> </> : null}
+                                        <Text strong>{row.after || '-'}</Text>
+                                    </Text>
                                 </div>
                             ))}
                         </div>
                         {card.suggestedReplies?.length ? (
                             <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                                <Text strong>Choose an option</Text>
+                                <Text strong>{card.kind === 'clarification' ? 'Choose one to continue' : 'Next options'}</Text>
                                 {card.suggestedReplies.map((reply) => (
                                     <button
                                         key={`${card.cardId}:${reply.prompt}`}
+                                        disabled={Boolean(workingCardId)}
                                         onClick={() => {
                                             if (card.kind === 'clarification') {
-                                                onResolveClarification?.(card, reply.prompt);
+                                                onResolveClarification?.(card, reply);
                                                 return;
                                             }
                                             onDraftPrompt?.(reply.prompt);
                                         }}
                                         style={{
-                                            background: token.colorBgContainer,
+                                            background: token.colorFillQuaternary,
                                             border: `1px solid ${token.colorBorderSecondary}`,
-                                            borderRadius: 12,
+                                            borderRadius: 8,
                                             color: token.colorText,
+                                            cursor: workingCardId ? 'not-allowed' : 'pointer',
+                                            display: 'flex',
+                                            gap: 8,
+                                            justifyContent: 'space-between',
                                             minHeight: 48,
+                                            opacity: workingCardId ? 0.56 : 1,
                                             padding: '10px 12px',
                                             textAlign: 'left',
                                             width: '100%',
                                         }}
                                         type="button"
                                     >
-                                        <Text strong style={{ display: 'block' }}>{reply.label}</Text>
-                                        {reply.helper ? (
-                                            <Text type="secondary" style={{ display: 'block' }}>{reply.helper}</Text>
-                                        ) : null}
+                                        <span style={{ minWidth: 0 }}>
+                                            <Text strong style={{ display: 'block' }}>{reply.label}</Text>
+                                            {reply.helper ? (
+                                                <Text type="secondary" style={{ display: 'block' }}>{reply.helper}</Text>
+                                            ) : null}
+                                        </span>
+                                        <LuArrowRight color={token.colorTextQuaternary} size={17} style={{ flexShrink: 0, marginTop: 3 }} />
                                     </button>
                                 ))}
                             </Space>
                         ) : null}
                         {card.localActions?.length ? (
                             <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                                <Text strong>Ready to use</Text>
+                                <Text strong>Available actions</Text>
                                 {card.localActions.find((action) => action.type === 'copy_url' || action.type === 'copy_text')?.value ? (
                                     <Text
                                         style={{
@@ -253,7 +341,7 @@ export default function MobileAiMenuCardStack({
                                             display: 'block',
                                             maxHeight: card.localActions.find((action) => action.type === 'copy_text') ? 160 : undefined,
                                             overflow: card.localActions.find((action) => action.type === 'copy_text') ? 'auto' : undefined,
-                                            padding: 10,
+                                            padding: '8px 10px',
                                             whiteSpace: card.localActions.find((action) => action.type === 'copy_text') ? 'pre-wrap' : 'normal',
                                             wordBreak: 'break-word',
                                         }}
@@ -266,9 +354,10 @@ export default function MobileAiMenuCardStack({
                                         <Button
                                             key={`${card.cardId}:${action.type}:${action.label}`}
                                             fill="outline"
+                                            disabled={Boolean(workingCardId)}
                                             loading={workingCardId === card.cardId}
                                             onClick={() => void handleLocalAction(action, card)}
-                                            style={{ minHeight: 44 }}
+                                            style={{ borderRadius: 999, minHeight: 44, paddingInline: 14 }}
                                         >
                                             {getLocalActionIcon(action.type)} {action.label}
                                         </Button>
@@ -276,38 +365,43 @@ export default function MobileAiMenuCardStack({
                                 </Flex>
                             </Space>
                         ) : null}
-                        <Text type="secondary">{card.approvalPolicy.reason}</Text>
-                        <Flex gap={8}>
-                            {card.actions.includes('edit') ? (
-                                <Button
-                                    block
-                                    fill="outline"
-                                    loading={workingCardId === card.cardId}
-                                    onClick={() => onEdit?.(card)}
-                                    style={{ minHeight: 44 }}
-                                >
-                                    <LuPencil /> Edit
-                                </Button>
-                            ) : null}
+                        {shouldShowAiMenuManagerApprovalReason(card) ? (
+                            <Text type="secondary">{card.approvalPolicy.reason}</Text>
+                        ) : null}
+                        <Flex gap={8} wrap="wrap">
                             {card.actions.includes('approve') || card.actions.includes('mark_done') ? (
                                 <Button
                                     block
                                     color="primary"
                                     fill="solid"
+                                    disabled={Boolean(workingCardId)}
                                     loading={workingCardId === card.cardId}
                                     onClick={() => onApprove(card)}
-                                    style={{ minHeight: 44 }}
+                                    style={{ borderRadius: 999, minHeight: 44 }}
                                 >
                                     <LuCheck /> {card.actions.includes('mark_done') ? (card.localActions?.length ? 'Done' : 'Mark done') : 'Approve'}
+                                </Button>
+                            ) : null}
+                            {card.actions.includes('edit') ? (
+                                <Button
+                                    block
+                                    fill="outline"
+                                    disabled={Boolean(workingCardId)}
+                                    loading={workingCardId === card.cardId}
+                                    onClick={() => onEdit?.(card)}
+                                    style={{ borderRadius: 999, minHeight: 44 }}
+                                >
+                                    <LuPencil /> Edit
                                 </Button>
                             ) : null}
                             {card.actions.includes('cancel') ? (
                                 <Button
                                     block
                                     fill="outline"
+                                    disabled={Boolean(workingCardId)}
                                     loading={workingCardId === card.cardId}
                                     onClick={() => onCancel(card)}
-                                    style={{ minHeight: 44 }}
+                                    style={{ borderRadius: 999, minHeight: 44 }}
                                 >
                                     <LuX /> Cancel
                                 </Button>

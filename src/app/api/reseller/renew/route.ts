@@ -8,6 +8,7 @@ import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -169,6 +170,15 @@ export const POST = withAuth(async (request, session) => {
             },
             'api:reseller-renew',
         );
+        await safelyRecordOwnerReferralPaymentAndRepair({
+            paidScope: { tenantId, storeId },
+            evidence: {
+                paidAt: now,
+                paymentEvidenceId: `${existingSub.id}:${newValidUntil.getTime()}`,
+                source: 'api:reseller-renew',
+                subscriptionId: existingSub.id,
+            },
+        });
 
         // Create new transaction record (append, never mutate old)
         const transactionId = await createResellerTransaction({

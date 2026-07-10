@@ -1,9 +1,9 @@
 # MenuList SignalDesk - Documentation Hub
 
 **Project:** MenuList SignalDesk
-**Status:** Internal workflow, internal team access management, connector settings, dashboard lead batch, FHRS/FHIS UK source provider, Apify source broker, Origami-style Research Agent Table, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation shell, gated provider/source/AI/channel runtime, Content Distribution Rail runtime, Trust Partner Rail runtime, and solo-founder Operating Layer runtime implemented for internal testing; paid campaigns, paid external adapters, provider send, auto-publish, and Firebase deploy skipped
+**Status:** Internal workflow, internal team access management, connector settings, governed source/research/content/partner rails, solo-founder Operating Layer, and bounded Revenue Operating Layer implemented for internal testing; paid campaigns, paid external adapters, provider send, auto-publish, proposal/calendar/payment providers, and Firebase deploy remain blocked or skipped
 **Created:** June 23, 2026
-**Last Updated:** June 26, 2026
+**Last Updated:** July 10, 2026
 **Owner:** Danny and MenuList marketing/growth team
 **Audience:** Internal only
 
@@ -46,6 +46,11 @@ private MenuList growth control room
 -> founder observes, monitors, approves, pauses, or redirects
 -> dashboard shows up to 30 prepared leads with evidence, contact path, share message, and next safe action
 -> content source assets become approval-gated distribution drafts and queued calendar items
+-> qualified targets or interested replies become one governed revenue account and, when eligible, one commercial opportunity
+-> standard commercial offers and operating envelopes remain versioned, bounded, and approval-only
+-> recorded outcomes automatically refresh activation watches, or reconcile when account creation occurs later, without writing MenuList truth
+-> elapsed seven-day deadlines surface as stalled and enter the founder decision brief
+-> research recommends market pods, but only an explicit founder review can activate one
 ```
 
 Do not start with:
@@ -72,6 +77,9 @@ Do not start with:
 | [ChatGPT Feedback Review](./menulist-signaldesk_chatgpt-feedback-review-2026-06-24.md) | Validates ChatGPT's response and adopts the solo-founder operating-layer backlog without widening send/provider/public scope. |
 | [Growth Playbook Review](./menulist-signaldesk_growth-playbook-review-2026-06-24.md) | Validates AI-startup and founder-distribution lessons against MenuList, adopts the activation-proof loop, records first-pod defaults, and rejects unsafe automations. |
 | [Founder Distribution Research](./menulist-signaldesk_founder-distribution-research-2026-06-24.md) | Cross-checks founder/community workflows, fast-growth startup patterns, restaurant/SMB signals, and platform safety policies to define what MenuList should automate next. |
+| [Social Channel Market Research And Next Plan](./menulist-signaldesk_social-channel-market-research-and-next-plan-2026-07-10.md) | Current X, Reddit, Instagram, YouTube, Google, Bengaluru/India, customer-friction, and vendor-landscape evidence translated into one 30-day activation trial. |
+| [Social Channel Market Brief](./menulist-signaldesk_social-channel-market-brief-2026-07-10.html) | Self-contained visual competitive brief covering channel roles, market pressure, trial controls, and sources. |
+| [Bengaluru Activation Trial Operating Pack](./menulist-signaldesk_bengaluru-activation-trial-operating-pack-2026-07-10.md) | Approved zero-spend operating envelope, source-policy split, 25-row candidate board, evidence packet, draft-only scripts, preview checklist, stop rules, and external blockers. |
 | [MenuList Activation Concierge](../menulist-activation-concierge/README.md) | Separate MenuList-side doc set for upload, preview, publish, two-surface activation, proof eligibility, and the SignalDesk outcome-observer boundary. |
 | [SignalDesk Foundation](./signaldesk-foundation/README.md) | First per-feature doc set for access, roles, audit, and kill switches. |
 | [Target Registry](./signaldesk-target-registry/README.md) | Target, source candidate, contact identity, and import workflow doc set. |
@@ -93,6 +101,7 @@ Do not start with:
 | [Trust Partner Rail](./signaldesk-trust-partner-rail/README.md) | Partner/creator trust-channel testing, lean briefs, deal tracking, deliverables, and renewal decisions. |
 | [Operating Layer](./signaldesk-operating-layer/README.md) | Daily Growth Mission, experiment cards, offer CTA OS, reply playbooks, source quality learning, and 7-day trial controls. |
 | [Research Agent Table](./signaldesk-operating-layer/signaldesk-operating-layer_research-agent-table.md) | Prompt-to-table research workflow plus dashboard lead batch with source-provider runs, enrichment columns, pass/fail/unsure scoring, source transparency, idempotency, and market-pod mapping. |
+| [Revenue Operating Layer](./signaldesk-revenue-operating-layer/README.md) | Revenue accounts, commercial opportunities/offers, bounded operating envelopes, activation watches, and revenue-control summaries without provider send or MenuList truth writes. |
 | [Specification](./menulist-signaldesk_spec.md) | Business/product requirements for the internal project. |
 | [Implementation Plan](./menulist-signaldesk_impl.md) | Technical blueprint, architecture, module order, and reserved file layout. |
 | [Firebase Cost Plan](./menulist-signaldesk_firebase.md) | Separate Firebase posture, collections, cost controls, and dashboard read strategy. |
@@ -141,6 +150,7 @@ The project should be documented and built in this order:
 | 15 | Solo-founder operating layer | Runtime implemented for internal testing; provider send, paid campaigns, public pages, and auto-publish remain blocked |
 | 16 | Growth playbook operating doctrine | Review doc created; adopt activation-proof loop and first-pod defaults before adding more automation |
 | 17 | Founder distribution research doctrine | Research doc created; prioritize Activation Concierge, proof assets, demand listening, and objection learning over send/provider expansion |
+| 18 | Revenue operating layer | Runtime implemented and locally verified; exception-only remains held, provider send remains false, and MenuList truth remains read-only through outcome summaries |
 
 Reserved or owner-gated modules:
 
@@ -153,6 +163,7 @@ Reserved or owner-gated modules:
 - local cluster expansion
 - AI optimizer
 - solo-founder operating layer: Dashboard lead batch, Research Agent Table, Daily Growth Mission, Offer and CTA OS, Reply-to-Conversion Assistant, Experiment Cards, and Source Quality Learning are implemented as private runtime records and `/signaldesk` / `/signaldesk/mission`; self-serve owner route, referral loop, and public MenuList marketing surfaces remain separate MenuList-side work
+- revenue operating layer: account qualification, interested-reply projection, two-surface-only win authority, opportunity/pipeline state, immutable offer versions, founder-reviewed market pods, operating envelopes, deterministic indexed outcome-to-activation projection, read-time seven-day stalls, and founder-attention/spend summaries are implemented at `/signaldesk/revenue`; calendar, proposal, signature, payment, and direct MenuList activation execution remain provider/product-owned boundaries
 
 ## Architecture Summary
 
@@ -171,6 +182,9 @@ Approved sources
   -> Learning/demand signals
   -> Content distribution drafts and calendar queue
   -> Trust partner tests and renewal decisions
+  -> Revenue account and commercial opportunity
+  -> Standard offer and bounded operating envelope
+  -> Activation watch over SignalDesk outcome summaries
 ```
 
 ## Naming
@@ -223,3 +237,8 @@ Approved sources
 | 3.1 | 2026-06-27 | Hardened the shared SignalDesk API guard so action and kill-switch requests use a 256KB bounded JSON body before validation, access checks, provider/source work, AI work, or SignalDesk Firestore writes. |
 | 3.2 | 2026-06-27 | Bounded SignalDesk client DAL failure copy so overview, workspace, action, and pause failures no longer rethrow raw route response text into the internal UI. |
 | 3.3 | 2026-06-30 | Bounded shared API guard security logs so SignalDesk validation, authorization, rate-limit, and malformed-JSON events no longer spread raw `buildSecurityContext()` output. |
+| 3.4 | 2026-07-10 | Implemented the bounded Revenue Operating Layer at `/signaldesk/revenue`: deterministic account qualification, commercial opportunities, immutable offer versions, policy-referenced operating envelopes, activation watches, founder-attention/revenue summaries, client-write-denied rules, indexes, and emulator E2E coverage; exception-only and provider send remain blocked. |
+| 3.5 | 2026-07-10 | Cross-check hardened revenue integrity: transactional idempotency and forecast deltas, required active-pod scope, compatible budget selection, one-currency pipeline enforcement, deterministic immutable offer/envelope IDs, activation-driven opportunity close, coherent expiry/hold/approval history, explicit offer selection, and hard mobile form disabling. |
+| 3.6 | 2026-07-10 | Wired the first-trial operating loop: held zero-budget Bengaluru defaults, interested-reply revenue qualification, automatic outcome-to-activation projection, read-time seven-day stall detection, recovery-only watch recheck, and a revenue/attention/spend-aware founder brief. |
+| 3.7 | 2026-07-10 | Cross-check closed pod-approval, published-only win, and long outcome-history defects: research/recommendations stay held, founder review is explicit, envelopes require approval evidence, only two-surface activation wins, and indexed earliest/latest/terminal outcome reads preserve lifecycle truth. |
+| 3.8 | 2026-07-10 | Operationalized the approved zero-spend Bengaluru trial: evidence-only public research is separate from permissioned contact, first-trial search and experiment defaults match the 25-candidate plan, Google Places and the trust-partner test default to zero approval/spend, and the maintained operating pack records the field workflow and blockers. |

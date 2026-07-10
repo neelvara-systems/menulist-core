@@ -78,7 +78,7 @@ const validationDoc = read('__docs__/temp-status-layer/temp-status-layer_validat
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 
 requireToken(
   packageJson,

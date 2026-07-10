@@ -30,7 +30,7 @@ Comprehensive verification of the multi-language translation feature following `
 | `src/components/.../utils/translationsUtils.ts` | 234   | ✅     | Fixed typo this session   |
 | `src/components/.../LanguageSelectorModal.tsx`  | 513   | ✅     | Excellent UX              |
 | `src/components/.../editItemModal.tsx`          | 592   | ✅     | Item translation works    |
-| `src/components/.../Editor.tsx`                 | 1056  | ✅     | Language toggle works     |
+| `src/components/.../editor.tsx`                 | 1056  | ✅     | Language toggle works     |
 | `src/data/languages.ts`                         | 95    | ✅     | 93 languages, 5 RTL       |
 | `src/components/.../types/common.types.ts`      | 32    | ✅     | LanguageType defined      |
 | `src/components/.../types/api.types.ts`         | 87    | ✅     | TranslationAPIParams      |

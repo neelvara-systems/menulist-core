@@ -6,6 +6,8 @@
 **Author:** Lead Architect (Cascade)
 **Applies:** 3-Year Architecture Freeze Rule
 
+> **Launch boundary:** Not current launch certification or deploy approval. This implementation plan is source-gated runtime evidence only; CMI release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped Functions deploy evidence for the scheduler bundle, runtime/provider smoke where relevant, downstream consumer certification, and production-host smoke.
+
 > **⚠️ March 2026 Strategic Repositioning:** CMI autonomous actions (AUTO_HIDE, AUTO_PROMOTE, etc.) are architecturally classified as GrowthOS territory. Code stays in place (feature-flagged, safety-gated) but the observation layer is what MenuList owns. See `_archive/chatgpt-review-strategic-repositioning.md`.
 
 ---

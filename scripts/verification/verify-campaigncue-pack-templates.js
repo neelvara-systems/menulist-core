@@ -117,7 +117,7 @@ assertIncludes("storage-campaigncue.rules", "campaigncue/templates/workspaces");
 assertIncludes("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_firebase.md", "1 Firestore read");
 assertIncludes("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_firebase.md", "Unexpected cleanup failures log bounded diagnostics");
 assertIncludes("__docs__/audits/menulist-production-readiness-audit.md", "CampaignCue workspace template Storage cleanup diagnostics checkpoint: fixed in source.");
-assertIncludes("__docs__/CHANGELOG.md", "CampaignCue Workspace Template Storage Cleanup Diagnostics");
+assertIncludes("__docs__/changelog.md", "CampaignCue Workspace Template Storage Cleanup Diagnostics");
 assertIncludes("__docs__/campaigncue/ugc-script-studio/ugc-script-studio_firebase.md", "no new Firestore collection, read, write, Storage object, Cloud Function, provider call, model call, creator CRM record, contract record, or payment record");
 assertIncludes("__docs__/campaigncue/campaigncue_founder-research-addendum.md", "not \"build influencer marketing software.\"");
 assertIncludes("__docs__/campaigncue/campaigncue_founder-research-addendum.md", "do not broker, price-guarantee, contract, or pay creators");

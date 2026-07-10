@@ -37,6 +37,7 @@ import {
     LuArchive,
     LuBarChart3,
     LuBell,
+    LuBriefcase,
     LuClipboardCheck,
     LuDatabase,
     LuFileText,
@@ -215,6 +216,11 @@ const SECTION_META: Record<SignalDeskSection, { description: string; label: stri
         label: "Mission",
         title: "Daily Growth Mission",
     },
+    revenue: {
+        description: "Commercial accounts, opportunities, standard offers, bounded operating envelopes, activation watches, and founder attention.",
+        label: "Revenue",
+        title: "Revenue Operating Layer",
+    },
     targets: {
         description: "System-prepared targets with source, dedupe, score, evidence, and next-action state.",
         label: "Targets",
@@ -301,6 +307,7 @@ type SignalDeskNavItem = {
 const NAV_ITEMS: SignalDeskNavItem[] = [
     { href: SIGNALDESK_ROUTES.DASHBOARD, icon: LuBarChart3, section: "dashboard" },
     { href: SIGNALDESK_ROUTES.MISSION, icon: LuListChecks, section: "mission" },
+    { href: SIGNALDESK_ROUTES.REVENUE, icon: LuBriefcase, section: "revenue" },
     { href: SIGNALDESK_ROUTES.TARGETS, icon: LuTarget, section: "targets" },
     { href: SIGNALDESK_ROUTES.IMPORTS, icon: LuDatabase, section: "imports" },
     { href: SIGNALDESK_ROUTES.APPROVALS, icon: LuClipboardCheck, section: "approvals" },
@@ -341,18 +348,18 @@ const TEAM_ROLE_OPTIONS: Array<{ label: string; value: SignalDeskRole }> = [
 
 const MARKET_SEARCH_PRESETS = [
     {
-        label: "Hadapsar cafes",
-        prompt: "Find cafes in Hadapsar Pune Maharashtra with weak menu presence",
+        label: "Indiranagar cafes",
+        prompt: "Find independent cafes and dessert shops in Indiranagar Bengaluru with weak current-menu presence",
         researchType: "business-prospect",
     },
     {
-        label: "Pune QSR",
-        prompt: "Find quick-service restaurants in Pune with PDF-only or Instagram-only menus",
+        label: "Koramangala QSR",
+        prompt: "Find independent quick-service restaurants in Koramangala Bengaluru with PDF-only or Instagram-only menus",
         researchType: "business-prospect",
     },
     {
-        label: "Partner list",
-        prompt: "Find restaurant consultants and menu photographers in Pune for MenuList partner intros",
+        label: "Bengaluru partners",
+        prompt: "Find menu photographers and restaurant consultants in Indiranagar and Koramangala Bengaluru for a zero-fee learning partnership",
         researchType: "partner-list",
     },
 ];
@@ -392,12 +399,17 @@ const parseImportRows = (raw: string) => raw
     .filter((row) => row.displayName);
 
 const firstTargetId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.targets[0]?.targetId || "";
-const firstPolicyId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.policies[0]?.sourcePolicyId || "";
+const firstPolicyId = (data: SignalDeskWorkspaceResponse | null) => (
+    data?.workspace.policies.find((policy) => policy.sourceType === "manual-research" && !policy.allowedUse.contact)?.sourcePolicyId
+    || data?.workspace.policies[0]?.sourcePolicyId
+    || ""
+);
 const firstProviderPolicyId = (data: SignalDeskWorkspaceResponse | null) => (
     data?.workspace.policies.find((policy) => policy.sourceType === "provider")?.sourcePolicyId || ""
 );
 const firstWaterfallId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.enrichmentWaterfalls[0]?.waterfallId || "";
 const firstMarketPodId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.marketPods[0]?.marketPodId || "";
+const firstActiveMarketPodId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.marketPods.find((pod) => pod.status === "active")?.marketPodId || "";
 const firstPartnerId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.trustPartnerProfiles[0]?.partnerId || "";
 const firstNicheTestId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.trustPartnerNicheTests[0]?.nicheTestId || "";
 const firstTrustDealId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.trustPartnerDeals[0]?.dealId || "";
@@ -422,6 +434,16 @@ const firstReadySenderDomainId = (data: SignalDeskWorkspaceResponse | null) => (
         sender.brandRisk !== "high"
     ))?.senderDomainId || ""
 );
+const firstCommercialOfferId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.commercialOffers.find((offer) => offer.status === "active")?.commercialOfferId || data?.workspace.commercialOffers[0]?.commercialOfferId || "";
+const firstCommercialOpportunityId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.commercialOpportunities[0]?.opportunityId || "";
+const firstRevenueBudgetPolicyId = (data: SignalDeskWorkspaceResponse | null, marketPodId: string) => data?.workspace.budgetPolicies.find((budget) => (
+    budget.status === "active"
+    && (
+        budget.scope === "global"
+        || (budget.scope === "market-pod" && Boolean(marketPodId) && budget.scopeId === marketPodId)
+    )
+))?.budgetPolicyId || "";
+const firstActiveTemplateId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.templates.find((template) => template.status === "active")?.templateId || "";
 
 function LoadingState() {
     return (
@@ -880,7 +902,7 @@ function ResearchAgentSearchPanel({
             <WorkspaceTextarea
                 className={styles.textarea}
                 onChange={(event) => setResearchPrompt(event.target.value)}
-                placeholder="Find cafes in Hadapsar Pune Maharashtra with weak menu presence"
+                placeholder="Find independent cafes in Indiranagar Bengaluru with weak current-menu presence"
                 value={researchPrompt}
             />
             <div className={styles.quickPrompts}>
@@ -892,7 +914,7 @@ function ResearchAgentSearchPanel({
                         onClick={() => {
                             setResearchPrompt(preset.prompt);
                             setResearchType(preset.researchType);
-                            setResearchMaxResults(30);
+                            setResearchMaxResults(25);
                         }}
                         type="button"
                     >
@@ -1011,25 +1033,25 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [sidebarShellExpanded, setSidebarShellExpanded] = useState(false);
     const [mobileReadOnly, setMobileReadOnly] = useState(false);
-    const [policyName, setPolicyName] = useState("Manual research");
+    const [policyName, setPolicyName] = useState("Public business research");
     const [policySourceType, setPolicySourceType] = useState("manual-research");
-    const [policyAllowContact, setPolicyAllowContact] = useState(true);
+    const [policyAllowContact, setPolicyAllowContact] = useState(false);
     const [policyAllowEvidence, setPolicyAllowEvidence] = useState(true);
-    const [policyAllowPersonalization, setPolicyAllowPersonalization] = useState(true);
-    const [retentionDays, setRetentionDays] = useState(90);
+    const [policyAllowPersonalization, setPolicyAllowPersonalization] = useState(false);
+    const [retentionDays, setRetentionDays] = useState(30);
     const [sourcePolicyId, setSourcePolicyId] = useState("");
     const [sourceName, setSourceName] = useState("Manual import");
-    const [importRows, setImportRows] = useState("Demo Cafe,Restaurant,Mumbai,India,https://example.com,owner@example.com,,,\nDemo Salon,Salon,Pune,India,,,919999999999,,");
+    const [importRows, setImportRows] = useState("Demo Cafe,Cafe,Bengaluru,India,https://example.invalid,,,,\nDemo QSR,QSR,Bengaluru,India,https://example.invalid,,,,");
     const [selectedTargetId, setSelectedTargetId] = useState("");
     const [replyChannel, setReplyChannel] = useState("email");
     const [replyText, setReplyText] = useState("");
     const [outcomeType, setOutcomeType] = useState("route_created");
     const [demandSignalType, setDemandSignalType] = useState("link_click");
     const [sourceProvider, setSourceProvider] = useState("google-places");
-    const [sourceQuery, setSourceQuery] = useState("restaurants with PDF menu");
-    const [sourceCity, setSourceCity] = useState("Mumbai");
+    const [sourceQuery, setSourceQuery] = useState("independent cafes, dessert shops, and QSRs with weak current-menu presence in Indiranagar and Koramangala");
+    const [sourceCity, setSourceCity] = useState("Bengaluru");
     const [sourceCountry, setSourceCountry] = useState("India");
-    const [sourceMaxResults, setSourceMaxResults] = useState(10);
+    const [sourceMaxResults, setSourceMaxResults] = useState(25);
     const [aiTask, setAiTask] = useState("evidence");
     const [aiInstruction, setAiInstruction] = useState("");
     const [channel, setChannel] = useState("whatsapp");
@@ -1063,13 +1085,13 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [partnerName, setPartnerName] = useState("Menu photographer partner");
     const [partnerType, setPartnerType] = useState("menu-photographer");
     const [partnerChannel, setPartnerChannel] = useState("instagram");
-    const [partnerGeography, setPartnerGeography] = useState("Mumbai");
+    const [partnerGeography, setPartnerGeography] = useState("Bengaluru - Indiranagar and Koramangala");
     const [partnerSourceNotes, setPartnerSourceNotes] = useState("Audience includes restaurant owners and operators.");
     const [partnerScore, setPartnerScore] = useState(75);
     const [nicheName, setNicheName] = useState("Menu photographers");
     const [nicheAngle, setNicheAngle] = useState("Current-list proof through menu refresh partners.");
-    const [nicheAttempts, setNicheAttempts] = useState(3);
-    const [dealFeeUsd, setDealFeeUsd] = useState(75);
+    const [nicheAttempts, setNicheAttempts] = useState(5);
+    const [dealFeeUsd, setDealFeeUsd] = useState(0);
     const [dealDeliverables, setDealDeliverables] = useState(1);
     const [briefText, setBriefText] = useState("Show how a restaurant can keep a clean current menu online and invite owners to request a private MenuList preview.");
     const [deliverablePostUrl, setDeliverablePostUrl] = useState("");
@@ -1099,10 +1121,10 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [missionDecisionNote, setMissionDecisionNote] = useState("");
     const [selectedExperimentCardId, setSelectedExperimentCardId] = useState("");
     const [experimentHypothesis, setExperimentHypothesis] = useState("One narrow local restaurant pod will convert better when the ask is a private current-list preview.");
-    const [experimentChannel, setExperimentChannel] = useState("email");
+    const [experimentChannel, setExperimentChannel] = useState("manual");
     const [experimentTargetCount, setExperimentTargetCount] = useState(25);
-    const [experimentStopRule, setExperimentStopRule] = useState("Stop if 3 to 5 approved attempts produce no interested reply or upload-start signal.");
-    const [experimentExpectedOutcome, setExperimentExpectedOutcome] = useState("At least one current-list upload, private preview, or interested owner reply.");
+    const [experimentStopRule, setExperimentStopRule] = useState("Stop if five owner conversations produce no accepted private preview, or if fewer than two of the first five accepted previews activate on two surfaces.");
+    const [experimentExpectedOutcome, setExperimentExpectedOutcome] = useState("Three owner-reviewed two-surface activations within seven days, plus one permissioned proof asset.");
     const [experimentResultSummary, setExperimentResultSummary] = useState("");
     const [offerTitle, setOfferTitle] = useState("Current list upload");
     const [offerAsk, setOfferAsk] = useState("Upload the current menu or service list so MenuList can prepare a private preview for review before publishing.");
@@ -1117,10 +1139,39 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [replyPlaybookEscalation, setReplyPlaybookEscalation] = useState(false);
     const [replyPlaybookSuppression, setReplyPlaybookSuppression] = useState(false);
     const [selectedSourceRunId, setSelectedSourceRunId] = useState("");
-    const [researchPrompt, setResearchPrompt] = useState("Find cafes in Hadapsar Pune Maharashtra with weak menu presence");
+    const [researchPrompt, setResearchPrompt] = useState("Find cafes, dessert shops, and QSRs in Indiranagar and Koramangala Bengaluru with weak current-menu presence");
     const [researchProvider, setResearchProvider] = useState("google-places");
     const [researchType, setResearchType] = useState("business-prospect");
-    const [researchMaxResults, setResearchMaxResults] = useState(30);
+    const [researchMaxResults, setResearchMaxResults] = useState(25);
+    const [marketPodReviewReason, setMarketPodReviewReason] = useState("Approved for one zero-external-spend Bengaluru trial with manual preparation and per-item review.");
+    const [revenueOrganizationName, setRevenueOrganizationName] = useState("");
+    const [revenueLocationType, setRevenueLocationType] = useState("single-location");
+    const [selectedCommercialOpportunityId, setSelectedCommercialOpportunityId] = useState("");
+    const [selectedCommercialOfferId, setSelectedCommercialOfferId] = useState("");
+    const [commercialOpportunityStage, setCommercialOpportunityStage] = useState("qualified");
+    const [commercialOpportunityStatus, setCommercialOpportunityStatus] = useState("open");
+    const [commercialOpportunityValueMinor, setCommercialOpportunityValueMinor] = useState(0);
+    const [commercialOpportunityProbability, setCommercialOpportunityProbability] = useState(20);
+    const [commercialOpportunityNextAction, setCommercialOpportunityNextAction] = useState("Confirm the standard offer and next customer action.");
+    const [commercialOpportunityAttentionMinutes, setCommercialOpportunityAttentionMinutes] = useState(0);
+    const [commercialOpportunityWinLossReason, setCommercialOpportunityWinLossReason] = useState("");
+    const [commercialOfferName, setCommercialOfferName] = useState("MenuList standard package");
+    const [commercialOfferVersion, setCommercialOfferVersion] = useState(1);
+    const [commercialOfferCurrency, setCommercialOfferCurrency] = useState("INR");
+    const [commercialOfferPriceMinor, setCommercialOfferPriceMinor] = useState(49900);
+    const [commercialOfferCadence, setCommercialOfferCadence] = useState("monthly");
+    const [commercialOfferDiscountBps, setCommercialOfferDiscountBps] = useState(0);
+    const [commercialOfferContents, setCommercialOfferContents] = useState("Current official menu link,Owner review before publishing,QR and share support");
+    const [commercialOfferEligibility, setCommercialOfferEligibility] = useState("Standard single-location MenuList path with no custom terms.");
+    const [commercialOfferApprovalConditions, setCommercialOfferApprovalConditions] = useState("Any discount,Custom terms,Multi-location commercial request");
+    const [operatingEnvelopeName, setOperatingEnvelopeName] = useState("First pod revenue envelope");
+    const [operatingEnvelopeMode, setOperatingEnvelopeMode] = useState("recommendation-only");
+    const [operatingEnvelopeChannel, setOperatingEnvelopeChannel] = useState("manual");
+    const [operatingEnvelopeDailyCap, setOperatingEnvelopeDailyCap] = useState(10);
+    const [operatingEnvelopeTotalCap, setOperatingEnvelopeTotalCap] = useState(50);
+    const [operatingEnvelopeCostCap, setOperatingEnvelopeCostCap] = useState(50);
+    const [operatingEnvelopeDays, setOperatingEnvelopeDays] = useState(7);
+    const [operatingEnvelopeVersion, setOperatingEnvelopeVersion] = useState(1);
 
     useEffect(() => {
         const evaluate = () => {
@@ -1177,11 +1228,17 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const resolvedContentAssetId = data ? (selectedContentAssetId || firstContentAssetId(data)) : "";
     const resolvedContentDraftId = data ? (selectedContentDraftId || firstContentDraftId(data)) : "";
     const resolvedSenderDomainId = data ? firstReadySenderDomainId(data) : "";
+    const resolvedCommercialOfferId = data ? (selectedCommercialOfferId || firstCommercialOfferId(data)) : "";
+    const resolvedCommercialOpportunityId = data ? (selectedCommercialOpportunityId || firstCommercialOpportunityId(data)) : "";
+    const resolvedRevenueMarketPodId = data ? firstActiveMarketPodId(data) : "";
+    const resolvedRevenueBudgetPolicyId = data ? firstRevenueBudgetPolicyId(data, resolvedRevenueMarketPodId) : "";
+    const resolvedRevenueTemplateId = data ? firstActiveTemplateId(data) : "";
     const globalPauseActive = Boolean(data?.activeKillSwitches.some((item) => item.scope === "global-outbound" && item.status === "active"));
     const scopedPauseActive = Boolean(data?.activeKillSwitches.some((item) => item.scope === pauseScope && item.status === "active"));
     const canPause = Boolean(data?.access.permissions.includes("kill-switch.activate"));
     const canResume = Boolean(data?.access.permissions.includes("kill-switch.deactivate"));
     const canConfigureSignalDesk = Boolean(data?.access.permissions.includes("signaldesk.configure"));
+    const canApproveMarketPod = Boolean(data?.access.role === "founder-admin" && data.access.permissions.includes("signaldesk.configure"));
     const actionDisabled = saving || mobileReadOnly;
 
     const pendingApproval = useMemo(
@@ -1220,7 +1277,9 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             allowEvidence: policyAllowEvidence,
             allowPersonalization: policyAllowPersonalization,
             name: policyName,
-            notes: "Internal approved source policy.",
+            notes: policyAllowContact
+                ? "Contact use is limited to a permissioned manual introduction or referral; public availability alone is not permission."
+                : "Candidate discovery and evidence review only; contact fields, personalization, export, and send remain blocked.",
             retentionDays,
             sourceType: policySourceType,
         });
@@ -1300,6 +1359,14 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
 
     const recommendMarketPodPlan = (marketPodId?: string) => {
         void runAction("recommend-market-pod-plan", { marketPodId });
+    };
+
+    const reviewMarketPod = (marketPodId: string, decision: "approved" | "held" | "rejected") => {
+        void runAction("review-market-pod", {
+            decision,
+            marketPodId,
+            reason: marketPodReviewReason,
+        });
     };
 
     const createWeeklyStrategistMemo = () => {
@@ -1418,12 +1485,12 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
-    const approveTrustPartnerTestBudget = () => {
+    const approveZeroSpendTrustPartnerTest = () => {
         void runAction("upsert-budget-policy", {
-            dailyBudgetUsd: 75,
-            monthlyBudgetUsd: 300,
-            name: "First trust partner test cap",
-            perRunBudgetUsd: 75,
+            dailyBudgetUsd: 0,
+            monthlyBudgetUsd: 0,
+            name: "Zero-spend trust partner learning test",
+            perRunBudgetUsd: 0,
             scope: "trust-partner",
             scopeId: "first_partner_test",
             status: "active",
@@ -1819,6 +1886,77 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
+    const qualifyRevenueAccount = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("qualify-revenue-account", {
+            locationType: revenueLocationType,
+            organizationName: revenueOrganizationName || undefined,
+            targetId: resolvedTargetId,
+        });
+    };
+
+    const upsertCommercialOffer = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("upsert-commercial-offer", {
+            allowedDiscountBps: commercialOfferDiscountBps,
+            billingCadence: commercialOfferCadence,
+            contents: commercialOfferContents.split(",").map((item) => item.trim()).filter(Boolean),
+            currency: commercialOfferCurrency,
+            eligibilitySummary: commercialOfferEligibility,
+            founderApprovalConditions: commercialOfferApprovalConditions.split(",").map((item) => item.trim()).filter(Boolean),
+            name: commercialOfferName,
+            offerCtaId: resolvedOfferCtaId || undefined,
+            priceMinor: commercialOfferPriceMinor,
+            status: "active",
+            version: commercialOfferVersion,
+        });
+    };
+
+    const updateCommercialOpportunity = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("upsert-commercial-opportunity", {
+            commercialOfferId: resolvedCommercialOfferId || undefined,
+            founderAttentionMinutes: commercialOpportunityAttentionMinutes,
+            nextAction: commercialOpportunityNextAction,
+            opportunityId: resolvedCommercialOpportunityId,
+            probabilityPercent: commercialOpportunityProbability,
+            stage: commercialOpportunityStage,
+            status: commercialOpportunityStatus,
+            valueMinor: commercialOpportunityValueMinor,
+            winLossReason: commercialOpportunityWinLossReason || undefined,
+        });
+    };
+
+    const upsertOperatingEnvelope = (event: FormEvent) => {
+        event.preventDefault();
+        const startsAt = new Date();
+        const expiresAt = new Date(startsAt.getTime() + Math.max(1, operatingEnvelopeDays) * 24 * 60 * 60 * 1000);
+        void runAction("upsert-operating-envelope", {
+            budgetPolicyId: resolvedRevenueBudgetPolicyId || undefined,
+            channel: operatingEnvelopeChannel,
+            commercialOfferId: resolvedCommercialOfferId,
+            dailyVolumeCap: operatingEnvelopeDailyCap,
+            expiresAt: expiresAt.toISOString(),
+            fallbackAction: "founder-review",
+            marketPodId: resolvedRevenueMarketPodId,
+            maxCostUsd: operatingEnvelopeCostCap,
+            name: operatingEnvelopeName,
+            requestedApprovalMode: operatingEnvelopeMode,
+            senderDomainId: operatingEnvelopeChannel === "email" ? resolvedSenderDomainId || undefined : undefined,
+            sourcePolicyIds: [resolvedPolicyId],
+            startsAt: startsAt.toISOString(),
+            status: operatingEnvelopeMode === "manual" || operatingEnvelopeMode === "recommendation-only" ? "shadow" : "approved",
+            stopConditions: ["Source policy changes", "Suppression or complaint risk rises", "Budget or volume cap is reached"],
+            templateIds: [resolvedRevenueTemplateId],
+            totalVolumeCap: operatingEnvelopeTotalCap,
+            version: operatingEnvelopeVersion,
+        });
+    };
+
+    const refreshActivationWatch = (targetId: string) => {
+        void runAction("refresh-activation-watch", { targetId });
+    };
+
     const renderSection = () => {
         if (!data) return null;
         if (activeSection === "dashboard") return (
@@ -2081,6 +2219,260 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                 </section>
             );
         }
+        if (activeSection === "revenue") {
+            const revenueSummary = data.workspace.revenueControlSummaries[0];
+            const stalledActivationCount = data.workspace.activationWatches.filter((watch) => watch.status === "stalled").length;
+            const selectedOpportunity = data.workspace.commercialOpportunities.find((opportunity) => (
+                opportunity.opportunityId === resolvedCommercialOpportunityId
+            ));
+            return (
+                <fieldset aria-label="Revenue operating layer" className={`${styles.stack} ${styles.readOnlyFieldset}`} disabled={mobileReadOnly}>
+                    <div className={styles.panel}>
+                        <div className={styles.panelHeader}>
+                            <h2>Revenue Control Summary</h2>
+                            <span className={tagClass(data.setup.providerSendEnabled ? "warning" : "good")}>
+                                provider send {data.setup.providerSendEnabled ? "enabled" : "disabled"}
+                            </span>
+                        </div>
+                        <div className={styles.statusList}>
+                            <div className={styles.statusRow}><span>Revenue accounts</span><strong>{revenueSummary?.revenueAccountCount || data.workspace.revenueAccounts.length}</strong></div>
+                            <div className={styles.statusRow}><span>Open opportunities</span><strong>{revenueSummary?.openOpportunityCount || 0}</strong></div>
+                            <div className={styles.statusRow}><span>Pipeline value</span><strong>{revenueSummary?.pipelineCurrency || "currency unset"} {revenueSummary?.pipelineValueMinor || 0} minor units</strong></div>
+                            <div className={styles.statusRow}><span>Weighted pipeline</span><strong>{revenueSummary?.pipelineCurrency || "currency unset"} {revenueSummary?.weightedPipelineValueMinor || 0} minor units</strong></div>
+                            <div className={styles.statusRow}><span>Activated accounts</span><strong>{revenueSummary?.activatedAccountCount || 0}</strong></div>
+                            <div className={styles.statusRow}><span>Stalled activations</span><strong>{stalledActivationCount}</strong></div>
+                            <div className={styles.statusRow}><span>Founder attention</span><strong>{revenueSummary?.founderAttentionMinutes || 0} minutes</strong></div>
+                        </div>
+                        <div className={styles.alert}>
+                            <LuShield size={18} />
+                            <div>
+                                <strong>Bounded revenue control only.</strong>
+                                <div>SignalDesk records commercial state and activation signals. MenuList remains authoritative for store, menu, publishing, billing, and customer truth.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={styles.contentGrid}>
+                        <form className={styles.panel} onSubmit={qualifyRevenueAccount}>
+                            <div className={styles.panelHeader}>
+                                <h2>Revenue Account</h2>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedTargetId} type="submit">Qualify</WorkspaceButton>
+                            </div>
+                            <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
+                            <div className={styles.formGrid}>
+                                <WorkspaceInput className={styles.input} onChange={(event) => setRevenueOrganizationName(event.target.value)} placeholder="Organization or group name" value={revenueOrganizationName} />
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setRevenueLocationType(event.target.value)} value={revenueLocationType}>
+                                    {[
+                                        ["single-location", "Single location"],
+                                        ["headquarters", "Headquarters"],
+                                        ["branch", "Branch"],
+                                    ].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                </WorkspaceSelect>
+                            </div>
+                            <div className={styles.list}>
+                                {data.workspace.revenueAccounts.map((account) => (
+                                    <div className={styles.listItem} key={account.revenueAccountId}>
+                                        <strong>{account.displayName}</strong>
+                                        <span>{account.city || "City unknown"} / {account.locationType} / {account.nextAction}</span>
+                                        <span className={tagClass(account.complianceState === "eligible" ? account.lifecycleStage : "warning")}>
+                                            {account.lifecycleStage} / {account.engagementState} / {account.complianceState}
+                                        </span>
+                                    </div>
+                                ))}
+                                {!data.workspace.revenueAccounts.length ? <div className={styles.empty}>No revenue accounts yet. Score a target, then qualify it here.</div> : null}
+                            </div>
+                        </form>
+
+                        <form className={styles.panel} onSubmit={upsertCommercialOffer}>
+                            <div className={styles.panelHeader}>
+                                <h2>Commercial Offer Registry</h2>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Save Version</WorkspaceButton>
+                            </div>
+                            <WorkspaceInput className={styles.input} onChange={(event) => setCommercialOfferName(event.target.value)} value={commercialOfferName} />
+                            <div className={styles.formGrid}>
+                                <WorkspaceInput className={styles.input} onChange={(event) => setCommercialOfferCurrency(event.target.value.toUpperCase())} value={commercialOfferCurrency} />
+                                <WorkspaceInput className={styles.input} min={0} onChange={(event) => setCommercialOfferPriceMinor(Number(event.target.value))} type="number" value={commercialOfferPriceMinor} />
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setCommercialOfferCadence(event.target.value)} value={commercialOfferCadence}>
+                                    {[["one-time", "One time"], ["monthly", "Monthly"], ["annual", "Annual"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                </WorkspaceSelect>
+                                <WorkspaceInput className={styles.input} min={0} max={10000} onChange={(event) => setCommercialOfferDiscountBps(Number(event.target.value))} type="number" value={commercialOfferDiscountBps} />
+                                <WorkspaceInput className={styles.input} min={1} onChange={(event) => setCommercialOfferVersion(Number(event.target.value))} type="number" value={commercialOfferVersion} />
+                            </div>
+                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setCommercialOfferContents(event.target.value)} value={commercialOfferContents} />
+                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setCommercialOfferEligibility(event.target.value)} value={commercialOfferEligibility} />
+                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setCommercialOfferApprovalConditions(event.target.value)} value={commercialOfferApprovalConditions} />
+                            <div className={styles.list}>
+                                {data.workspace.commercialOffers.map((offer) => (
+                                    <div className={styles.listItem} key={offer.commercialOfferId}>
+                                        <strong>{offer.name} v{offer.version}</strong>
+                                        <span>{offer.currency} {offer.priceMinor} minor units / {offer.billingCadence} / discount cap {offer.allowedDiscountBps} bps</span>
+                                        <span className={tagClass(offer.status)}>{offer.status}</span>
+                                    </div>
+                                ))}
+                                {!data.workspace.commercialOffers.length ? <div className={styles.empty}>No approved commercial offer version.</div> : null}
+                            </div>
+                        </form>
+                    </div>
+
+                    <div className={styles.contentGrid}>
+                        <form className={styles.panel} onSubmit={updateCommercialOpportunity}>
+                            <div className={styles.panelHeader}>
+                                <h2>Opportunity</h2>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedCommercialOpportunityId} type="submit">Update</WorkspaceButton>
+                            </div>
+                            <WorkspaceSelect
+                                className={styles.input}
+                                onChange={(event) => {
+                                    const opportunity = data.workspace.commercialOpportunities.find((item) => item.opportunityId === event.target.value);
+                                    setSelectedCommercialOpportunityId(event.target.value);
+                                    if (!opportunity) return;
+                                    setCommercialOpportunityStage(opportunity.stage);
+                                    setCommercialOpportunityStatus(opportunity.status);
+                                    setCommercialOpportunityValueMinor(opportunity.valueMinor);
+                                    setCommercialOpportunityProbability(opportunity.probabilityPercent);
+                                    setCommercialOpportunityNextAction(opportunity.nextAction);
+                                    setCommercialOpportunityAttentionMinutes(opportunity.founderAttentionMinutes);
+                                    setCommercialOpportunityWinLossReason(opportunity.winLossReason || "");
+                                    setSelectedCommercialOfferId(opportunity.commercialOfferId || "");
+                                }}
+                                value={resolvedCommercialOpportunityId}
+                            >
+                                {data.workspace.commercialOpportunities.map((opportunity) => (
+                                    <option key={opportunity.opportunityId} value={opportunity.opportunityId}>{opportunity.title}</option>
+                                ))}
+                            </WorkspaceSelect>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedCommercialOfferId(event.target.value)} value={resolvedCommercialOfferId}>
+                                {data.workspace.commercialOffers.filter((offer) => offer.status === "active").map((offer) => (
+                                    <option key={offer.commercialOfferId} value={offer.commercialOfferId}>{offer.name} v{offer.version} / {offer.currency} {offer.priceMinor}</option>
+                                ))}
+                            </WorkspaceSelect>
+                            <div className={styles.formGrid}>
+                                <WorkspaceSelect
+                                    className={styles.input}
+                                    onChange={(event) => {
+                                        const stage = event.target.value;
+                                        setCommercialOpportunityStage(stage);
+                                        setCommercialOpportunityStatus(stage === "won" || stage === "lost" || stage === "nurture" ? stage : "open");
+                                    }}
+                                    value={commercialOpportunityStage}
+                                >
+                                    {["qualified", "discovery", "offer", "decision", "won", "lost", "nurture"].map((item) => <option key={item} value={item}>{item}</option>)}
+                                </WorkspaceSelect>
+                                <WorkspaceSelect
+                                    className={styles.input}
+                                    onChange={(event) => {
+                                        const status = event.target.value;
+                                        setCommercialOpportunityStatus(status);
+                                        if (status === "won" || status === "lost" || status === "nurture") setCommercialOpportunityStage(status);
+                                        else if (["won", "lost", "nurture"].includes(commercialOpportunityStage)) setCommercialOpportunityStage("qualified");
+                                    }}
+                                    value={commercialOpportunityStatus}
+                                >
+                                    {["open", "won", "lost", "nurture"].map((item) => <option key={item} value={item}>{item}</option>)}
+                                </WorkspaceSelect>
+                                <WorkspaceInput className={styles.input} min={0} onChange={(event) => setCommercialOpportunityValueMinor(Number(event.target.value))} type="number" value={commercialOpportunityValueMinor} />
+                                <WorkspaceInput className={styles.input} min={0} max={100} onChange={(event) => setCommercialOpportunityProbability(Number(event.target.value))} type="number" value={commercialOpportunityProbability} />
+                                <WorkspaceInput className={styles.input} min={0} onChange={(event) => setCommercialOpportunityAttentionMinutes(Number(event.target.value))} type="number" value={commercialOpportunityAttentionMinutes} />
+                            </div>
+                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setCommercialOpportunityNextAction(event.target.value)} value={commercialOpportunityNextAction} />
+                            {(commercialOpportunityStatus === "won" || commercialOpportunityStatus === "lost") ? (
+                                <WorkspaceTextarea
+                                    className={styles.textarea}
+                                    onChange={(event) => setCommercialOpportunityWinLossReason(event.target.value)}
+                                    placeholder="Required structured win or loss reason"
+                                    value={commercialOpportunityWinLossReason}
+                                />
+                            ) : null}
+                            {selectedOpportunity ? (
+                                <div className={styles.listItem}>
+                                    <strong>{selectedOpportunity.title}</strong>
+                                    <span>{selectedOpportunity.stage} / {selectedOpportunity.status} / {selectedOpportunity.probabilityPercent}%</span>
+                                    <span>{selectedOpportunity.nextAction}</span>
+                                </div>
+                            ) : <div className={styles.empty}>Qualify an eligible target to create an opportunity.</div>}
+                        </form>
+
+                        <form className={styles.panel} onSubmit={upsertOperatingEnvelope}>
+                            <div className={styles.panelHeader}>
+                                <h2>Operating Envelope</h2>
+                                <WorkspaceButton
+                                    className={styles.button}
+                                    disabled={actionDisabled || !resolvedCommercialOfferId || !resolvedPolicyId || !resolvedRevenueMarketPodId || !resolvedRevenueTemplateId}
+                                    type="submit"
+                                >
+                                    Save Envelope
+                                </WorkspaceButton>
+                            </div>
+                            <WorkspaceInput className={styles.input} onChange={(event) => setOperatingEnvelopeName(event.target.value)} value={operatingEnvelopeName} />
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedCommercialOfferId(event.target.value)} value={resolvedCommercialOfferId}>
+                                {data.workspace.commercialOffers.filter((offer) => offer.status === "active").map((offer) => (
+                                    <option key={offer.commercialOfferId} value={offer.commercialOfferId}>{offer.name} v{offer.version} / {offer.currency} {offer.priceMinor}</option>
+                                ))}
+                            </WorkspaceSelect>
+                            <div className={styles.formGrid}>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setOperatingEnvelopeMode(event.target.value)} value={operatingEnvelopeMode}>
+                                    {["manual", "recommendation-only", "prepare-and-approve-each", "approve-batch", "approve-sample", "exception-only"].map((item) => <option key={item} value={item}>{item}</option>)}
+                                </WorkspaceSelect>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setOperatingEnvelopeChannel(event.target.value)} value={operatingEnvelopeChannel}>
+                                    {["manual", "email", "content", "partner", "referral"].map((item) => <option key={item} value={item}>{item}</option>)}
+                                </WorkspaceSelect>
+                                <WorkspaceInput className={styles.input} min={1} max={500} onChange={(event) => setOperatingEnvelopeDailyCap(Number(event.target.value))} type="number" value={operatingEnvelopeDailyCap} />
+                                <WorkspaceInput className={styles.input} min={1} max={5000} onChange={(event) => setOperatingEnvelopeTotalCap(Number(event.target.value))} type="number" value={operatingEnvelopeTotalCap} />
+                                <WorkspaceInput className={styles.input} min={0} onChange={(event) => setOperatingEnvelopeCostCap(Number(event.target.value))} type="number" value={operatingEnvelopeCostCap} />
+                                <WorkspaceInput className={styles.input} min={1} max={90} onChange={(event) => setOperatingEnvelopeDays(Number(event.target.value))} type="number" value={operatingEnvelopeDays} />
+                                <WorkspaceInput className={styles.input} min={1} max={10000} onChange={(event) => setOperatingEnvelopeVersion(Number(event.target.value))} placeholder="Envelope version" type="number" value={operatingEnvelopeVersion} />
+                            </div>
+                            <div className={styles.statusList}>
+                                <div className={styles.statusRow}><span>Active market pod</span><strong>{resolvedRevenueMarketPodId || "Required before approval"}</strong></div>
+                                <div className={styles.statusRow}><span>Revenue budget</span><strong>{resolvedRevenueBudgetPolicyId || "No compatible global or active-pod budget attached"}</strong></div>
+                            </div>
+                            <div className={styles.alert}>
+                                <LuAlertTriangle size={18} />
+                                <div>
+                                    <strong>Autonomy does not silently graduate.</strong>
+                                    <div>Exception-only requests are stored as held. Approved modes remain shadow or approval-only and cannot activate provider sending.</div>
+                                </div>
+                            </div>
+                            <div className={styles.list}>
+                                {data.workspace.operatingEnvelopes.map((envelope) => (
+                                    <div className={styles.listItem} key={envelope.operatingEnvelopeId}>
+                                        <strong>{envelope.name} v{envelope.version}</strong>
+                                        <span>{envelope.channel} / {envelope.dailyVolumeCap} daily / {envelope.totalVolumeCap} total / ${envelope.maxCostUsd}</span>
+                                        <span className={tagClass(envelope.executionState === "held" ? "warning" : envelope.status)}>{envelope.requestedApprovalMode} requested / {envelope.approvalMode} effective / {envelope.executionState}</span>
+                                    </div>
+                                ))}
+                                {!data.workspace.operatingEnvelopes.length ? <div className={styles.empty}>No bounded operating envelope.</div> : null}
+                            </div>
+                        </form>
+                    </div>
+
+                    <div className={styles.panel}>
+                        <div className={styles.panelHeader}>
+                            <h2>Activation Orchestration</h2>
+                            <span className={styles.tag}>automatic from read-only MenuList bridge events</span>
+                        </div>
+                        <div className={styles.list}>
+                            {data.workspace.revenueAccounts.map((account) => {
+                                const watch = data.workspace.activationWatches.find((item) => item.targetId === account.primaryTargetId);
+                                return (
+                                    <div className={styles.listItem} key={account.revenueAccountId}>
+                                        <strong>{account.displayName}</strong>
+                                        <span>{watch?.nextAction || "Waiting for a recorded SignalDesk activation outcome."}</span>
+                                        <span className={tagClass(watch?.status === "stalled" ? "warning" : watch?.status || "neutral")}>
+                                            {watch?.status || "not watched"} / {watch?.outcomeTypes.join(", ") || "no outcomes"}
+                                        </span>
+                                        <div className={styles.rowActions}>
+                                            <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => refreshActivationWatch(account.primaryTargetId)} type="button">Recheck Watch</WorkspaceButton>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {!data.workspace.revenueAccounts.length ? <div className={styles.empty}>Activation watches begin after an account is qualified.</div> : null}
+                        </div>
+                    </div>
+                </fieldset>
+            );
+        }
         if (activeSection === "targets") {
             return (
                 <section className={styles.stack}>
@@ -2153,6 +2545,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 Personalization
                             </WorkspaceInput>
                         </div>
+                        <div className={styles.empty}>Public-business research should stay evidence-only. Enable contact use only for a permissioned manual introduction or referral.</div>
                         <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={handleSeed} type="button">Seed Defaults</WorkspaceButton>
                     </form>
                     <div className={styles.panel}>
@@ -2193,7 +2586,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             <h2>Budget Policies</h2>
                             <div className={styles.rowActions}>
                                 <span className={styles.tag}>{data.workspace.budgetPolicies.length}</span>
-                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveTrustPartnerTestBudget} type="button">Approve Trust Partner Test</WorkspaceButton>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveZeroSpendTrustPartnerTest} type="button">Approve Zero-Spend Trust Test</WorkspaceButton>
                             </div>
                         </div>
                         <div className={styles.table}>
@@ -2387,15 +2780,26 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             </div>
                         </div>
                         <div className={styles.list}>
+                            <WorkspaceInput
+                                className={styles.input}
+                                disabled={actionDisabled || !canApproveMarketPod}
+                                onChange={(event) => setMarketPodReviewReason(event.target.value)}
+                                placeholder="Founder decision reason"
+                                value={marketPodReviewReason}
+                            />
                             {data.workspace.marketPods.map((pod) => (
                                 <div className={styles.listItem} key={pod.marketPodId}>
                                     <strong>{pod.name}</strong>
                                     <span>{[pod.category, pod.city, pod.country].filter(Boolean).join(" / ")} / ${pod.monthlyBudgetUsd} / {pod.successMetric}</span>
-                                    <span className={tagClass(pod.recommendation || pod.status)}>{pod.recommendation || pod.status}</span>
+                                    <span className={tagClass(pod.status)}>{pod.status} / recommendation {pod.recommendation || "pending"} / founder {pod.reviewDecision || "pending"}</span>
                                     {pod.recommendationReason ? <span>{pod.recommendationReason}</span> : null}
                                     {pod.recommendedActions?.length ? <span>{pod.recommendedActions.join(" | ")}</span> : null}
+                                    {pod.reviewReason ? <span>Founder reason: {pod.reviewReason}</span> : null}
                                     <div className={styles.rowActions}>
                                         <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => recommendMarketPodPlan(pod.marketPodId)} type="button">Refresh Plan</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !canApproveMarketPod} onClick={() => reviewMarketPod(pod.marketPodId, "approved")} type="button">Approve Pod</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !canApproveMarketPod} onClick={() => reviewMarketPod(pod.marketPodId, "held")} type="button">Hold Pod</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !canApproveMarketPod} onClick={() => reviewMarketPod(pod.marketPodId, "rejected")} type="button">Reject Pod</WorkspaceButton>
                                     </div>
                                 </div>
                             ))}

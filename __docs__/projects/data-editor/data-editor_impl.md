@@ -494,8 +494,8 @@ setHasChanges(hasRealChanges);
 | --------------------------------------------------------- | --------------------------------- |
 | `_spec.md`                                                | Product specification             |
 | `_marketing.md`                                           | Sales collateral                  |
-| `../Editor/`                                              | Detailed component docs (8 files) |
-| `../Assessments/assessment-03-editor.md`                  | Original assessment               |
+| `../editor/`                                              | Detailed component docs (8 files) |
+| `../assessments/assessment-03-editor.md`                  | Original assessment               |
 | `../development_done/3-implementation-editor-complete.md` | Implementation details            |
 
 ---

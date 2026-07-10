@@ -20,6 +20,10 @@ import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/share
 import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import {
+    buildCreateMenuPath,
+    type GrowthAcquisitionAttribution,
+} from '@lib/growth/acquisitionAttribution';
 
 type UploadState = 'idle' | 'optimizing' | 'uploading' | 'processing' | 'success' | 'error';
 type InputMode = 'photo' | 'link';
@@ -69,7 +73,11 @@ async function readCreateMenuDraftResponseJson(
     }
 }
 
-export default function CreateMenuClient() {
+export default function CreateMenuClient({
+    growthAcquisition = null,
+}: {
+    growthAcquisition?: GrowthAcquisitionAttribution | null;
+}) {
     const t = useTranslations('Website');
     const router = useRouter();
     const { status: sessionStatus, update: updateSession } = useSession();
@@ -82,15 +90,16 @@ export default function CreateMenuClient() {
     const [permissionConfirmed, setPermissionConfirmed] = useState(false);
     const isAuthenticated = sessionStatus === 'authenticated';
     const isSessionLoading = sessionStatus === 'loading';
-    const signInPath = `/signin?callbackUrl=${encodeURIComponent('/create-menu')}`;
+    const createMenuPath = buildCreateMenuPath(growthAcquisition);
+    const signInPath = `/signin?callbackUrl=${encodeURIComponent(createMenuPath)}`;
 
     const redirectToSignIn = useCallback(() => {
         router.push(signInPath);
     }, [router, signInPath]);
 
     const continueWithGoogle = useCallback(() => {
-        signIn('google', { callbackUrl: '/create-menu' });
-    }, []);
+        signIn('google', { callbackUrl: createMenuPath });
+    }, [createMenuPath]);
 
     // Cleanup objectURL on unmount or when preview changes to prevent memory leak
     useEffect(() => {
@@ -132,6 +141,11 @@ export default function CreateMenuClient() {
             setState('uploading');
             const formData = new FormData();
             formData.append('image', optimizedFile);
+            if (growthAcquisition) {
+                formData.append('growthAcquisitionSource', growthAcquisition.source);
+                formData.append('growthAcquisitionMedium', growthAcquisition.medium);
+                formData.append('growthAcquisitionCampaign', growthAcquisition.campaign);
+            }
 
             const response = await fetch('/api/public/create-menu', {
                 cache: 'no-store',
@@ -183,7 +197,7 @@ export default function CreateMenuClient() {
             setError(t('CreateMenu.genericError'));
             setState('error');
         }
-    }, [isAuthenticated, redirectToSignIn, router, t]);
+    }, [growthAcquisition, isAuthenticated, redirectToSignIn, router, t]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -236,6 +250,7 @@ export default function CreateMenuClient() {
             setState('uploading');
             const response = await fetch('/api/public/create-menu', {
                 body: JSON.stringify({
+                    growthAcquisition,
                     permissionConfirmed,
                     sourceType: 'menu_link',
                     url: trimmedLink,
@@ -287,7 +302,7 @@ export default function CreateMenuClient() {
             setError(t('CreateMenu.genericError'));
             setState('error');
         }
-    }, [isAuthenticated, menuLink, permissionConfirmed, redirectToSignIn, router, t]);
+    }, [growthAcquisition, isAuthenticated, menuLink, permissionConfirmed, redirectToSignIn, router, t]);
 
     const isProcessing = state === 'optimizing' || state === 'uploading' || state === 'processing';
 

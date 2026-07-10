@@ -6,6 +6,8 @@
 **Status:** ACTIONABLE — Implementation guide for environment separation  
 **ChatGPT Accuracy:** ~55% (strategic framing strong, ~45% already exists or wrong assumptions)
 
+**Launch boundary:** Not current launch certification or deploy approval. This environment guide cannot approve go-live by itself; production readiness still requires External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
+
 ## Active Environment Target Matrix
 
 This is the current source-of-truth contract for the shared Vercel app. Code mirrors this in `src/constants/deploymentTargets.ts`, and `npm run verify:env-targets` checks that routing, aliases, and deploy scripts stay aligned.

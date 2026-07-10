@@ -396,6 +396,27 @@ export const RATE_LIMIT_CONFIGS = {
         description: 'Payment verification - 20 per hour per user'
     },
 
+    /**
+     * Owner referral panel reads and invite generation.
+     * The request performs one direct-subscription lookup and one bounded
+     * recent-status query only when the owner opens the panel.
+     */
+    OWNER_REFERRAL_READ: {
+        limit: 30,
+        window: 3600,
+        description: 'Owner referral panel - 30 requests per hour per owner/store'
+    },
+
+    /**
+     * Public referral CTA capture. Fail closed because accepted requests
+     * perform cryptographic validation and set a durable attribution cookie.
+     */
+    OWNER_REFERRAL_CAPTURE: {
+        limit: 10,
+        window: 600,
+        description: 'Owner referral capture - 10 attempts per 10 minutes per IP'
+    },
+
     // ─────────────────────────────────────────────────────────────
     // GUEST FEEDBACK (Internal Feedback System)
     // @see __docs__/projects/internal-feedback-system/

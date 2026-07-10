@@ -10,6 +10,11 @@ import usePaymentHandler from '@hook/usePaymentHandler';
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
+import {
+    CANCELLATION_REASON,
+    CANCELLATION_REASON_OPTIONS,
+    type CancellationReasonCode,
+} from '@lib/billing/cancellationReasons';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatDateTime, toDate } from '@util/dateTime';
@@ -20,8 +25,8 @@ import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useContext, useMemo, useState } from 'react';
-import { LuBuilding2, LuChevronRight, LuCreditCard, LuExternalLink, LuMapPin, LuMessageCircle, LuPause, LuPlay, LuPlus, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
-import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
+import { LuBuilding2, LuCheck, LuChevronRight, LuCreditCard, LuExternalLink, LuMapPin, LuMessageCircle, LuPause, LuPlay, LuPlus, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
+import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, TextArea, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileBillingScreenProps {
@@ -51,6 +56,9 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const [showCredits, setShowCredits] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
     const [showStorePicker, setShowStorePicker] = useState(false);
+    const [showCancellationReasons, setShowCancellationReasons] = useState(false);
+    const [cancellationReason, setCancellationReason] = useState<CancellationReasonCode | null>(null);
+    const [cancellationReasonDetail, setCancellationReasonDetail] = useState('');
     const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('MONTH');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -278,6 +286,20 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const handleCancel = () => {
+        setShowCancellationReasons(true);
+    };
+
+    const confirmCancellationReason = () => {
+        if (!cancellationReason) {
+            Toast.show({ content: t('cancellationReasonRequired'), duration: 2000 });
+            return;
+        }
+        if (cancellationReason === CANCELLATION_REASON.OTHER && !cancellationReasonDetail.trim()) {
+            Toast.show({ content: t('cancellationOtherReasonRequired'), duration: 2000 });
+            return;
+        }
+
+        setShowCancellationReasons(false);
         Dialog.confirm({
             title: t('cancelSubscription'),
             content: t('cancelSubscriptionDesc'),
@@ -285,8 +307,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             cancelText: t('keepSubscription'),
             onConfirm: async () => {
                 try {
-                    await onCancelSubscription({ reason: 'mobile_cancellation', otherReason: '', consent: true });
+                    await onCancelSubscription({
+                        reason: cancellationReason,
+                        otherReason: cancellationReason === CANCELLATION_REASON.OTHER
+                            ? cancellationReasonDetail.trim()
+                            : undefined,
+                        consent: true,
+                    });
                     Toast.show({ content: t('subscriptionCancelled'), duration: 2000 });
+                    setCancellationReason(null);
+                    setCancellationReasonDetail('');
                     await refetchSubscription();
                 } catch (err: any) {
                     logPaymentFailure('payment_mobile_subscription_cancel_failed', err, buildMobileBillingPaymentLogContext('cancel_subscription'));
@@ -699,6 +729,52 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 </Card>
             </Flex>
 
+            <Popup bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowCancellationReasons(false)} position="bottom" visible={showCancellationReasons}>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setShowCancellationReasons(false)}>
+                        {t('cancellationReasonTitle')}
+                    </NavBar>
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Text type="secondary">{t('cancellationReasonPrompt')}</Text>
+                        <List>
+                            {CANCELLATION_REASON_OPTIONS.map((option) => (
+                                <List.Item
+                                    extra={cancellationReason === option.code ? <LuCheck color={token.colorSuccess} size={18} /> : null}
+                                    key={option.code}
+                                    onClick={() => setCancellationReason(option.code)}
+                                    style={{ minHeight: 48 }}
+                                    title={(
+                                        <Text strong={cancellationReason === option.code}>
+                                            {t(`cancellationReasons.${option.code}`)}
+                                        </Text>
+                                    )}
+                                />
+                            ))}
+                        </List>
+                        {cancellationReason === CANCELLATION_REASON.OTHER ? (
+                            <TextArea
+                                maxLength={300}
+                                onChange={setCancellationReasonDetail}
+                                placeholder={t('cancellationOtherReasonPlaceholder')}
+                                rows={3}
+                                showCount
+                                value={cancellationReasonDetail}
+                            />
+                        ) : null}
+                        <Button
+                            block
+                            color="danger"
+                            disabled={!cancellationReason || (cancellationReason === CANCELLATION_REASON.OTHER && !cancellationReasonDetail.trim())}
+                            fill="solid"
+                            onClick={confirmCancellationReason}
+                            size="large"
+                        >
+                            {t('continueCancellation')}
+                        </Button>
+                    </Flex>
+                </Flex>
+            </Popup>
+
             <Popup bodyStyle={{ maxHeight: '85vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowPlans(false)} position="bottom" visible={showPlans}>
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar backIcon={<LuX size={20} />} onBack={() => setShowPlans(false)}>
@@ -817,7 +893,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         key={item.id || index}
                                         extra={
                                             <Flex align="center" gap={8}>
-                                                <Text>{formatCurrency(item.amount, item.currency)}</Text>
+                                                <Text>
+                                                    {item.type === 'Referral reward'
+                                                        ? `+${item.credits || 0} credits`
+                                                        : formatCurrency(item.amount, item.currency)}
+                                                </Text>
                                                 {item.invoiceUrl ? (
                                                     <Button
                                                         onClick={() => handleOpenExternalBillingLink(item.invoiceUrl, 'invoice', {

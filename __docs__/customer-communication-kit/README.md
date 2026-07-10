@@ -6,6 +6,8 @@
 > **Mobile:** Integrated into `MobileShareScreen`
 > **Source:** ChatGPT Owner Features Session (March 15, 2026) → Cascade Review
 
+> **Launch boundary:** Not current launch certification or deploy approval. This README is source-gated browser-local template evidence only; Customer Communication Kit release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:communication-kit-boundary`, browser/device output QA, WhatsApp/copy/share smoke where release scope requires it, print artifact review for related Menu Kit/printable output, and production-host smoke.
+
 ## What It Is
 
 Pre-generated, ready-to-send message templates that owners copy-paste into WhatsApp, SMS, or any messaging app. Each template dynamically combines the menu link with store data (address, hours, name) so the owner never types the same information twice.
@@ -31,15 +33,20 @@ The existing Use MenuList page has a basic "Copy Message" that pastes `{sharePre
 
 Run `npm run verify:communication-kit-boundary` after changes to Customer Communication Kit, Use MenuList sharing, Menu Kit handoffs, printable asset downloads, or the legacy Physical Surfaces boundary. This source gate checks the desktop and mobile template paths, bounded copy/share diagnostics, browser-local Menu Kit and printable output wiring, and the legacy Physical Surfaces launch-boundary docs. Browser/device output QA and print artifact review remain separate release-certification gates.
 
-## Message Templates (v1 — 5 Templates)
+## Message Templates
 
-| Template             | Content                                    | Use Case                                      |
-| -------------------- | ------------------------------------------ | --------------------------------------------- |
-| **Send Menu**        | Menu link + greeting                       | Customer asks "send menu"                     |
-| **Menu + Location**  | Menu link + address + hours                | Customer asks "where are you?"                |
-| **Quick Menu Reply** | Just the link (minimal)                    | Quick WhatsApp reply                          |
-| **Business Info**    | Name + address + hours + phone + menu link | Customer asks "tell me about your restaurant" |
-| **Share with Staff** | Menu link + note for staff to use          | Owner shares link with team                   |
+| Template | Content | Use Case |
+| --- | --- | --- |
+| **Quick Reply** | Current link only | Fast WhatsApp reply |
+| **Send Menu** | Link + greeting | Customer asks "send menu" |
+| **Official Business Page** | Business page, contact, hours | Customer needs the full business page |
+| **Menu + Address** | Link + address + hours | Customer asks "where are you?" |
+| **Are You Open?** | Today's open/closed status + link | Customer asks about hours |
+| **Closed Now / Open Later** | Off-hours reply + link | Staff needs a quick off-hours answer |
+| **Business Info** | Name + address + hours + phone + link | Customer asks for business details |
+| **Share with Staff** | Current link + team note | Owner shares link with team |
+| **Staff Daily Replies** | Link, address, and today's hours in one staff handoff | Staff answers menu, address, and hours questions consistently |
+| **All Active Menus** | All active menu links | Multi-menu stores when more than one menu is active |
 
 ## Key Files
 
@@ -74,4 +81,4 @@ Run `npm run verify:communication-kit-boundary` after changes to Customer Commun
 ---
 
 **Created:** March 15, 2026
-**Last Updated:** July 2, 2026
+**Last Updated:** July 9, 2026

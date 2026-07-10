@@ -25,6 +25,12 @@ const summaryCollections = [
   "signaldeskResearchRuns",
   "signaldeskResearchTableRows",
   "signaldeskTrustPartnerProfiles",
+  "signaldeskRevenueAccounts",
+  "signaldeskCommercialOpportunities",
+  "signaldeskCommercialOffers",
+  "signaldeskOperatingEnvelopes",
+  "signaldeskActivationWatches",
+  "signaldeskRevenueControlSummaries",
 ];
 
 const rawCollections = [
@@ -134,6 +140,8 @@ async function verifyFirestoreEmulatorDenials() {
   await expectDenied("Public summary read", () => getDoc(doc(firestore, "signaldeskControlRoomSummaries/dashboard")));
   await expectDenied("Public raw target read", () => getDoc(doc(firestore, "signaldeskTargets/target_test")));
   await expectDenied("Public summary write", () => setDoc(doc(firestore, "signaldeskTargetSummaries/target_test"), { displayName: "Denied" }));
+  await expectDenied("Public revenue summary read", () => getDoc(doc(firestore, "signaldeskRevenueControlSummaries/current")));
+  await expectDenied("Public revenue account write", () => setDoc(doc(firestore, "signaldeskRevenueAccounts/account_test"), { pId: "SD" }));
   await expectDenied("Public source policy write", () => setDoc(doc(firestore, "signaldeskSourcePolicies/policy_test"), { status: "active" }));
 }
 
@@ -205,6 +213,12 @@ async function verifyRulesUnitSemantics() {
         setDoc(doc(firestore, "signaldeskTeamMembers/active-member"), { active: true, role: "operator" }),
         setDoc(doc(firestore, "signaldeskTeamMembers/inactive-member"), { active: false, role: "operator" }),
         setDoc(doc(firestore, "signaldeskControlRoomSummaries/dashboard"), { pId: "SD", status: "ready" }),
+        setDoc(doc(firestore, "signaldeskRevenueAccounts/account_summary"), { pId: "SD", revenueAccountId: "account_summary" }),
+        setDoc(doc(firestore, "signaldeskCommercialOpportunities/opportunity_summary"), { pId: "SD", opportunityId: "opportunity_summary" }),
+        setDoc(doc(firestore, "signaldeskCommercialOffers/offer_summary"), { pId: "SD", commercialOfferId: "offer_summary" }),
+        setDoc(doc(firestore, "signaldeskOperatingEnvelopes/envelope_summary"), { pId: "SD", operatingEnvelopeId: "envelope_summary" }),
+        setDoc(doc(firestore, "signaldeskActivationWatches/watch_summary"), { pId: "SD", activationWatchId: "watch_summary" }),
+        setDoc(doc(firestore, "signaldeskRevenueControlSummaries/current"), { pId: "SD", revenueAccountCount: 1 }),
         setDoc(doc(firestore, "signaldeskTargetSummaries/target_summary"), { pId: "SD", targetId: "target_summary" }),
         setDoc(doc(firestore, "signaldeskTargets/target_detail"), { pId: "SD", targetId: "target_detail" }),
         setDoc(doc(firestore, "signaldeskMessages/message_detail"), { pId: "SD", messageId: "message_detail" }),
@@ -248,6 +262,17 @@ async function verifyRulesUnitSemantics() {
     await assertFails(getDoc(doc(inactiveMember.firestore(), "signaldeskControlRoomSummaries/dashboard")));
     await assertSucceeds(getDoc(doc(activeMember.firestore(), "signaldeskControlRoomSummaries/dashboard")));
     await assertSucceeds(getDocs(collection(activeMember.firestore(), "signaldeskTargetSummaries")));
+    for (const [collectionName, docId] of [
+      ["signaldeskRevenueAccounts", "account_summary"],
+      ["signaldeskCommercialOpportunities", "opportunity_summary"],
+      ["signaldeskCommercialOffers", "offer_summary"],
+      ["signaldeskOperatingEnvelopes", "envelope_summary"],
+      ["signaldeskActivationWatches", "watch_summary"],
+      ["signaldeskRevenueControlSummaries", "current"],
+    ]) {
+      await assertSucceeds(getDoc(doc(activeMember.firestore(), collectionName, docId)));
+      await assertFails(setDoc(doc(activeMember.firestore(), collectionName, "client_write"), { pId: "SD" }));
+    }
     await assertSucceeds(getDoc(doc(platformAdmin.firestore(), "signaldeskAuditEvents/audit_event")));
     await assertSucceeds(getDoc(doc(platformAdmin.firestore(), "signaldeskAiOperationLedger/ai_ledger")));
 

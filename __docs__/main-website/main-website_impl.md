@@ -91,16 +91,18 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/industries/salons-spas` | `(website)/industries/salons-spas/page.tsx` | `IndustryLandingPage` | Server | Per-page |
 | `/industries/service-list-businesses` | `(website)/industries/service-list-businesses/page.tsx` | `IndustryLandingPage` | Server | Per-page |
 | `/industries/local-service-businesses` | `(website)/industries/local-service-businesses/page.tsx` | `IndustryLandingPage` | Server | Per-page |
+| `/invite` | `(website)/invite/page.tsx` | `OwnerReferralInvitePage` | Server wrapper + client hash-token intake | Private utility; `noindex`, omitted from sitemap/LLM discovery |
 | `/product` | `(website)/product/page.tsx` | **Permanent redirect → `/how-it-works`** | Server | — |
 | `/privacy-policy` | `(website)/privacy-policy/page.tsx` | `PrivacyPolicyPage` | Server | Per-page |
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
 
-**Total: 189 implemented website routes (62 concrete route files + 15 generated English resource articles + 7 reviewed localized resource hubs + 105 reviewed localized resource articles)**
+**Total: 190 implemented website routes (63 concrete route files + 15 generated English resource articles + 7 reviewed localized resource hubs + 105 reviewed localized resource articles)**
 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
 - `/whatsapp` is the public campaign route for the implemented messaging-onboarding flow. It uses localized copy, page-level structured data, a chat-style proof visual, trust boundaries, `PLATFORM_DISCOVERY_PAGES`, static sitemap, and LLM context coverage. Its primary and final CTA use a page-local external anchor to open the supplied test WhatsApp number with a prefilled owner-started onboarding message.
+- `/invite` is the private Owner Referral intake utility. The encrypted token stays in the URL fragment, the server route exports `noindex, nofollow, nocache`, and the route remains outside `PLATFORM_DISCOVERY_PAGES`, sitemap, `llms.txt`, and `llms-full.txt`.
 - `/product` is a framework-level permanent redirect to `/how-it-works` (legacy URL preservation) and is intentionally omitted from sitemap and LLM discovery inventories.
 - `/faq` carries the full 16-question owner FAQ that was removed from the homepage scroll. It is registered in platform discovery, static sitemap, footer resources, `llms.txt`, and `llms-full.txt`.
 - `/tools` is the feature-gated public MenuList Tools hub. Concrete child routes under `/tools/*` are browser-local public acquisition tools, and `/tools/reports` is the hash-fragment public report viewer; all must stay in `PLATFORM_DISCOVERY_PAGES`, static sitemap, LLM context, and this route table.

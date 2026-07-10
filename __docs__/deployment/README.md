@@ -3,6 +3,8 @@
 > **Category:** Infrastructure  
 > **Last Updated:** July 1, 2026
 
+> **Launch boundary:** Not current launch certification or deploy approval. This hub links deployment runbooks; current release approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
+
 ---
 
 ## Documents

@@ -377,7 +377,7 @@ const response = await fetch("/api/image-processor", {
 | --------------------------------------------------------- | ---------------------- |
 | `_spec.md`                                                | Product specification  |
 | `_marketing.md`                                           | Sales collateral       |
-| `../Assessments/assessment-01-upload.md`                  | Original assessment    |
+| `../assessments/assessment-01-upload.md`                  | Original assessment    |
 | `../development_done/1-implementation-upload-complete.md` | Implementation details |
 | `../development_done/1-testing-guide-upload.md`           | Full testing guide     |
 

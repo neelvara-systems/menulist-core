@@ -121,7 +121,7 @@ async function main() {
 
     const exportService = fs.readFileSync(path.join(root, 'src/lib/export/exportService.ts'), 'utf8');
     const productionAudit = fs.readFileSync(path.join(root, '__docs__/audits/menulist-production-readiness-audit.md'), 'utf8');
-    const changelog = fs.readFileSync(path.join(root, '__docs__/CHANGELOG.md'), 'utf8');
+    const changelog = fs.readFileSync(path.join(root, '__docs__/changelog.md'), 'utf8');
     [
         'menu_export_clipboard_copy_failed',
         'menu_export_web_share_failed',
@@ -230,7 +230,7 @@ async function main() {
         website: fs.readFileSync(path.join(root, '__docs__/pdf-surface/pdf-surface_website.md'), 'utf8'),
         physicalWebsite: fs.readFileSync(path.join(root, '__docs__/physical-surfaces/physical-surfaces_website.md'), 'utf8'),
         audit: fs.readFileSync(path.join(root, '__docs__/audits/menulist-production-readiness-audit.md'), 'utf8'),
-        changelog: fs.readFileSync(path.join(root, '__docs__/CHANGELOG.md'), 'utf8'),
+        changelog: fs.readFileSync(path.join(root, '__docs__/changelog.md'), 'utf8'),
     };
 
     [

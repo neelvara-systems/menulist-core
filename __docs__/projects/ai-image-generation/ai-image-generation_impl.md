@@ -40,7 +40,7 @@ July 6 follow-up: Batch image project/job ID boundary. `/api/image-generation/ba
 │  │  POST /api/image-generation                                         │    │
 │  │       │                                                              │    │
 │  │       ▼                                                              │    │
-│  │  Gemini 2.0 Flash / Imagen 3                                        │    │
+│  │  Gemini 2.5 Flash Image                                             │    │
 │  │       │                                                              │    │
 │  │       ▼                                                              │    │
 │  │  Base64 Image → Preview → Select → Upload to Storage                │    │
@@ -95,8 +95,7 @@ July 6 follow-up: Batch image project/job ID boundary. `/api/image-generation/ba
 
 | Model                                       | Use Case                    | Notes                       |
 | ------------------------------------------- | --------------------------- | --------------------------- |
-| `gemini-2.5-flash-image`                    | Primary generation, editing | Supports reference images   |
-| `imagen-3.0-generate-002`                   | Alternative generation      | Better for text-free images |
+| `gemini-2.5-flash-image`                    | Primary generation, editing | Supports text prompts and reference images |
 
 ### Reference Image Fetch Guard
 
@@ -132,7 +131,7 @@ Image generation follows the same multi-outlet governance rules as translations 
 | File                                                          | Change                                                     |
 | ------------------------------------------------------------- | ---------------------------------------------------------- |
 | `src/components/.../ImageUploadModal.tsx:12,36-39,54,127-138` | Added governance props, filter items by `local-only` state |
-| `src/components/.../Editor.tsx:972-974`                       | Pass `itemStates` and `isMasterLinked` to ImageUploadModal |
+| `src/components/.../editor.tsx:972-974`                       | Pass `itemStates` and `isMasterLinked` to ImageUploadModal |
 
 **Governance Flow:**
 
@@ -742,11 +741,11 @@ safetySettings: [
 | `imageQualityGuard.ts`  | Built, NOT used in AI gen | Validates image quality (min 400×300px)    | Apply to generated images before upload                           |
 | `optimizeImage.ts`      | Legacy helper; AI upload path uses media profiles | Optimizes images (max 1500px, 70% quality) | ✅ AI upload storage cost risk is resolved through `prepareMediaImage()` and `prepareMediaImageAdmin()` |
 
-### 2. Google Best Practices (From Official Docs - Jan 2026)
+### 2. Google Best Practices (From Official Docs - Jul 2026)
 
 #### Prompt Engineering Improvements
 
-Based on [Google Imagen 3 Prompt Guide](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/image/img-gen-prompt-guide):
+Based on Google image-generation prompt guidance and the current Gemini image model path:
 
 | Current Implementation     | Google Recommendation                                                           | Action                             |
 | -------------------------- | ------------------------------------------------------------------------------- | ---------------------------------- |
@@ -774,7 +773,7 @@ const enhancedPrompt = `
 | **Context Caching**     | Not used               | Use Gemini explicit context caching for repeated prompts | 20-40%          |
 | **Batch Inference**     | Cloud Tasks (per-item) | Use Vertex AI Batch Prediction for 50+ items             | 50% per request |
 | **Image Deduplication** | None                   | Hash prompts, cache results for identical requests       | Variable        |
-| **Model Selection**     | Always Gemini Flash    | Use Imagen 3 Fast for simple items (cheaper)             | 30%             |
+| **Model Selection**     | Always Gemini image model | Keep `gemini-2.5-flash-image` as default until `gemini-3.1-flash-image` passes output and billing regression checks | Risk control |
 
 #### Vertex AI Batch Prediction (Alternative to Cloud Tasks)
 

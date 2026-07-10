@@ -27,6 +27,7 @@ const { processSignalDeskProviderWebhook } = require("@lib/signaldesk/webhookSer
 const {
   captureSignalDeskDemandSignalServer,
   captureSignalDeskReplyServer,
+  createSignalDeskDailyGrowthMissionServer,
   createSignalDeskDraftServer,
   createSignalDeskEvidenceServer,
   createSignalDeskResearchAgentRunServer,
@@ -34,12 +35,19 @@ const {
   exportSignalDeskMessageServer,
   importSignalDeskTargetsServer,
   loadSignalDeskWorkspaceServer,
+  qualifySignalDeskRevenueAccountServer,
+  recommendSignalDeskMarketPodPlanServer,
   recordSignalDeskOutcomeServer,
+  refreshSignalDeskActivationWatchServer,
   reviewSignalDeskApprovalServer,
+  reviewSignalDeskMarketPodServer,
   runSignalDeskSourceProviderServer,
   scoreSignalDeskTargetServer,
   seedSignalDeskDefaultsServer,
   sendSignalDeskApprovedMessageServer,
+  upsertSignalDeskCommercialOfferServer,
+  upsertSignalDeskCommercialOpportunityServer,
+  upsertSignalDeskOperatingEnvelopeServer,
   upsertSignalDeskSenderDomainServer,
   upsertSignalDeskTeamMemberServer,
 } = require("@lib/signaldesk/workflowServer");
@@ -126,6 +134,61 @@ async function seedAccessAndReadiness() {
   }, { merge: true });
 
   await seedSignalDeskDefaultsServer(access);
+  const publicResearchPolicySnap = await db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc("policy_public_business_research_v1").get();
+  assert(publicResearchPolicySnap.exists, "Evidence-only public-business research policy was not seeded");
+  assert(publicResearchPolicySnap.data()?.allowedUse?.contact === false, "Public-business research policy granted contact permission");
+  assert(publicResearchPolicySnap.data()?.allowedUse?.personalization === false, "Public-business research policy granted personalization permission");
+  assert(publicResearchPolicySnap.data()?.retentionDays === 30, "Public-business research policy drifted from the 30-day trial retention boundary");
+  const permissionedPolicySnap = await db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc("policy_manual_research_v1").get();
+  assert(permissionedPolicySnap.data()?.allowedUse?.contact === true, "Permissioned manual-introduction policy lost contact use");
+  assert(String(permissionedPolicySnap.data()?.notes || "").includes("permissioned"), "Permissioned manual-introduction policy lost its source-rights boundary");
+  const zeroSpendPartnerBudgetSnap = await db.collection(SIGNALDESK_COLLECTIONS.BUDGET_POLICIES).doc("budget_trust-partner_all_first_partner_test").get();
+  assert(zeroSpendPartnerBudgetSnap.data()?.monthlyBudgetUsd === 0, "First trust-partner test pre-approved monthly spend");
+  assert(zeroSpendPartnerBudgetSnap.data()?.perRunBudgetUsd === 0, "First trust-partner test pre-approved per-run spend");
+  const googlePlacesProviderSnap = await db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS).doc("provider_google-places_discovery").get();
+  assert(googlePlacesProviderSnap.data()?.ownerApproved === false, "Google Places discovery was approved by default");
+  assert(googlePlacesProviderSnap.data()?.monthlyBudgetUsd === 0, "Google Places discovery received a default trial budget");
+  const firstPodSnap = await db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc("market_pod_first_local_v1").get();
+  assert(firstPodSnap.data()?.status === "hold", "Recommended first pod bypassed founder approval");
+  assert(firstPodSnap.data()?.city === "Bengaluru - Indiranagar and Koramangala", "Recommended first pod drifted from the Bengaluru trial boundary");
+  assert(firstPodSnap.data()?.monthlyBudgetUsd === 0, "Recommended first pod pre-approved spend");
+  await firstPodSnap.ref.set({
+    approvedBy: admin.firestore.FieldValue.delete(),
+    category: "restaurant",
+    city: "Mumbai",
+    country: "India",
+    monthlyBudgetUsd: 300,
+    name: "First local proof pod",
+    offerAngle: "Current-list proof and private preview.",
+    status: "hold",
+    successMetric: "preview_prepared",
+    updatedAt: timestampNow(),
+  }, { merge: true });
+  await seedSignalDeskDefaultsServer(access);
+  const migratedLegacyPodSnap = await firstPodSnap.ref.get();
+  assert(migratedLegacyPodSnap.data()?.city === "Bengaluru - Indiranagar and Koramangala", "Legacy unapproved first-pod seed was not migrated");
+  assert(migratedLegacyPodSnap.data()?.monthlyBudgetUsd === 0, "Legacy first-pod migration retained unapproved spend");
+  await expectRejects("Non-founder market pod approval", () => reviewSignalDeskMarketPodServer({
+    ...access,
+    role: "growth-manager",
+  }, {
+    decision: "approved",
+    marketPodId: firstPodSnap.id,
+    reason: "This role must not approve strategy.",
+  }), "Founder approval is required for market pod decisions");
+  const approvedPod = await reviewSignalDeskMarketPodServer(access, {
+    decision: "approved",
+    marketPodId: firstPodSnap.id,
+    reason: "Approved for one bounded seven-day E2E trial.",
+  });
+  assert(approvedPod.status === "active" && approvedPod.reviewDecision === "approved", "Founder market-pod approval was not recorded");
+  await seedSignalDeskDefaultsServer(access);
+  const reseededPodSnap = await firstPodSnap.ref.get();
+  assert(reseededPodSnap.data()?.status === "active", "Default seeding revoked founder market-pod approval");
+  assert(reseededPodSnap.data()?.approvedBy === access.userId, "Default seeding rewrote founder market-pod ownership");
+  const refreshedApprovedPod = await recommendSignalDeskMarketPodPlanServer(access, { marketPodId: firstPodSnap.id });
+  assert(refreshedApprovedPod.status === "active" && refreshedApprovedPod.approvedBy === access.userId, "System recommendation rewrote founder market-pod approval");
+  assert(refreshedApprovedPod.monthlyBudgetUsd === 0, "System recommendation attached unapproved market-pod spend");
   await upsertSignalDeskSenderDomainServer(access, {
     authenticationState: "ready",
     bounceRate: 0,
@@ -256,6 +319,10 @@ async function assertHappyPath() {
     targetId,
   });
   assert(reply.state === "interested", `Reply was not classified as interested: ${reply.state}`);
+  assert(reply.revenueSyncStatus === "updated", "Interested reply did not update the revenue lifecycle automatically");
+
+  const replyRevenueAccountSnap = await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS).doc(`revenue_account_${hashValue(targetId).slice(0, 22)}`).get();
+  assert(replyRevenueAccountSnap.exists, "Interested reply did not create a revenue account");
 
   const classificationCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.REPLY_CLASSIFICATIONS, (data) => data.targetId === targetId && data.state === "interested");
   assert(classificationCount > 0, "Reply classification was not recorded");
@@ -267,6 +334,8 @@ async function assertHappyPath() {
     targetId,
   });
   assert(outcome.outcomeEventId, "Outcome event was not created");
+  assert(outcome.activationWatchSyncStatus === "updated", "Outcome did not update the activation watch automatically");
+  assert(outcome.activationWatch?.status === "activated", "Two-surface outcome did not close activation automatically");
 
   const demand = await captureSignalDeskDemandSignalServer(access, {
     signalType: "claim_attempt",
@@ -287,6 +356,392 @@ async function assertHappyPath() {
   assert(workspace.workspace.targets.some((item) => item.targetId === targetId), "Workspace did not include E2E target");
 
   return { approvalId: draftResult.approval.approvalId, sourcePolicyId: sourcePolicy.sourcePolicyId, targetId };
+}
+
+async function assertRevenueOperatingLayer() {
+  const sourcePolicy = await createPolicy("Revenue operating layer");
+  const targetId = await importOne(sourcePolicy.sourcePolicyId, "RevenueOperatingLayer", { currentListUrl: "" });
+  const score = await scoreSignalDeskTargetServer(access, targetId);
+  assert(score.fitScore >= 70, "Revenue fixture did not meet deterministic qualification threshold");
+
+  const [qualification, duplicateQualification] = await Promise.all([
+    qualifySignalDeskRevenueAccountServer(access, {
+      locationType: "single-location",
+      organizationName: "SignalDesk Revenue Group",
+      targetId,
+    }),
+    qualifySignalDeskRevenueAccountServer(access, {
+      locationType: "single-location",
+      organizationName: "SignalDesk Revenue Group",
+      targetId,
+    }),
+  ]);
+  assert(qualification.qualified === true, "Eligible revenue target was not qualified");
+  assert(qualification.account.lifecycleStage === "opportunity", "Qualified account did not enter opportunity lifecycle");
+  assert(qualification.account.complianceState === "eligible", "Qualified account did not preserve eligible compliance state");
+  assert(qualification.opportunity?.status === "open", "Qualified account did not create an open opportunity");
+
+  assert(duplicateQualification.account.revenueAccountId === qualification.account.revenueAccountId, "Revenue qualification was not idempotent by target");
+  assert(duplicateQualification.opportunity?.opportunityId === qualification.opportunity?.opportunityId, "Revenue qualification created a duplicate opportunity");
+
+  const offer = await upsertSignalDeskCommercialOfferServer(access, {
+    allowedDiscountBps: 0,
+    billingCadence: "monthly",
+    contents: ["Current official menu link", "Owner review before publishing", "QR and share support"],
+    currency: "INR",
+    eligibilitySummary: "Standard single-location MenuList path with no custom terms.",
+    founderApprovalConditions: ["Any discount", "Custom terms", "Multi-location commercial request"],
+    name: "MenuList standard package",
+    priceMinor: 49900,
+    status: "active",
+    version: 1,
+  });
+  assert(offer.status === "active", "Commercial offer version was not activated");
+  assert(offer.allowedDiscountBps === 0, "Commercial offer changed approved discount authority");
+  await expectRejects("Immutable commercial offer version", () => upsertSignalDeskCommercialOfferServer(access, {
+    allowedDiscountBps: 0,
+    billingCadence: "monthly",
+    contents: ["Current official menu link", "Owner review before publishing", "QR and share support"],
+    currency: "INR",
+    eligibilitySummary: "Standard single-location MenuList path with no custom terms.",
+    founderApprovalConditions: ["Any discount", "Custom terms", "Multi-location commercial request"],
+    name: "MenuList standard package",
+    priceMinor: 59900,
+    status: "active",
+    version: 1,
+  }), "Commercial offer version already exists with different terms");
+  await expectRejects("Commercial offer deterministic ID", () => upsertSignalDeskCommercialOfferServer(access, {
+    allowedDiscountBps: 0,
+    billingCadence: "monthly",
+    commercialOfferId: "commercial_offer_custom_bypass",
+    contents: ["Current official menu link"],
+    currency: "INR",
+    eligibilitySummary: "ID boundary fixture.",
+    founderApprovalConditions: ["Any discount"],
+    name: "MenuList ID boundary package",
+    priceMinor: 49900,
+    status: "active",
+    version: 1,
+  }), "Commercial offer ID does not match name and version");
+
+  const opportunity = await upsertSignalDeskCommercialOpportunityServer(access, {
+    commercialOfferId: offer.commercialOfferId,
+    founderAttentionMinutes: 12,
+    nextAction: "Send the approved standard conversion route.",
+    nextActionDueAt: pastIso(),
+    opportunityId: qualification.opportunity.opportunityId,
+    probabilityPercent: 50,
+    stage: "offer",
+    status: "open",
+    valueMinor: 49900,
+  });
+  assert(opportunity.commercialOfferId === offer.commercialOfferId, "Opportunity did not link the approved offer");
+  assert(opportunity.valueMinor === 49900 && opportunity.probabilityPercent === 50, "Opportunity value or probability did not update");
+  assert(opportunity.currency === "INR", "Opportunity did not derive currency from its commercial offer");
+  const usdOffer = await upsertSignalDeskCommercialOfferServer(access, {
+    allowedDiscountBps: 0,
+    billingCadence: "monthly",
+    contents: ["Current official menu link"],
+    currency: "USD",
+    eligibilitySummary: "Currency boundary fixture.",
+    founderApprovalConditions: ["Any discount"],
+    name: "MenuList USD package",
+    priceMinor: 999,
+    status: "active",
+    version: 1,
+  });
+  await expectRejects("Mixed-currency pipeline", () => upsertSignalDeskCommercialOpportunityServer(access, {
+    commercialOfferId: usdOffer.commercialOfferId,
+    founderAttentionMinutes: 12,
+    nextAction: "This currency change must not persist.",
+    opportunityId: qualification.opportunity.opportunityId,
+    probabilityPercent: 50,
+    stage: "offer",
+    status: "open",
+    valueMinor: 999,
+  }), "Commercial opportunity currency does not match revenue pipeline");
+  await expectRejects("Mismatched opportunity state", () => upsertSignalDeskCommercialOpportunityServer(access, {
+    commercialOfferId: offer.commercialOfferId,
+    founderAttentionMinutes: 12,
+    nextAction: "This state must not persist.",
+    opportunityId: qualification.opportunity.opportunityId,
+    probabilityPercent: 0,
+    stage: "lost",
+    status: "open",
+    valueMinor: 49900,
+  }), "Commercial opportunity stage and status do not match");
+
+  const envelopeBase = {
+    channel: "manual",
+    commercialOfferId: offer.commercialOfferId,
+    dailyVolumeCap: 10,
+    expiresAt: futureIso(14),
+    fallbackAction: "founder-review",
+    maxCostUsd: 50,
+    sourcePolicyIds: [sourcePolicy.sourcePolicyId],
+    startsAt: new Date().toISOString(),
+    stopConditions: ["Source policy changes", "Suppression risk rises", "Budget cap is reached"],
+    templateIds: ["template_current_list_intro_v1"],
+    totalVolumeCap: 50,
+  };
+  await expectRejects("Envelope without market pod", () => upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeBase,
+    name: "Revenue E2E missing market pod",
+    requestedApprovalMode: "approve-batch",
+    status: "approved",
+    version: 1,
+  }), "Market pod is required for operating envelope");
+  const unreviewedMarketPodId = "market_pod_unreviewed_active";
+  await db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(unreviewedMarketPodId).set({
+    marketPodId: unreviewedMarketPodId,
+    name: "Unreviewed active pod",
+    status: "active",
+    updatedAt: timestampNow(),
+  });
+  await expectRejects("Envelope with system-active unreviewed pod", () => upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeBase,
+    marketPodId: unreviewedMarketPodId,
+    name: "Revenue E2E unreviewed pod envelope",
+    requestedApprovalMode: "approve-batch",
+    status: "approved",
+    version: 1,
+  }), "Market pod is not founder-approved");
+  const marketPodId = "market_pod_first_local_v1";
+  const envelopeInput = {
+    ...envelopeBase,
+    marketPodId,
+  };
+  await expectRejects("Non-founder operating envelope approval", () => upsertSignalDeskOperatingEnvelopeServer({
+    ...access,
+    role: "compliance-reviewer",
+  }, {
+    ...envelopeInput,
+    name: "Revenue E2E non-founder approval envelope",
+    requestedApprovalMode: "approve-batch",
+    status: "approved",
+    version: 1,
+  }), "Founder approval is required for operating envelopes");
+  const approvedEnvelope = await upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    name: "Revenue E2E approval envelope",
+    requestedApprovalMode: "approve-batch",
+    status: "approved",
+    version: 1,
+  });
+  assert(approvedEnvelope.executionState === "approval-only", "Approved envelope escaped approval-only execution");
+  assert(approvedEnvelope.approvalMode === "approve-batch", "Approved envelope changed the requested batch mode");
+  await expectRejects("Immutable operating envelope version", () => upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    maxCostUsd: 40,
+    name: "Revenue E2E approval envelope",
+    requestedApprovalMode: "approve-batch",
+    status: "approved",
+    version: 1,
+  }), "Operating envelope version already exists with different terms");
+  const pausedEnvelope = await upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    name: "Revenue E2E approval envelope",
+    requestedApprovalMode: "approve-batch",
+    status: "paused",
+    version: 1,
+  });
+  assert(pausedEnvelope.executionState === "paused", "Paused envelope kept an executable state");
+  assert(pausedEnvelope.approvedBy === access.userId && pausedEnvelope.approvedAt, "Paused envelope lost its founder approval history");
+  await expectRejects("Operating envelope deterministic ID", () => upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    name: "Revenue E2E envelope ID boundary",
+    operatingEnvelopeId: "operating_envelope_custom_bypass",
+    requestedApprovalMode: "approve-batch",
+    status: "approved",
+    version: 1,
+  }), "Operating envelope ID does not match name and version");
+  await expectRejects("Envelope total below daily cap", () => upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    dailyVolumeCap: 20,
+    name: "Revenue E2E invalid caps",
+    requestedApprovalMode: "approve-batch",
+    status: "approved",
+    totalVolumeCap: 10,
+    version: 1,
+  }), "Operating envelope total volume must cover the daily cap");
+  await expectRejects("Email envelope without explicit sender", () => upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    channel: "email",
+    name: "Revenue E2E missing sender",
+    requestedApprovalMode: "approve-batch",
+    status: "approved",
+    version: 1,
+  }), "Sender domain is required for email envelope");
+  await expectRejects("Revenue envelope with provider budget", () => upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    budgetPolicyId: "budget_provider_manual_default",
+    name: "Revenue E2E incompatible budget",
+    requestedApprovalMode: "approve-batch",
+    status: "approved",
+    version: 1,
+  }), "Budget policy is not eligible for revenue envelope");
+  const draftEnvelope = await upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    name: "Revenue E2E draft envelope",
+    requestedApprovalMode: "approve-batch",
+    status: "draft",
+    version: 1,
+  });
+  assert(draftEnvelope.executionState === "held", "Draft envelope became approval-only executable state");
+  const expiredEnvelopePolicy = await createPolicy("Revenue expired envelope");
+  await expirePolicy(expiredEnvelopePolicy.sourcePolicyId);
+  await expectRejects("Envelope with expired source policy", () => upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    name: "Revenue E2E expired policy envelope",
+    requestedApprovalMode: "approve-batch",
+    sourcePolicyIds: [expiredEnvelopePolicy.sourcePolicyId],
+    status: "approved",
+    version: 1,
+  }), "SOURCE_POLICY_EXPIRED");
+
+  const heldEnvelope = await upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    name: "Revenue E2E exception envelope",
+    requestedApprovalMode: "exception-only",
+    status: "approved",
+    version: 1,
+  });
+  assert(heldEnvelope.status === "held", "Exception-only envelope was not held");
+  assert(heldEnvelope.executionState === "held", "Exception-only envelope became executable");
+  assert(heldEnvelope.approvalMode === "prepare-and-approve-each", "Exception-only envelope did not fall back to per-item approval");
+
+  const routedOutcome = await recordSignalDeskOutcomeServer(access, {
+    channel: "manual",
+    outcomeType: "route_created",
+    source: "manual",
+    targetId,
+  });
+  assert(routedOutcome.activationWatchSyncStatus === "updated", "Route outcome did not update activation automatically");
+  const routedWatch = routedOutcome.activationWatch;
+  assert(routedWatch.status === "routed", "Activation watch did not derive routed state from outcomes");
+
+  await db.collection(SIGNALDESK_COLLECTIONS.ACTIVATION_WATCHES).doc(routedWatch.activationWatchId).set({
+    deadlineAt: admin.firestore.Timestamp.fromDate(new Date(pastIso())),
+    status: "routed",
+    updatedAt: timestampNow(),
+  }, { merge: true });
+  const staleWorkspace = await loadSignalDeskWorkspaceServer(access, "revenue");
+  assert(staleWorkspace.workspace.activationWatches.some((watch) => watch.targetId === targetId && watch.status === "stalled"), "Expired activation deadline was not surfaced as stalled on read");
+  const founderBrief = await createSignalDeskDailyGrowthMissionServer(access);
+  assert(founderBrief.summary.includes("open opportunities"), "Daily founder brief omitted revenue movement");
+  assert(founderBrief.summary.includes("founder minutes"), "Daily founder brief omitted founder attention");
+  assert(founderBrief.summary.includes("estimated spend today"), "Daily founder brief omitted spend");
+  assert(founderBrief.missionActions.some((action) => action.label.includes("stalled activation")), "Daily founder brief omitted stalled activation recovery");
+  assert(founderBrief.missionActions.some((action) => action.label.includes("overdue revenue next action")), "Daily founder brief omitted overdue opportunity work");
+
+  const inProgressOutcome = await recordSignalDeskOutcomeServer(access, {
+    channel: "manual",
+    outcomeType: "upload_started",
+    source: "manual",
+    targetId,
+  });
+  assert(inProgressOutcome.activationWatchSyncStatus === "updated", "Upload outcome did not update activation automatically");
+  const inProgressWatch = inProgressOutcome.activationWatch;
+  assert(inProgressWatch.status === "in-progress", "Activation watch did not derive in-progress state from upload outcome");
+
+  const activatedOutcome = await recordSignalDeskOutcomeServer(access, {
+    channel: "manual",
+    outcomeType: "two_surface_activation",
+    source: "manual",
+    targetId,
+  });
+  assert(activatedOutcome.activationWatchSyncStatus === "updated", "Activation outcome did not update the watch automatically");
+  const activatedWatch = activatedOutcome.activationWatch;
+  assert(activatedWatch.status === "activated", "Activation watch did not derive two-surface activation");
+  assert(activatedWatch.source === "signaldesk-outcome-summaries", "Activation watch did not preserve its read-only source boundary");
+  const longHistoryBatch = db.batch();
+  for (let index = 0; index < 31; index += 1) {
+    const summaryRef = db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES).doc(`outcome_history_${index}_${targetId}`);
+    longHistoryBatch.set(summaryRef, {
+      channel: "manual",
+      count: 1,
+      day: `2099-01-${String((index % 28) + 1).padStart(2, "0")}`,
+      outcomeSummaryId: summaryRef.id,
+      outcomeType: "route_created",
+      pId: "SD",
+      source: "manual",
+      targetId,
+      updatedAt: admin.firestore.Timestamp.fromMillis(Date.now() + ((index + 1) * 60_000)),
+    });
+  }
+  await longHistoryBatch.commit();
+  const longHistoryWatch = await refreshSignalDeskActivationWatchServer(access, { targetId });
+  assert(longHistoryWatch.status === "activated", "Bounded latest-outcome window lost an older terminal activation");
+  assert(longHistoryWatch.outcomeTypes.includes("two_surface_activation"), "Terminal activation evidence disappeared from a long outcome history");
+  const wonOpportunitySnap = await db.collection(SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES).doc(qualification.opportunity.opportunityId).get();
+  assert(wonOpportunitySnap.data()?.status === "won" && wonOpportunitySnap.data()?.stage === "won", "Two-surface activation did not close the commercial opportunity");
+
+  const suppressedTargetId = await importOne(sourcePolicy.sourcePolicyId, "RevenueSuppressed", { currentListUrl: "" });
+  await scoreSignalDeskTargetServer(access, suppressedTargetId);
+  await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(suppressedTargetId).set({
+    suppressionStatus: "suppressed",
+    updatedAt: timestampNow(),
+  }, { merge: true });
+  const suppressedQualification = await qualifySignalDeskRevenueAccountServer(access, {
+    locationType: "single-location",
+    targetId: suppressedTargetId,
+  });
+  assert(suppressedQualification.qualified === false, "Suppressed account was commercially qualified");
+  assert(suppressedQualification.account.complianceState === "suppressed", "Suppressed account lost its compliance state");
+  assert(suppressedQualification.opportunity === null, "Suppressed account created an opportunity");
+
+  const publishedTargetId = await importOne(sourcePolicy.sourcePolicyId, "RevenuePublishedOnly", { currentListUrl: "" });
+  await scoreSignalDeskTargetServer(access, publishedTargetId);
+  await recordSignalDeskOutcomeServer(access, {
+    channel: "manual",
+    outcomeType: "published",
+    source: "manual",
+    targetId: publishedTargetId,
+  });
+  const publishedQualification = await qualifySignalDeskRevenueAccountServer(access, {
+    locationType: "single-location",
+    targetId: publishedTargetId,
+  });
+  assert(publishedQualification.account.lifecycleStage === "opportunity", "Published-only target was incorrectly treated as an activated customer");
+  assert(publishedQualification.opportunity?.status === "open", "Published-only target was incorrectly closed as won");
+  assert(publishedQualification.activationWatch?.status === "published", "Published-only target did not reconcile its activation watch");
+
+  const convertedTargetId = await importOne(sourcePolicy.sourcePolicyId, "RevenueAlreadyConverted", { currentListUrl: "" });
+  await scoreSignalDeskTargetServer(access, convertedTargetId);
+  await recordSignalDeskOutcomeServer(access, {
+    channel: "manual",
+    outcomeType: "two_surface_activation",
+    source: "manual",
+    targetId: convertedTargetId,
+  });
+  const convertedQualification = await qualifySignalDeskRevenueAccountServer(access, {
+    locationType: "single-location",
+    targetId: convertedTargetId,
+  });
+  assert(convertedQualification.account.lifecycleStage === "customer", "Converted target was reopened as an opportunity-stage account");
+  assert(convertedQualification.opportunity?.status === "won", "Converted target created an open opportunity");
+  assert(convertedQualification.activationWatch?.status === "activated", "Qualification did not reconcile a prior activation outcome");
+
+  await db.collection(SIGNALDESK_COLLECTIONS.OPERATING_ENVELOPES).doc(approvedEnvelope.operatingEnvelopeId).set({
+    expiresAt: admin.firestore.Timestamp.fromDate(new Date(pastIso())),
+    updatedAt: timestampNow(),
+  }, { merge: true });
+
+  const workspace = await loadSignalDeskWorkspaceServer(access, "revenue");
+  assert(workspace.workspace.revenueAccounts.some((account) => account.revenueAccountId === qualification.account.revenueAccountId), "Revenue workspace did not load qualified account");
+  assert(workspace.workspace.commercialOffers.some((item) => item.commercialOfferId === offer.commercialOfferId), "Revenue workspace did not load commercial offer");
+  assert(workspace.workspace.operatingEnvelopes.some((item) => item.operatingEnvelopeId === heldEnvelope.operatingEnvelopeId), "Revenue workspace did not load held operating envelope");
+  assert(workspace.workspace.operatingEnvelopes.some((item) => item.operatingEnvelopeId === approvedEnvelope.operatingEnvelopeId && item.status === "expired" && item.executionState === "held"), "Revenue workspace did not hold expired operating envelope");
+  assert(workspace.workspace.activationWatches.some((watch) => watch.status === "activated" && watch.targetId === targetId), "Revenue workspace did not load activation watch");
+  const summary = workspace.workspace.revenueControlSummaries[0];
+  assert(summary.revenueAccountCount === 5, "Revenue summary did not count reply-created, published-only, and qualified revenue accounts exactly");
+  assert(summary.openOpportunityCount === 1, "Published-only opportunity was not preserved as open");
+  assert(summary.pipelineCurrency === "INR", "Revenue summary did not preserve pipeline currency");
+  assert(summary.pipelineValueMinor === 0, "Activated opportunity remained in pipeline value");
+  assert(summary.weightedPipelineValueMinor === 0, "Activated opportunity remained in weighted pipeline value");
+  assert(summary.activatedAccountCount === 3, "Revenue summary did not count automatically activated and reconciled accounts exactly");
+  assert(summary.wonOpportunityCount === 3, "Revenue summary did not count reply activation, qualified activation, and pre-converted wins exactly");
+  assert(summary.founderAttentionMinutes >= 12, "Revenue summary did not record founder attention");
 }
 
 async function assertTeamAccessManagement() {
@@ -424,9 +879,7 @@ async function assertFhrsFhisSourceProvider() {
     assert(requestUrl.searchParams.get("businessTypeId") === "1", "FHRS/FHIS provider did not map restaurant query to business type");
     assert(requestUrl.searchParams.get("address") === "Leeds UK", "FHRS/FHIS provider did not pass location as address filter");
     assert(options.headers?.["x-api-version"] === "2", "FHRS/FHIS provider did not request API v2");
-    return {
-      ok: true,
-      json: async () => ({
+    return new Response(JSON.stringify({
         establishments: [{
           AddressLine1: "1 Test Street",
           AddressLine2: "",
@@ -445,8 +898,10 @@ async function assertFhrsFhisSourceProvider() {
           SchemeType: "FHRS",
           geocode: { latitude: 53.8, longitude: -1.54 },
         }],
-      }),
-    };
+      }), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      });
   };
 
   try {
@@ -488,9 +943,7 @@ async function assertResearchAgentTable() {
     assert(requestUrl.origin === "https://api.ratings.food.gov.uk", "Research agent used unexpected source host");
     assert(requestUrl.pathname === "/Establishments", "Research agent used unexpected source endpoint");
     assert(options.headers?.["x-api-version"] === "2", "Research agent did not preserve FHRS/FHIS API version header");
-    return {
-      ok: true,
-      json: async () => ({
+    return new Response(JSON.stringify({
         establishments: [
           {
             AddressLine1: "2 Research Street",
@@ -521,8 +974,10 @@ async function assertResearchAgentTable() {
             geocode: { latitude: 53.82, longitude: -1.56 },
           },
         ],
-      }),
-    };
+      }), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      });
   };
 
   try {
@@ -550,6 +1005,12 @@ async function assertResearchAgentTable() {
     assert(dashboardWorkspace.workspace.policies.some((workspacePolicy) => workspacePolicy.sourcePolicyId === policy.sourcePolicyId), "Dashboard workspace did not load provider source policy for market search");
     const podSnap = await db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(result.run.marketPodId).get();
     assert(podSnap.exists, "Research agent did not create/update market pod map");
+    assert(podSnap.data()?.status === "hold", "Research agent granted itself active market-pod status");
+    assert(!podSnap.data()?.approvedBy && !podSnap.data()?.reviewedBy, "Research agent fabricated founder market-pod approval");
+    assert(podSnap.data()?.recommendation === "activate", "Research agent did not preserve its activation recommendation for founder review");
+    const refreshedPod = await recommendSignalDeskMarketPodPlanServer(access, { marketPodId: result.run.marketPodId });
+    assert(refreshedPod.status === "hold", "Market-pod recommendation granted itself active status");
+    assert(!refreshedPod.approvedBy && !refreshedPod.reviewedBy, "Market-pod recommendation fabricated founder approval");
     const contactIdentityCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES, (data) => (
       result.rows.some((row) => row.targetId === data.targetId)
     ));
@@ -689,6 +1150,9 @@ async function assertMobileReadOnlyContract() {
     '"send-approved-message": "send"',
     '"run-source-provider": "provider_run"',
     '"upsert-connector-setting": "configure"',
+    '"qualify-revenue-account": "configure"',
+    '"review-market-pod": "approve"',
+    '"upsert-operating-envelope": "mutate_policy"',
     '"schedule-content-distribution-draft": "schedule"',
     '| "reveal_pii"',
     'MOBILE_READ_ONLY_ACTION_BLOCKED',
@@ -698,12 +1162,15 @@ async function assertMobileReadOnlyContract() {
     ["review-approval", "approve"],
     ["export-message", "export"],
     ["upsert-connector-setting", "configure"],
+    ["qualify-revenue-account", "configure"],
+    ["review-market-pod", "approve"],
+    ["upsert-operating-envelope", "mutate_policy"],
     ["target-contact-reveal", "reveal_pii"],
   ]) {
     await recordSignalDeskMobileActionBlockedServer({ access, action, actionClass });
   }
   const blockedAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.action === "mobile_action_blocked");
-  assert(blockedAuditCount >= 4, "Mobile blocked action audit events were not recorded");
+  assert(blockedAuditCount >= 7, "Mobile blocked action audit events were not recorded");
 }
 
 async function assertWebhookAndDncFixtures(targetId) {
@@ -782,6 +1249,7 @@ async function main() {
 
   await assertTeamAccessManagement();
   const happy = await assertHappyPath();
+  await assertRevenueOperatingLayer();
   await assertSourcePolicyNegatives();
   await assertFhrsFhisSourceProvider();
   await assertResearchAgentTable();

@@ -2,8 +2,8 @@
 
 > **Feature:** Menu Image Generation & Editing
 > **Status:** Controlled owner testing ready after July 2026 worker/auth/logging/preference diagnostics hardening
-> **Last Updated:** July 5, 2026
-> **Version:** 2.4
+> **Last Updated:** July 9, 2026
+> **Version:** 2.6
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## What Is This Feature?
 
-**One-liner:** Owner-reviewed image generation and editing system that prepares menu item images using Gemini 2.5 Flash and Imagen 3 models.
+**One-liner:** Owner-reviewed image generation and editing system that prepares menu item images using Gemini 2.5 Flash Image.
 
 **Problem Solved:** Restaurant and business owners often lack professional photography for their menu items. Hiring photographers is expensive, time-consuming, and creates consistency issues across menu updates. Many businesses end up with no images or low-quality photos that hurt customer perception.
 
@@ -106,6 +106,7 @@ Toggle to disable AI image generation without code changes.
 
 | Version | Date         | Changes                                                                                                                                                       |
 | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.6     | Jul 9, 2026  | Removed the deprecated Imagen branch from active generation code, route accounting, verifier expectations, and model documentation                             |
 | 2.5     | Jul 5, 2026  | Removed redundant single-image and edit-image normal-path debug breadcrumbs while preserving bounded local summaries and failure diagnostics                   |
 | 2.4     | Jul 5, 2026  | Added bounded local request, response, and transaction summaries plus validation, batch-trigger, and AI accounting input summaries for image generation/editing paths instead of full transaction objects, raw IDs, raw item/config payloads, or redundant batch-worker debug breadcrumbs |
 | 2.3     | Jul 5, 2026  | Added bounded browser-local diagnostics for image-generation preference save/load/clear failures                                                               |

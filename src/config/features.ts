@@ -48,6 +48,7 @@ export const FEATURE_FLAGS = {
     ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL: true,
     ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL: true,
     ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER: true,
+    ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER: true,
     ENABLE_MENULIST_SIGNALDESK_RESEARCH_AGENT_TABLE: true,
     ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND: false,
 
@@ -482,7 +483,7 @@ export const FEATURE_FLAGS = {
      * "off": No AI image generation
      * "on_demand": Generate images when item has no photo
      *
-     * Uses existing Imagen 3 / Gemini 2.0 infrastructure
+     * Uses the existing Gemini image-generation infrastructure.
      */
     SOCIAL_CONTENT_IMAGE_GENERATION: "on_demand" as "off" | "on_demand",
 
@@ -731,8 +732,7 @@ export const FEATURE_FLAGS = {
      *
      * AI Models Used:
      * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     * - Gemini 2.0 Flash (image generation with reference)
-     * - Imagen 3 (text-to-image generation)
+     * - Gemini 2.5 Flash Image (text-to-image and reference-image generation)
      *
      * @see __docs__/projects/ai-image-generation/ai-image-generation_impl.md
      *
@@ -1052,6 +1052,41 @@ export const FEATURE_FLAGS = {
     ENABLE_OWNER_ANALYTICS_AI_SUMMARIES: false,
 
     /**
+     * Owner Dashboard Graph Mode.
+     *
+     * Presentation-only Recharts view for the existing owner dashboard
+     * summary data. This must not add analytics events, Firestore writes,
+     * collections, scheduled jobs, or new hot-path reads.
+     */
+    ENABLE_OWNER_DASHBOARD_GRAPH_MODE: true,
+
+    /**
+     * Owner-to-owner referral acquisition and settlement.
+     *
+     * Acquisition controls invite generation, capture, and attribution.
+     * Settlement remains independently gated so already-attributed paid
+     * referrals can be honored while new invitations are paused.
+     */
+    ENABLE_OWNER_REFERRAL: false,
+    ENABLE_OWNER_REFERRAL_REWARD_PROCESSING: false,
+    OWNER_REFERRAL_PILOT_STORE_IDS: [] as Array<string | number>,
+
+    /**
+     * Owner Action Layer.
+     *
+     * Presentation-only routing layer that turns existing MenuList status into
+     * one next owner action plus compact handoffs for placement, daily changes,
+     * temporary status, private feedback, staff use, and price updates.
+     *
+     * This must not add Firestore fields, collections, API routes, Cloud
+     * Functions, provider calls, crawlers, external-platform writes, or new
+     * owner settings.
+     *
+     * @see __docs__/owner-action-layer/
+     */
+    ENABLE_OWNER_ACTION_LAYER: true,
+
+    /**
      * Owner Business Assistant / Business Health
      *
      * Cost-first owner operating surface backed by scheduler-built summaries.
@@ -1096,11 +1131,11 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_AI_MENU_MANAGER: true,
     ENABLE_AI_MENU_MANAGER_MOBILE: true,
-    ENABLE_AI_MENU_MANAGER_VOICE_INPUT: true,
+    ENABLE_AI_MENU_MANAGER_VOICE_INPUT: false,
     ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS: true,
     ENABLE_AI_MENU_MANAGER_RULES: true,
-    ENABLE_AI_MENU_MANAGER_MODEL_ROUTER: false,
-    ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER: false,
+    ENABLE_AI_MENU_MANAGER_MODEL_ROUTER: true,
+    ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER: true,
     ENABLE_AI_MENU_MANAGER_LOCAL_ASSIST: false,
     ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES: true,
     ENABLE_AI_MENU_MANAGER_DEBUG_ARTIFACTS: false,

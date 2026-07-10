@@ -19,6 +19,7 @@ import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from '@data/shar
 import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { normalizeGrowthAcquisitionAttribution } from '@lib/growth/acquisitionAttribution';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
@@ -26,6 +27,14 @@ import { createTenantStoreInTransaction, preCheckSubdomain, updateUserWithTenant
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from '@lib/onboarding/starterActivation';
 import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
+import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
+import {
+    clearOwnerReferralCookie,
+    readOwnerReferralCookie,
+    resolveOwnerReferralCookieForAttribution,
+    setOwnerReferralAttributionInTransaction,
+} from '@lib/ownerReferral/ownerReferralAttributionServer';
+import { isOwnerReferralAcquisitionEnabled } from '@lib/ownerReferral/ownerReferralFeature';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -184,6 +193,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const userId = session.user.id;
     const hasExistingAccount = !!(session.user.tenantId && session.user.storeId);
     let draftIdForDiagnostics: string | undefined;
+    let clearReferralCookieOnResponse = false;
 
     try {
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_ONBOARDING');
@@ -253,6 +263,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // 3. Look up draft
         const db = admin.firestore();
         const draftRef = db.collection(COLLECTION).doc(draftId);
+        const referralCookiePresent = Boolean(readOwnerReferralCookie(request));
+        const shouldBindReferralOnClaim = isOwnerReferralAcquisitionEnabled() && !hasExistingAccount;
+        const resolvedReferral = shouldBindReferralOnClaim
+            ? await resolveOwnerReferralCookieForAttribution(request)
+            : null;
+        if (shouldBindReferralOnClaim && referralCookiePresent && !resolvedReferral) {
+            clearReferralCookieOnResponse = true;
+        }
 
         // 5. Check if user already has a tenant/store
         // If they do, create a new project under existing tenant
@@ -268,16 +286,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
 
             const draft = draftDoc.data()!;
+            const growthAcquisition = normalizeGrowthAcquisitionAttribution(draft.growthAcquisition);
+            if (draft.createdByUId !== userId) {
+                throw new PublicMenuClaimError(403, 'This draft belongs to another account.');
+            }
+
             if (draft.claimed) {
                 throw new PublicMenuClaimError(409, 'This menu has already been claimed.');
             }
 
             if (draft.expiresAt && draft.expiresAt.toMillis() < Date.now()) {
                 throw new PublicMenuClaimError(410, 'Draft expired. Please upload again.');
-            }
-
-            if (draft.createdByUId !== userId) {
-                throw new PublicMenuClaimError(403, 'This draft belongs to another account.');
             }
 
             if (draft.extractionStatus !== 'completed' || !draft.extractedData) {
@@ -300,6 +319,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             let tenantDocumentId: string;
             let storeDocumentId: string;
             let subdomain: string;
+            let referralBoundInTransaction = false;
             let resolvedBusinessType = businessType || draft.detectedBusinessType || FALLBACK_BUSINESS_TYPE;
             let resolvedBusinessCategory = resolveStoreBusinessCategory(
                 resolvedBusinessType,
@@ -405,6 +425,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     subdomain: { preChecked: preCheckedSubdomain },
                     includeTimeSlotPresets: true,
                     tenantExtra: {
+                        ...(growthAcquisition ? { growthAcquisition } : {}),
                         countryCode: normalizedPhone.phone ? normalizedPhone.countryCode : undefined,
                         dialCode: normalizedPhone.phone ? normalizedPhone.dialCode : undefined,
                         phone: normalizedPhone.phone || '',
@@ -414,6 +435,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         activationDeadline,
                     },
                     storeExtra: {
+                        ...(growthAcquisition ? { growthAcquisition } : {}),
                         countryCode: normalizedPhone.phone ? normalizedPhone.countryCode : undefined,
                         dialCode: normalizedPhone.phone ? normalizedPhone.dialCode : undefined,
                         phoneNumber: normalizedPhone.phoneNumber || '',
@@ -445,6 +467,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 tenantDocumentId = tenantScope.documentId;
                 storeDocumentId = storeScope.documentId;
                 subdomain = core.subdomain!;
+
+                if (resolvedReferral) {
+                    referralBoundInTransaction = Boolean(setOwnerReferralAttributionInTransaction({
+                        transaction,
+                        db,
+                        referredBusinessName: businessName,
+                        referredScope: { tenantId, storeId },
+                        resolvedToken: resolvedReferral,
+                        onboardingSource: 'PUBLIC_MENU_ENTRY',
+                    }));
+                }
             }
 
             const projectId = `${tenantId}-${Date.now().toString(36)}-${storeId}`;
@@ -504,6 +537,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 sId: storeId,
                 createdBy: userId,
                 onboardingSource: 'PUBLIC_MENU_ENTRY',
+                ...(growthAcquisition ? { growthAcquisition } : {}),
                 createdOn: now,
                 modifiedOn: now,
             };
@@ -532,7 +566,23 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 convertedStoreId: storeId,
             });
 
-            return { tenantId, storeId, subdomain, projectId, projectSlug };
+            return {
+                tenantId,
+                storeId,
+                subdomain,
+                projectId,
+                projectSlug,
+                referralBoundInTransaction,
+                growthAcquisition,
+            };
+        });
+
+        if (result.referralBoundInTransaction) clearReferralCookieOnResponse = true;
+
+        await recordFounderGrowthEvent({
+            attribution: result.growthAcquisition,
+            draftId,
+            stage: 'business_claimed',
         });
 
         logSecurityDiagnostic('public_menu_claim_succeeded', getPublicMenuClaimDiagnosticContext({
@@ -572,7 +622,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const officialPageUrl = getMenuUrl(result.subdomain);
         const menuUrl = appendPublicPath(officialPageUrl, result.projectSlug || 'menu');
 
-        return NextResponse.json({
+        const response = NextResponse.json({
             success: true,
             storeId: result.storeId,
             tenantId: result.tenantId,
@@ -582,6 +632,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             menuUrl,
             isNewAccount: !hasExistingAccount,
         });
+        if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
+        return response;
 
     } catch (error) {
         if (error instanceof PublicMenuClaimError) {
@@ -596,9 +648,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             userId,
             hasExistingAccount,
         }));
-        return NextResponse.json(
+        const response = NextResponse.json(
             { success: false, error: 'Failed to publish your menu. Please try again.' },
             { status: 500 }
         );
+        if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
+        return response;
     }
 });

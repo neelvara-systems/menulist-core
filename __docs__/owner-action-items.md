@@ -4,6 +4,8 @@
 
 **Rule:** This is the SINGLE SOURCE OF TRUTH for "what Danny needs to do manually." Cascade appends here after every session. Danny checks off items when done.
 
+**Launch boundary:** Not current launch certification or deploy approval. This tracker lists owner/manual tasks; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
+
 ---
 
 ## How This File Works
@@ -16,6 +18,15 @@
 ---
 
 ## Active Items
+
+### SignalDesk First Revenue Trial
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Grant the current operator Firebase access to `menulist-signaldesk-qa` | QA Firestore rules/index deployment and authenticated trial smoke remain blocked by Firebase Rules API HTTP 403. | P0 (before real QA trial) | ⬜ |
+| 2 | Use SignalDesk's founder-only market-pod review to approve, hold, reject, or redirect the Bengaluru recommendation | Seed data matches Indiranagar + Koramangala cafes/dessert shops/QSR/customer-facing cloud kitchens; research can recommend but cannot activate strategy or spend. | P0 (before importing real targets) | ⬜ |
+| 3 | Confirm the first curated source list, standard offer/price, sender identity, and physical address policy | Real manual/export outreach must not infer source rights, commercial terms, or sender compliance. | P0 (before any real outreach) | ⬜ |
+| 4 | Set the first trial caps for target volume, provider spend, and strong-model spend | The recommended pod carries zero approved budget; real cost authority must be explicit before the seven-day trial. | P0 (before any paid/provider run) | ⬜ |
 
 ### June 19 Product Activation And Release Scope
 
@@ -37,7 +48,7 @@
 | 1   | Fix or replace the configured Upstash Redis endpoint                  | Local public upload/claim rate-limit checks logged DNS `ENOTFOUND`; code now fails closed for public menu setup and claim when the provider is unavailable, but launch still needs a working Upstash endpoint before public traffic. | P0 (before public traffic)  | ⬜     |
 | 2   | Confirm Gemini quota/key capacity for public menu extraction          | The local verification key returned quota errors; public upload-before-auth depends on reliable extraction capacity or additional rotated keys. | P0 (before public traffic)  | ⬜     |
 | 3   | Deploy Firestore rules, indexes, and updated Cloud Functions scheduler | `publicMenuDrafts` must stay server-only, and expired draft images/docs need the `public_menu_draft_cleanup` scheduler task live.              | P0 (before public traffic)  | ⬜     |
-| 4   | Confirm Razorpay recurring/autopay capability for hosted checkout     | Signed webhook processing passed locally, but hosted recurring checkout still depends on merchant/account capability.                         | P0 (before paid launch)     | ⬜     |
+| 4   | Confirm Razorpay recurring/autopay capability for hosted checkout     | Signed webhook processing and read-only test-mode credential auth passed locally, but hosted recurring checkout still depends on merchant/account capability and full sandbox checkout/webhook smoke. | P0 (before paid launch)     | ⬜     |
 | 5   | Run WhatsApp Cloud API sandbox media flow if WhatsApp onboarding is included | The public web flow is verified; WhatsApp media/webhook delivery still requires real Meta test app credentials and provider callback proof.    | P1 (before WhatsApp launch) | ⬜     |
 
 ### AI Extraction Monitoring Dashboard
@@ -99,13 +110,15 @@ npm run verify:functions-deploy-preflight
 | --- | ---------------------------------- | ----------------------------------------------------------------------- | ------------------ | ------ |
 | 1   | Create Telegram Bot + set secrets  | Required for ops alerts (payment failures, publish errors, cost spikes) | P0 (before launch) | ⬜     |
 | 2   | Set GCP Budget Alerts              | Auto-activates SAFE_MODE when cost threshold exceeded                   | P0 (before launch) | ⬜     |
-| 3   | Deploy Cloud Functions             | Deploys verifyMenuPublish, alertEscalation, gcpBudgetAlertWebhook, menu extraction worker updates, source-file path hardening updates, and the consolidated maintenance scheduler. Latest documented `menulist-qa` source-file path hardening subset, `processMenuImagesJob`, and scheduler deploy attempts on July 2, 2026 completed predeploy lint/build and then failed with Cloud Resource Manager HTTP 403 caller permission. | P0 (before launch) | ⬜     |
+| 3   | Deploy Cloud Functions             | Deploys verifyMenuPublish, alertEscalation, gcpBudgetAlertWebhook, menu extraction worker updates, source-file path hardening updates, and the consolidated maintenance scheduler. Latest package-local scoped `menulist-qa` retry on July 9, 2026 targeted the current Gate 1 function set, completed predeploy lint/build, and then failed before upload with Cloud Resource Manager HTTP 403 caller permission. | P0 (before launch) | ⬜     |
 | 4   | Deploy Firestore indexes           | Required for alert escalation queries                                   | P0 (before launch) | ⬜     |
 | 5   | Confirm monitoring feature flag evidence | Check current `src/config/features.ts` source state, QA secrets/deploy evidence, provider smoke evidence where applicable, and External Certification Runbook records for `ENABLE_COST_PROTECTION`, `ENABLE_OPS_ALERTS`, and `ENABLE_MENU_HEALTH_MONITOR`. | P0 (before launch) | ⬜     |
 | 6   | Setup UptimeRobot                  | External uptime monitoring (free)                                       | P1 (before launch) | ⬜     |
 | 7   | Setup SMTP for lifecycle messaging | Enables billing emails, renewal reminders, suspension warnings          | P1 (before launch) | ⬜     |
-| 8   | Run the external certification runbook | Full MenuList production certification still needs Firebase deploy, mobile/browser QA, Razorpay sandbox, WhatsApp provider, POS provider, batch worker, and production-host evidence recorded in the audit. | P0 (before production certification) | ⬜     |
-| 9   | Deploy MenuList Storage rules cutover to QA | Legacy project Storage paths are now read-only in code. Gate 2A requires `npm run verify:storage-paths`, then `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` before production approval. Latest local retry on July 2, 2026 was blocked by Service Usage HTTP 403: `menulist-qa` not found or permission denied before rules upload. | P0 (before production certification) | ⬜     |
+| 8   | Run the external certification runbook | Full MenuList production certification still needs Firebase deploy, mobile/browser QA, full Razorpay sandbox checkout/webhook smoke, WhatsApp provider, POS provider, batch worker, and production-host evidence recorded in the audit. Read-only Razorpay test-mode credential auth is recorded as partial Gate 4 evidence only. | P0 (before production certification) | ⬜     |
+| 9   | Deploy MenuList Storage rules cutover to QA | Legacy project Storage paths are now read-only in code. Gate 2A requires `npm run verify:storage-paths`, then `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` before production approval. Latest local retry on July 9, 2026 passed `npm run verify:storage-paths`, then was blocked before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied. | P0 (before production certification) | ⬜     |
+| 10  | Configure and smoke the batch image Cloud Tasks worker secret | Local `.env` has project/location/queue/HTTPS worker URL but is missing `BATCH_IMAGE_GENERATION_WORKER_SECRET`; Functions dotenv files have no batch worker keys. Gate 7 needs the worker secret, deployed worker target, enqueue proof, wrong-secret rejection, correct-secret acceptance, review-state proof, and selected-image persistence. | P0 (before batch AI image launch) | ⬜     |
+| 11  | Provision a controlled public HTTPS POS receiver for Gate 6 | The POS source gate passes locally, but external certification still needs a staging receiver endpoint that verifies MenuList signatures, accepts a signed full-menu snapshot, exercises failed-endpoint behavior, and proves secret rotation before UI success. | P0 (before POS launch) | ⬜     |
 
 > **Full setup guide:** `__docs__/production-readiness/launch-prerequisites.md`
 > **External certification guide:** `__docs__/production-readiness/external-certification-runbook.md`
@@ -117,7 +130,7 @@ npm run verify:functions-deploy-preflight
 | 1   | Confirm local and preview MenuList env vars point to `menulist-qa` | Current contract keeps local/preview on the QA Firebase target; do not create or use `menulist-dev` for this path | P0 (before launch) | ⬜     |
 | 2   | Confirm Vercel Production MenuList env vars point to `menulist` | Production traffic must use the production Firebase target, not QA or a stale sample project | P0 (before launch) | ⬜     |
 | 3   | Confirm Answerlattice env vars stay separated                    | Local/preview use `answerlattice-qa`; production uses `answerlattice`                         | P0 (before launch) | ⬜     |
-| 4   | Get Razorpay test mode keys for non-production smoke             | Prevents real charges during staging/testing                                                 | P0 (before launch) | ⬜     |
+| 4   | Get Razorpay test mode keys for non-production smoke             | Local `.env` test-mode keys authenticated through a read-only provider request on July 9, 2026; matching staging/Vercel/Functions configuration and full sandbox checkout/webhook smoke still need confirmation. | P0 (before launch) | ⬜     |
 | 5   | Deploy Firestore indexes to the current QA target after access is ready | Use `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json` only after `npm run verify:env-targets` passes | P0 (before QA smoke) | ⬜     |
 | 6   | Deploy Firestore rules to the current QA target after access is ready | Use `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json` only after targeted validation passes | P0 (before QA smoke) | ⬜     |
 | 7   | Seed or confirm a test tenant/store in `menulist-qa`             | Required for non-production owner/mobile and publish smoke without touching production data   | P1 (after target access) | ⬜     |
@@ -135,7 +148,7 @@ npm run verify:functions-deploy-preflight
 | 4   | Generate test credentials for the non-production app only                                | Provides the real provider values needed by Firebase Functions without using production tokens                  | P0 (before enabling the feature) | ⬜     |
 | 5   | Set non-production Firebase secrets for the intended Firebase target                     | The messaging function needs real secrets; dummy WhatsApp secrets are not allowed                               | P0 (before enabling the feature) | ⬜     |
 | 6   | Register the Meta webhook URL for the non-production function                            | Required for inbound WhatsApp messages and media uploads to reach MenuList                                      | P0 (before live testing)         | ⬜     |
-| 7   | Keep `ENABLE_MESSAGING_ONBOARDING=false` until real Firebase secrets and Meta webhook registration are in place, then enable only the smoke target | Prevents repo-side env defaults from accepting provider webhooks before real non-production setup exists | P0 (before live testing)         | ⬜     |
+| 7   | Keep `ENABLE_MESSAGING_ONBOARDING=false` until real Firebase secrets and Meta webhook registration are in place, then enable only the smoke target | Prevents repo-side env defaults from accepting provider webhooks before real non-production setup exists. A July 9, 2026 presence check confirmed checked-in local/functions dotenv files remain absent/false with no WhatsApp provider secret values. | P0 (before live testing)         | ⬜     |
 | 8   | Run the full test flow: text message, image/PDF upload, preview, approve, publish, reply | Proves the Cloud API path works before any owner-facing or customer-facing launch                               | P0 (before beta)                 | ⬜     |
 | 9   | Decide and register the production business entity path                                  | Meta production readiness needs a real business identity before serious launch                                  | P0 (before production launch)    | ⬜     |
 | 10  | Prepare India business verification documents                                            | Likely required/supporting documents include PAN, GST/Udyam/shop registration, address proof, or bank proof     | P0 (before production launch)    | ⬜     |
@@ -223,5 +236,5 @@ _Move items here when done. Keep as history._
 
 ---
 
-_Last Updated: June 19, 2026_
-_Updated By: Codex (Product activation and release-scope action items)_
+_Last Updated: July 10, 2026_
+_Updated By: Codex (SignalDesk first revenue trial action items)_

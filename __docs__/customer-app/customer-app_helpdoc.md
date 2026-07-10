@@ -2,9 +2,11 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Customer-Facing Help Documentation  
-**Status:** Source-backed help draft; publish/use with current Customer App runtime boundary
+**Status:** Source-backed help draft; not current support publication or launch certification
 **Last Updated:** July 4, 2026
 **Audience:** Restaurant owners (non-technical, SMB)
+
+> **Launch Boundary:** This help draft is source evidence only. Current publication or release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:customer-app-pwa`, browser/device Customer App QA, target deploy evidence, and production-host smoke.
 
 ---
 

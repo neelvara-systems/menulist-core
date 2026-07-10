@@ -1,6 +1,6 @@
 # Tools Hub - Product Spec
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 9, 2026
 
 ## Job
 
@@ -41,9 +41,10 @@ It does not create a report, calculate score, ask for owner facts, submit leads,
 
 | Group | Owner job | Routes |
 | --- | --- | --- |
-| Public Truth | Check the basic public facts and customer-link readiness | `/tools/public-truth-check`, `/tools/customer-question-coverage-check`, `/tools/customer-link-preview`, `/tools/social-bio-link-check`, `/tools/google-profile-basics-checklist` |
+| Public Truth | Check the basic public facts and customer-link readiness | `/tools/public-truth-check`, `/tools/business-facts-copy-pack`, `/tools/customer-question-coverage-check`, `/tools/customer-faq-reply-pack`, `/tools/customer-link-preview`, `/tools/social-bio-link-check`, `/tools/google-profile-basics-checklist` |
 | Menu / Service Clarity | Check whether the public source is understandable | `/tools/menu-readability-check`, `/tools/price-availability-gap-check`, `/tools/menu-pdf-cleanup-check` |
-| Customer Action Readiness | Check whether customers can act cleanly | `/tools/qr-link-health-check`, `/tools/booking-inquiry-readiness-check`, `/tools/whatsapp-action-link-check`, `/tools/hours-check` |
+| Customer Action Readiness | Check whether customers can act cleanly | `/tools/qr-link-health-check`, `/tools/booking-inquiry-readiness-check`, `/tools/whatsapp-action-link-check`, `/tools/whatsapp-reply-pack`, `/tools/hours-check` |
+| Print & Share Assets | Create lightweight assets from one current customer link | `/tools/qr-poster-maker`, `/tools/whatsapp-menu-status-maker`, `/tools/holiday-hours-poster-maker`, `/tools/customer-link-card-maker`, `/tools/feedback-qr-card-maker` |
 | Trust / Setup | Check basic trust/setup gaps | `/tools/photo-gap-check` |
 
 ## Owner Outcome
@@ -59,7 +60,7 @@ The owner should leave the hub with one of these actions:
 
 - `/tools` renders when `ENABLE_PUBLIC_TRUTH_TOOLS` and `ENABLE_PUBLIC_TRUTH_TOOLS_HUB` are true.
 - `/tools` returns 404 when either flag is false.
-- All 13 current public tool routes are visible.
+- All 21 current public tool routes are visible.
 - Copy is calm, factual, and non-technical.
 - The page states no scan/crawl/ranking/citation promise.
 - Route is present in discovery policy, sitemap, `llms.txt`, and `llms-full.txt`.

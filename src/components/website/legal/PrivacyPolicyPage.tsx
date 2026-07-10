@@ -42,6 +42,17 @@ const dataCollected = [
             'Customer menu analytics are separate from the main website consent gate and do not ask visitors for names, emails, or payment details',
         ],
     },
+    {
+        icon: LuUsers,
+        title: 'Owner referral information',
+        desc: 'When a business accepts an owner referral, MenuList keeps the minimum attribution and reward record needed to issue credits and show a general status.',
+        points: [
+            'Business names and internal tenant/store references for the referring and referred businesses',
+            'Referral capture, paid-state, reward issue, and credit-ledger timestamps and references',
+            'The referring business can see the referred business name and a general waiting or credited status',
+            'The referring business cannot see the referred plan, price, payment method, contact details, or account activity',
+        ],
+    },
 ];
 
 const privacyHighlights = [
@@ -67,6 +78,7 @@ const howWeUse = [
     { label: 'Staff access control', value: 'Create staff access, apply roles, reset passcodes, and revoke sessions' },
     { label: 'Improve platform', value: 'Use consented analytics and reliability signals to improve public pages and product quality' },
     { label: 'Security', value: 'Detect and prevent fraud and abuse' },
+    { label: 'Referral rewards', value: 'Attribute owner invitations, verify paid eligibility, issue credits, and maintain an auditable reward ledger' },
     { label: 'Legal compliance', value: 'Comply with laws and regulations' },
 ];
 
@@ -113,6 +125,7 @@ const privacyRights = [
 const retentionFacts = [
     { label: 'Account data', value: 'Kept while the account is active or needed to provide support, security, and account recovery.' },
     { label: 'Billing records', value: 'Kept for legally required tax, accounting, and dispute-resolution periods.' },
+    { label: 'Referral reward records', value: 'Kept with billing and credit-ledger records while needed for accounting, support, security, and duplicate-issue prevention.' },
     { label: 'Product logs and analytics', value: 'Kept only as long as needed for reliability, security, product reporting, and abuse prevention.' },
     { label: 'Support records', value: 'Kept while needed to resolve requests, maintain quality, and preserve an operational record.' },
     { label: 'Public media', value: 'Prepared public media is kept until replaced, unpublished, or deleted through the relevant product flow.' },
@@ -120,7 +133,7 @@ const retentionFacts = [
 ];
 
 export default function PrivacyPolicyPage() {
-    const lastUpdated = 'June 26, 2026';
+    const lastUpdated = 'July 10, 2026';
 
     return (
         <div className="ws-page">

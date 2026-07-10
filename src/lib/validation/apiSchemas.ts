@@ -349,9 +349,9 @@ export type VerifyTopupRequest = z.infer<typeof VerifyTopupRequestSchema>;
 export const CancelSubscriptionRequestSchema = z.object({
     productId: billingProductIdSchema,
     subscriptionId: z.string().regex(/^sub_[a-zA-Z0-9]+$/).optional(),
-    reason: z.string().min(1).max(500),
-    otherReason: z.string().max(500).optional(),
-    consent: z.boolean()
+    reason: z.string().min(1).max(80),
+    otherReason: z.string().max(300).optional(),
+    consent: z.literal(true)
 });
 
 export type CancelSubscriptionRequest = z.infer<typeof CancelSubscriptionRequestSchema>;

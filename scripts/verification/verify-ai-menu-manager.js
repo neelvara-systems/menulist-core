@@ -14,14 +14,21 @@ const requiredFiles = [
   'src/lib/ai-menu-manager/approvalPolicy.ts',
   'src/lib/ai-menu-manager/composerContext.ts',
   'src/lib/ai-menu-manager/commandResolver.ts',
+  'src/lib/ai-menu-manager/compoundCommand.ts',
   'src/lib/ai-menu-manager/domainConversationRouter.ts',
   'src/lib/ai-menu-manager/modelRouter/routerOutcomeSchema.ts',
+  'src/lib/ai-menu-manager/modelRouter/plannerContext.ts',
+  'src/lib/ai-menu-manager/modelRouter/plannerActionContracts.ts',
+  'src/lib/ai-menu-manager/modelRouter/providerResultPolicy.ts',
+  'src/lib/ai-menu-manager/modelRouter/modelRouteCard.ts',
+  'src/lib/ai-menu-manager/presentation.ts',
   'src/lib/ai-menu-manager/patchPolicy.ts',
   'src/lib/ai-menu-manager/routeIds.ts',
   'src/lib/ai-menu-manager/actions/projectPatches.ts',
   'src/database/aiMenuManager/server.ts',
   'src/database/aiMenuManager/index.ts',
   'src/app/api/ai-menu-manager/command/route.ts',
+  'src/app/api/ai-menu-manager/plan/route.ts',
   'src/app/api/ai-menu-manager/inbox/route.ts',
   'src/app/api/ai-menu-manager/sessions/[sessionId]/route.ts',
   'src/app/api/ai-menu-manager/proposals/[proposalId]/actions/route.ts',
@@ -128,6 +135,23 @@ assert(aiMenuManagerTechnicalTeamFlow.includes('Current release approval require
 assert(aiMenuManagerTechnicalTeamFlow.includes('supported-adapter smoke behind AMM feature flags'), 'AMM technical team flow must require adapter smoke evidence before release claims');
 assert(aiMenuManagerTechnicalTeamFlow.includes('discovery/reserved adapter rows'), 'AMM technical team flow must describe non-runtime checklist rows as reserved adapters');
 assert(!/ready for controlled launch|controlled launch ready|ready for testing|ship ready/i.test(aiMenuManagerTechnicalTeamFlow), 'AMM technical team flow must not use stale launch-readiness wording');
+for (const token of [
+  'Not current launch certification or deploy approval',
+  'External Certification Runbook',
+  '`npm run verify:production-readiness-local`',
+  '`npm run verify:ai-menu-manager`',
+  '`npm run verify:ai-accounting`',
+  'authenticated desktop/mobile Menu Manager QA',
+  'deterministic-command and approval/cancel/receipt regression evidence',
+  'supported-adapter smoke behind AMM feature flags',
+  'guarded cloud-planner provider smoke in the target environment',
+  'public website/help copy review',
+  'target Firebase deploy evidence where rules or indexes change',
+  'target Vercel deploy evidence where planner/app routes or clients change',
+  'production-host smoke',
+]) {
+  assert(aiMenuManagerTechnicalTeamFlow.includes(token), `AMM technical team flow top launch boundary must include ${token}`);
+}
 const aiMenuManagerWebsiteDoc = read('__docs__/ai-menu-manager/ai-menu-manager_website.md');
 assert(aiMenuManagerWebsiteDoc.includes('Claim boundaries:'), 'AMM website doc must keep explicit public claim boundaries');
 assert(aiMenuManagerWebsiteDoc.includes('AI Menu Manager handles verified daily menu operations'), 'AMM website doc must scope public capability copy to verified daily operations');
@@ -141,8 +165,10 @@ assert(!/full speech-to-command is production-ready/i.test(aiMenuManagerSpec), '
 const aiMenuManagerImplDoc = read('__docs__/ai-menu-manager/ai-menu-manager_impl.md');
 const aiMenuManagerFirebaseDoc = read('__docs__/ai-menu-manager/ai-menu-manager_firebase.md');
 const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-const changelogUpper = read('__docs__/CHANGELOG.md');
+const changelogUpper = read('__docs__/changelog.md');
 const changelogLower = read('__docs__/changelog.md');
+assert(productionReadinessAudit.includes('AI Menu Manager technical-flow top-boundary checkpoint'), 'Production readiness audit must record AMM technical-flow top boundary');
+assert(changelogLower.includes('AI Menu Manager Technical Flow Top Boundary'), 'Changelog must record AMM technical-flow top boundary');
 assert(aiMenuManagerImplDoc.includes('GET /api/ai-menu-manager/sessions/{sessionId}'), 'AMM implementation doc must describe the session route fallback');
 assert(aiMenuManagerImplDoc.includes('route `proposalId` must match the deterministic `amm_prop_` proposal ID shape before proposal reads'), 'AMM implementation doc must document proposal route ID admission');
 assert(aiMenuManagerFirebaseDoc.includes('AMM route ID boundary'), 'AMM Firebase doc must document route ID admission before reads');
@@ -183,8 +209,9 @@ const features = read('src/config/features.ts');
 for (const flag of requiredFlags) {
   assert(features.includes(flag), `Missing feature flag: ${flag}`);
 }
-assert(features.includes('ENABLE_AI_MENU_MANAGER_MODEL_ROUTER: false'), 'AMM model router must default off to avoid provider cost');
-assert(features.includes('ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER: false'), 'AMM cloud planner must default off to avoid AI provider cost');
+assert(features.includes('ENABLE_AI_MENU_MANAGER_VOICE_INPUT: false'), 'AMM voice input must stay off until a verified speech-to-command control exists');
+assert(features.includes('ENABLE_AI_MENU_MANAGER_MODEL_ROUTER: true'), 'AMM model router must be enabled for unresolved bounded conversation');
+assert(features.includes('ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER: true'), 'AMM cloud planner must be enabled behind deterministic-first routing');
 assert(features.includes('ENABLE_AI_MENU_MANAGER_LOCAL_ASSIST: false'), 'AMM local assist must default off until device support is verified');
 
 const modelRouter = read('src/lib/ai-menu-manager/modelRouter/routerOutcomeSchema.ts');
@@ -196,6 +223,26 @@ for (const forbiddenTool of ['updateProject', 'writeFirestore', 'publishMenuDire
 }
 assert(modelRouter.includes('AI_MENU_MANAGER_SAFE_MODEL_TOOLS') && modelRouter.includes('prepare_price_update_card') && modelRouter.includes('prepare_unsupported_card'), 'AMM model router must expose prepare/read-only tool names only');
 assert(modelRouter.includes('if (!FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER)'), 'AMM model router providers must stay disabled when the main AMM flag is off');
+
+const plannerRoute = read('src/app/api/ai-menu-manager/plan/route.ts');
+assert(plannerRoute.includes('withAuth'), 'AMM planner route must use withAuth');
+assert(plannerRoute.includes('PERMISSIONS.MANAGE_MENU'), 'AMM planner route must require menu permission');
+assert(plannerRoute.includes("feature: 'AI_OPERATION'"), 'AMM planner route must rate-limit before provider work');
+assert(plannerRoute.includes('checkSafeMode()'), 'AMM planner route must check SAFE_MODE before provider work');
+assert(plannerRoute.includes('checkAICapacity('), 'AMM planner route must run AI capacity policy before provider work');
+assert(plannerRoute.includes('readBoundedJsonBody') && plannerRoute.includes('AI_MENU_MANAGER_PLAN_MAX_BODY_BYTES'), 'AMM planner route must bound request bodies');
+assert(plannerRoute.includes('AiMenuManagerPlannerRequestSchema.safeParse'), 'AMM planner route must validate compact context at runtime');
+assert(plannerRoute.includes('listAiMenuManagerExecutableActions'), 'AMM planner route must limit prepare outcomes to current executable actions');
+assert(plannerRoute.includes('buildAiMenuManagerPlannerActionContracts'), 'AMM planner must send action-specific target and value contracts');
+assert(plannerRoute.includes('buildAiMenuManagerPlannerResponseSchema') && plannerRoute.includes('responseSchema:'), 'AMM planner must constrain provider output with a structured response schema');
+assert(plannerRoute.includes('untrusted data') && plannerRoute.includes('Do not invent value keys'), 'AMM planner must treat owner/context text as untrusted and bind prepare outcomes to supplied contracts');
+assert(plannerRoute.includes('include at least one supporting context target') && plannerRoute.includes("['answer', 'diagnostic', 'recommendation'].includes(result.outcome)"), 'AMM planner read-only outcomes must be grounded to validated selected-menu targets');
+assert(plannerRoute.includes('displayName: item.name') && plannerRoute.includes('displayName: category.name') && plannerRoute.includes('displayName: params.context.project.name'), 'AMM planner must canonicalize grounded entity labels from selected MenuList context');
+assert(plannerRoute.includes('assertAiMenuManagerModelRouteIsSafe'), 'AMM planner route must enforce model outcome safety');
+assert(plannerRoute.includes('finalizeAiOperationAccounting'), 'AMM planner provider use must be recorded through AI accounting');
+assert(!plannerRoute.includes('getAiMenuManagerProject('), 'AMM planner route must not re-read project truth already loaded by the client');
+assert(!plannerRoute.includes('updateProject') && !plannerRoute.includes('writeFirestore'), 'AMM planner route must not expose or perform truth writes');
+assert(plannerRoute.includes("return NextResponse.json({ route: null })"), 'AMM planner failures must fall back without breaking deterministic conversation');
 
 const commandRoute = read('src/app/api/ai-menu-manager/command/route.ts');
 assert(commandRoute.includes('withAuth'), 'Command route must use withAuth');
@@ -229,11 +276,18 @@ assert(routeIds.includes('Number.isSafeInteger(numericId)') && routeIds.includes
 
 const clientDal = read('src/database/aiMenuManager/index.ts');
 const sendCommandBlock = (clientDal.split('export async function sendAiMenuManagerCommand')[1] || '').split('export async function getAiMenuManagerClientInbox')[0] || '';
-const completionBlock = (clientDal.split('export async function completeAiMenuManagerClientOperation')[1] || '').split('export async function submitAiMenuManagerProposalAction')[0] || '';
+const completionBlock = (clientDal.split('export async function completeAiMenuManagerClientOperation(params')[1] || '').split('export async function submitAiMenuManagerProposalAction')[0] || '';
 assert(sendCommandBlock.includes('sessionSnapshot'), 'AMM command submit must accept the loaded compact session snapshot');
 assert(sendCommandBlock.includes('setDoc(sessionRef, sessionPayload, { merge: true })'), 'AMM command submit must write the compact session without a transaction read');
 assert(sendCommandBlock.includes('replaceOperationId'), 'AMM command submit must replace clarification/follow-up cards in the same compact session write');
 assert(clientDal.includes('buildAiMenuManagerFollowUpCommand'), 'AMM client DAL must support short follow-up rewrites from the loaded compact session');
+assert(clientDal.includes('buildAiMenuManagerCommandFingerprint') && clientDal.includes('DUPLICATE_COMMAND_WINDOW_MS = 10_000'), 'AMM client DAL must suppress immediate duplicate commands from loaded pending state without another write');
+assert(clientDal.includes('commandGroupSize') && clientDal.includes('matchingGroup.length === (newestMatch.commandGroupSize || 1)'), 'AMM duplicate suppression must not reuse a partially cancelled compound group');
+assert(clientDal.includes('hashStableValue({ idempotencyKey, sessionId, sourceFingerprint })'), 'AMM repeated deliberate compound commands must receive distinct group ids');
+assert(clientDal.includes('resolveAiMenuManagerCompoundCommand'), 'AMM client DAL must support validated compound owner commands');
+assert(clientDal.includes('commandGroupId') && clientDal.includes('Prepared ${newOperations.length} updates'), 'AMM compound commands must retain grouped owner-facing card context');
+assert(clientDal.includes('buildAiMenuManagerClientBatchExecution') && clientDal.includes('completeAiMenuManagerClientOperations'), 'AMM compound approvals must expose one-save and one-completion-write helpers');
+assert(clientDal.includes('compoundCommands') && clientDal.includes('plannerAttempts') && clientDal.includes('plannerAccepted') && clientDal.includes('plannerFallbacks'), 'AMM route quality counters must reuse the compact session write');
 assert(clientDal.includes("'answered'"), 'AMM compact session must keep read-only answer cards without proposal docs');
 assert(!sendCommandBlock.includes('runTransaction'), 'AMM command submit must not transaction-read the compact session');
 assert(clientDal.includes('isFirestorePermissionDenied'), 'AMM client DAL must detect compact-session permission failures');
@@ -249,7 +303,12 @@ assert(!completionBlock.includes('runTransaction'), 'AMM completion/cancel must 
 assert(clientDal.includes('ensureFirebaseAuthForSession(session)'), 'AMM client DAL must sync Firebase Auth claims before direct session reads/writes');
 assert(clientDal.includes('pendingOperations'), 'AMM client DAL must store full pending operations in the compact session doc');
 assert(clientDal.includes('buildAiMenuManagerContextPacket') && clientDal.includes('resolveAiMenuManagerCommand'), 'AMM deterministic command resolution must run from selected project context in DAL');
-assert(sendCommandBlock.includes('composerContext: followUp ? undefined : request.composerContext'), 'AMM client command resolution must pass selected composer context ids and avoid stale context on follow-ups');
+assert(sendCommandBlock.includes('let resolverComposerContext = followUp ? undefined : request.composerContext'), 'AMM client command resolution must pass selected composer context ids and avoid stale context on follow-ups');
+assert(sendCommandBlock.includes('!draft.resolved') && sendCommandBlock.includes('sendAiMenuManagerPlannerRequest'), 'AMM must call the cloud planner only after deterministic routing is unresolved');
+assert(sendCommandBlock.includes('buildAiMenuManagerPlannerContext'), 'AMM cloud fallback must send capped selected-menu context instead of raw project JSON');
+assert(sendCommandBlock.includes('materializeAiMenuManagerModelRoute') && sendCommandBlock.includes('isAiMenuManagerModelResolutionCompatible') && sendCommandBlock.includes('doesAiMenuManagerModelRouteMatchResolvedEntities'), 'AMM planned prepares must be rematerialized and reproduced for the same selected entities by the deterministic resolver');
+assert(sendCommandBlock.includes('listAiMenuManagerExecutableActions()'), 'AMM planner input must expose only current executable actions');
+assert(clientDal.includes('appendCompactReceipt'), 'AMM completion must append the receipt during the existing compact-session write');
 assert(clientDal.includes('buildAiMenuManagerClientExecutionDirective'), 'AMM client DAL must build execution directives from stored pending operations');
 assert(clientDal.includes('buildAiMenuManagerContextBaseHash(context)'), 'AMM client approvals must check stale selected-project context');
 assert(clientDal.includes('assertAiMenuManagerPatchAllowedForAction'), 'AMM client approvals must validate patch shape against registered action type');
@@ -325,6 +384,7 @@ assert(contextPacket.includes('findAiMenuManagerItemCandidates') && contextPacke
 assert(contextPacket.includes('tokenAliases(itemName)') && contextPacket.includes('tokenAliases(categoryName)'), 'Context packet must include token aliases so natural short item/category names can resolve or clarify');
 
 const commandResolver = read('src/lib/ai-menu-manager/commandResolver.ts');
+const compoundCommand = read('src/lib/ai-menu-manager/compoundCommand.ts');
 const domainConversationRouter = read('src/lib/ai-menu-manager/domainConversationRouter.ts');
 assert(commandResolver.includes('khatam'), 'Mixed-language availability commands must include khatam handling');
 assert(commandResolver.includes('resolveDomainConversationCommand'), 'AMM command resolver must support read-only MenuList-domain answers');
@@ -337,6 +397,9 @@ assert(commandResolver.includes('resolveFeaturedSectionCommand'), 'Featured sect
 assert(commandResolver.includes('decision_blocks_update'), 'Featured section commands must use the decision block project patch');
 assert(commandResolver.includes('resolveCategoryVisibilityCommand'), 'Category visibility commands must resolve through a registered adapter');
 assert(commandResolver.includes('deactivate'), 'Visibility commands must support deactivate wording');
+assert(commandResolver.includes('mentionsRestore') && commandResolver.includes('is both hidden and sold out'), 'Restore must clarify when item availability and visibility are both off');
+assert(compoundCommand.includes('MAX_COMPOUND_OPERATIONS = 4'), 'AMM compound commands must remain bounded');
+assert(compoundCommand.includes('aiMenuManagerPatchesConflict'), 'AMM compound commands must reject overlapping project fields');
 assert(
   commandResolver.indexOf('|| resolveDesignCommand(params.text, params.context)') > -1
   && commandResolver.indexOf('|| domainConversation') > -1
@@ -356,10 +419,48 @@ assert(!commandResolver.includes("actionType: 'system_manual_task_create'"), 'Kn
 assert(commandResolver.includes("'menu_share_copy_link'") && commandResolver.includes("'menu_qr_download'") && commandResolver.includes("'customer_app_install_link_share'") && commandResolver.includes("'digital_screen_link_share'") && commandResolver.includes("type: 'copy_text'") && commandResolver.includes("type: 'download_text'"), 'Local export resolvers must expose exact copy/download actions');
 
 const { resolveAiMenuManagerCommand } = require(path.join(root, 'src/lib/ai-menu-manager/commandResolver'));
+const { resolveAiMenuManagerCompoundCommand } = require(path.join(root, 'src/lib/ai-menu-manager/compoundCommand'));
+const { buildAiMenuManagerModelRouteCard } = require(path.join(root, 'src/lib/ai-menu-manager/modelRouter/modelRouteCard'));
 const {
   AI_MENU_MANAGER_ACTION_DEFINITIONS,
   AI_MENU_MANAGER_EXECUTABLE_ACTIONS,
 } = require(path.join(root, 'src/lib/ai-menu-manager/actionTypes'));
+const {
+  buildAiMenuManagerPlannerActionContracts,
+  buildAiMenuManagerPlannerResponseSchema,
+  listAiMenuManagerPlannerContractActionTypes,
+} = require(path.join(root, 'src/lib/ai-menu-manager/modelRouter/plannerActionContracts'));
+const {
+  isAiMenuManagerCloudOwnerCopySafe,
+  isAiMenuManagerCloudPlannerOutcomeAllowed,
+  resolveAiMenuManagerClarificationEntityType,
+} = require(path.join(root, 'src/lib/ai-menu-manager/modelRouter/providerResultPolicy'));
+const executableActionTypes = [...AI_MENU_MANAGER_EXECUTABLE_ACTIONS].sort();
+const plannerContractActionTypes = listAiMenuManagerPlannerContractActionTypes().sort();
+assert(
+  JSON.stringify(plannerContractActionTypes) === JSON.stringify(executableActionTypes),
+  'AMM planner contracts must cover exactly the current executable action list',
+);
+const plannerActionContracts = buildAiMenuManagerPlannerActionContracts(AI_MENU_MANAGER_EXECUTABLE_ACTIONS);
+assert(plannerActionContracts.every((contract) => contract.target && contract.values.length), 'Every executable AMM planner action must declare target and value guidance');
+const plannerResponseSchema = buildAiMenuManagerPlannerResponseSchema(AI_MENU_MANAGER_EXECUTABLE_ACTIONS);
+assert(plannerResponseSchema.properties?.actionType?.enum?.length === AI_MENU_MANAGER_EXECUTABLE_ACTIONS.length, 'AMM structured response schema must admit only current executable action types');
+assert(!plannerResponseSchema.properties?.outcome?.enum?.includes('receipt_status'), 'Cloud planner must not originate receipt/status outcomes without authoritative receipt context');
+assert(isAiMenuManagerCloudPlannerOutcomeAllowed('clarification'), 'Cloud planner must allow bounded clarification');
+assert(!isAiMenuManagerCloudPlannerOutcomeAllowed('receipt_status'), 'Cloud planner must reject unverified receipt/status outcomes');
+assert(isAiMenuManagerCloudOwnerCopySafe('I found two matching sandwich items.'), 'Cloud planner must allow calm owner-facing copy');
+assert(!isAiMenuManagerCloudOwnerCopySafe('Done. MenuList updated the item.'), 'Cloud planner must reject unverified completion claims');
+assert(!isAiMenuManagerCloudOwnerCopySafe('The patch_hash is ready.'), 'Cloud planner must reject internal implementation language');
+assert(resolveAiMenuManagerClarificationEntityType({
+  categoryIds: new Set(['cat-drinks']),
+  entityId: 'item-tea',
+  itemIds: new Set(['item-tea']),
+}) === 'item', 'Cloud clarification must preserve validated structured item scope');
+assert(resolveAiMenuManagerClarificationEntityType({
+  categoryIds: new Set(['cat-drinks']),
+  entityId: 'invented-item',
+  itemIds: new Set(['item-tea']),
+}) === null, 'Cloud clarification must reject fabricated entity IDs');
 const resolverFixtureContext = {
   projectId: 'project-1',
   defaultLanguage: 'en',
@@ -387,6 +488,189 @@ const resolverFixtureContext = {
     { id: 'cat-starters', name: 'Starters', aliases: ['starters'], active: true, fileUid: 'f1', hasImage: false, timeSlotsCount: 0, orderIndex: 2 },
   ],
 };
+const compoundCommandParams = {
+  tId: 1,
+  sId: 2,
+  projectId: resolverFixtureContext.projectId,
+  context: resolverFixtureContext,
+  createdAt: new Date().toISOString(),
+};
+const compoundPriceAvailability = resolveAiMenuManagerCompoundCommand({
+  ...compoundCommandParams,
+  text: 'Masala Tea 20 and Cold coffee sold out',
+});
+assert(compoundPriceAvailability?.length === 2, 'AMM compound resolver must prepare two independent owner changes');
+assert(
+  compoundPriceAvailability.map((part) => part.resolved.actionType).join(',') === 'item_price_update,item_availability_update',
+  'AMM compound resolver must preserve each registered action type in owner order',
+);
+assert(resolveAiMenuManagerCompoundCommand({
+  ...compoundCommandParams,
+  text: 'Masala Tea 20 and Masala Tea 25',
+}) === null, 'AMM compound resolver must reject conflicting patches to the same field');
+const itemNameWithConnectorContext = {
+  ...resolverFixtureContext,
+  items: [
+    ...resolverFixtureContext.items,
+    { id: 'item-fish-chips', name: 'Fish and chips', aliases: ['fish and chips'], categoryId: 'cat-starters', categoryName: 'Starters', fileUid: 'f1', price: '220', available: true, active: true, hasImage: true, hasDescription: true, isBestSeller: false, duration: 12 },
+  ],
+};
+const connectorNameCompound = resolveAiMenuManagerCompoundCommand({
+  ...compoundCommandParams,
+  context: itemNameWithConnectorContext,
+  text: 'Fish and chips 250 and Masala Tea 20',
+});
+assert(connectorNameCompound?.length === 2, 'AMM compound splitting must preserve valid item names containing "and"');
+
+function resolveRestoreForItem(itemOverrides) {
+  return resolveAiMenuManagerCommand({
+    text: 'Restore Cold coffee',
+    tId: 1,
+    sId: 2,
+    projectId: resolverFixtureContext.projectId,
+    context: {
+      ...resolverFixtureContext,
+      items: resolverFixtureContext.items.map((item) => item.id === 'item-coffee'
+        ? { ...item, ...itemOverrides }
+        : item),
+    },
+    cardId: `restore-${String(itemOverrides.available)}-${String(itemOverrides.active)}`,
+    createdAt: new Date().toISOString(),
+  });
+}
+assert(resolveRestoreForItem({ available: false, active: true }).resolved?.actionType === 'item_availability_update', 'Restore must make a sold-out visible item available');
+assert(resolveRestoreForItem({ available: true, active: false }).resolved?.actionType === 'item_visibility_update', 'Restore must show an available hidden item');
+assert(resolveRestoreForItem({ available: false, active: false }).card.kind === 'clarification', 'Restore must ask which state to change when an item is hidden and sold out');
+
+const groundedModelAnswerCard = buildAiMenuManagerModelRouteCard({
+  cardId: 'grounded-answer-card',
+  createdAt: new Date().toISOString(),
+  result: {
+    outcome: 'diagnostic',
+    ownerReply: 'Cold coffee is currently available.',
+    provider: 'cloud_planner',
+    safety: { mutatesTruth: false, requiresApproval: false, reason: 'Read-only selected-menu answer' },
+    targets: [{ entityType: 'item', entityId: 'item-coffee', displayName: 'Cold coffee' }],
+  },
+  scope: { type: 'project', tId: 1, sId: 2, projectId: 'project-1', label: 'Grill Zilla / Bar Menu' },
+});
+assert(groundedModelAnswerCard?.entityRefs?.[0]?.id === 'item-coffee', 'Cloud-planned answer cards must retain validated grounding entity refs');
+assert(groundedModelAnswerCard?.beforeAfterSummary?.rows?.[0]?.after === 'Cold coffee', 'Cloud-planned answer cards must show owner-visible grounding labels');
+const {
+  buildAiMenuManagerPlannerContext,
+  doesAiMenuManagerModelRouteMatchResolvedEntities,
+  isAiMenuManagerModelResolutionCompatible,
+  materializeAiMenuManagerModelRoute,
+} = require(path.join(root, 'src/lib/ai-menu-manager/modelRouter/plannerContext'));
+const plannerContextFixture = buildAiMenuManagerPlannerContext({
+  context: resolverFixtureContext,
+  ownerMessage: 'chai ka rate bees kar do',
+  pendingOperations: [],
+});
+assert(plannerContextFixture.items.length <= 32 && plannerContextFixture.categories.length <= 18, 'AMM planner context must stay capped');
+assert(!('files' in plannerContextFixture) && !('projectData' in plannerContextFixture), 'AMM planner context must not contain raw project JSON');
+const unicodePlannerContext = buildAiMenuManagerPlannerContext({
+  context: {
+    ...resolverFixtureContext,
+    items: [
+      ...resolverFixtureContext.items,
+      { id: 'item-native-tea', name: 'चाय', aliases: ['चाय'], categoryId: 'cat-drinks', categoryName: 'Drinks', fileUid: 'f1', price: '20', available: true, active: true, hasImage: false, hasDescription: true },
+    ],
+  },
+  ownerMessage: 'चाय का दाम बदलो',
+  pendingOperations: [],
+});
+assert(unicodePlannerContext.items[0]?.id === 'item-native-tea', 'AMM planner relevance ranking must preserve native-language item names');
+assert(unicodePlannerContext.items[0]?.aliases.includes('चाय'), 'AMM planner packet must preserve bounded native-language aliases');
+const plannedPriceCommand = materializeAiMenuManagerModelRoute({
+  context: resolverFixtureContext,
+  result: {
+    actionType: 'item_price_update',
+    outcome: 'prepare_action',
+    ownerReply: 'I found Masala Tea and can prepare the price change.',
+    provider: 'cloud_planner',
+    safety: { mutatesTruth: true, requiresApproval: true, reason: 'Prepared action only' },
+    targets: [{ entityType: 'item', entityId: 'item-tea', displayName: 'Masala Tea' }],
+    values: { newPrice: 20 },
+  },
+});
+assert(plannedPriceCommand?.text === 'Set price to 20', 'AMM planner must materialize item price intent into a deterministic owner command');
+assert(plannedPriceCommand?.composerContext?.selectedEntityIds?.[0] === 'item-tea', 'AMM planner must preserve the selected item id during deterministic re-resolution');
+const plannedPriceResolution = resolveAiMenuManagerCommand({
+  text: plannedPriceCommand.text,
+  tId: 1,
+  sId: 2,
+  projectId: resolverFixtureContext.projectId,
+  context: resolverFixtureContext,
+  composerContext: plannedPriceCommand.composerContext,
+  cardId: 'planner-price-card',
+  createdAt: new Date().toISOString(),
+});
+assert(plannedPriceResolution.resolved?.actionType === 'item_price_update', 'AMM planned price intent must be reproduced by the deterministic resolver');
+assert(isAiMenuManagerModelResolutionCompatible('item_price_update', plannedPriceResolution.resolved.actionType), 'AMM planned action compatibility must accept the reproduced action');
+assert(doesAiMenuManagerModelRouteMatchResolvedEntities({
+  result: {
+    actionType: 'item_price_update',
+    outcome: 'prepare_action',
+    ownerReply: 'Prepare the price update.',
+    provider: 'cloud_planner',
+    safety: { mutatesTruth: true, requiresApproval: true, reason: 'Prepared action only' },
+    targets: [{ entityType: 'item', entityId: 'item-tea' }],
+  },
+  resolvedEntityRefs: plannedPriceResolution.resolved.entityRefs,
+}), 'AMM planned action must resolve back to the same selected entity id');
+const invalidPlannedTarget = materializeAiMenuManagerModelRoute({
+  context: resolverFixtureContext,
+  result: {
+    actionType: 'item_price_update',
+    outcome: 'prepare_action',
+    ownerReply: 'Prepare price update.',
+    provider: 'cloud_planner',
+    safety: { mutatesTruth: true, requiresApproval: true, reason: 'Prepared action only' },
+    targets: [{ entityType: 'item', entityId: 'missing-item' }],
+    values: { newPrice: 20 },
+  },
+});
+assert(invalidPlannedTarget === null, 'AMM planner must reject targets outside the compact selected-menu context');
+const emptyNumericPlannerValue = materializeAiMenuManagerModelRoute({
+  context: resolverFixtureContext,
+  result: {
+    actionType: 'item_price_update',
+    outcome: 'prepare_action',
+    ownerReply: 'Prepare price update.',
+    provider: 'cloud_planner',
+    safety: { mutatesTruth: true, requiresApproval: true, reason: 'Prepared action only' },
+    targets: [{ entityType: 'item', entityId: 'item-tea' }],
+    values: { newPrice: '' },
+  },
+});
+assert(emptyNumericPlannerValue === null, 'AMM planner must not coerce an empty numeric value to zero');
+const { buildAiMenuManagerTimeline } = require(path.join(root, 'src/lib/ai-menu-manager/presentation'));
+const activeAnswerMessage = 'Start with Cold Coffee. It is still unavailable.';
+const activeAnswerTimeline = buildAiMenuManagerTimeline({
+  activeCards: [{ title: 'Suggested next step', message: activeAnswerMessage }],
+  compactMessages: [{
+    createdAt: new Date().toISOString(),
+    kind: 'reply',
+    messageId: 'answer-manager',
+    role: 'menu_manager',
+    text: activeAnswerMessage,
+  }],
+  receipts: [],
+});
+assert(activeAnswerTimeline.length === 0, 'AMM timeline must not repeat an active answer, clarification, or unsupported card message');
+const dismissedAnswerTimeline = buildAiMenuManagerTimeline({
+  activeCards: [],
+  compactMessages: [{
+    createdAt: new Date().toISOString(),
+    kind: 'reply',
+    messageId: 'answer-manager',
+    role: 'menu_manager',
+    text: activeAnswerMessage,
+  }],
+  receipts: [],
+});
+assert(dismissedAnswerTimeline.length === 1, 'AMM timeline must preserve a dismissed card message as conversation history');
 const resolverFixtures = [
   ['Masala tea 20 now', 'item_price_update', 'proposal'],
   ['Tea 20', 'item_price_update', 'proposal'],
@@ -490,6 +774,34 @@ for (const [text, expectedActionType, expectedKind] of resolverFixtures) {
     `Resolver fixture failed for "${text}": expected ${expectedActionType}/${expectedKind}, got ${result.card.actionType}/${result.card.kind}`,
   );
 }
+const selectedItemResolverFixtures = [
+  ['Rename to Kadak Tea', 'item_name_update'],
+  ['Description: Strong tea with fresh spices', 'item_description_update'],
+  ['Move to Starters', 'item_category_update'],
+  ['Mark bestseller', 'item_bestseller_update'],
+  ['Set prep time to 12 minutes', 'item_prep_time_update'],
+  ['Feature this item', 'decision_blocks_update'],
+];
+for (const [text, expectedActionType] of selectedItemResolverFixtures) {
+  const result = resolveAiMenuManagerCommand({
+    text,
+    tId: 't1',
+    sId: 's1',
+    projectId: 'project-1',
+    context: resolverFixtureContext,
+    composerContext: { target: 'item', selectedEntityIds: ['item-tea'] },
+    cardId: `selected-item-${expectedActionType}`,
+    createdAt: '2026-07-10T00:00:00.000Z',
+  });
+  assert(
+    result.card.actionType === expectedActionType && result.card.kind === 'proposal',
+    `Selected-item resolver fixture failed for "${text}": expected ${expectedActionType}/proposal, got ${result.card.actionType}/${result.card.kind}`,
+  );
+  assert(
+    result.card.entityRefs.some((entry) => entry.kind === 'menu_item' && entry.id === 'item-tea'),
+    `Selected-item resolver fixture must preserve the structured item id for "${text}"`,
+  );
+}
 const ambiguousSandwichResult = resolveAiMenuManagerCommand({
   text: 'Sandwich 80',
   tId: 't1',
@@ -501,8 +813,16 @@ const ambiguousSandwichResult = resolveAiMenuManagerCommand({
 });
 assert(
   ambiguousSandwichResult.card.kind === 'clarification'
-    && ambiguousSandwichResult.card.suggestedReplies?.some((reply) => reply.prompt === 'Veg Sandwich 80')
-    && ambiguousSandwichResult.card.suggestedReplies?.some((reply) => reply.prompt === 'Cheese Sandwich 80'),
+    && ambiguousSandwichResult.card.suggestedReplies?.some((reply) => (
+      reply.prompt === 'Veg Sandwich 80'
+      && reply.composerContext?.target === 'item'
+      && reply.composerContext?.selectedEntityIds?.[0] === 'item-veg-sandwich'
+    ))
+    && ambiguousSandwichResult.card.suggestedReplies?.some((reply) => (
+      reply.prompt === 'Cheese Sandwich 80'
+      && reply.composerContext?.target === 'item'
+      && reply.composerContext?.selectedEntityIds?.[0] === 'item-cheese-sandwich'
+    )),
   'Ambiguous item price commands must produce one-tap clarification options that create the next proposal card',
 );
 const imageDraftResult = resolveAiMenuManagerCommand({
@@ -829,6 +1149,7 @@ assert(desktopRoute.includes('sessionProjectIdRef'), 'Desktop AMM must track ses
 assert(desktopRoute.includes('getAiMenuManagerComposerContextData') && desktopRoute.includes('buildAiMenuManagerComposerPrompt'), 'Desktop AMM must support composer context selection');
 assert(desktopRoute.includes('composerContext: commandContext') && desktopRoute.includes('clearComposerContext();'), 'Desktop AMM must pass exact composer context ids and clear them after use');
 assert(desktopRoute.includes('amm-desktop-context-picker') && desktopRoute.includes('Work on'), 'Desktop AMM must render an inline composer context picker');
+assert(desktopRoute.includes('Choose context or suggestions') && desktopRoute.includes('<Dropdown'), 'Desktop AMM must consolidate Work on and Suggestions behind one composer tool entry');
 assert(desktopRoute.includes('toggleContextPicker') && desktopRoute.includes('setIsSuggestionsOpen(false)') && desktopRoute.includes('setIsContextPickerOpen(false)'), 'Desktop AMM Work on and Suggestions panels must be mutually exclusive');
 assert(desktopRoute.includes('filterAiMenuManagerComposerEntities') && desktopRoute.includes('toggleComposerEntity'), 'Desktop AMM context picker must support item/category entity selection');
 assert(desktopRoute.includes('activeContextEntityCount') && desktopRoute.includes('shouldShowContextSearch') && desktopRoute.includes('Find item') && desktopRoute.includes('Find category'), 'Desktop AMM item/category picker must use compact conditional search');
@@ -843,13 +1164,15 @@ assert(desktopRoute.includes('activeSuggestion') && desktopRoute.includes('setAc
 assert(desktopRoute.includes('getAiMenuManagerPromptText(prompt)'), 'Desktop AMM child suggestions must draft their configured prompt text');
 assert(desktopRoute.includes('LuChevronRight') && desktopRoute.includes('Back'), 'Desktop AMM nested suggestions must expose forward and back navigation');
 assert(!desktopRoute.includes('Drawer'), 'Desktop AMM suggestions must stay inside the chat frame, not open as a page-level drawer');
-assert(desktopRoute.includes('amm-desktop-suggestions-tray') && desktopRoute.includes('Hide suggestions'), 'Desktop AMM suggestions must render as an inline chat-frame tray');
+assert(desktopRoute.includes('amm-desktop-suggestions-tray') && desktopRoute.includes('Suggestions'), 'Desktop AMM suggestions must render as an inline chat-frame tray');
 assert(desktopRoute.includes('getAiMenuManagerCardEditPrompt') && desktopRoute.includes('onDraftPrompt'), 'Desktop AMM cards must support draft-first edit/options');
 assert(!desktopRoute.includes('submitPrompt(prompt.label)'), 'Desktop AMM suggestion chips must not submit directly');
 assert(!desktopRoute.includes('}, [message, sessionId, storeId]);'), 'Desktop AMM must not reload inbox only because sessionId state changed');
 assert(desktopRoute.includes('completeAiMenuManagerClientOperation'), 'Desktop AMM must complete deterministic cards through the client session DAL');
 assert(desktopRoute.includes('sessionSnapshot: currentSession'), 'Desktop AMM must complete/cancel cards from the loaded compact session snapshot');
 assert(desktopRoute.includes('buildAiMenuManagerClientExecutionDirective'), 'Desktop AMM approvals must use stored DAL execution directives');
+assert(desktopRoute.includes('buildAiMenuManagerClientBatchExecution') && desktopRoute.includes('completeAiMenuManagerClientOperations'), 'Desktop AMM must apply compound cards with one project save and one compact completion write');
+assert(desktopRoute.includes('Approve all') && desktopRoute.includes('updates prepared together'), 'Desktop AMM must expose a clear grouped approval control');
 assert(desktopRoute.includes('isServerBackedCard') && desktopRoute.includes('submitAiMenuManagerProposalAction'), 'Desktop AMM must use guarded proposal APIs only for server-backed fallback cards');
 assert(desktopRoute.includes('completeAiMenuManagerClientProposal'), 'Desktop AMM must complete server-backed fallback cards through the guarded proposal completion API');
 assert(desktopRoute.includes("card.kind === 'manual_task' && card.actions.includes('mark_done')"), 'Desktop AMM must only mark done cards that are manual tasks and expose mark_done');
@@ -911,13 +1234,13 @@ assert(mobileScreen.includes('useMobileProjects'), 'Mobile AMM must use existing
 assert(mobileScreen.includes('sessionProjectIdRef'), 'Mobile AMM must track session ids per selected project');
 assert(mobileScreen.includes('getAiMenuManagerComposerContextData') && mobileScreen.includes('buildAiMenuManagerComposerPrompt'), 'Mobile AMM must support composer context selection');
 assert(mobileScreen.includes('composerContext: commandContext') && mobileScreen.includes('clearComposerContext();'), 'Mobile AMM must pass exact composer context ids and clear them after use');
-assert(mobileScreen.includes('Choose work context') && mobileScreen.includes('Work on'), 'Mobile AMM must expose the context picker from the composer');
+assert(mobileScreen.includes('Choose context or suggestions') && mobileScreen.includes('Start from') && mobileScreen.includes('Work on'), 'Mobile AMM must expose one composer tool entry for context and suggestions');
 assert(mobileScreen.includes('openContextPicker') && mobileScreen.includes('setIsSuggestionsOpen(false)') && mobileScreen.includes('setIsContextPickerOpen(false)'), 'Mobile AMM Work on and Suggestions sheets must be mutually exclusive');
 assert(mobileScreen.includes('filterAiMenuManagerComposerEntities') && mobileScreen.includes('toggleComposerEntity'), 'Mobile AMM context picker must support item/category entity selection');
 assert(mobileScreen.includes('activeContextEntityCount') && mobileScreen.includes('shouldShowContextSearch') && mobileScreen.includes('Find item') && mobileScreen.includes('Find category'), 'Mobile AMM item/category picker must use compact conditional search');
 assert(mobileScreen.includes('SearchBar') && mobileScreen.includes("maxHeight: '36vh'") && mobileScreen.includes('minHeight: 44'), 'Mobile AMM item/category picker must use compact MobileShell-friendly rows');
 assert(mobileScreen.includes('currentSession') && mobileScreen.includes('sessionSnapshot: currentSession'), 'Mobile AMM must submit commands from the loaded compact session snapshot');
-assert(mobileScreen.includes('Show suggestions') && mobileScreen.includes('pickSuggestion') && mobileScreen.includes('setInput(prompt)'), 'Mobile AMM suggestions must fill the composer instead of executing directly');
+assert(mobileScreen.includes('Suggestions') && mobileScreen.includes('pickSuggestion') && mobileScreen.includes('setInput(prompt)'), 'Mobile AMM suggestions must fill the composer instead of executing directly');
 assert(mobileScreen.includes('resolveClarification') && mobileScreen.includes('replaceOperationId: card.cardId'), 'Mobile AMM clarification choices must resolve into the next card and replace the clarification');
 assert(mobileScreen.includes('getAiMenuManagerProjectPromptGroups') && mobileScreen.includes('promptGroups.map'), 'Mobile AMM suggestions must use grouped, contextual prompt rows');
 assert(mobileScreen.includes('getAiMenuManagerStarterSuggestions') && mobileScreen.includes('activateStarterSuggestion'), 'Mobile AMM empty-state starter cards must use draft-only suggestion behavior');
@@ -932,6 +1255,8 @@ assert(!mobileScreen.includes('}, [selectedProjectId, sessionId, storeId]);'), '
 assert(mobileScreen.includes('completeAiMenuManagerClientOperation'), 'Mobile AMM must complete deterministic cards through the client session DAL');
 assert(mobileScreen.includes('sessionSnapshot: currentSession'), 'Mobile AMM must complete/cancel cards from the loaded compact session snapshot');
 assert(mobileScreen.includes('buildAiMenuManagerClientExecutionDirective'), 'Mobile AMM approvals must use stored DAL execution directives');
+assert(mobileScreen.includes('buildAiMenuManagerClientBatchExecution') && mobileScreen.includes('completeAiMenuManagerClientOperations'), 'Mobile AMM must apply compound cards with one project save and one compact completion write');
+assert(mobileScreen.includes('Approve all') && mobileScreen.includes('updates prepared together'), 'Mobile AMM must expose a touch-safe grouped approval control');
 assert(mobileScreen.includes('isServerBackedCard') && mobileScreen.includes('submitAiMenuManagerProposalAction'), 'Mobile AMM must use guarded proposal APIs only for server-backed fallback cards');
 assert(mobileScreen.includes('completeAiMenuManagerClientProposal'), 'Mobile AMM must complete server-backed fallback cards through the guarded proposal completion API');
 assert(mobileScreen.includes("card.kind === 'manual_task' && card.actions.includes('mark_done')"), 'Mobile AMM must only mark done cards that are manual tasks and expose mark_done');
@@ -1099,10 +1424,18 @@ assert(composerContext.includes('Selected items') && composerContext.includes('S
 const proposalCard = read('src/components/templates/main-app/aiMenuManager/cards/AiMenuProposalCard.tsx');
 const mobileCardStack = read('src/components/mobile/ai-menu-manager/MobileAiMenuCardStack.tsx');
 assert(!proposalCard.includes('actionType.replaceAll') && !mobileCardStack.includes('actionType.replaceAll'), 'AMM cards must not expose internal action ids to owners');
-assert(proposalCard.includes('Choose an option') && proposalCard.includes("card.kind === 'clarification'") && proposalCard.includes('onResolveClarification?.(card, reply.prompt)'), 'Desktop cards must render guided options and resolve clarification choices without approving');
-assert(mobileCardStack.includes('Choose an option') && mobileCardStack.includes("card.kind === 'clarification'") && mobileCardStack.includes('onResolveClarification?.(card, reply.prompt)'), 'Mobile cards must render guided options and resolve clarification choices without approving');
+assert((proposalCard.includes('Choose one to continue') || proposalCard.includes('Choose an option')) && proposalCard.includes("card.kind === 'clarification'") && proposalCard.includes('onResolveClarification?.(card, reply)'), 'Desktop cards must render guided options and resolve structured clarification choices without approving');
+assert((mobileCardStack.includes('Choose one to continue') || mobileCardStack.includes('Choose an option')) && mobileCardStack.includes("card.kind === 'clarification'") && mobileCardStack.includes('onResolveClarification?.(card, reply)'), 'Mobile cards must render guided options and resolve structured clarification choices without approving');
+assert(desktopRoute.includes('composerContext: reply.composerContext') && mobileScreen.includes('composerContext: reply.composerContext'), 'Desktop and mobile clarification taps must preserve validated structured entity scope');
 assert(proposalCard.includes('card.localActions') && proposalCard.includes('generateBrandedQrCodeDataUrl'), 'Desktop cards must render browser-local link and QR actions');
 assert(mobileCardStack.includes('card.localActions') && mobileCardStack.includes('generateBrandedQrCodeDataUrl'), 'Mobile cards must render browser-local link and QR actions');
+assert(proposalCard.includes('getCardKindIcon') && mobileCardStack.includes('getCardKindIcon'), 'Desktop and mobile cards must show card-kind-specific state icons');
+assert(proposalCard.includes('disabled={disabled}') && mobileCardStack.includes('disabled={Boolean(workingCardId)}'), 'Desktop and mobile guided choices must block repeat taps while any card group is processing');
+assert(!mobileCardStack.includes('No pending cards.'), 'Mobile AMM must not add a redundant empty card below the initial conversation state');
+assert(desktopRoute.includes('Nothing changes before you approve.') && mobileScreen.includes('Nothing changes before you approve.'), 'Desktop and mobile AMM must use the same concise approval trust line');
+assert(desktopRoute.includes('buildAiMenuManagerTimeline') && mobileScreen.includes('buildAiMenuManagerTimeline'), 'Desktop and mobile AMM must render compact owner, manager, and receipt conversation entries');
+assert(desktopRoute.includes('getAiMenuManagerProjectStatusLine') && mobileScreen.includes('getAiMenuManagerProjectStatusLine'), 'Desktop and mobile AMM must show loaded selected-menu status without another read');
+assert(proposalCard.includes('shouldShowAiMenuManagerApprovalReason') && mobileCardStack.includes('shouldShowAiMenuManagerApprovalReason'), 'Desktop and mobile cards must reserve policy detail for high-risk or unsupported work');
 
 assert(commandResolver.includes('Choose presentation tone'), 'Theme/style commands without a preset must create a guided tone chooser');
 assert(commandResolver.includes('Choose item for image'), 'Image commands without an item must create a guided item chooser');

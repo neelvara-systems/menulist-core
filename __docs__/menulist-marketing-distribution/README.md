@@ -37,6 +37,7 @@ This follows the existing MenuList marketing strategy: transformation must be vi
 | [menulist-marketing-distribution_whatsapp-first-hype-strategy.md](./menulist-marketing-distribution_whatsapp-first-hype-strategy.md) | Priority WhatsApp-first moat, hype, SEO, website, product, and compliance plan |
 | [menulist-marketing-distribution_launch-distribution-review.md](./menulist-marketing-distribution_launch-distribution-review.md) | Review of the WhatsApp-first, not WhatsApp-only launch-platform and international-acquisition plan |
 | [menulist-marketing-distribution_end-to-end-growth-research-2026-06-23.md](./menulist-marketing-distribution_end-to-end-growth-research-2026-06-23.md) | End-to-end growth research memo connecting SEO, WhatsApp, outreach, paid, partners, Product Hunt, and the private Growth Engine |
+| [menulist-marketing-distribution_market-growth-gap-audit-2026-07-10.md](./menulist-marketing-distribution_market-growth-gap-audit-2026-07-10.md) | Current competitor/platform growth-system audit separating covered capabilities, useful gaps, evidence-gated work, and wrong-fit market practices |
 | [menulist-marketing-distribution_whatsapp-intake-playbook.md](./menulist-marketing-distribution_whatsapp-intake-playbook.md) | Owner-facing WhatsApp intake states, campaign message rules, consent guardrails, and two-surface activation handoff |
 | [menulist-marketing-distribution_whatsapp-compliance-checklist.md](./menulist-marketing-distribution_whatsapp-compliance-checklist.md) | Consent, opt-out, proof-permission, and no-bulk-outreach guardrails for WhatsApp/DM/email campaigns |
 | [menulist-marketing-distribution_whatsapp-seo-content-briefs.md](./menulist-marketing-distribution_whatsapp-seo-content-briefs.md) | WhatsApp SEO/content cluster briefs with proof gates and route deferral rules |
@@ -55,6 +56,9 @@ This follows the existing MenuList marketing strategy: transformation must be vi
 | [menulist-marketing-distribution_activation-follow-up.md](./menulist-marketing-distribution_activation-follow-up.md) | Two-surface activation definition, funnel states, tracking columns, and follow-up templates |
 | [menulist-marketing-distribution_founder-post-pack.md](./menulist-marketing-distribution_founder-post-pack.md) | Founder LinkedIn/X launch, pilot, partner, and broad-SMB positioning post drafts |
 | [menulist-marketing-distribution_partner-brief.md](./menulist-marketing-distribution_partner-brief.md) | Draft setup-partner brief, workflow, fit rules, and qualification questions |
+| [menulist-marketing-distribution_physical-partner-pilot.md](./menulist-marketing-distribution_physical-partner-pilot.md) | Print-shop, photographer, consultant, and QR/signage supplier pilot contract |
+| [menulist-marketing-distribution_bengaluru-ten-business-pilot.md](./menulist-marketing-distribution_bengaluru-ten-business-pilot.md) | Permissioned ten-business Bengaluru learning cohort board and exit gates |
+| [../growth-intelligence/README.md](../growth-intelligence/README.md) | Public-loop acquisition and structured cancellation intelligence runtime contract |
 | [menulist-marketing-distribution_outreach-scripts.md](./menulist-marketing-distribution_outreach-scripts.md) | Manual, consent-aware outreach scripts for SMB owners and setup partners |
 | [menulist-marketing-distribution_launch-day-response-plan.md](./menulist-marketing-distribution_launch-day-response-plan.md) | Product Hunt/public launch response roles, routing, boundaries, and checklist |
 | [menulist-marketing-distribution_launch-week-content-calendar.md](./menulist-marketing-distribution_launch-week-content-calendar.md) | Launch-week content sequence across founder posts, Product Hunt, social, partners, and follow-up |
@@ -107,8 +111,9 @@ The WhatsApp-first moat plan, public `/whatsapp` route, test-number CTA, and cam
 3. replace the temporary placeholder demo assets with fictional routed screenshots or permissioned screenshot/video assets from the WhatsApp conversation demo and demo universe;
 4. use the manual market-pod lead board after founder chooses first city, vertical, contact path, and sender identity;
 5. treat Tuesday, August 11, 2026 as a conditional Product Hunt target, not a scheduled launch;
-6. run a small permissioned pilot;
+6. fill and run the permissioned Bengaluru ten-business pilot board without scraped or invented businesses;
 7. only then launch "100 WhatsApp Lists in 100 Hours" or paid click-to-WhatsApp tests.
+8. use the pilot's proof-and-retention review to decide verified-review profiles, a small owner clinic, and any compact source-to-day-30 founder view.
 
 ## Related Product Decision
 

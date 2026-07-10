@@ -94,6 +94,9 @@
         "Status": "Status",
         "What customers see": "What customers see",
         "Public links and materials": "Public links and materials",
+        "Update what customers see": "Update what customers see",
+        "Share and place the link": "Share and place the link",
+        "Check feedback and activity": "Check feedback and activity",
         "Account and team": "Account and team",
         "Advanced setup": "Advanced setup",
         "Internal tools": "Internal tools"
@@ -994,6 +997,20 @@
         "keepSubscription": "Keep Subscription",
         "subscriptionCancelled": "Subscription cancelled",
         "failedToCancel": "Failed to cancel",
+        "cancellationReasonTitle": "Why are you leaving?",
+        "cancellationReasonPrompt": "Choose the main reason. This helps us understand what owners need.",
+        "cancellationReasonRequired": "Choose a cancellation reason",
+        "cancellationOtherReasonRequired": "Add a short reason",
+        "cancellationOtherReasonPlaceholder": "Add a short reason",
+        "continueCancellation": "Continue cancellation",
+        "cancellationReasons": {
+            "no_longer_needed": "No longer need MenuList",
+            "missing_functionality": "Missing a capability I need",
+            "too_expensive": "Too expensive",
+            "switched_provider": "Switched to another provider",
+            "purchased_accidentally": "Purchased accidentally",
+            "other": "Other"
+        },
         "failedToLoadHistory": "Failed to load history",
         "processing": "Processing...",
         "billingCycle": "Billing Cycle",
@@ -1306,6 +1323,7 @@
         "statusNew": "New",
         "feedbackLabel": "Feedback",
         "contactLabel": "Contact",
+        "replyDrafts": "Reply drafts",
         "replyHint": "Reply and resolve in one step, or mark this feedback handled automatically.",
         "alreadyResolved": "No action needed. This feedback is already resolved."
     },
@@ -2500,6 +2518,24 @@
                     "paste": "Paste your official page link into the website field"
                 }
             },
+            "appleBusiness": {
+                "label": "Apple Business Connect",
+                "explanation": "Customers using Apple Maps can open your official business page.",
+                "steps": {
+                    "open": "Open Apple Business Connect and choose your location",
+                    "edit": "Open the location details or an approved action",
+                    "paste": "Add your official business link and submit the change"
+                }
+            },
+            "bingPlaces": {
+                "label": "Bing Places",
+                "explanation": "Customers searching on Bing can open your official business page.",
+                "steps": {
+                    "open": "Open Bing Places and choose your business",
+                    "edit": "Edit the business profile information",
+                    "paste": "Add your official business link as the website or menu link and publish"
+                }
+            },
             "instagramBio": {
                 "label": "Instagram Bio",
                 "explanation": "Add your official page link to your bio so followers can open it fast.",
@@ -3263,10 +3299,10 @@
                 "brokenMessage": "Your hours are missing or invalid. Update them so customers can see when you're open."
             },
             "menuQuality": {
-                "menuCheck": "Menu Check",
+                "menuCheck": "Menu trust check",
                 "checkedJustNow": "Checked just now",
                 "noActionNeeded": "No action needed",
-                "publicMenuReady": "Your public menu is ready.",
+                "publicMenuReady": "Prices, availability, and key details are ready on the public menu.",
                 "repairNow": "Repair what can be fixed now",
                 "reviewTopIssue": "Review the top issue",
                 "repairMenu": "Repair Menu",
@@ -10236,6 +10272,54 @@
         "projectFallback": "menu",
         "outletQrSectionHelper": "Other locations — print an outlet-scoped Store Menu QR",
         "downloadQrButton": "Download QR"
+    },
+    "OwnerReferral": {
+        "title": "Invite another business",
+        "preparing": "Preparing your invitation...",
+        "unavailable": "Invitations are available to businesses with a paid MenuList subscription.",
+        "tryAgain": "Try again",
+        "yourBusiness": "Your business",
+        "invitedBusiness": "Invited business",
+        "credits": "credits",
+    "rewardRule": "Credits are added when both MenuList subscriptions are paid. There is no referral limit or extra activity requirement.",
+        "share": "Share",
+        "shareInvitation": "Share invitation",
+        "whatsApp": "WhatsApp",
+        "copy": "Copy",
+        "invitationCopied": "Invitation copied",
+        "copyFailed": "Could not copy the invitation",
+        "shareFailed": "Could not share the invitation",
+        "recentInvitations": "Recent invitations",
+        "noRecentInvitations": "No businesses have started through your invitation yet.",
+        "status": {
+            "issued": "Credits added",
+            "waitingForBothPayments": "Waiting for both payments",
+            "waitingForPayment": "Waiting for payment"
+        },
+        "invite": {
+            "unavailableTitle": "This invitation is unavailable",
+            "unavailableBody": "Ask the business that invited you for a new link, or continue with normal MenuList setup.",
+            "createLink": "Create my customer link",
+            "eyebrow": "Business owner invitation",
+            "title": "Another business owner invited you to MenuList.",
+            "body": "Keep your menu and public business information current from one place, with one customer link that stays up to date.",
+            "referredReward": "Your business receives <strong>50 credits</strong>.",
+            "referrerReward": "The inviting business receives <strong>100 credits</strong>.",
+      "rewardRule": "Credits are added when both MenuList subscriptions are paid. There is no referral limit or extra activity requirement.",
+            "preparing": "Preparing setup...",
+            "continueWithoutReferral": "Continue without referral",
+            "imageAlt": "A MenuList public menu on a phone",
+            "stepsTitle": "From menu to customer link",
+            "steps": {
+                "addTitle": "Add your menu",
+                "addBody": "Upload a menu photo or use a public list you own.",
+                "reviewTitle": "Review your details",
+                "reviewBody": "Check the prepared menu and business information.",
+                "publishTitle": "Publish one link",
+                "publishBody": "Use the same current link across QR, WhatsApp, Google and social profiles."
+            },
+            "privacy": "The inviting business can see your business name and a general referral status. It cannot see your plan, price, payment method, contact details or account activity."
+        }
     },
     "Projects": {
         "divergence": {

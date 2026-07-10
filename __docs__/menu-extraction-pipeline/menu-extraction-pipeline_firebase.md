@@ -3,6 +3,8 @@
 **Status:** Implemented
 **Last Updated:** July 5, 2026
 
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated extraction collection, rule, Storage-prefix, worker, and Firebase-cost behavior only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, provider smoke for the target extraction model and environment, authenticated desktop/mobile upload, identity-preflight, preview/review/apply QA, real-device mobile upload/review QA, public create-menu upload/link/preview/claim QA, owner review before publish, target Firebase deploy evidence where rules, Storage, indexes, or Functions change, target Vercel deploy evidence where app routes or browser clients change, and production-host smoke.
+
 ## Collections
 
 | Collection | Change |

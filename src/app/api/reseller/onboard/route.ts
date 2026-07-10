@@ -16,6 +16,7 @@ import { compensateFailedTenantStoreOnboarding } from "@lib/onboarding/compensat
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
 import { requireOnboardingUserId } from "@lib/onboarding/onboardingUserId";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
+import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
@@ -656,6 +657,15 @@ export const POST = withAuth(async (request, session) => {
                 { ...subscriptionPayload, id: subscriptionId },
                 'api:reseller-onboard-offline',
             );
+            await safelyRecordOwnerReferralPaymentAndRepair({
+                paidScope: { tenantId: result.tenantId, storeId: result.storeId },
+                evidence: {
+                    paidAt: now,
+                    paymentEvidenceId: subscriptionId,
+                    source: 'api:reseller-onboard-offline',
+                    subscriptionId,
+                },
+            });
             if (resellerProfile?.id) {
                 await updateResellerStatsOnOnboarding(resellerProfile.id, paymentMode, totalAmount);
             }

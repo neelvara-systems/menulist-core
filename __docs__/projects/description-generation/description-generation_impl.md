@@ -198,7 +198,7 @@ Description generation follows the same multi-outlet governance rules as transla
 | `src/services/ai/description/descriptionUtils.ts:8-42`                                | Add `DescriptionGovernanceOptions` interface and `shouldGenerateDescriptionForItem()` |
 | `src/services/ai/description/descriptionUtils.ts:44-48,97-105`                        | Update `prepareDescriptionPayload()` and `addDescription()` to accept governance      |
 | `src/components/.../DescriptionGenerationModal.tsx:29-40,52-55,77-79,107-109,142-143` | Accept governance props, filter item counts, pass to service                          |
-| `src/components/.../Editor.tsx:960-962`                                               | Pass `itemStates` and `isMasterLinked` to modal                                       |
+| `src/components/.../editor.tsx:960-962`                                               | Pass `itemStates` and `isMasterLinked` to modal                                       |
 
 **Governance Flow:**
 
@@ -976,7 +976,7 @@ The following copy is production-locked per ChatGPT doctrine review. Do not modi
 | -------------------------------------------------------- | ---------------------------- |
 | `description-generation_spec.md`                         | Product specification        |
 | `README.md`                                              | Navigation hub               |
-| `../Assessments/assessment-09-description-generation.md` | Original security assessment |
+| `../assessments/assessment-09-description-generation.md` | Original security assessment |
 
 ---
 

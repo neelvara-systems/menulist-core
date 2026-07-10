@@ -25,6 +25,7 @@ import {
 } from "@lib/ops/founderRevenueReadModel";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { markResellerTransactionsActiveForSubscription } from "@lib/reseller/resellerLedger";
+import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { VerifyPaymentRequestSchema } from "@lib/validation/apiSchemas";
@@ -290,6 +291,17 @@ export const POST = withAuth(async (request, session) => {
         // If the subscription is already active (e.g., the webhook beat this call), we don't need to do anything.
         if (internalSub.status === 'active') {
             await safeSyncProductSubscriptionEntitlementFromSubscription(productId, internalSub as FirestoreSubscriptionDoc, 'api:verify-subscription:already-active');
+            if (!isAnswerlatticeBillingProduct(productId)) {
+                await safelyRecordOwnerReferralPaymentAndRepair({
+                    paidScope: { tenantId: Number(internalSub.tenantId), storeId: Number(internalSub.storeId) },
+                    evidence: {
+                        paidAt: new Date(Number(payment.created_at || Math.floor(Date.now() / 1000)) * 1000),
+                        paymentEvidenceId: String(payment.id || razorpay_payment_id),
+                        source: 'api:verify-subscription:already-active',
+                        subscriptionId: razorpay_subscription_id,
+                    },
+                });
+            }
             logger.info('Subscription already active', {
                 ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
                 ...getBoundedRazorpayStringContext('productId', productId),
@@ -410,6 +422,17 @@ export const POST = withAuth(async (request, session) => {
             } as FirestoreSubscriptionDoc,
             'api:verify-subscription',
         );
+        if (!isAnswerlatticeBillingProduct(productId)) {
+            await safelyRecordOwnerReferralPaymentAndRepair({
+                paidScope: { tenantId: Number(tenantId), storeId: Number(storeId) },
+                evidence: {
+                    paidAt: new Date(Number(payment.created_at || Math.floor(Date.now() / 1000)) * 1000),
+                    paymentEvidenceId: String(payment.id || razorpay_payment_id),
+                    source: 'api:verify-subscription',
+                    subscriptionId: razorpay_subscription_id,
+                },
+            });
+        }
         await recordFounderRevenueMovement({
             amountPaise: Number.isFinite(paymentAmount) ? paymentAmount : 0,
             currency: payment.currency || 'INR',

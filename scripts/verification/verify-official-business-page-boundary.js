@@ -242,7 +242,7 @@ function verifyDocsParity() {
     helpdoc: read('__docs__/official-business-page/official-business-page_helpdoc.md'),
     website: read('__docs__/official-business-page/official-business-page_website.md'),
     audit: read('__docs__/audits/menulist-production-readiness-audit.md'),
-    changelog: read('__docs__/CHANGELOG.md'),
+    changelog: read('__docs__/changelog.md'),
   };
 
   for (const [name, content] of Object.entries(docs)) {

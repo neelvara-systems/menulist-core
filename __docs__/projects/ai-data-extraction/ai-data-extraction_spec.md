@@ -265,7 +265,7 @@ AI Data Extraction transforms owner-provided menu, service, or catalog images in
 | `_impl.md`                                               | Technical implementation details |
 | `_marketing.md`                                          | Sales and marketing collateral   |
 | `../upload-file-processing/`                             | What happens before extraction   |
-| `../Assessments/menu-image-processing-job-queue-spec.md` | Full job queue specification     |
+| `../assessments/menu-image-processing-job-queue-spec.md` | Full job queue specification     |
 
 ---
 

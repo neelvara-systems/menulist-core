@@ -1,6 +1,6 @@
 # Asset Brief - menulist.home.setup-relief.workflow
 
-**Generated:** 2026-05-31
+**Generated:** 2026-07-10
 **Brand:** menulist
 **Status:** generated
 **Approval:** automatic

@@ -6,6 +6,8 @@
 **Applies:** 3-Year Architecture Freeze Rule
 **Last Verified:** June 11, 2026
 
+> **Launch boundary:** Not current launch certification or deploy approval. This implementation document is source-gated runtime evidence only; Decision Intelligence release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped scheduler deploy evidence, browser/mobile customer-menu QA, public-cache evidence, provider/runtime smoke where relevant, and production-host smoke.
+
 ---
 
 ## Architecture Overview

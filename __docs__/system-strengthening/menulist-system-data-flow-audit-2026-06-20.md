@@ -8228,7 +8228,7 @@ Validation:
 ```bash
 node --check scripts/verification/verify-menu-extraction-pipeline.js
 npm run verify:menu-extraction-pipeline
-rg -n "recordStarterActivationSignal\\(storeId, signal\\)\\.catch\\(\\(\\) =>|public_create_menu_success_starter_signal_(claim_read|write)_failed|getCreateMenuSuccessStarterSignalContext" 'src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx' scripts/verification/verify-menu-extraction-pipeline.js __docs__/public-menu-entry __docs__/audits/menulist-production-readiness-audit.md __docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md __docs__/CHANGELOG.md
+rg -n "recordStarterActivationSignal\\(storeId, signal\\)\\.catch\\(\\(\\) =>|public_create_menu_success_starter_signal_(claim_read|write)_failed|getCreateMenuSuccessStarterSignalContext" 'src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx' scripts/verification/verify-menu-extraction-pipeline.js __docs__/public-menu-entry __docs__/audits/menulist-production-readiness-audit.md __docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md __docs__/changelog.md
 npx tsc --noEmit --incremental false --pretty false
 npm run docs:check-links
 git diff --check

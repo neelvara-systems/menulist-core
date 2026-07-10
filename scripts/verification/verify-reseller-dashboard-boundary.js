@@ -645,7 +645,7 @@ const files = {
   firebaseDoc: read('__docs__/reseller-dashboard/reseller-dashboard_firebase.md'),
   mobileDoc: read('__docs__/reseller-dashboard/reseller-dashboard_mobile-support.md'),
   auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
-  changelog: read('__docs__/CHANGELOG.md'),
+  changelog: read('__docs__/changelog.md'),
 };
 
 verifyPackageScript(files.packageJson);

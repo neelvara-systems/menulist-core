@@ -5,6 +5,8 @@
 **Last Updated:** July 1, 2026
 **Audience:** Developers only
 
+> **Launch boundary:** Not current launch certification or deploy approval. This implementation document records source-gated AI Enhancement Pack and accounting behavior only. Current approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:billing-entitlement-boundary`, `npm run verify:ai-accounting`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke.
+
 ## June 2, 2026 Accounting Hardening Contract
 
 Billable AI route accounting is now centralized in `src/lib/ai/accounting.ts`. Successful provider calls finalize through `finalizeAiOperationAccounting()`, which writes the operation with the Admin SDK and then consumes paid capacity. Operation logging is best-effort, but credit consumption is mandatory for billable actions; a log failure must not skip deduction, and a credit-consumption failure fails the paid request instead of returning usable output for free.
@@ -540,9 +542,9 @@ export const AI_UNIT_COSTS: Record<string, number> = {
 
   // Paid operations (consumes units)
   [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 2, // ~500-2000 Gemini tokens
-  [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 5, // Gemini 2.0 Flash / Imagen 3
+  [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 5, // Gemini 2.5 Flash Image
   [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: 5, // Per image in batch
-  [AI_ACTIONS_TYPES.LANGUAGE_ADDITION]: 3, // Per language, Gemini 2.0 Flash
+  [AI_ACTIONS_TYPES.LANGUAGE_ADDITION]: 3, // Per language, Gemini 2.5 Flash
   [AI_ACTIONS_TYPES.ITEM_TRANSLATION]: 1, // Per item translation
   [AI_ACTIONS_TYPES.IMAGE_TRANSLATION]: 4, // OCR + translation + regen
 };

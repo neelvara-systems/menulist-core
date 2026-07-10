@@ -55,6 +55,8 @@ import {
     OwnerConfidence,
     OwnerDashboardData,
     OwnerDashboardMetrics,
+    OwnerDashboardTrendComparison,
+    OwnerDashboardTrendSummary,
     SearchTerm,
     SourceQuality,
     TopCategory,
@@ -1070,8 +1072,10 @@ function normalizeWeeklyAiSummary(data: Record<string, any>): WeeklyAISummary | 
 
 function normalizeDailyViewData(data: any): DailyViewData | null {
     if (!data) return null;
+    const metrics = data.metrics || transformMetrics(data);
     return {
         ...data,
+        metrics,
         blockPerformance: data.blockPerformance || transformBlockPerformance(data),
         topItems: data.topItems || transformToTopItems(data),
         topCategories: data.topCategories || transformTopCategories(data),
@@ -1088,6 +1092,9 @@ function normalizeDailyViewData(data: any): DailyViewData | null {
         utmCampaigns: data.utmCampaigns || transformTrafficBreakdown(data, 'viewsByCampaign'),
         utmContent: data.utmContent || transformTrafficBreakdown(data, 'viewsByContent'),
         ownerConfidence: data.ownerConfidence || transformOwnerConfidence(data),
+        isLowActivity: typeof data.isLowActivity === 'boolean'
+            ? data.isLowActivity
+            : (metrics.menuVisits || 0) < DAILY_GUARDRAILS.LOW_ACTIVITY_THRESHOLD,
         lastUpdated: parseDateValue(data.lastUpdated),
         aiSummary: data.aiSummary ? {
             ...data.aiSummary,
@@ -1234,6 +1241,68 @@ function normalizeOwnerActionPlan(data: any, fallbackReceipts?: any): OwnerActio
     };
 }
 
+function normalizeTrendComparison(data: any): OwnerDashboardTrendComparison | null {
+    if (!data || typeof data !== 'object') return null;
+    const metric = [
+        'menu_activity',
+        'customer_actions',
+        'search_demand',
+        'item_interest',
+        'unavailable_demand',
+        'missing_searches',
+    ].includes(data.metric)
+        ? data.metric
+        : 'menu_activity';
+    const period = data.period === 'month' ? 'month' : 'week';
+    const status = ['up', 'down', 'stable', 'not_enough_data'].includes(data.status)
+        ? data.status
+        : 'not_enough_data';
+    const changePct = typeof data.changePct === 'number' && Number.isFinite(data.changePct)
+        ? data.changePct
+        : null;
+
+    return {
+        metric,
+        period,
+        label: typeof data.label === 'string' ? data.label : 'Menu activity',
+        status,
+        message: typeof data.message === 'string' ? data.message : 'Not enough settled activity yet.',
+        currentValue: Number(data.currentValue) || 0,
+        previousValue: Number(data.previousValue) || 0,
+        changePct,
+        currentStart: typeof data.currentStart === 'string' ? data.currentStart : '',
+        currentEnd: typeof data.currentEnd === 'string' ? data.currentEnd : '',
+        previousStart: typeof data.previousStart === 'string' ? data.previousStart : '',
+        previousEnd: typeof data.previousEnd === 'string' ? data.previousEnd : '',
+        currentDaysWithData: Number(data.currentDaysWithData) || 0,
+        previousDaysWithData: Number(data.previousDaysWithData) || 0,
+    };
+}
+
+function normalizeTrendSummary(data: any): OwnerDashboardTrendSummary | undefined {
+    if (!data || typeof data !== 'object') return undefined;
+    const weekly = Array.isArray(data.weekly)
+        ? data.weekly.map(normalizeTrendComparison).filter(Boolean) as OwnerDashboardTrendComparison[]
+        : [];
+    const monthly = Array.isArray(data.monthly)
+        ? data.monthly.map(normalizeTrendComparison).filter(Boolean) as OwnerDashboardTrendComparison[]
+        : [];
+    const primary = normalizeTrendComparison(data.primary) || weekly[0] || monthly[0];
+    if (!primary) return undefined;
+
+    return {
+        source: data.source === 'daily30d_fallback' ? 'daily30d_fallback' : 'dashboard_summary',
+        lastSettledLocalDate: typeof data.lastSettledLocalDate === 'string' ? data.lastSettledLocalDate : undefined,
+        generatedForLocalDate: typeof data.generatedForLocalDate === 'string' ? data.generatedForLocalDate : undefined,
+        primary,
+        weekly,
+        monthly,
+        enoughData: typeof data.enoughData === 'boolean'
+            ? data.enoughData
+            : weekly.some((comparison) => comparison.status !== 'not_enough_data'),
+    };
+}
+
 function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboardData {
     const overview = normalizeOverviewData(data.overview);
     const daily = normalizeDailyViewData(data.daily || data.overview?.yesterday);
@@ -1248,6 +1317,10 @@ function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboa
         wtd: normalizePeriodViewData<WTDViewData>(data.wtd || overview?.wtd),
         mtd: normalizePeriodViewData<MTDViewData>(data.mtd || overview?.mtd),
         historicalWeeks: data.historicalWeeks || overview?.historicalWeeks || [],
+        daily30d: Array.isArray(data.daily30d)
+            ? data.daily30d.map(normalizeDailyViewData).filter(Boolean) as DailyViewData[]
+            : [],
+        trendSummary: normalizeTrendSummary(data.trendSummary),
         overall: data.overall ? {
             ...data.overall,
             blockPerformance: data.overall.blockPerformance || transformBlockPerformance(data.overall),
@@ -1296,6 +1369,7 @@ function emptyOwnerDashboardData(projectId: string): OwnerDashboardData {
         wtd: null,
         mtd: null,
         historicalWeeks: [],
+        daily30d: [],
         overall: null,
         projectId,
         lastFetched: new Date(),
@@ -2208,6 +2282,7 @@ export interface OBPOverallData {
 export interface OBPDashboardData {
     overview: OBPOverviewData | null;
     overall: OBPOverallData | null;
+    daily30d?: OBPTodayData[];
     lastFetched: Date;
 }
 
@@ -2501,7 +2576,7 @@ function aggregateOBPDocs(docs: OBPDailyDoc[]): OBPPeriodMetrics {
     return result;
 }
 
-function buildOBPTodayData(data: Record<string, any>, date: string): OBPTodayData {
+function buildOBPTodayData(data: Record<string, any>, date: string, isPartial = true): OBPTodayData {
     return {
         date,
         views: data.totalOBPViews || 0,
@@ -2532,8 +2607,8 @@ function buildOBPTodayData(data: Record<string, any>, date: string): OBPTodayDat
             obpLanguageNames: readAnalyticsMap(data, 'obpLanguageNames') as Record<string, string>,
         }),
         daysWithData: 1,
-        isPartial: true,
-        lastUpdated: data.lastUpdated?.toDate?.() || undefined,
+        isPartial,
+        lastUpdated: parseDateValue(data.lastUpdated),
     };
 }
 
@@ -2801,6 +2876,14 @@ export async function getOBPDashboardData(
                         lifetimeLanguages: data.overall.lifetimeLanguages || [],
                         lastUpdated: parseDateValue(data.overall.lastUpdated),
                     } : null,
+                    daily30d: Array.isArray(data.daily30d)
+                        ? data.daily30d
+                            .map((row: Record<string, any>) => {
+                                const date = String(row?.date || '');
+                                return date ? buildOBPTodayData(row, date, false) : null;
+                            })
+                            .filter(Boolean) as OBPTodayData[]
+                        : [],
                     lastFetched: new Date(),
                 };
             }
@@ -2808,6 +2891,7 @@ export async function getOBPDashboardData(
             return {
                 overview: null,
                 overall: null,
+                daily30d: [],
                 lastFetched: new Date(),
             };
         },

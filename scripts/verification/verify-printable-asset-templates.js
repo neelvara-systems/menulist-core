@@ -246,7 +246,7 @@ requireToken(mobileShell, "'/assets': { tab: 'more'", 'mobile shell route map');
 requireToken(mobileShell, "'/use-menulist/print-assets': { tab: 'more'", 'mobile legacy route map');
 
 const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
-requireToken(mobileMore, "label: 'Assets'", 'mobile more screen');
+requireToken(mobileMore, "label: 'QR and print assets'", 'mobile more screen');
 requireToken(mobileMore, 'ENABLE_PRINTABLE_ASSET_TEMPLATES', 'mobile more screen');
 requireToken(mobileMore, "openSubScreen('printAssets')", 'mobile more screen');
 

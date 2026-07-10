@@ -5,7 +5,7 @@ import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/payment
 import { formatDateTime } from '@util/dateTime';
 import { Button, Card, Empty, Flex, Space, Table, Tag, Tooltip, Typography, message, theme } from 'antd';
 import { useFormatter } from 'next-intl';
-import { LuExternalLink, LuPackage, LuReceipt, LuZap } from 'react-icons/lu';
+import { LuExternalLink, LuGift, LuPackage, LuReceipt, LuZap } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -72,6 +72,8 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
                 <Space>
                         {record.type === 'Subscription Payment' ? (
                             <LuZap color={token.colorInfo} />
+                        ) : record.type === 'Referral reward' ? (
+                            <LuGift color={token.colorSuccess} />
                         ) : (
                             <LuPackage color={token.colorWarning} />
                         )}
@@ -83,7 +85,9 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
             title: 'Amount',
             dataIndex: 'amount',
             key: 'amount',
-            render: (amount: number, record: BillingHistoryItem) => <Text>{formatCurrency(amount, record.currency)}</Text>,
+            render: (amount: number, record: BillingHistoryItem) => (
+                <Text>{record.type === 'Referral reward' ? 'No charge' : formatCurrency(amount, record.currency)}</Text>
+            ),
         },
         {
             title: 'Billing Cycle',
@@ -103,8 +107,9 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
             key: 'status',
             render: (status: string) => {
                 // Since our query only fetches successful payments, the status will almost always be 'captured' or 'paid'.
-                const isSuccess = status === 'captured' || status === 'paid';
-                return <Tag style={{ maxWidth: "max-content" }} color={isSuccess ? 'success' : 'warning'}>{isSuccess ? 'Paid' : status.toUpperCase()}</Tag>;
+                const isCredited = status === 'credited';
+                const isSuccess = status === 'captured' || status === 'paid' || isCredited;
+                return <Tag style={{ maxWidth: "max-content" }} color={isSuccess ? 'success' : 'warning'}>{isCredited ? 'Credited' : isSuccess ? 'Paid' : status.toUpperCase()}</Tag>;
             },
         },
         {

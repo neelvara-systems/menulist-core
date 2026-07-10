@@ -4,6 +4,8 @@
 **Created:** July 1, 2026
 **Purpose:** Single checklist for the remaining production-readiness gates that cannot be proven by local code, docs, typecheck, lint, or source verifiers alone.
 
+**Launch boundary:** Not current launch certification or deploy approval. This runbook defines the external evidence required before launch; it does not pass any gate without recorded target evidence, explicit deploy approval where relevant, provider/browser/device QA, and production-host smoke.
+
 ---
 
 ## Current Boundary
@@ -20,7 +22,7 @@ The codebase-side gates are currently clean when the latest production-readiness
 
 Prefer `npm run verify:production-readiness-local` for a full local boundary refresh. It runs the child root `verify:*` scripts, including `npm run verify:dependency-freeze`, `docs:check-links`, `npm run typecheck`, lint, and `git diff --check` while excluding itself to avoid recursion. Use `npm run verify:production-readiness-local -- --list` when you only need the gate inventory without executing child checks. `npm run build:verify` delegates to the same root typecheck script. The aggregate can run targeted package builds required by local verifiers, such as the Functions TypeScript build inside `verify:catalog-analytics`, but it does not run a Next.js production build, Firebase deploy, Vercel deploy, provider smoke, Cloud Tasks enqueue, or Firestore write.
 
-Latest local boundary evidence on July 4, 2026: `npm run verify:production-readiness-local` passed with 91/91 checks, including 87 child root `verify:*` scripts. The aggregate includes the public menu rate-limit fail-closed gate, dependency freeze verifier, System Strengthening SS-1 through SS-9, production-testing-guide launch-boundary guard, and recycle-bin source-gate output boundary. The aggregate runner now prints its own local-only boundary, supports `npm run verify:production-readiness-local -- --list` for a no-execution gate inventory, and uses the root `npm run typecheck` script; `npm run build:verify` delegates to that same script so green output cannot be mistaken for authenticated browser/manual QA or deploy certification.
+Latest local boundary evidence on July 9, 2026: `npm run verify:production-readiness-local` passed with 95/95 checks, including 91 child root `verify:*` scripts. The aggregate includes Answerlattice runtime truth, the public menu rate-limit fail-closed gate, Owner Action Layer source gate, dependency freeze verifier, System Strengthening SS-1 through SS-9, production-testing-guide launch-boundary guard, recycle-bin source-gate output boundary, and documentation health with 0 broken links and 0 naming violations. The aggregate runner prints its own local-only boundary, supports `npm run verify:production-readiness-local -- --list` for a no-execution gate inventory, and uses the root `npm run typecheck` script; `npm run build:verify` delegates to that same script so green output cannot be mistaken for authenticated browser/manual QA or deploy certification.
 
 This runbook is for the remaining external/runtime certification work. Do not mark MenuList fully production-ready until every gate below has evidence attached in `__docs__/audits/menulist-production-readiness-audit.md`.
 
@@ -158,7 +160,7 @@ npm --prefix functions run build
 
 Passing preflight proves the Functions package lints and compiles locally, the listed source guards still pass, and the current blocked deploy target set remains documented. It does not prove Firebase CLI authentication, project IAM, enabled Google Cloud APIs, Secret Manager access, function upload, deployed revisions, scheduler execution, callable behavior, trigger delivery, or live production effect.
 
-Current blocker recorded July 5, 2026: local readiness now passes with 93/93 checks. The latest documented scoped attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), the SAFE_MODE worker retry (`functions:processMenuImagesJob`), the scheduler retry (`functions:menulistMaintenanceScheduler`), the staleness lifecycle delivery retry (`functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`), the scheduler-hour diagnostics retry (`functions:messagingOnboarding` and `functions:backfillStoresSummary`), the Maps Place Check raw provider output retry (`functions:mapsPlaceCheck`), and the owner-notification template-output, owner-notification flag/trigger diagnostics, and legacy lifecycle event/status diagnostics retries (`functions:verifyMenuPublish`, `functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`) completed predeploy lint/build before failing ahead of upload with Cloud Resource Manager HTTP 403: the caller does not have permission.
+Current blocker refreshed July 9, 2026: local readiness now passes with 95/95 checks. The current package-local scoped retry `npm --prefix functions run deploy:menulist-qa` targeted `functions:processMenuImages,functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:messagingOnboarding,functions:backfillStoresSummary,functions:mapsPlaceCheck,functions:verifyMenuPublish`, completed predeploy lint/build, and failed before upload with Cloud Resource Manager HTTP 403: the caller does not have permission. Earlier documented scoped attempts for the source-file path hardening subset (`functions:processMenuImages`, `functions:processMenuImagesJob`, `functions:startGeneration`, `functions:embedArticleWorker`, and `functions:regenerateEmbedding`), the SAFE_MODE worker retry (`functions:processMenuImagesJob`), the scheduler retry (`functions:menulistMaintenanceScheduler`), the staleness lifecycle delivery retry (`functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`), the scheduler-hour diagnostics retry (`functions:messagingOnboarding` and `functions:backfillStoresSummary`), the Maps Place Check raw provider output retry (`functions:mapsPlaceCheck`), and the owner-notification template-output, owner-notification flag/trigger diagnostics, and legacy lifecycle event/status diagnostics retries (`functions:verifyMenuPublish`, `functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`) hit the same blocker class after predeploy lint/build.
 
 Staging deploy retry:
 
@@ -195,6 +197,8 @@ npm run verify:menulist-api-tenant-safety
 ```
 
 Passing preflight proves the backfill source still requires an explicit Firebase project, refuses write mode when `--confirm-project` does not match, refuses write mode without `--tenant-id`, `--store-id`, or explicit `--all-stores`, fails those write-refusal cases before Firebase initialization, preserves tenant-block lookup/source guards, and keeps tenant-safety route guards intact. It does not prove Firestore read access, target dataset review, dry-run candidate counts, write mutation success, or production data parity.
+
+Current blocker refreshed July 9, 2026: `npm run verify:tenant-block-backfill-safety` passed, and the bounded read-only dry run `npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-store-tenant-block-state.ts --project-id menulist-qa --limit 25` printed `Project: menulist-qa` and `Mode: DRY RUN`, then failed before dataset review with `tenant_block_backfill_failed {"code":7,"domain":"googleapis.com","reason":"CONSUMER_INVALID","message":"7 PERMISSION_DENIED: Permission denied on resource project menulist-qa."...}`. This remains a Firebase project access blocker, not a script safety failure, and write mode remains prohibited until a reviewed dry-run output exists.
 
 **Prerequisites**
 
@@ -242,7 +246,7 @@ npm run verify:production-readiness-local
 
 Passing preflight proves active project fallback uploads use tenant-scoped paths, legacy project paths are read-only in `storage.rules`, and the local aggregate remains clean. It does not prove Firebase CLI authentication, project IAM, Storage rules upload, deployed rules propagation, or live bucket behavior.
 
-Current blocker recorded July 2, 2026: `npm run verify:storage-paths` passed and local readiness now passes with 67/67 checks, while the prior `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` attempt failed before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied.
+Current blocker refreshed July 9, 2026: `npm run verify:storage-paths` passed, and `npm run verify:production-readiness-local` includes `verify:storage-paths` and passes with 95/95 checks. The current scoped retry `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` failed before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied.
 
 **Prerequisites**
 
@@ -360,6 +364,8 @@ npm run verify:auth-security-failure-matrix
 
 Passing preflight proves local Razorpay admission, bounded-body, signature, diagnostic, plan, UI, subscription/top-up sequencing, webhook cheap-fail/idempotency, browser acknowledgement, and entitlement/cache sync guard coverage only. It does not prove sandbox checkout, provider webhook delivery, captured-payment state, or provider/local state parity.
 
+Current partial evidence refreshed July 9, 2026: the local `.env` Razorpay private/public key IDs were test-mode and a read-only Razorpay SDK `payments.all({ count: 1 })` request returned entity `collection` with one item. This proves the configured test-mode credentials authenticate for a read-only provider request only. It does not prove checkout, subscription creation, payment verification, top-up purchase, webhook delivery, provider failure compensation, local/provider state parity, deployed Functions secrets, or no-real-charge behavior.
+
 **Prerequisites**
 
 - Razorpay test-mode keys are configured only in the intended staging/local environment.
@@ -404,6 +410,8 @@ npm run verify:menulist-api-tenant-safety
 ```
 
 Passing preflight proves local env/secret naming, docs, public WhatsApp Action Link Check non-provider boundaries, platform-only messaging onboarding monitor coverage, preview/fix/publish source gates, messaging extraction destination routing, public cache-tag writes, ops guards, and bounded WhatsApp diagnostics only. It does not prove Meta webhook delivery, provider media download, outbound WhatsApp delivery, provider asset configuration, or provider-mode correctness.
+
+Current blocker refreshed July 9, 2026: checked-in root and MenuList Functions dotenv files keep `ENABLE_MESSAGING_ONBOARDING` absent or `false`, and local presence checks found no WhatsApp provider secret values in `.env`, `functions/.env.menulist-qa`, `functions/.env.menulist`, or `functions/.env.menulist.example`. No Firebase Secret Manager read, Meta app registration, test phone number, approved recipient, deployed webhook, or provider call was performed. Gate 5 remains blocked until the owner provisions real non-production Meta assets, sets matching Firebase secrets on the smoke target, deploys the webhook function, registers the webhook URL, and enables only that target.
 
 **Prerequisites**
 
@@ -452,6 +460,8 @@ npm run verify:auth-security-failure-matrix
 
 Passing preflight proves the maintained source-only POS boundary gate, local public-HTTPS validation, DNS/private-target blocking, bounded request/response handling, signed payload source coverage, desktop/mobile owner-safe failure copy, MobileShell routing, and UI acknowledgement guards only. It does not prove receiver-side signature verification, test delivery, publish-triggered delivery, or provider payload acceptance.
 
+Current blocker refreshed July 9, 2026: `npm run verify:pos-sync-boundary` passed, but no controlled public HTTPS POS receiver endpoint, receiver-side signature-verification evidence, saved owner POS setting, test delivery, or publish-triggered delivery evidence is recorded for the active certification run. Gate 6 remains blocked until the owner provides or provisions a staging receiver endpoint that can verify MenuList signatures and accept a signed full-menu snapshot without exposing secrets.
+
 **Prerequisites**
 
 - Public HTTPS test endpoint.
@@ -490,6 +500,8 @@ env -u FIREBASE_PROJECT_ID -u FIREBASE_PROJECT_LOCATION -u BATCH_IMAGE_GENERATIO
 ```
 
 Passing preflight proves local batch-trigger admission, accounting/capacity ordering, worker secret/header guards, and missing-config cheap-fail behavior only. It does not prove Cloud Tasks enqueue, worker invocation, worker secret acceptance, provider image generation, review state, or project persistence.
+
+Current blocker refreshed July 9, 2026: local `.env` has `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, and an HTTPS `BATCH_IMAGE_GENERATION_WORKER_URL`, but `BATCH_IMAGE_GENERATION_WORKER_SECRET` is missing. MenuList Functions dotenv files do not contain the batch worker keys. A no-enqueue status probe using the app helper returned `ready:false`, `hasProjectId:true`, `hasQueueLocation:true`, `hasQueueId:true`, `hasWorkerUrl:true`, and `hasWorkerSecret:false`. Gate 7 remains blocked until the worker secret is configured for the target, the worker target is deployed, and a controlled Cloud Tasks enqueue/worker smoke is run.
 
 **Prerequisites**
 

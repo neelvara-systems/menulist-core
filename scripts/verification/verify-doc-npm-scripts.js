@@ -3,33 +3,75 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const DOC_ROOT = path.join(ROOT, '__docs__');
-const NESTED_PACKAGE_DIRS = ['functions', 'functions-answerlattice'];
 const IGNORED_PATH_PARTS = new Set([
   'archive',
   '_archive',
   'neelvara-main-website',
   'kitstamp',
 ]);
+const packageScriptCache = new Map();
 
-function readPackageScripts(dir) {
-  const packagePath = path.join(ROOT, dir, 'package.json');
+function readPackageScriptsForDir(dir) {
+  const normalizedDir = path.resolve(dir);
+  if (packageScriptCache.has(normalizedDir)) {
+    return packageScriptCache.get(normalizedDir);
+  }
+
+  const packagePath = path.join(normalizedDir, 'package.json');
+  let scripts = null;
   if (!fs.existsSync(packagePath)) return new Set();
-  const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-  return new Set(Object.keys(packageJson.scripts || {}));
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    scripts = new Set(Object.keys(packageJson.scripts || {}));
+  } catch (error) {
+    console.error(`Failed to read package scripts from ${path.relative(ROOT, packagePath)}: ${error.message}`);
+    process.exit(1);
+  }
+
+  packageScriptCache.set(normalizedDir, scripts);
+  return scripts;
 }
 
-const rootScripts = readPackageScripts('.');
-const nestedScripts = new Map(NESTED_PACKAGE_DIRS.map((dir) => [dir, readPackageScripts(dir)]));
+function resolveRepoPath(rawPath) {
+  const expandedPath = rawPath.replace(/^['"]|['"]$/g, '');
+  const absolutePath = path.isAbsolute(expandedPath)
+    ? expandedPath
+    : path.resolve(ROOT, expandedPath);
+  const relativePath = path.relative(ROOT, absolutePath);
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    return null;
+  }
+  return absolutePath;
+}
+
+const rootScripts = readPackageScriptsForDir(ROOT);
 
 function shouldIgnore(relPath) {
   return relPath.split(path.sep).some((part) => IGNORED_PATH_PARTS.has(part));
 }
 
-function getInlineCommandDirectory(text, index) {
+function getInlineCommandDirectory(filePath, text, index) {
   const lineStart = Math.max(0, text.lastIndexOf('\n', index) + 1);
   const linePrefix = text.slice(lineStart, index);
-  const match = linePrefix.match(/cd\s+(functions-answerlattice|functions)\s*&&\s*$/);
-  return match ? match[1] : null;
+  const explicitCdMatch = linePrefix.match(/cd\s+((?:\.\/)?[A-Za-z0-9_./@-]+)\s*&&\s*$/);
+  if (explicitCdMatch) {
+    return resolveRepoPath(explicitCdMatch[1]);
+  }
+
+  let currentDir = path.dirname(filePath);
+  while (true) {
+    if (fs.existsSync(path.join(currentDir, 'package.json'))) {
+      return currentDir;
+    }
+    if (currentDir === ROOT) {
+      return ROOT;
+    }
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      return ROOT;
+    }
+    currentDir = parentDir;
+  }
 }
 
 function collectDocFiles(dir, files = []) {
@@ -57,10 +99,14 @@ for (const filePath of collectDocFiles(DOC_ROOT)) {
   let match;
   while ((match = npmRunPattern.exec(text))) {
     const scriptName = match[1];
-    const commandDir = getInlineCommandDirectory(text, match.index);
-    const scriptSet = commandDir ? nestedScripts.get(commandDir) : rootScripts;
+    const commandDir = getInlineCommandDirectory(filePath, text, match.index);
+    const scriptSet = commandDir ? readPackageScriptsForDir(commandDir) : rootScripts;
     if (!scriptSet?.has(scriptName)) {
-      missing.push({ relPath, scriptName, commandDir: commandDir || 'root' });
+      missing.push({
+        relPath,
+        scriptName,
+        commandDir: commandDir ? path.relative(ROOT, commandDir) || 'root' : 'root',
+      });
     }
   }
 }

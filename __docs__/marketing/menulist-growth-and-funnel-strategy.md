@@ -11,6 +11,8 @@ MenuList should use controlled hype: make the product transformation visible, su
 > Upload your current menu.
 > Get one official customer link for QR, WhatsApp, Google, screens, and repeat customers.
 
+Photo, PDF, link, and WhatsApp extraction are intake conveniences, not the durable advantage. Public positioning must lead with owner-approved source alignment: one current source the owner controls, reviewed before publication, then placed where customers already look.
+
 ## Funnel Position
 
 The recommended funnel is:

@@ -50,6 +50,17 @@ Adopted compliance additions:
 | Research Agent Table | Research rows must preserve provider, source policy, source run, and row-level source refs. `pass` means review priority, not permission to contact. |
 | AI risk | AI outputs must remain governed, mapped, measured, and managed through model version, prompt version, confidence, rejected facts, edits, eval failures, cost, and pause conditions. |
 
+## First Bengaluru Trial Source Split - July 10, 2026
+
+The approved zero-spend trial uses two separate manual policies:
+
+| Policy | Allowed | Blocked |
+| --- | --- | --- |
+| Public business research | 30-day internal candidate identity and official-source evidence review | Contact fields, personalization, export, send, inferred consent, or provider content as durable truth |
+| Permissioned manual introduction | Founder-supplied expected introduction, explicit referral, partner handoff, or owner-requested follow-up | Public availability treated as permission, cold WhatsApp/Instagram, bulk follow-up, or unsupported claims |
+
+The evidence-only public policy must be the safe default for manual candidate imports. A business can move to contact-eligible handling only after the permission basis is recorded under the separate manual-introduction policy.
+
 ## Channel Policy
 
 ### Email

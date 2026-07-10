@@ -23,6 +23,7 @@ import {
     CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS,
 } from '@constant/campaigncue/firebase';
 import { SIGNALDESK_FIREBASE_PROJECT_ID_ENV_KEYS } from '@constant/signaldesk/firebase';
+import { FEATURE_FLAGS } from '@config/features';
 import { logEnvValidationDiagnostic, logEnvValidationFailure } from './envDiagnostics';
 
 interface EnvValidationResult {
@@ -84,7 +85,19 @@ const OPTIONAL_VARS: readonly string[] = [
     'BATCH_IMAGE_GENERATION_WORKER_URL',    // Batch menu image generation worker
     'FIREBASE_PROJECT_LOCATION',            // Google Cloud Tasks queue location
     'FIREBASE_API_KEY',                    // Firebase Auth REST/API calls should use server-side key (not NEXT_PUBLIC)
+    'MENULIST_OWNER_REFERRAL_TOKEN_SECRET', // Owner referral token encryption when acquisition is enabled
 ] as const;
+
+const isValidOwnerReferralTokenSecret = (value: string | undefined): boolean => {
+    const encoded = String(value || '').trim();
+    if (!encoded || encoded.includes('=')) return false;
+    try {
+        const decoded = Buffer.from(encoded, 'base64url');
+        return decoded.length === 32 && decoded.toString('base64url') === encoded;
+    } catch {
+        return false;
+    }
+};
 
 const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
     menulist: [
@@ -167,6 +180,21 @@ export function validateEnvironment(): EnvValidationResult {
 
     if (!process.env.FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
         warnings.push('FIREBASE_API_KEY is recommended for server-side Firebase REST calls. NEXT_PUBLIC_FIREBASE_API_KEY is public and should not be used for server-auth operations.');
+    }
+
+    if (FEATURE_FLAGS.ENABLE_OWNER_REFERRAL && !FEATURE_FLAGS.ENABLE_OWNER_REFERRAL_REWARD_PROCESSING) {
+        const message = 'ENABLE_OWNER_REFERRAL requires ENABLE_OWNER_REFERRAL_REWARD_PROCESSING so every accepted paid referral can settle';
+        if (isVercel) missing.push(message);
+        else warnings.push(message);
+    }
+
+    if (FEATURE_FLAGS.ENABLE_OWNER_REFERRAL && FEATURE_FLAGS.ENABLE_OWNER_REFERRAL_REWARD_PROCESSING) {
+        const secretReady = isValidOwnerReferralTokenSecret(process.env.MENULIST_OWNER_REFERRAL_TOKEN_SECRET);
+        if (!secretReady) {
+            const message = 'MENULIST_OWNER_REFERRAL_TOKEN_SECRET must be an unpadded base64url value that decodes to exactly 32 bytes when owner referrals are enabled';
+            if (isVercel) missing.push(message);
+            else warnings.push(message);
+        }
     }
 
     (['menulist', 'answerlattice', 'campaigncue'] as DeploymentProductId[]).forEach((productId) => {

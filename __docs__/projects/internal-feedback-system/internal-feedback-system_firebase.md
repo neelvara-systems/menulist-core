@@ -37,6 +37,8 @@ Review URL parse diagnostics are cost-neutral. Malformed configured review URLs 
 
 Feedback QR download filename boundary is Firebase-cost neutral. Desktop Use MenuList and mobile Share now pass feedback QR filenames through `getQrCodeFilename(data.storeName)` before browser download instead of raw store-name whitespace replacement. This changes only the local filename string used by `downloadQrCode()`: no Firestore reads/writes/deletes, Storage operations, Cloud Functions, API routes, provider calls, cache invalidations, rules, indexes, Firebase deploy requirement, Vercel deploy action, or owner setting changes are added.
 
+Feedback reply drafts are Firebase-cost neutral. `src/lib/feedback/feedbackReplyTemplates.ts` generates deterministic browser-local text from the already-loaded feedback record and optional store name. Desktop copy/WhatsApp handoff remains browser-local; mobile draft selection only fills the existing reply field. The only persistent change remains the existing `updateFeedbackStatus()` owner-note/status update after the owner saves.
+
 ---
 
 ## Indexes And Retention

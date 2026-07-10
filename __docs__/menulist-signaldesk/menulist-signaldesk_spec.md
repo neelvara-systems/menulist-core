@@ -1,7 +1,8 @@
 # MenuList SignalDesk - Specification
 
-**Status:** Initial planning spec
+**Status:** Implemented internal runtime contract with owner-gated external execution
 **Created:** June 23, 2026
+**Last Updated:** July 10, 2026
 **Audience:** Founder, growth team, future implementers
 **Scope:** Private internal growth control room for MenuList marketing and acquisition.
 
@@ -110,6 +111,15 @@ Do not use these as north-star metrics:
 - demand signals from MenuList-controlled surfaces
 - cost and channel health dashboards
 - emergency kill switches
+- revenue accounts linked to existing targets
+- deterministic commercial opportunity qualification and pipeline state
+- immutable standard commercial offer versions
+- bounded operating envelopes that reference existing policies
+- interested-reply qualification through the existing guarded revenue rule
+- founder-only market-pod approval separate from system recommendation/research
+- activation watches automatically refreshed from deterministic earliest/latest/terminal SignalDesk outcome-summary reads
+- read-time seven-day stall state without a new scheduler
+- compact revenue, founder-attention, and daily-spend summaries
 
 ### Out Of Scope For First Build
 
@@ -120,6 +130,8 @@ Do not use these as north-star metrics:
 - Meta paid webhooks
 - campaign optimizer
 - autonomous next-best-action execution
+- exception-only execution, autonomous commercial terms, or unapproved discounts
+- calendar, proposal, signature, checkout, or payment provider execution
 - public SignalDesk website
 - public help center
 - public launch
@@ -165,6 +177,17 @@ Do not use these as north-star metrics:
 3. Signals improve target prioritization and local cluster decisions.
 4. No customer scan alone creates a prospect unless contact or explicit action exists.
 
+### Flow 6 - Bounded Revenue Lifecycle
+
+1. Authorized qualification or an interested reply links an existing target to one revenue account.
+2. Suppression, contactability, source-policy, reply, segment, and score state determine whether one commercial opportunity may open.
+3. The opportunity references an immutable approved offer version and keeps separate commercial stage/status fields.
+4. An operating envelope references existing policies, caps, sender/template readiness, time window, stop rules, and approval mode.
+5. Runtime remains shadow or approval-only; requested `exception-only` mode is held.
+6. Target outcomes automatically refresh activation watches from SignalDesk summaries while MenuList remains authoritative for activation and customer truth; only two-surface activation creates a commercial win.
+7. An elapsed seven-day watch reads as stalled and enters the founder decision brief without a scheduler or MenuList truth query.
+8. Research/recommendation may propose a market pod but cannot activate it; the founder records approve/hold/reject before any envelope may use it.
+
 ## Requirements
 
 | ID | Requirement | Priority |
@@ -180,6 +203,14 @@ Do not use these as north-star metrics:
 | SD-R009 | Outcome bridge must record MenuList activation without owning MenuList onboarding. | P0 |
 | SD-R010 | Mobile must be emergency/read-only only. | P0 |
 | SD-R011 | Founder experience must be observe, monitor, approve, pause, or redirect; manual operator work is exception handling, not the core product motion. | P0 |
+| SD-R012 | One target must resolve idempotently to one revenue account and at most one automatically created open opportunity. | P0 |
+| SD-R013 | Commercial offer terms must be immutable within a version; changed terms require a new version. | P0 |
+| SD-R014 | Operating envelopes must reference existing controls and cannot activate provider send or silently graduate autonomy. | P0 |
+| SD-R015 | Activation watches may read SignalDesk outcome summaries but must not write MenuList truth. | P0 |
+| SD-R016 | Revenue actions must remain server-only and mobile-blocked, with audit, timeline, cost, and compact summary updates. | P0 |
+| SD-R017 | Revenue pipeline values must carry one explicit offer-derived currency; mixed-currency minor units cannot be aggregated. | P0 |
+| SD-R018 | Founder-approved operating envelopes require an explicitly founder-approved active market pod, transactionally current referenced controls, and a new version for scope/term changes. | P0 |
+| SD-R019 | Two-surface activation must close the linked opportunity and remove it from open forecast exactly once. | P0 |
 
 ## Policy Decisions
 

@@ -5,6 +5,8 @@
 > **Date**: February 9, 2026
 > **Status**: Historical audit. See June 2 runtime status below for current implementation.
 
+> **Launch boundary:** Not current launch certification or deploy approval. This file preserves historical findings and source-gated runtime/accounting evidence only. Current approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:billing-entitlement-boundary`, `npm run verify:ai-accounting`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke.
+
 ## June 2, 2026 Runtime Status
 
 The original February audit found missing usage tracking across the billable AI routes. The current runtime has the implementation alignment in place:
@@ -26,6 +28,7 @@ The original February audit found missing usage tracking across the billable AI 
 | Help Center and widget search plus embeddings | Internal/public support/control-plane operation log, no owner balance consumption |
 | Answerlattice translation | Internal Answerlattice operation log, no MenuList owner balance consumption |
 | Cloud Functions menu-image processing | Operation log and token/cost metadata use the same `TOKENS_PER_CREDIT = 500` accounting basis as app routes |
+| Image generation model boundary | Active single and batch image generation use `gemini-2.5-flash-image`; the deprecated Imagen branch and Imagen charge constants are removed from active routes |
 
 Balance consumption now happens in `consumeAICapacity()` through a Firestore transaction. It deducts `monthlyCredits` first, then `topUpCredits`, and returns `remainingBalance` for desktop/mobile state sync.
 
@@ -54,22 +57,20 @@ Rows below this status section are retained as February audit evidence. Any `COM
 
 | #   | API Route                                        | Function                        | Model                                       | Feature                              | Input Type                                    | Output Type                                          | Tracking Status  |
 | --- | ------------------------------------------------ | ------------------------------- | ------------------------------------------- | ------------------------------------ | --------------------------------------------- | ---------------------------------------------------- | ---------------- |
-| 1   | `/api/image-generation`                          | `generateGeminiImageViaFlash`   | `gemini-2.5-flash-image`            | Single image generation              | Text prompt + optional ref image              | Base64 image(s)                                      | ⚠️ COMMENTED OUT |
-| 2   | `/api/image-generation`                          | `generateGeminiImageViaImagen3` | `imagen-3.0-generate-002`                   | Single image generation (Imagen)     | Text prompt                                   | Base64 image(s)                                      | ⚠️ COMMENTED OUT |
-| 3   | `/api/image-generation/batch-generation`         | `generateGeminiImageViaFlash`   | `gemini-2.5-flash-image`            | Batch image generation               | Text prompt + optional ref image              | Base64 image(s) + upload to Storage                  | ⚠️ COMMENTED OUT |
-| 4   | `/api/image-generation/batch-generation`         | `generateGeminiImageViaImagen3` | `imagen-3.0-generate-002`                   | Batch image generation (Imagen)      | Text prompt                                   | Base64 image(s) + upload to Storage                  | ⚠️ COMMENTED OUT |
-| 5   | `/api/image-editing`                             | `editImageViaFlash`             | `gemini-2.5-flash-image` | Image editing                        | Reference image + edit prompt                 | Base64 edited image                                  | ⚠️ COMMENTED OUT |
-| 6   | `/api/descriptions`                              | `POST handler`                  | `gemini-2.5-flash`                          | Description generation               | Menu item list + language + tone              | JSON (descriptions per item)                         | ⚠️ COMMENTED OUT |
-| 7   | `/api/translations`                              | `POST handler`                  | `gemini-2.5-flash`                          | Multi-language translation           | JSON key-value pairs + source/target lang     | JSON (translated key-value pairs)                    | ⚠️ COMMENTED OUT |
-| 8   | `/api/new-item-metadata`                         | `POST handler`                  | `gemini-2.5-flash`                          | New item metadata generation         | Item name + languages + business type         | JSON (descriptions, translations, metadata)          | ⚠️ COMMENTED OUT |
-| 9   | `/api/campaigns/caption`                         | `POST handler`                  | `gemini-2.5-flash`                          | Campaign caption generation          | Item details + campaign type + surface        | JSON (caption, shortCaption)                         | ❌ ZERO TRACKING |
-| 10  | `/api/analytics/weekly-narrative/generate-local` | `POST handler`                  | `gemini-2.5-flash`            | Weekly narrative (local fallback)    | Aggregated analytics metrics                  | JSON (narrative, highlights, recommendations)        | ❌ ZERO TRACKING |
-| 11  | `/api/helpCenter/search-kb`                      | `callGeminiChat`                | `gemini-2.5-flash`                          | KB search — answer generation        | User query + matched KB docs + optional image | JSON (craftedAnswer, references, suggestedQuestions) | ❌ ZERO TRACKING |
-| 12  | `/api/helpCenter/search-kb`                      | `callGeminiEmbedding`           | `text-embedding-004`                        | KB search — query embedding          | User query text                               | Vector (768 dimensions)                              | ❌ ZERO TRACKING |
-| 13  | `/api/helpCenter/search-kb`                      | `generateSearchQueryFromImage`  | `gemini-2.5-pro`                            | KB search — image-to-text query      | User query + image                            | Text (search query)                                  | ❌ ZERO TRACKING |
-| 14  | `/api/helpCenter/search-kb-stream`               | `callGeminiChatStream`          | `gemini-2.5-flash`                          | KB search — streaming answer         | User query + matched KB docs + optional image | SSE stream (JSON chunks)                             | ❌ ZERO TRACKING |
-| 15  | `/api/helpCenter/search-kb-stream`               | `callGeminiEmbedding`           | `text-embedding-004`                        | KB search — query embedding (stream) | User query text                               | Vector (768 dimensions)                              | ❌ ZERO TRACKING |
-| 16  | `/api/helpCenter/article-embedding`              | `callGeminiEmbedding`           | `text-embedding-004`                        | KB article indexing                  | Article category + section + title + content  | Vector (768 dimensions)                              | ❌ ZERO TRACKING |
+| 1   | `/api/image-generation`                          | `generateGeminiImageViaFlash`   | `gemini-2.5-flash-image`            | Single image generation              | Text prompt + optional ref image              | Base64 image(s)                                      | ✅ TRACKED |
+| 2   | `/api/image-generation/batch-generation`         | `generateGeminiImageViaFlash`   | `gemini-2.5-flash-image`            | Batch image generation               | Text prompt + optional ref image              | Base64 image(s) + upload to Storage                  | ✅ TRACKED |
+| 3   | `/api/image-editing`                             | `editImageViaFlash`             | `gemini-2.5-flash-image` | Image editing                        | Reference image + edit prompt                 | Base64 edited image                                  | ✅ TRACKED |
+| 4   | `/api/descriptions`                              | `POST handler`                  | `gemini-2.5-flash`                          | Description generation               | Menu item list + language + tone              | JSON (descriptions per item)                         | ⚠️ COMMENTED OUT |
+| 5   | `/api/translations`                              | `POST handler`                  | `gemini-2.5-flash`                          | Multi-language translation           | JSON key-value pairs + source/target lang     | JSON (translated key-value pairs)                    | ⚠️ COMMENTED OUT |
+| 6   | `/api/new-item-metadata`                         | `POST handler`                  | `gemini-2.5-flash`                          | New item metadata generation         | Item name + languages + business type         | JSON (descriptions, translations, metadata)          | ⚠️ COMMENTED OUT |
+| 7   | `/api/campaigns/caption`                         | `POST handler`                  | `gemini-2.5-flash`                          | Campaign caption generation          | Item details + campaign type + surface        | JSON (caption, shortCaption)                         | ❌ ZERO TRACKING |
+| 8   | `/api/analytics/weekly-narrative/generate-local` | `POST handler`                  | `gemini-2.5-flash`            | Weekly narrative (local fallback)    | Aggregated analytics metrics                  | JSON (narrative, highlights, recommendations)        | ❌ ZERO TRACKING |
+| 9   | `/api/helpCenter/search-kb`                      | `callGeminiChat`                | `gemini-2.5-flash`                          | KB search — answer generation        | User query + matched KB docs + optional image | JSON (craftedAnswer, references, suggestedQuestions) | ❌ ZERO TRACKING |
+| 10  | `/api/helpCenter/search-kb`                      | `callGeminiEmbedding`           | `text-embedding-004`                        | KB search — query embedding          | User query text                               | Vector (768 dimensions)                              | ❌ ZERO TRACKING |
+| 11  | `/api/helpCenter/search-kb`                      | `generateSearchQueryFromImage`  | `gemini-2.5-pro`                            | KB search — image-to-text query      | User query + image                            | Text (search query)                                  | ❌ ZERO TRACKING |
+| 12  | `/api/helpCenter/search-kb-stream`               | `callGeminiChatStream`          | `gemini-2.5-flash`                          | KB search — streaming answer         | User query + matched KB docs + optional image | SSE stream (JSON chunks)                             | ❌ ZERO TRACKING |
+| 13  | `/api/helpCenter/search-kb-stream`               | `callGeminiEmbedding`           | `text-embedding-004`                        | KB search — query embedding (stream) | User query text                               | Vector (768 dimensions)                              | ❌ ZERO TRACKING |
+| 14  | `/api/helpCenter/article-embedding`              | `callGeminiEmbedding`           | `text-embedding-004`                        | KB article indexing                  | Article category + section + title + content  | Vector (768 dimensions)                              | ❌ ZERO TRACKING |
 
 ### 1B. All Direct AI Model Calls — Cloud Functions
 
@@ -136,13 +137,13 @@ Rows below this status section are retained as February audit evidence. Any `COM
 
 | Attribute              | Value                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------ |
-| **AI Call #**          | #1, #2                                                                                           |
+| **AI Call #**          | #1                                                                                               |
 | **Trigger**            | User clicks "Generate Image" in editor                                                           |
-| **Model**              | `gemini-2.5-flash-image` (Gemini) or `imagen-3.0-generate-002` (Imagen)                  |
+| **Model**              | `gemini-2.5-flash-image`                                                                         |
 | **Input**              | Text prompt (built from item details + style config + business type), optional reference image   |
 | **Input token range**  | ~200–800 tokens (text prompt) + image tokens if reference image                                  |
 | **Output**             | 1–4 base64 images                                                                                |
-| **Output token range** | Gemini: ~4,000–20,000 tokens (image output); Imagen: fixed per image                             |
+| **Output token range** | ~4,000–20,000 tokens (image output estimate)                                                     |
 | **Frequency**          | High — users generate many images per project. ~5–20 per session                                 |
 | **Batch support**      | No (single request, but can execute multiple prompts sequentially)                               |
 | **Retry/fallback**     | None — single attempt                                                                            |
@@ -376,7 +377,7 @@ These consume tokens but serve the platform (help center, analytics intelligence
 1. **No capacity enforcement** — No check if tenant has remaining credits before AI call executes
 2. **No per-call cost ceiling** — A 10-image batch with retries can consume unlimited tokens
 3. **No customer-facing rate limits on KB search** — End-customer chat has rate limiting but it's per-API-route, not per-store
-4. **Imagen pricing** — Fixed cost per image ($0.04/image at Imagen 3), not token-based. Constants `CHARGE_PER_IMAGEN_IMAGE` and `TOKENS_PER_IMAGEN_IMAGE` exist but don't reflect actual Google billing
+4. **Image-generation unit pricing** — Paid image generation is treated as a per-image value-add operation while provider usage metadata remains recorded for audit. Deprecated Imagen charge constants are no longer used by active routes.
 
 ### 4C. Cost Constants Mismatch
 
@@ -455,8 +456,7 @@ Instead of raw tokens, define **internal units** per operation type:
 // src/lib/ai/unitCosts.ts
 export const AI_UNIT_COSTS: Record<string, number> = {
   // Core menu operations (user-triggered, billable)
-  IMAGE_GENERATION_GEMINI: 5, // ~10K-20K tokens, expensive
-  IMAGE_GENERATION_IMAGEN: 5, // Fixed Google price
+  IMAGE_GENERATION: 5, // Gemini image generation, expensive
   IMAGE_EDITING: 4, // Image I/O heavy
   BATCH_IMAGE_GENERATION: 5, // Same as single, per item
   DESCRIPTION_GENERATION: 1, // Small I/O
@@ -505,7 +505,7 @@ This keeps pricing logic **completely isolated** from feature logic. Features ca
 
 | #   | Issue                                       | Location                                                                                                                                                                                                        | Impact                                                                            | Fix                                                                                                   |
 | --- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| 1   | **Duplicate image generation functions**    | `route.ts` and `batch-generation/route.ts` both define identical `generateGeminiImageViaFlash` and `generateGeminiImageViaImagen3` functions (exact copy-paste)                                                 | Maintenance burden, inconsistency risk                                            | Extract to shared `src/lib/ai/imageGeneration.ts`                                                     |
+| 1   | **Duplicate image generation functions**    | Historical duplicate route-local generation functions were extracted to `src/app/api/image-generation/generators.ts`; the deprecated Imagen branch has since been removed.                                      | Historical risk resolved; keep single shared Gemini generator path.               | No action unless a new provider path is introduced.                                                   |
 | 2   | **Duplicate safety settings**               | Every API route defines the same `safetySettings` array inline                                                                                                                                                  | 100+ lines of duplicated code                                                     | Use `AI_MODELS` config from `src/constants/AI/models.ts` which already defines per-operation settings |
 | 3   | **Cloud Functions SDK migration**          | `feedbackAnalysis.ts`, `weeklyNarrative.ts`, `kbQuality.ts`, and `ownerDashboardSummary.ts` now use `@google/genai` through the shared gateway. | Historical risk resolved; keep future functions on the gateway path. | No action unless a new direct provider call is introduced. |
 | 4   | **`TOKENS_PER_CREDIT` mismatch**            | Frontend: 500. Cloud Functions: 1000.                                                                                                                                                                           | Cloud Function OCR is undercharging by 50%                                        | Unify to single source of truth                                                                       |

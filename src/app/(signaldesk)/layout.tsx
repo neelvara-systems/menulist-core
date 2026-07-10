@@ -88,9 +88,9 @@ export default async function SignalDeskLayout({ children }: { children: ReactNo
             <LocalisationProvider locale={locale}>
                 <ReduxStoreProvider>
                     <SessionProvider session={session}>
-                        <SessionExpiryMonitor />
                         <NoSSRProvider>
                             <AntdThemeProvider>
+                                <SessionExpiryMonitor />
                                 <NetworkStatusProvider>
                                     <SignalDeskPathProvider basePath={basePath}>
                                         {children}

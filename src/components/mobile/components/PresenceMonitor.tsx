@@ -6,7 +6,7 @@
  * Guided deployment checklist for MobileShareScreen.
  * Groups: Online Discovery (manual) + Inside Your Store (auto-detected).
  * Timestamp-only schema: exists = confirmed, missing = not confirmed.
- * Max 6 surfaces forever — do NOT expand.
+ * Seven mobile surfaces; external platforms remain owner-confirmed.
  *
  * @see __docs__/menu-presence-monitor/menu-presence-monitor_impl.md
  */
@@ -30,8 +30,10 @@ import {
     LuGlobe,
     LuInstagram,
     LuMessageCircle,
+    LuMap,
     LuPlus,
     LuQrCode,
+    LuSearch,
     LuX,
 } from 'react-icons/lu';
 import { Button, Card, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
@@ -41,7 +43,7 @@ import {
     logMobileOwnerFailure,
 } from '../utils/mobileOwnerDiagnostics';
 
-type ManualSurfaceId = 'googleBusiness' | 'instagramBio' | 'whatsappProfile';
+type ManualSurfaceId = 'googleBusiness' | 'appleBusiness' | 'bingPlaces' | 'instagramBio' | 'whatsappProfile';
 
 const MOBILE_PRESENCE_COPY_UNAVAILABLE = 'mobile_presence_copy_unavailable';
 const MOBILE_PRESENCE_COPY_FALLBACK_FAILED = 'mobile_presence_copy_fallback_failed';
@@ -127,6 +129,32 @@ const MANUAL_SURFACES: ManualSurfaceConfig[] = [
             'surfaces.googleBusiness.steps.paste',
         ],
         openUrl: 'https://business.google.com',
+    },
+    {
+        id: 'appleBusiness',
+        dalKey: 'appleBusiness',
+        labelKey: 'surfaces.appleBusiness.label',
+        explanationKey: 'surfaces.appleBusiness.explanation',
+        icon: <LuMap size={16} />,
+        guideStepKeys: [
+            'surfaces.appleBusiness.steps.open',
+            'surfaces.appleBusiness.steps.edit',
+            'surfaces.appleBusiness.steps.paste',
+        ],
+        openUrl: 'https://businessconnect.apple.com',
+    },
+    {
+        id: 'bingPlaces',
+        dalKey: 'bingPlaces',
+        labelKey: 'surfaces.bingPlaces.label',
+        explanationKey: 'surfaces.bingPlaces.explanation',
+        icon: <LuSearch size={16} />,
+        guideStepKeys: [
+            'surfaces.bingPlaces.steps.open',
+            'surfaces.bingPlaces.steps.edit',
+            'surfaces.bingPlaces.steps.paste',
+        ],
+        openUrl: 'https://www.bingplaces.com',
     },
     {
         id: 'instagramBio',

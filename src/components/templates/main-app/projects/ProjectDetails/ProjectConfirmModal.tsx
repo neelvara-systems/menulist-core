@@ -91,7 +91,7 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
                 ) : (
                     <>
                         <Text>
-                            This resets this {labels.offeringPhrase} and removes all files. Customers keep seeing the last saved version until you publish again.
+                            Are you sure you want to reset this {labels.offeringPhrase} and remove all files? Customers keep seeing the last saved version until you publish again.
                         </Text>
                         {fileCount > 0 && (
                             <Alert

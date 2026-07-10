@@ -2,6 +2,7 @@
 
 **Status:** Active tracker
 **Created:** June 23, 2026
+**Last Updated:** July 10, 2026
 **Purpose:** Track documentation and implementation-preparation work for SignalDesk.
 
 ## Status Legend
@@ -43,6 +44,9 @@
 | SD-D022 | Add Operating Layer doc set | Codex | Done | Created `signaldesk-operating-layer/` docs for Daily Growth Mission, experiment cards, offer CTAs, reply playbooks, source quality snapshots, compliance, Firebase, mobile, and tests |
 | SD-D023 | Add growth playbook review and first-pod defaults | Codex | Done | Created `menulist-signaldesk_growth-playbook-review-2026-06-24.md`; adopted the activation-proof loop, recommended a Bengaluru restaurant pod hypothesis, kept unsafe automations rejected, and kept Activation Concierge as MenuList-side work |
 | SD-D024 | Add founder distribution deep research | Codex | Done | Created `menulist-signaldesk_founder-distribution-research-2026-06-24.md`; cross-checked founder/community workflows, fast-growth startup cases, restaurant/SMB signals, and platform policies; confirmed Activation Concierge, proof assets, demand listening, and objection learning as the next automation priorities |
+| SD-D025 | Add Revenue Operating Layer doc set and parent-doc parity | Codex | Done | Created the private revenue account/opportunity/offer/envelope/activation docs and aligned README, spec, implementation, Firebase, feature map, validation, action register, and decision log |
+| SD-D026 | Add current social-channel market research and next trial plan | Codex | Done | Cross-checked X, Reddit, Instagram, YouTube, Google, Bengaluru/India operator signals, QR/customer friction, and five vendor categories; adopted a 30-day manual-first activation trial instead of more horizontal automation |
+| SD-D027 | Create Bengaluru activation-trial operating pack | Codex | Done | Added the approved zero-spend envelope, evidence-only/public versus permissioned-contact policy split, 25-row candidate board, evidence packet, draft-only introduction scripts, preview checklist, stop rules, and external blockers |
 
 ## Implementation Actions
 
@@ -65,7 +69,7 @@
 | SD-I015 | Implement real AI provider assist | Codex | Done | Gemini assist action added behind AI-provider flag; writes AI worker run, decision snapshot, operation ledger, audit, and cost estimate |
 | SD-I016 | Implement assisted channel and provider-send plumbing | Codex | Done | Approved drafts can create WhatsApp/Instagram/Messenger/email handoffs; provider send adapter exists but remains disabled until send readiness is approved |
 | SD-I017 | Implement paid campaign automation | Founder/Codex | Deferred | Explicitly skipped by founder in this session |
-| SD-I018 | Deploy SignalDesk Firebase infrastructure | Founder/Codex | Deferred | Explicitly skipped by founder in this session |
+| SD-I018 | Deploy SignalDesk Firebase infrastructure | Founder/Codex | Blocked | July 10 QA rules/index deploy attempt to `menulist-signaldesk-qa` failed with Firebase Rules API HTTP 403; current caller lacks permission |
 | SD-I019 | Reframe dashboard and docs around owner-control operating model | Codex | Done | Docs and first-screen UI now emphasize observe, monitor, approve, pause, and redirect instead of manual CRM operation |
 | SD-I020 | Add sender-health readiness object before provider send can be enabled | Codex | Done | `signaldeskSenderDomains` now tracks domain/auth/ramp/bounce/complaint/unsubscribe/brand risk; email handoff/send is blocked when sender domain is not ready |
 | SD-I021 | Add channel-window state to assisted channel handoffs | Codex | Done | WhatsApp/Instagram/Messenger window state records are API-writable, workspace-readable, timeline/audit tracked, and channel health aware |
@@ -100,7 +104,13 @@
 | SD-I050 | Add internal team access management | Codex | Done | Settings now lets founder admins add/update/deactivate SignalDesk team members by login email, assign roles, audit changes, and keep mobile/public access blocked |
 | SD-I051 | Add FHRS/FHIS UK source provider | Codex | Done | Official UK food-business establishment seed added behind feature flag, source policy, provider account/budget, retention, verifier, and local E2E; no contact permission, public hygiene-rating feature, or send enablement |
 | SD-I052 | Add dashboard lead-batch search flow | Codex | Done | Dashboard exposes Market Search presets and Today's Lead Batch; Mission exposes Research Agent Table and Today's Lead Batch with up to 30 pass/unsure leads, evidence, contact path, share message, and next safe action; failed rows stay out of the daily batch, source-policy/provider gates remain in force, and no send automation was added |
-| SD-I053 | Run first activation-proof operating trial | Founder + Codex | Blocked | Use one founder-approved pod, source policy, CTA, proof asset, sender identity, and manual/export path; no provider send, paid campaign, or public SignalDesk surface |
+| SD-I053 | Run first activation-proof operating trial | Founder + Codex | In progress | Founder approved the exact zero-spend Bengaluru preparation envelope; code-side defaults and operating pack are ready, while real permissioned businesses, founder-authenticated QA runtime approval, and sender identity remain external gates |
+| SD-I054 | Implement bounded Revenue Operating Layer | Codex | Done | Added `/signaldesk/revenue`, deterministic account qualification, commercial opportunities, immutable offer versions, policy-referenced operating envelopes, activation watches, compact revenue/founder-attention summaries, audit/timeline/cost writes, feature gate, API/DAL/types, and private UI |
+| SD-I055 | Add revenue rules, indexes, and deterministic E2E coverage | Codex | Done | Revenue collections are internal-read/server-write only; local E2E covers concurrent idempotency, suppression, currencies, immutable IDs/versions, active-pod/budget/sender gates, expiry/hold/approval history, activation-driven opportunity close, exact summaries, and no MenuList truth writes |
+| SD-I056 | Close first-trial operating-loop gaps | Codex | Done | Aligned the create-only held zero-budget seed and first-run UI defaults to the Bengaluru recommendation; the exact unapproved legacy Mumbai seed migrates once while reseeding cannot overwrite founder pod approval; interested replies now create/reuse eligible revenue state; outcomes refresh activation projections automatically; expired seven-day watches read as stalled; Daily Growth Mission prioritizes revenue/activation exceptions and summarizes founder attention and spend; manual recheck remains recovery-only |
+| SD-I057 | Cross-check revenue authority and long-history integrity | Codex | Done | Added founder-only market-pod approve/hold/reject, blocked unreviewed active pods from envelopes, stopped recommendation/research from self-activating or attaching spend, limited win/customer authority to two-surface activation, and replaced unordered outcome truncation with indexed earliest/latest/terminal derivation plus E2E regressions |
+| SD-I058 | Run social-evidence-informed Bengaluru activation trial | Founder + Codex | In progress | Exact zero-external-spend plan approved for preparation: 25 candidates, 12 evidence packets, 5 private previews, 3 two-surface activations, 1 permissioned proof asset, and one photographer/consultant referral test; no business has been contacted |
+| SD-I059 | Align first-trial runtime defaults with approved evidence | Codex | Done | Replaced Pune presets with Bengaluru, made public-business research evidence-only by default, separated permissioned manual introductions, set manual experiment/activation outcomes, held Google Places at zero approval/budget, and made the first trust-partner test zero-spend |
 
 ## Feature Doc Backlog
 
@@ -136,19 +146,19 @@
 | --- | --- | --- | --- |
 | SD-Q001 | Runtime repo location | Done | Implement as product-isolated module inside this monorepo first; keep extraction-ready boundaries |
 | SD-Q002 | Firebase project IDs | Blocked | `menulist-signaldesk-qa` and `menulist-signaldesk` |
-| SD-Q003 | First market pod | Blocked | Recommended default pending founder approval: Bengaluru, Indiranagar + Koramangala, cafes/dessert shops/QSR/cloud-kitchen-facing storefronts, founder email/manual export first |
+| SD-Q003 | First market pod | Done | Founder approved Bengaluru, Indiranagar + Koramangala, independent cafes/dessert shops/QSR/customer-facing cloud kitchens, manual/in-person first, zero external spend |
 | SD-Q004 | First sender identity | Blocked | Founder identity, low-volume email/export first |
 | SD-Q005 | Physical address policy | Blocked | Needed before commercial email |
-| SD-Q006 | First approved source list | Blocked | Manual curated list before source providers |
+| SD-Q006 | First approved source list | In progress | Public business research is approved for 30-day candidate/evidence review only with contact and personalization blocked; the first real permissioned business list is still required before contact |
 | SD-Q007 | Product code | Done | `PRODUCT_IDS.SIGNALDESK = "SD"` added in the foundation runtime implementation |
 | SD-Q008 | First monthly paid-provider budget | Blocked | Registry/budget governor exists; owner still needs to approve the first real monthly provider cap |
 | SD-Q009 | First paid-provider eval set | Blocked | Choose whether first eval uses Apollo, Hunter, ZeroBounce, Firecrawl, Tavily/Exa, Postmark/Resend, or a smaller subset |
 | SD-Q010 | First strong-model budget | Blocked | Choose weekly strategist/adjudication cap before GPT-5.4/5.5 or Claude Opus style calls are enabled |
 | SD-Q011 | Sequencer rail evaluation | Blocked | Decide whether Smartlead, Instantly, lemlist, or no sequencer should be evaluated after sender health is ready |
 | SD-Q012 | Sender-domain risk policy | Blocked | Decide whether cold outreach uses primary domain, subdomain, separate domain, or no automated sender; no domain-rotation default |
-| SD-Q013 | First self-service proof CTA | Blocked | Recommended default pending founder approval: one current official menu link for QR, WhatsApp, Google/Profile, Instagram, and repeat customers, reviewed by the owner before publishing |
-| SD-Q014 | First trust partner niche and budget | Blocked | Recommended default pending founder approval: menu photographers and restaurant consultants first; founder must still set flat-fee cap, disclosure wording, and tracking CTA |
-| SD-Q015 | First content proof asset and channel mix | Blocked | Recommended default pending founder approval: before/after current-menu-link proof; draft for founder LinkedIn/X, local operator group/manual post, and partner proof block; no auto-publish |
+| SD-Q013 | First self-service proof CTA | Done | No-cost current-list consistency audit plus private MenuList preview; owner reviews before publish and customer viewing requires no identity |
+| SD-Q014 | First trust partner niche and budget | In progress | Menu photographers and restaurant consultants approved for a zero-fee learning test; one real permissioned partner still needs to be selected |
+| SD-Q015 | First content proof asset and channel mix | In progress | One permissioned before/after current-list proof approved in principle for Instagram treatment, short YouTube walkthrough, founder X learning, and partner brief; creation waits for a real activation and owner permission |
 
 ## Boundaries
 

@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Firebase Cost Tracking
 
 > **Version:** 1.7
-> **Last Updated:** July 2, 2026
+> **Last Updated:** July 10, 2026
 
 ---
 
@@ -19,7 +19,7 @@
 | `menuPresence` | `stores/{tId}_{sId}` | Map with 3 optional sub-maps | ~200 bytes max |
 | `starterActivationSignals` | `stores/{tId}_{sId}` | Map of starter distribution actions | ~500 bytes max during starter activation |
 
-For starter activation stores, confirming Google Business, Instagram Bio, or WhatsApp Profile also writes the matching `starterActivationSignals.actions.*` key in the same `updateDoc()` call. This keeps the distribution activation metric measurable without adding a second write.
+For starter activation stores, confirming Google Business, Apple Business Connect, Bing Places, Instagram Bio, or WhatsApp Profile also writes the matching `starterActivationSignals.actions.*` key in the same `updateDoc()` call. This keeps the distribution activation metric measurable without adding a second write.
 
 `buildStarterActivationSummary()` computes activation proof from the already-loaded `menuPresence` and `starterActivationSignals` fields. It adds no Firestore read, write, listener, query, index, or collection.
 
@@ -29,9 +29,11 @@ For starter activation stores, confirming Google Business, Instagram Bio, or Wha
 
 | Scenario | Reads | Writes | Monthly Cost |
 |----------|-------|--------|-------------|
-| 1 owner, confirms 3 surfaces once | 0 additional | 3 | ~$0.000003 |
-| 1,000 owners, each confirms 3 surfaces | 0 additional | 3,000 | ~$0.003 |
-| 10,000 owners, each confirms 3 surfaces | 0 additional | 30,000 | ~$0.03 |
+| 1 owner, confirms 5 surfaces once | 0 additional | 5 | ~$0.000005 |
+| 1,000 owners, each confirms 5 surfaces | 0 additional | 5,000 | ~$0.005 |
+| 10,000 owners, each confirms 5 surfaces | 0 additional | 50,000 | ~$0.05 |
+
+Apple and Bing reuse the existing store document and `storesSummary` merge path. They add no collection, query, listener, index, rule, scheduled function, or server API.
 | Activation proof summary renders | 0 additional | 0 | Pure client computation from loaded store doc |
 
 **Total incremental cost: $0.00–$0.03/month** at any realistic scale.

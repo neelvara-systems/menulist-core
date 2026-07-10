@@ -1235,7 +1235,7 @@ export const getAvailableLanguagesForMaster = <T extends { code: string }>(
 | `src/constants/languages.ts`                                                                           | NEW: Global language constants                                   | ✅     |
 | `src/lib/localization/languageResolver.ts`                                                             | NEW: Language resolution utility                                 | ✅     |
 | `src/components/.../LanguageSelectorModal.tsx:1-4,26-35,438-473`                                       | MAX_LANGUAGES + store-type filtering                             | ✅     |
-| `src/components/.../Editor.tsx:1-6,99-101,451-457,1005`                                                | Defensive MAX_LANGUAGES check + pass storeDetails                | ✅     |
+| `src/components/.../editor.tsx:1-6,99-101,451-457,1005`                                                | Defensive MAX_LANGUAGES check + pass storeDetails                | ✅     |
 | `src/components/.../b2cView/index.tsx:3-4,29,33-35`                                                    | Use `resolveRenderLanguage()` for initial lang                   | ✅     |
 | `src/components/.../businessSettings/tabs/LocaleSettingsTab.tsx:1-2,67-121`                            | Store settings UI for activeLanguages & defaultLanguage          | ✅     |
 | `src/components/.../projects/LanguageSelector.tsx:1-3,16-17,27-32,75-102`                              | Multi-chain governance filtering in upload flow                  | ✅     |
@@ -1333,7 +1333,7 @@ npx tsc --noEmit --incremental false
 | Document                                                     | Purpose                                  |
 | ------------------------------------------------------------ | ---------------------------------------- |
 | `multi-language-translation_spec.md`                         | Product specification                    |
-| `../Assessments/assessment-13-multi-language-translation.md` | Original assessment (archived)           |
+| `../assessments/assessment-13-multi-language-translation.md` | Original assessment (archived)           |
 | `../description-generation/`                                 | Description generation (related feature) |
 
 ---

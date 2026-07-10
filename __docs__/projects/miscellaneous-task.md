@@ -266,7 +266,7 @@ interface SecurityAuditLog {
 
 ## 1. ASSESSMENT-02: AI Extraction - Performance & Edge Cases (Conditional)
 
-Source: [assessment-02-ai-extraction.md](./Assessments/assessment-02-ai-extraction.md)
+Source: [assessment-02-ai-extraction.md](./assessments/assessment-02-ai-extraction.md)
 
 ### 1.1 Edge Cases (Conditional Audit Items)
 

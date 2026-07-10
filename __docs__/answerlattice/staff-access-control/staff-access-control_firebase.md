@@ -33,6 +33,8 @@ Staff setup email provider hardening adds no Firestore reads, writes, deletes, r
 
 Answerlattice staff user ID boundary: staff update/remove/reset/sign-out now reject malformed, reserved, or path-shaped `userId` values before `users/{userId}` reads. Staff create and default-auth bridge writes also validate the derived user document IDs before writing. This is an admission guard only; valid staff mutations keep the same Firestore read/write shape.
 
+Answerlattice management access scope boundary: the shared management access context still performs one `stores/{sId}` read and a bounded user lookup, but persisted store/user/role scope fields now pass the exact Answerlattice Firestore document-ID normalizer before permission context or role backfill. Malformed persisted scope returns no access context or stops role normalization before writes; valid access keeps the same read/write count.
+
 ## Deploy
 
 QA rules deploy target:

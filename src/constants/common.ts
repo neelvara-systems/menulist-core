@@ -190,6 +190,7 @@ export const AI_ACTIONS_TYPES: any = {
     PUBLIC_MENU_EXTRACTION: "public_menu_extraction",
     REVIEW_REPLY_SUGGESTION: "review_reply_suggestion",
     OWNER_BUSINESS_ASSISTANT_ANSWER: "owner_business_assistant_answer",
+    AI_MENU_MANAGER_PLANNER: "ai_menu_manager_planner",
     WEEKLY_NARRATIVE: "weekly_narrative",
     HELP_CENTER_SEARCH: "help_center_search",
     HELP_CENTER_EMBEDDING: "help_center_embedding",
@@ -211,8 +212,6 @@ export const AI_ACTIONS_TYPES: any = {
 
 export const TOKENS_PER_CREDIT = 500;
 export const CHARGE_PER_CREDIT = 100;//in paise
-export const CHARGE_PER_IMAGEN_IMAGE = 100;//in paise
-export const TOKENS_PER_IMAGEN_IMAGE = 300;//in paise
 
 export const ASPECT_RATIOS_LIST = [
     { value: '1:1', width: 40, height: 40, title: "Square", useCase: "Best for Instagram, Menu Cards" },

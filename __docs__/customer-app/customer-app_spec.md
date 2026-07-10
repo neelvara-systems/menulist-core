@@ -2,9 +2,13 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Product Requirements Document (PRD)  
-**Status:** Runtime implemented and source-gated; manual device QA still required
+**Status:** Runtime source-gated evidence; not current launch certification
 **Last Updated:** July 4, 2026
 **Audience:** Product, CEO, Business Teams, Non-Technical Stakeholders
+
+> **Status Boundary:** Runtime source-gated evidence; not current launch certification.
+>
+> **Launch Boundary:** This specification records Customer App source evidence and runtime intent. Current Customer App release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:customer-app-pwa`, browser/device Customer App QA, target deploy evidence, and production-host smoke.
 
 ---
 

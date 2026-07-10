@@ -138,7 +138,7 @@ function verifyDocsBoundary() {
   const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
   const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const helpCenterImpl = read('__docs__/answerlattice/help-center/help-center_impl.md');
   const helpCenterFirebase = read('__docs__/answerlattice/help-center/help-center_firebase.md');
   const helpChatReadme = read('src/components/templates/main-app/helpChat/README.md');

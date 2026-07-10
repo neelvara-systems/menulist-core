@@ -4,6 +4,8 @@
 **Date:** 2026-06-02
 **Audience:** Engineering, platform owner
 
+> **Launch boundary:** Not current launch certification or deploy approval. This Firebase/cost plan is source-gated owner-notification runtime and cost evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
+
 ## Firebase Projects
 
 | Product | Firebase target | Rule |

@@ -263,6 +263,8 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, docs, changelogDoc)
   });
 
   [
+    '**Launch boundary:** Not current launch certification or deploy approval.',
+    'This Firebase cost doc describes source/cost behavior and fail-closed provider setup; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped Functions deploy evidence, real non-production Meta provider smoke, browser/device QA where relevant, and production-host smoke.',
     'Do not reuse the older command shapes from those historical attempts.',
     'Current messaging-onboarding retry evidence must start with `npm run verify:functions-deploy-preflight`',
     'record the exact scoped `menulist-qa` target list and reason in the production-readiness audit before deploy retry',
@@ -345,7 +347,7 @@ function verifyMessagingOnboardingMonitorBoundary() {
     validationDoc: read('__docs__/messaging-onboarding/messaging-onboarding_validation.md'),
     marketingDoc: read('__docs__/messaging-onboarding/messaging-onboarding_marketing.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
-    changelogDoc: read('__docs__/CHANGELOG.md'),
+    changelogDoc: read('__docs__/changelog.md'),
   };
 
   verifyProviderRuntimeBoundary(files.providerRegistry, files.constants, files.stagingEnv, files.productionEnv);

@@ -1,5 +1,9 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS, type ProductId } from '@constant/product';
+import {
+  normalizeCancellationReasonCode,
+  type CancellationReasonCode,
+} from '@lib/billing/cancellationReasons';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -16,6 +20,7 @@ export type FounderRevenueMovementKind =
 
 export interface FounderRevenueMovementInput {
   amountPaise: number;
+  cancellationReasonCode?: CancellationReasonCode | null;
   currency?: string | null;
   description?: string | null;
   eventName?: string | null;
@@ -227,7 +232,15 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
   const tenantId = cleanText(input.tenantId, 80) || null;
   const storeId = normalizeFounderRevenueStoreDocumentId(input.storeId);
   const FieldValue = admin.firestore.FieldValue;
-  const dailyCounterUpdates = getDailyCounterUpdates(input.kind, amountPaise);
+  const dailyCounterUpdates: Record<string, any> = getDailyCounterUpdates(input.kind, amountPaise);
+  const cancellationReasonCode = input.kind === 'churn'
+    ? normalizeCancellationReasonCode(input.cancellationReasonCode)
+    : null;
+  if (cancellationReasonCode) {
+    dailyCounterUpdates.churnReasons = {
+      [cancellationReasonCode]: FieldValue.increment(1),
+    };
+  }
   if (input.kind === 'new_mrr') {
     if (tenantId) dailyCounterUpdates.newTenantIds = FieldValue.arrayUnion(tenantId);
     if (storeId) dailyCounterUpdates.newStoreIds = FieldValue.arrayUnion(storeId);
@@ -241,10 +254,9 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
       ? firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_ONBOARDING_TRANSITIONS).doc(storeId)
       : null;
 
-    let recorded = false;
-    await firestoreAdmin.runTransaction(async (transaction) => {
+    const recorded = await firestoreAdmin.runTransaction(async (transaction) => {
       const movementSnap = await transaction.get(movementRef);
-      if (movementSnap.exists) return;
+      if (movementSnap.exists) return false;
       const onboardingTransitionSnap = onboardingTransitionRef
         ? await transaction.get(onboardingTransitionRef)
         : null;
@@ -252,6 +264,7 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
       const movementPayload = {
         amountPaise,
         businessDayKey: dayKey,
+        cancellationReasonCode,
         currency: cleanText(input.currency || 'INR', 12) || 'INR',
         description: cleanText(input.description || input.eventName || input.kind, 220),
         eventName: cleanText(input.eventName, 120) || null,
@@ -277,6 +290,11 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
       transaction.set(movementRef, movementPayload);
       transaction.set(summaryRef, {
         ...getSummaryCounterUpdates(input.kind, amountPaise, mrrDeltaPaise),
+        ...(cancellationReasonCode ? {
+          churnReasons: {
+            [cancellationReasonCode]: FieldValue.increment(1),
+          },
+        } : {}),
         latestMovementAt: admin.firestore.Timestamp.fromDate(occurredAt),
         latestMovementId: movementId,
         latestMovementKind: input.kind,
@@ -306,7 +324,7 @@ export async function recordFounderRevenueMovement(input: FounderRevenueMovement
           tenantId,
         }), { merge: true });
       }
-      recorded = true;
+      return true;
     });
 
     return { recorded, movementId };
@@ -349,6 +367,7 @@ export async function recordFounderSubscriptionNewMrr(params: {
 }
 
 export async function recordFounderSubscriptionChurn(params: {
+  cancellationReasonCode?: CancellationReasonCode | null;
   productId?: ProductId | string | null;
   source: string;
   subscription: Partial<FirestoreSubscriptionDoc> & { id?: string };
@@ -358,6 +377,7 @@ export async function recordFounderSubscriptionChurn(params: {
   if (!subscriptionId) return { recorded: false, movementId: null };
   return recordFounderRevenueMovement({
     amountPaise: getFounderSubscriptionMrrPaise(params.subscription),
+    cancellationReasonCode: params.cancellationReasonCode,
     currency: params.subscription.currency || 'INR',
     description: `${params.subscription.planName || 'Subscription'} left recurring revenue.`,
     eventName: 'subscription.churned_mrr',

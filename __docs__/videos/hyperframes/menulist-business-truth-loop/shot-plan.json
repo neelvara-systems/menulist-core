@@ -1,0 +1,29 @@
+{
+  "slot": "menulist.home.hero.business-truth-loop",
+  "title": "MenuList Business Truth Loop",
+  "durationSeconds": 6,
+  "dimensions": {
+    "width": 1280,
+    "height": 720
+  },
+  "dataPolicy": "Synthetic demo data only. No real customer, tenant, ticket, review, or private business data.",
+  "renderPolicy": "Local HyperFrames plus FFmpeg. No cloud video renderer required.",
+  "shots": [
+    {
+      "time": "0.0-1.0",
+      "beat": "Reveal MenuList as the approved source of business truth."
+    },
+    {
+      "time": "1.0-2.4",
+      "beat": "Owner approval, public menu, official page, QR, and screen surfaces appear."
+    },
+    {
+      "time": "2.4-4.8",
+      "beat": "Truth tokens move through the loop and surface cards stabilize."
+    },
+    {
+      "time": "4.8-6.0",
+      "beat": "Final calm proof state with the public source still in control."
+    }
+  ]
+}

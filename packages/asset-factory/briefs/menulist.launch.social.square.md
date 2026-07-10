@@ -1,8 +1,8 @@
 # Asset Brief - menulist.launch.social.square
 
-**Generated:** 2026-05-31
+**Generated:** 2026-07-10
 **Brand:** menulist
-**Status:** draft
+**Status:** approved
 **Approval:** founder-review
 **Autonomy level:** 3
 **Output file:** packages/asset-factory/briefs/menulist.launch.social.square.md
@@ -16,7 +16,7 @@ Provide a square launch image derived from approved homepage proof.
 - Page: MenuList launch assets
 - Route: /
 - Placement: square launch/social image
-- Component: not mounted yet
+- Component: not runtime-mounted
 - Destination: public/images/website/menulist-launch-square.png
 
 ## Output Contract
@@ -52,6 +52,7 @@ Provide a square launch image derived from approved homepage proof.
 
 - packages/asset-factory/brand/menulist.asset-context.md: MenuList Asset Context
 - __docs__/main-website/main-website_image-assets.md: Website Image & Asset Requirements
+- __docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md: MenuList Coordinated Launch Pack
 - scripts/website-assets/generate-stage6-assets.mjs: Source file
 
 ## Brand Context Snapshot

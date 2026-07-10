@@ -1,3 +1,5 @@
+> **Historical archive evidence; not current launch certification.** This file is retained for historical context only and is not current production approval, deploy approval, launch approval, or release certification. Current readiness is decided by the active production-readiness audit, External Certification Runbook evidence, current source verifiers, browser/device QA, provider/deploy evidence, and production-host smoke.
+
 How entity generation will be done in answerlattice
 I think while initially docs creation via ai extraction process we should capture the entities
 

@@ -2,6 +2,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { requireOnboardingUserId } from "./onboardingUserId";
+import { deleteOwnerReferralAttributionInTransaction } from "@lib/ownerReferral/ownerReferralAttributionServer";
 
 export type FailedOnboardingCompensationSource = "WEBSITE_ONBOARDING" | "RESELLER_ONBOARDING";
 
@@ -112,5 +113,11 @@ export async function compensateFailedTenantStoreOnboarding(params: {
         if (userSnap.exists) {
             transaction.set(userRef, userUpdate, { merge: true });
         }
+
+        deleteOwnerReferralAttributionInTransaction({
+            transaction,
+            db: params.db,
+            referredScope: { tenantId, storeId },
+        });
     });
 }

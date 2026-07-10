@@ -2,7 +2,7 @@
 
 **Feature:** Menu Image Generation & Editing
 **Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
-**Last Updated:** July 1, 2026
+**Last Updated:** July 9, 2026
 **Priority:** HIGH — Most expensive AI feature. Direct Gemini API + Storage costs per generation.
 
 ---
@@ -12,7 +12,7 @@
 - **Collections Used:** `imageBatchProcessingJobs/{tId}/{sId}`, `aiImagePromptCache`, `projects/{tId}/{sId}` (projectsData)
 - **Storage Buckets:** `media/menuItem/{tId}/{sId}/{entityId}/{fileId}` for item images; `system/aiImagePromptCache/...` for private reusable batch prompt-cache source objects; `media/menuBackground/...` and `media/projectImage/...` for design/project media through shared media profiles
 - **Cloud Functions:** `menulistMaintenanceScheduler` only for bounded retention cleanup; generation itself uses API routes + Google Cloud Tasks for batch
-- **Estimated Monthly Cost:** **HIGH** — Gemini/Imagen API costs dominate
+- **Estimated Monthly Cost:** **HIGH** — Gemini image-generation API costs dominate
 
 ---
 
@@ -78,8 +78,7 @@ July 6 Batch image project/job ID boundary is Firebase-cost neutral for valid re
 
 | Service | Trigger | Cost | Notes |
 |---------|---------|------|-------|
-| Gemini 2.0 Flash (image gen) | Per generation request | ~$0.002-0.01/image | Primary generation model |
-| Imagen 3 (fallback) | When Gemini fails | ~$0.01-0.03/image | Higher quality, higher cost |
+| Gemini 2.5 Flash Image | Per generation request | ~$0.039/image estimate | Primary and only active image generation model |
 | Google Cloud Tasks | Batch generation | $0.40/million | Queues individual item tasks for batch processing |
 
 ---
@@ -97,7 +96,7 @@ July 6 Batch image project/job ID boundary is Firebase-cost neutral for valid re
 
 ### Current Optimizations
 - **Rate limiting**: 5/min prevents runaway costs
-- **Capacity before provider work**: Single and worker routes build deterministic prompts first, then check AI capacity using the actual prompt/image quantity before calling Gemini/Imagen.
+- **Capacity before provider work**: Single and worker routes build deterministic prompts first, then check AI capacity using the actual prompt/image quantity before calling Gemini.
 - **Batch preflight capacity check**: Batch trigger estimates deterministic prompt/image quantity before enqueuing tasks, so multi-prompt batches are blocked before Cloud Tasks are created when capacity is insufficient.
 - **Batch via Cloud Tasks**: Items are queued independently; each worker validates job/project/item state before provider work.
 - **Batch diagnostics bounded**: Batch trigger, Cloud Tasks enqueue helper, worker failure paths, client listener, and owner result-action failures log stable failure codes, bounded project/job/item/task/count metadata, and source error name/code/status only. Batch-trigger task-start logs store generation config shape and item counts only, and prompt-block responses return counts only. Raw Cloud Tasks/provider/browser exceptions, raw item/job/project identifiers, raw item ID arrays, and raw prompt/config payloads are not written into runtime diagnostics or local batch-trigger logs.

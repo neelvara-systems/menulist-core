@@ -60,7 +60,7 @@
 | MLD-F001 | Audit homepage CTA against broad-SMB current-list path | Codex | Done | Updated primary website CTAs from `Upload your menu ->` to `Create customer link ->` where they represent the broad `/create-menu` funnel |
 | MLD-F002 | Audit `/create-menu` public copy | Codex | Done | Reframed `/create-menu` metadata and English/Hindi copy around official customer link creation from menu, catalogue, price-list, and service-list sources |
 | MLD-F003 | Verify upload -> preview -> claim path | Codex | Done | Code contract verified with `npm run verify:menu-extraction-pipeline` and `npm run verify:menu-extraction-pipeline:dry-run`; real cloud upload/publish smoke still requires a safe demo tenant/runtime run |
-| MLD-F004 | Define two-surface activation tracking | Codex | Done | Docs-first plan created in `menulist-marketing-distribution_activation-follow-up.md`; runtime instrumentation not added |
+| MLD-F004 | Define two-surface activation tracking | Codex | Done | Shared starter-activation actions and owner-confirmed placement signals are wired across desktop/mobile Presence Monitor with a two-signal target |
 | MLD-F005 | Define follow-up states | Codex | Done | Funnel states and next actions documented in `menulist-marketing-distribution_activation-follow-up.md` |
 | MLD-F006 | Broad-SMB CTA and metadata sync | Codex | Done | Synced locale CTAs, `/create-menu` metadata, `public/llms.txt`, main website docs, SEO/AEO docs, and changelog |
 | MLD-F007 | Run real demo upload -> preview -> claim -> publish smoke | Founder + Codex | Blocked | Needs approved demo tenant/source and safe Firebase/runtime access; do not use real customer data without permission |
@@ -68,6 +68,10 @@
 | MLD-F009 | Wire supplied test WhatsApp CTA | Codex | Done | `/whatsapp` primary/final CTA opens `https://wa.me/15556571424` with a localized prefilled current-list onboarding message |
 | MLD-F010 | Create MenuList Activation Concierge doc set | Codex | Done | Created `../menulist-activation-concierge/` docs for upload, preview, claim/publish, two-surface activation, proof eligibility, mobile support, Firebase cost, and SignalDesk observer boundary |
 | MLD-F011 | Implement MenuList Activation Concierge runtime foundation | Codex | Done | Founder decision resolved: extend existing `/create-menu/success`, starter workspace, Use MenuList, mobile Share, and Search & Discovery / Presence Monitor first. Added shared action-done summary, desktop/mobile activation proof UI, docs parity, and verifier; no new route, collection, SignalDesk truth write, provider send, or external platform verification |
+| MLD-F012 | Measure Powered by MenuList public loop | Codex | Done | Fixed privacy-safe tags now persist through sign-in, draft, claim, and Founder Monitor source counters; no tenant/store/customer identifier is placed in acquisition URLs |
+| MLD-F013 | Structure cancellation intelligence | Codex | Done | Desktop/mobile use stable reason codes; subscription audit stores bounded detail; idempotent founder revenue summaries count codes only |
+| MLD-F014 | Add Apple Business Connect and Bing Places placement | Codex | Done | Added owner-confirmed desktop/mobile placement guides and activation signals; no sync, crawl, or verification claim |
+| MLD-F015 | Add source-to-paid and day-30 pilot evidence contract | Codex | Done | Added a separate proof-and-retention review to the Bengaluru board; runtime remains gated until manual cohort evidence shows a repeated founder decision need |
 
 ## Asset Actions
 
@@ -117,6 +121,18 @@
 | MLD-R012 | QR-to-WhatsApp A/B testing blueprint review | Codex | Done | Accepted the funnel model only as a future governed experiment feature: physical asset -> tracked landing/redirect -> WhatsApp click -> consent -> outcome dashboard |
 | MLD-R013 | Branded QR physical-action creative review | Codex | Done | Accepted branded physical action points as a MenuList Assets doctrine; rejected generic QR generator and artistic QR output until scan-safety tests exist |
 | MLD-R014 | 2026 AI/search-era video strategy check | Codex | Done | Source-checked Google Search Central, BrightLocal, Toast, Wyzowl, YouTube, and Sprout signals; accepted readiness/source-quality framing and rejected ranking/recommendation guarantees |
+| MLD-R015 | 2026 market growth systems gap audit | Codex | Done | Created `menulist-marketing-distribution_market-growth-gap-audit-2026-07-10.md`; cross-checked proof, attribution, partners, reviews, owner advisory, local publishers, and AI distribution against current repo truth |
+
+## Learning Cohort and Physical Partner Actions
+
+| ID | Action | Owner | Status | Notes |
+| --- | --- | --- | --- | --- |
+| MLD-C001 | Create physical distribution partner pilot | Codex | Done | `menulist-marketing-distribution_physical-partner-pilot.md` covers printers, photographers, hospitality consultants, and QR/signage suppliers with consent and stop rules |
+| MLD-C002 | Create Bengaluru ten-business board | Codex | Done | `menulist-marketing-distribution_bengaluru-ten-business-pilot.md` defines category mix, funnel fields, learning questions, and exit gate without inventing real businesses |
+| MLD-C003 | Supply permissioned businesses and sender identity | Founder | Blocked | Needs up to ten real owner-approved leads from founder network or approved partners; no scraping or bulk contact |
+| MLD-C004 | Run cohort and review evidence | Founder + Codex | Blocked | Begins only after C003; review attributed claims, two-surface activation, payment, interviews, cancellation feedback, and proof permission before expansion |
+| MLD-C005 | Complete day-30 proof and retention review | Founder + Codex | Blocked | Begins with the first activated business; capture paid date, day-30 state, approved quote/screenshots, proof packet, and neutral review-request status without inventing outcomes |
+| MLD-C006 | Run first founder owner clinic | Founder + Codex | Blocked | Start after three businesses activate; one invitation-only 45-minute session with no community product or public claims |
 
 ## Launch Actions
 
@@ -132,6 +148,7 @@
 | MLD-L008 | Show HN tryable-demo gate | Codex | Deferred | Use Show HN only after public demo pages exist without signup barriers; do not post a landing page |
 | MLD-L009 | Directory submissions backlog | Codex | Deferred | BetaList, Uneed, SaaSHub, AlternativeTo, and similar directories wait until proof assets and launch page are ready |
 | MLD-L010 | AppSumo/review-platform evaluation | Founder + Codex | Deferred | Revisit 4-6 months after onboarding cost, support load, pricing, and plan limits are stable |
+| MLD-L011 | Create independent software-review presence | Founder + Codex | Deferred | Consider accurate Capterra/G2 profiles after at least five paid businesses reach day 30 and a response owner is available; requests must be neutral and independent of referral rewards |
 
 ## International Acquisition Actions
 
@@ -142,6 +159,7 @@
 | MLD-I003 | Draft first market-pod lead list | Founder + Codex | Blocked | Recommended default pending founder approval: Bengaluru, Indiranagar + Koramangala, cafes/dessert shops/QSR/cloud-kitchen-facing storefronts, founder email/manual export first; needs allowed source policy and sender identity before real leads |
 | MLD-I004 | Country/market landing page briefs | Codex | Deferred | `/global`, `/in`, `/ae`, and `/us` need proof assets, route-specific copy, and intake-path decisions before code |
 | MLD-I005 | LINE/Kakao intake research | Codex | Deferred | Later-market research only; no product, route, or integration claim until local partner/compliance path is clear |
+| MLD-I006 | Prepare publisher and AI distribution readiness dossier | Codex | Deferred | After cohort proof, document Google/Apple/provider eligibility, owner delegation, revocation, URL rules, reporting, support, and data-authority boundaries before any sync or AI-provider work |
 
 ## Paid Marketing Actions
 
@@ -178,9 +196,9 @@
 | MLD-V020 | Individual 12-video file verification | Codex | Done | All standalone `videos_01-*` through `videos_12-*` files checked for required A-P structure, markdown links, whitespace, and claim-boundary wording |
 | MLD-V021 | AI-era video strategy verification | Codex | Done | AI/search-era docs pass source-link, markdown-link, whitespace, and prohibited-claim checks; unsafe search/AI claims remain negative guardrails only |
 | MLD-V022 | Founder review verification | Codex | Done | Founder review doc passed markdown link, whitespace, and claim-boundary checks; verdict is production-prep approved but publish-blocked until gates pass |
-| MLD-V023 | HyperFrames draft verification | Codex | Done | Installed Node 22 through existing nvm for HyperFrames only; `npm run check` passed with 0 errors and 0 layout issues; rendered 30s MP4 with H.264 video and AAC audio; visually checked review frames |
-| MLD-V024 | Founder POV HyperFrames verification | Codex | Done | `npm run check` passed with 0 lint warnings, no console errors, 57 WCAG-passing text elements, and 0 layout issues; rendered 75.03s MP4 with H.264 video and AAC audio; visually checked review frames at 2s, 12s, 24s, 36s, 48s, 60s, and 70s |
+| MLD-V023 | HyperFrames draft verification | Codex | Done | Installed Node 22 through existing nvm for HyperFrames only; `cd __docs__/videos/hyperframes/menulist-launch-announcement-30s && npm run check` passed with 0 errors and 0 layout issues; rendered 30s MP4 with H.264 video and AAC audio; visually checked review frames |
+| MLD-V024 | Founder POV HyperFrames verification | Codex | Done | `cd __docs__/videos/hyperframes/menulist-founder-brand-pov && npm run check` passed with 0 lint warnings, no console errors, 57 WCAG-passing text elements, and 0 layout issues; rendered 75.03s MP4 with H.264 video and AAC audio; visually checked review frames at 2s, 12s, 24s, 36s, 48s, 60s, and 70s |
 | MLD-V025 | Audio production plan verification | Codex | Done | Passed `git diff --check`, relative-link smoke, targeted claim-boundary scan, local HyperFrames CLI probe for `tts`, `transcribe`, and `beats`, and local Kokoro candidate generation; prohibited-claim hits are negative guardrails only |
-| MLD-V026 | Launch announcement audio v2 verification | Codex | Done | `npm run check` passed with 0 errors, no console errors, 67 WCAG-passing text elements, and 0 layout issues; rendered MP4 is 1920 x 1080, 30fps, H.264 video, AAC audio, 30.04 seconds; loudness spot-check found `input_i=-16.58`, `input_tp=-4.60`; review frames checked at 1s, 11s, 18s, and 26s |
-| MLD-V027 | Launch announcement vertical audio v2 verification | Codex | Done | Native 9:16 HyperFrames project passed `npm run check` with 0 errors and 0 layout issues; rendered MP4 is 1080 x 1920, 30fps, H.264 video, AAC audio, 30.04 seconds, 3.5 MB; review frames checked at 1s, 11s, 18s, and 26s |
-| MLD-V028 | Founder POV audio v2 verification | Codex | Done | Founder POV HyperFrames project passed `npm run check` with 0 errors, 0 warnings, no console errors, 62 WCAG-passing text elements, and 0 layout issues; rendered MP4 is 1920 x 1080, 30fps, H.264 video, AAC audio, 75.03 seconds, 7.5 MB; loudness spot-check found `input_i=-16.73`, `input_tp=-4.78`; review frames checked at 2s, 12s, 24s, 36s, 48s, 60s, and 70s |
+| MLD-V026 | Launch announcement audio v2 verification | Codex | Done | `cd __docs__/videos/hyperframes/menulist-launch-announcement-30s && npm run check` passed with 0 errors, no console errors, 67 WCAG-passing text elements, and 0 layout issues; rendered MP4 is 1920 x 1080, 30fps, H.264 video, AAC audio, 30.04 seconds; loudness spot-check found `input_i=-16.58`, `input_tp=-4.60`; review frames checked at 1s, 11s, 18s, and 26s |
+| MLD-V027 | Launch announcement vertical audio v2 verification | Codex | Done | Native 9:16 HyperFrames project passed `cd __docs__/videos/hyperframes/menulist-launch-announcement-30s-vertical && npm run check` with 0 errors and 0 layout issues; rendered MP4 is 1080 x 1920, 30fps, H.264 video, AAC audio, 30.04 seconds, 3.5 MB; review frames checked at 1s, 11s, 18s, and 26s |
+| MLD-V028 | Founder POV audio v2 verification | Codex | Done | Founder POV HyperFrames project passed `cd __docs__/videos/hyperframes/menulist-founder-brand-pov && npm run check` with 0 errors, 0 warnings, no console errors, 62 WCAG-passing text elements, and 0 layout issues; rendered MP4 is 1920 x 1080, 30fps, H.264 video, AAC audio, 75.03 seconds, 7.5 MB; loudness spot-check found `input_i=-16.73`, `input_tp=-4.78`; review frames checked at 2s, 12s, 24s, 36s, 48s, 60s, and 70s |

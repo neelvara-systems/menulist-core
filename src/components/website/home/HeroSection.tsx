@@ -75,15 +75,28 @@ export default function HeroSection() {
 
           <AnimateOnScroll preset="media" delay={0.12} className="ws-hero-official__visual">
             <div className="ws-hero-product-stage ws-hero-product-stage--image" aria-label={t('Hero.visualLabel')}>
+              <video
+                className="ws-hero-product-stage__video"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                poster="/images/website/menulist-business-truth-loop-poster.webp"
+                aria-hidden="true"
+              >
+                <source src="/images/website/menulist-business-truth-loop.webm" type="video/webm" />
+                <source src="/images/website/menulist-business-truth-loop.mp4" type="video/mp4" />
+              </video>
               <Image
-                src="/images/website/menulist-hero-official-source.webp"
+                src="/images/website/menulist-business-truth-loop-poster.webp"
                 alt={t('Hero.visualLabel')}
-                width={1600}
-                height={1000}
+                width={1280}
+                height={720}
                 priority
                 unoptimized
                 sizes="(min-width: 1180px) 620px, (min-width: 768px) 52vw, 100vw"
-                className="ws-hero-product-stage__image"
+                className="ws-hero-product-stage__image ws-hero-product-stage__image--fallback"
               />
             </div>
 

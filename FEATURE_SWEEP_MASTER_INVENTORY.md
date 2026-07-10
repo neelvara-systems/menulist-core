@@ -8,7 +8,7 @@ Scope: MenuList Core only. Answerlattice, CampaignCue, GrowthOS, KitStamp, MyCod
 ## Source Inputs Used
 
 - Governance and workflow: `AGENTS.md`, `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md`, `IDE_PROMPTS/00. MASTER RULES & WORKFLOW.md`
-- Product doctrine: `__docs__/constitution/01-CORE-DOCTRINE.md`, `02-LANGUAGE-GOVERNANCE.md`, `12-product-separation-doctrine.md`
+- Product doctrine: `__docs__/constitution/01-core-doctrine.md`, `02-language-governance.md`, `12-product-separation-doctrine.md`
 - Repo index and feature docs: `__docs__/index.md`, `__docs__/*`
 - Runtime routes: `src/app/(website)`, `src/app/(main)`, `src/app/client`, `src/app/api`, `src/app/feedback`, `src/app/screen`, `src/app/widget`, `src/app/sites`
 - Runtime contracts: `src/config/features.ts`, `src/constants/database.ts`, `src/middleware.ts`, `src/lib/multiTenant/domainResolver.ts`, `src/lib/cache/publicClientCache.ts`

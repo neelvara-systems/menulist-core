@@ -716,7 +716,7 @@ const mobileMore = fs.readFileSync(path.join(root, 'src/components/mobile/screen
   "openSubScreen('printAssets')",
   "subScreen === 'printAssets'",
   "key: 'printAssets'",
-  "label: 'Assets'",
+  "label: 'QR and print assets'",
   'ENABLE_PRINTABLE_ASSET_TEMPLATES',
   'MobileMenuCardExportScreen',
   "openSubScreen('printMenu')",

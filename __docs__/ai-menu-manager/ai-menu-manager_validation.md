@@ -2,7 +2,7 @@
 
 **Status:** Initial implementation validated; production audit hardening applied
 **Audience:** Engineering / QA
-**Last Updated:** June 30, 2026
+**Last Updated:** July 10, 2026
 
 ---
 
@@ -15,8 +15,13 @@ This implementation establishes the AMM foundation as a standalone MenuList feat
 - client DAL compact-session path for normal deterministic selected-project cards.
 - action type registry with approval policy and readiness metadata.
 - deterministic resolver for price, selected-item bulk price, selected-item availability/visibility, category-scoped updates, special note, design mood, today-special, image-task, and unsupported external commands.
+- guarded deterministic-first Gemini planner for unresolved in-domain language. The planner receives capped selected-menu context, returns read/prepare outcomes only, and cannot read/write project/session/proposal truth.
+- planner prepare intents are materialized with structured selected entity IDs and must be reproduced by the registered deterministic resolver before a proposal card is created.
 - empty-state starter cards that draft daily operations such as store closed today, working-hours changes, and sold-out/time-slot prompts without submitting.
 - composer Work on context picker for item, category, menu design, digital menu, official page, digital screens, feedback, and store settings.
+- one `+` composer tool entry for Work on and Suggestions on desktop and mobile.
+- compact manager replies and receipts in the main conversation timeline, with receipt timeline state appended in the existing completion write.
+- loaded-project menu status derived without an additional project read and reduced low-risk card policy copy.
 - compact Firestore session repository, with proposal documents reserved for server-backed or durable-ledger adapters.
 - desktop Menu Manager owner route under `/menu-manager`; public marketing remains `/ai-menu-manager`; legacy `/use-menulist/ai-menu-manager` redirects to `/menu-manager`.
 - mobile Menu Manager screen inside `MobileShell` under the More tab.
@@ -39,6 +44,10 @@ Owner-facing UI name is **Menu Manager**. Internal files and docs keep `ai-menu-
 | Action registry | `src/lib/ai-menu-manager/actionTypes.ts`, `src/lib/ai-menu-manager/actionRegistry.ts` |
 | Approval policy | `src/lib/ai-menu-manager/approvalPolicy.ts` |
 | Command resolver | `src/lib/ai-menu-manager/commandResolver.ts` |
+| Planner route | `src/app/api/ai-menu-manager/plan/route.ts` |
+| Planner context/revalidation | `src/lib/ai-menu-manager/modelRouter/plannerContext.ts` |
+| Planner card mapping | `src/lib/ai-menu-manager/modelRouter/modelRouteCard.ts` |
+| Conversation presentation | `src/lib/ai-menu-manager/presentation.ts` |
 | Composer context picker | `src/lib/ai-menu-manager/composerContext.ts` |
 | Context packet | `src/lib/ai-menu-manager/contextPacket.ts` |
 | Patch apply/verify | `src/lib/ai-menu-manager/actions/projectPatches.ts` |
@@ -86,6 +95,39 @@ Focused browser-local copy hardening result on June 30, 2026:
 - `npx tsc --noEmit --incremental false --pretty false` passed.
 - AMM-scoped `git diff --check` passed.
 
+Desktop/mobile owner-surface cross-check on July 10, 2026:
+
+- `npm run verify:ai-menu-manager` passed.
+- `npm run verify:mobile-shell-route-map` passed.
+- `npm run verify:menu-design-presentation-boundary` passed.
+- `npm run verify:owner-dashboard-today-boundary` passed.
+- `npm run verify:menu-project-editor-boundary` passed.
+- `npm run verify:dependency-freeze` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `npm run lint` passed with no warnings or errors.
+- `git diff --check` passed.
+- `/menu-manager` compiled successfully on the local Next.js server and produced no browser console warnings or errors. The available browser session was not authenticated and redirected to `/signin`, so this pass does not claim a logged-in visual or action-execution smoke.
+- Desktop and mobile cards now use action-state-specific icons, bounded scope labels, blocked repeat taps during clarification, matching before/after presentation, and consistent primary-action ordering.
+- The mobile first screen no longer shows redundant empty pending-card or receipt panels. Desktop and mobile use one concise approval trust line instead of three explanatory status chips.
+
+Conversation/planner hardening cross-check on July 10, 2026:
+
+- `npm run verify:ai-menu-manager` passed, including planner context caps, structured target preservation, deterministic action reproduction, selected-item Work on field coverage, unified composer tools, timeline receipts, and planner route admission checks.
+- A July 10 follow-up review added verifier coverage that rejects empty planner numeric values instead of coercing them to zero, and prevents active answer/clarification/unsupported card messages from appearing twice in the conversation while preserving dismissed-card history.
+- A second July 10 trust review removed `receipt_status` from the cloud planner schema, rejects unverified completion/internal implementation copy, requires read-only model outcomes to name a validated selected-context grounding target, canonicalizes grounded entity labels, validates every model clarification entity ID against selected context, and carries the validated ID through one-tap clarification on both desktop and MobileShell. This added no Firestore call or provider call.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `npm run lint` passed with no warnings or errors.
+- `npm run verify:mobile-shell-route-map` passed.
+- `npm run verify:menu-design-presentation-boundary` passed.
+- `npm run verify:owner-dashboard-today-boundary` passed.
+- `npm run verify:menu-project-editor-boundary` passed.
+- `npm run verify:dependency-freeze` passed.
+- `npm run verify:doc-npm-scripts` passed.
+- `npm run docs:check-links` passed with 0 broken links and 0 naming violations.
+- `git diff --check` passed.
+- Local `/menu-manager` and `/api/ai-menu-manager/plan` compiled on Next.js 14.2.35. An unauthenticated planner POST returned `401` before provider work, as required.
+- The available in-app and Chrome tabs were not authenticated. This pass therefore does not claim a signed-in visual owner flow or a live Gemini provider result.
+
 ---
 
 ## Cost Check
@@ -103,6 +145,10 @@ Firestore cost posture remains aligned with the AMM Firebase doc:
 - Idempotent retries return existing cards/receipts and do not duplicate compact messages, counters, pending summaries, or execution receipts.
 - Approval revalidates the current selected-project base hash before issuing a directive.
 - Command submit reuses the already-loaded session snapshot in the open AMM screen and performs one compact-session write for normal deterministic cards.
+- Exact commands, known diagnostics, local exports, unsupported external requests, and out-of-scope questions resolve before the planner and add no provider cost.
+- An unresolved in-domain planner request sends at most 32 relevant items, 18 categories, and 5 pending-card summaries. The planner route adds no selected-project/session/proposal read or write; when cost protection is enabled it uses one SAFE_MODE read, one bounded provider call, and one existing AI operation accounting write after a valid result.
+- Planner requests retain bounded native-language aliases, attach target/value guidance for exactly the current executable action list, and constrain provider responses with the SDK structured response schema before Zod and deterministic re-resolution.
+- A planner-assisted card still uses the same single compact-session command write as deterministic routing. Completion appends its receipt timeline entry in the existing one compact-session completion write.
 
 Firestore rules now allow tenant/store-scoped client DAL access to compact `aiMenuManagerSessions` and keep direct client reads/writes blocked for `aiMenuManagerProposals` and `aiMenuManagerRules`. No Firestore indexes, Storage rules, or Cloud Functions were changed in this implementation.
 
@@ -159,6 +205,7 @@ Claim fix applied:
 
 ## Open Implementation Follow-Ups
 
+- Complete an authenticated desktop and MobileShell owner smoke for one deterministic action and one unresolved in-domain planner action, including provider failure fallback and console/network review.
 - Connect image generation cards to the existing image generation job flow behind `ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS`.
 - Connect menu import/upload/link cards to existing extraction/import review APIs.
 - Connect publish cards to the existing publish/share flow.
@@ -241,3 +288,20 @@ Applied hardening:
 Scope boundary:
 
 - This is owner-runtime response-parsing hardening only. It changes no valid AMM command/inbox/proposal/completion behavior, Firestore reads/writes/deletes, project update execution, public cache invalidation, API route auth/rate limits, rules, indexes, Cloud Functions, Firebase deployment, or Vercel deployment.
+
+---
+
+## Compound Conversation And Grounding - July 10, 2026
+
+Validated runtime additions:
+
+- deterministic compound commands prepare at most four independent, non-overlapping registered project proposals.
+- connector-aware partitioning preserves entity names such as `Fish and chips`.
+- desktop and MobileShell expose grouped approval while retaining individual review/cancel controls.
+- grouped approval performs one existing project save and one compact session completion write.
+- immediate duplicate command fingerprints reuse loaded pending cards with no additional write or planner call.
+- `Restore <item>` distinguishes sold-out, hidden, and both-off states instead of always choosing visibility.
+- accepted cloud answer/diagnostic/recommendation cards retain validated entity refs and show owner-visible grounding labels.
+- aggregate route-quality counters reuse the existing compact command write and store no raw provider payload or per-event documents.
+
+Verification is owned by `npm run verify:ai-menu-manager`, TypeScript, lint, and desktop/mobile runtime smoke checks.

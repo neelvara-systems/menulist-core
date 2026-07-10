@@ -5,7 +5,7 @@
 **Internal feature name:** AI Menu Manager
 **Public launch name:** AI Menu Manager
 **In-app owner label:** Menu Manager, with AI badge where useful
-**Last Updated:** June 27, 2026
+**Last Updated:** July 10, 2026
 
 ---
 
@@ -17,7 +17,7 @@ The owner should not need to remember whether the work lives in editor, settings
 
 The product is not a generic chatbot. It is a bounded conversational operations agent for MenuList: conversation is flexible, but execution is registered, scoped, previewed, approved when needed, and applied through existing MenuList systems.
 
-It can answer MenuList-domain questions only from the loaded selected menu context. Those answers are read-only `system_context_answer` cards for menu readiness, missing photos/descriptions, unavailable or hidden entries, share readiness, and price-change guidance. They do not perform provider calls, external lookups, Firestore scans, or mutations.
+It can answer MenuList-domain questions only from the loaded selected menu context. Known questions are answered deterministically with no provider call. Only an unresolved in-domain message may use the bounded cloud planner, which receives capped selected-menu context and can return a read-only outcome or a prepare-action intent. It cannot perform an external lookup, write menu truth, choose approval policy, or provide an executable patch.
 
 Core loop:
 
@@ -32,6 +32,14 @@ Owner intent
 
 Conversation is flexible. Execution is registered.
 
+Smoothness rules:
+
+- One message may prepare multiple independent selected-project changes, but every segment must pass the same registered action, patch allowlist, approval, scope, and stale-base rules as a single command.
+- Related cards may expose one grouped approval only when their patches do not overlap; grouped approval uses one existing project save and one compact completion write.
+- A recent duplicate submit must return the already prepared pending card group from loaded session state instead of creating duplicate messages, cards, provider calls, or writes.
+- `Restore <item>` means availability when the item is sold out, visibility when it is hidden, and a one-tap clarification when both states are off.
+- Accepted model answers must retain validated selected-context grounding and show the grounded owner-facing entity names on the answer card.
+
 ---
 
 ## Product Boundary
@@ -41,11 +49,11 @@ Conversation is flexible. Execution is registered.
 - Chat-like owner input for menu operations.
 - Read-only selected-menu answers for operational questions such as missing photos, unavailable items, menu readiness, and share readiness.
 - Card-based proposals and receipts.
-- Text, upload, click, and voice-input-ready command intake.
+- Text, upload, and click command intake. The voice flag remains disabled until a verified speech-to-command input exists.
 - Action registry for supported MenuList operations.
 - Manual UI parity for every action.
 - Store selector and project selector inside AMM so commands run in the same selected store/project context as current manual flows.
-- Disabled-by-default model-router contract for future Gemini/Gemma-compatible planners. Model output can only choose router outcomes, targets, values, or read/prepare tool names; MenuList remains the validation and execution authority.
+- Deterministic-first router plus a guarded Gemini planner for unresolved in-domain language. The planner receives bounded native-language aliases and compact target/value contracts for current executable actions, and its result must match a structured response schema. Model output can only choose answer, diagnostic, recommendation, clarification, prepare-action, or unsupported outcomes; it cannot originate receipts, completion states, patches, or execution. MenuList remains the validation and execution authority.
 - Approval, edit, cancel, scope, time, and rollback controls.
 - Compact session and proposal history.
 - Existing image generation, extraction, project save, design setting, public cache, MOL, and multi-outlet paths.
@@ -56,7 +64,8 @@ Conversation is flexible. Execution is registered.
 - A generic "ask anything" chatbot.
 - Live weather, news, sports, stock, trivia, or general web-answering questions.
 - Provider-backed open-ended consulting answers without a registered read-only or action adapter.
-- Cloud or local model providers by default. The deterministic selected-project router remains the current cost-safe path until provider flags and adapters are intentionally enabled.
+- Provider calls for exact deterministic commands, known diagnostics, local exports, external-platform boundaries, or out-of-scope questions.
+- Local/on-device model assist until device/browser behavior is separately verified.
 - A second menu data model.
 - Always-on full transcript storage.
 - Hidden AI writes to live public menu truth.
@@ -161,9 +170,9 @@ The first screen should not be an empty generic chat screen. It should show:
 - visible store selector and project selector before command execution.
 - current menu status.
 - pending approvals.
-- bottom composer for text, upload, and voice-ready input.
+- bottom composer for text plus one `+` tool menu. Voice control remains hidden while voice input is disabled.
 - empty-state starter cards for frequent daily work, such as store closed today, working-hours changes, and a contextual sold-out item. If no item context exists, the third starter can fall back to time-slot work. Starter cards fill the composer or open the second-layer suggestion choice; they do not submit.
-- separate composer tools for Work on and Suggestions.
+- one `+` composer tool entry containing Work on and Suggestions.
 - Work on context picker for item, category, menu design, digital menu, official page, digital screens, feedback, and store settings. Item context supports multi-select so commands like "increase price by 10" can become a selected-item bulk price card without the owner retyping item names. Item/category entity choices must stay compact; search is shown only when the list is long or the owner is actively searching.
 - contextual suggestion sheet for common work; settings-style suggestions can open a second layer of exact options, and final suggestions fill the composer without submitting automatically.
 
@@ -186,7 +195,9 @@ The first screen should not be an empty generic chat screen. It should show:
 13. Work on and Suggestions are mutually exclusive composer guidance surfaces. Opening either closes the other on desktop and mobile.
 14. Commands default to the selected store and selected project shown on the AMM screen.
 15. AMM must not silently apply project-level work to all projects; cross-project or all-store scope requires an explicit scope card and owner approval.
-16. Clarification options may resolve the pending clarification into the next preview/proposal card in one tap. They must not approve, execute, publish, or persist menu truth by themselves. Normal suggestion and starter choices remain draft-only.
+16. Clarification options may resolve the pending clarification into the next preview/proposal card in one tap. Item/category choices carry the validated selected-context entity ID into that next resolver pass instead of relying only on display-name text. They must not approve, execute, publish, or persist menu truth by themselves. Normal suggestion and starter choices remain draft-only.
+17. Deterministic routing runs before any provider call. A model-planned mutation must be reproduced by the registered deterministic resolver against validated selected-menu entity IDs.
+18. Compact manager replies and receipts belong in the conversation timeline. Receipt timeline state is appended in the existing completion write, not a separate document or write.
 
 ---
 
@@ -362,6 +373,11 @@ The data model must:
 - avoid always-on listeners.
 - paginate history.
 - use existing project/store docs as source of truth.
+- keep exact commands and known answers provider-free.
+- cap unresolved-language planner context to relevant selected-menu summaries and do not re-read the selected project in the planner route.
+- preserve bounded native-language item/category names and aliases when ranking planner context.
+- constrain planner output to the current executable action allowlist and known router/value shape through the provider structured response schema.
+- require planner targets to exist in the selected context and re-run planned prepare actions through deterministic MenuList resolution.
 
 ---
 
@@ -377,6 +393,8 @@ Mobile supports:
 - restore cards.
 - staff photo approvals.
 - receipts.
+- one `+` composer sheet for Work on and Suggestions.
+- pending cards above the composer and compact receipts inline in the conversation.
 - light manual task completion.
 
 Mobile limits:

@@ -25,7 +25,7 @@ import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { resolveAnswerlatticeSessionScope } from './sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from './sessionScope';
 
 export type AnswerlatticeAccessContext = {
     canUseManagement: boolean;
@@ -46,11 +46,6 @@ export type AnswerlatticeAccessContext = {
     };
 };
 
-const isPositiveId = (value: unknown) => {
-    const numberValue = Number(value);
-    return Number.isSafeInteger(numberValue) && numberValue > 0;
-};
-
 export const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
     return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
@@ -68,6 +63,23 @@ const isPlatformAdminSession = (session: any) => {
 };
 
 const normalizeEmail = (value: unknown) => String(value || '').toLowerCase().trim();
+
+const normalizeScopeIdList = (values: unknown[]): number[] => (
+    values
+        .map((value) => normalizeAnswerlatticeScopeDocumentId(value))
+        .filter((value): value is number => value !== null)
+);
+
+const getUserStoreIds = (userData: Record<string, any>): number[] => {
+    if (Array.isArray(userData.storeIds)) {
+        return normalizeScopeIdList(userData.storeIds);
+    }
+    if (Array.isArray(userData.stores)) {
+        return normalizeScopeIdList(userData.stores.map((store: any) => store?.storeId ?? store?.sId));
+    }
+    const storeId = normalizeAnswerlatticeScopeDocumentId(userData.storeId ?? userData.sId);
+    return storeId ? [storeId] : [];
+};
 
 const serializeRole = (
     role: any,
@@ -128,7 +140,12 @@ export const normalizeAnswerlatticeRolesForStore = (
             const normalized = serializeRole(rawRole, defaultRole, tId, sId);
             const before = JSON.stringify(rawRole?.permissions || {});
             const after = JSON.stringify(normalized.permissions);
-            if (before !== after || rawRole?.pId !== PRODUCT_IDS.ANSWERLATTICE || Number(rawRole?.tId) !== tId || Number(rawRole?.sId) !== sId) {
+            if (
+                before !== after
+                || rawRole?.pId !== PRODUCT_IDS.ANSWERLATTICE
+                || normalizeAnswerlatticeScopeDocumentId(rawRole?.tId) !== tId
+                || normalizeAnswerlatticeScopeDocumentId(rawRole?.sId) !== sId
+            ) {
                 changed = true;
             }
             rolesById.set(roleId, normalized);
@@ -163,8 +180,11 @@ export const ensureAnswerlatticeRolesForStore = async (
     storeData: Record<string, any>,
     actorEmail?: string,
 ) => {
-    const tId = Number(storeData?.tenantId || storeData?.tId);
-    const sId = Number(storeData?.storeId || storeData?.sId || storeRef.id);
+    const tId = normalizeAnswerlatticeScopeDocumentId(storeData?.tenantId ?? storeData?.tId);
+    const sId = normalizeAnswerlatticeScopeDocumentId(storeData?.storeId ?? storeData?.sId ?? storeRef.id);
+    if (!tId || !sId) {
+        throw new Error('answerlattice_store_scope_invalid');
+    }
     const normalized = normalizeAnswerlatticeRolesForStore(storeData?.answerlatticeRoles, tId, sId, actorEmail);
 
     if (normalized.changed) {
@@ -202,8 +222,16 @@ export const hasAnswerlatticePermission = (
 export async function getAnswerlatticeAccessContext(session: any): Promise<AnswerlatticeAccessContext | null> {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) return null;
 
-    const scope = resolveAnswerlatticeSessionScope(session);
-    if (!scope || !isPositiveId(scope.tenantId) || !isPositiveId(scope.storeId)) return null;
+    const resolvedScope = resolveAnswerlatticeSessionScope(session);
+    if (!resolvedScope) return null;
+    const tenantId = normalizeAnswerlatticeScopeDocumentId(resolvedScope.tenantId);
+    const storeId = normalizeAnswerlatticeScopeDocumentId(resolvedScope.storeId);
+    if (!tenantId || !storeId) return null;
+    const scope = {
+        tenantId,
+        storeId,
+        role: resolvedScope.role,
+    };
 
     const db = getAnswerlatticeDb();
     if (!db) return null;
@@ -213,8 +241,8 @@ export async function getAnswerlatticeAccessContext(session: any): Promise<Answe
     if (!storeSnap.exists) return null;
 
     const storeData = storeSnap.data() || {};
-    const storeTenantId = Number(storeData.tenantId || storeData.tId);
-    if (storeTenantId !== Number(scope.tenantId)) return null;
+    const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+    if (storeTenantId !== scope.tenantId) return null;
 
     const sessionEmail = normalizeEmail(session?.user?.email);
     const userSnapshot = sessionEmail
@@ -230,18 +258,14 @@ export async function getAnswerlatticeAccessContext(session: any): Promise<Answe
     if (!isPlatformAdmin) {
         if (!userDoc) return null;
         if (userData.active === false || userData.deleted === true || userData.authDisabled === true) return null;
-        if (Number(userData.tenantId || userData.tId) !== Number(scope.tenantId)) return null;
-        const userStoreIds = Array.isArray(userData.storeIds)
-            ? userData.storeIds.map(Number)
-            : Array.isArray(userData.stores)
-                ? userData.stores.map((store: any) => Number(store?.storeId))
-                : [Number(userData.storeId || userData.sId)];
-        if (!userStoreIds.includes(Number(scope.storeId))) return null;
+        if (normalizeAnswerlatticeScopeDocumentId(userData.tenantId ?? userData.tId) !== scope.tenantId) return null;
+        const userStoreIds = getUserStoreIds(userData);
+        if (!userStoreIds.includes(scope.storeId)) return null;
     }
 
     const roles = await ensureAnswerlatticeRolesForStore(storeRef, storeData, sessionEmail || 'system');
     const storeRole = Array.isArray(userData.stores)
-        ? userData.stores.find((store: any) => Number(store?.storeId) === Number(scope.storeId))?.role
+        ? userData.stores.find((store: any) => normalizeAnswerlatticeScopeDocumentId(store?.storeId ?? store?.sId) === scope.storeId)?.role
         : undefined;
     const currentRoleId = isPlatformAdmin
         ? DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER
@@ -259,8 +283,8 @@ export async function getAnswerlatticeAccessContext(session: any): Promise<Answe
         permissions,
         roles,
         scope: {
-            tenantId: Number(scope.tenantId),
-            storeId: Number(scope.storeId),
+            tenantId: scope.tenantId,
+            storeId: scope.storeId,
         },
         storeName: String(storeData.productName || storeData.name || `Workspace ${scope.storeId}`),
         user: {

@@ -719,7 +719,7 @@ Before going live:
 ## 🔗 Related Documentation
 
 - [OWASP File Upload Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html)
-- [assessment-05-security.md](../../projects/Assessments/assessment-05-security.md#3-no-file-upload-validation-) - Issue #3
+- [assessment-05-security.md](../../projects/assessments/assessment-05-security.md#3-no-file-upload-validation-) - Issue #3
 - [5-refactor-file-validation.md](../../projects/development_done/5-refactor-file-validation.md) - Consolidation details
 
 ---

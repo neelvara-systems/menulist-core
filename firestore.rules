@@ -435,6 +435,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Owner referrals — server-only attribution, settlement, and audit state.
+    // Owners receive a bounded coarse status through the protected API only.
+    match /ownerReferrals/{referralId} {
+      allow read, write: if false;
+    }
+
     // Topups — Server-side writes, tenant-scoped owner reads
     match /topups/{topupId} {
       allow read: if isAuthenticated()

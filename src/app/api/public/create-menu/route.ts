@@ -25,12 +25,17 @@ import {
 import { MenuIntakeFileInput } from '@data/shared/menuIntakeIdentity';
 import { firestoreAdmin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import {
+    normalizeGrowthAcquisitionAttribution,
+    type GrowthAcquisitionAttribution,
+} from '@lib/growth/acquisitionAttribution';
+import {
     acquireMenuLinkSource,
     getMenuLinkImportClientMessage,
     MenuLinkImportError,
 } from '@lib/menu-link-import/sourceAcquisition';
 import { analyzeMenuIntakeIdentity, isSupportedMenuIntakeIdentityMimeType } from '@lib/menu-extraction/menuIntakeIdentityServer';
 import { checkSafeMode } from '@lib/ops/safeMode';
+import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedFormDataBody, readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -117,6 +122,11 @@ async function deletePublicMenuEntryDraft(
 }
 
 const PublicMenuLinkSchema = z.object({
+    growthAcquisition: z.object({
+        source: z.string().max(80),
+        medium: z.string().max(80),
+        campaign: z.string().max(80),
+    }).optional().nullable(),
     permissionConfirmed: z.literal(true),
     sourceType: z.literal('menu_link'),
     url: z.string().min(8).max(4000),
@@ -350,7 +360,12 @@ async function createPublicDraftExtractionJob(draftToken: string, source: Public
     return jobRef.id;
 }
 
-async function createImageDraft(req: NextRequest, userId: string, imageFile: File) {
+async function createImageDraft(
+    req: NextRequest,
+    userId: string,
+    imageFile: File,
+    growthAcquisition: GrowthAcquisitionAttribution | null,
+) {
     if (!ALLOWED_TYPES.has(imageFile.type)) {
         return NextResponse.json(
             { success: false, error: 'Invalid file type. Please upload a JPEG, PNG, or WebP image.' },
@@ -424,6 +439,7 @@ async function createImageDraft(req: NextRequest, userId: string, imageFile: Fil
             fileType: imageFile.type,
             fileSize: imageFile.size,
             sourceType: 'image_upload',
+            ...(growthAcquisition ? { growthAcquisition } : {}),
             contentHash,
             extractedData: null,
             extractionStatus: 'pending' as const,
@@ -452,6 +468,12 @@ async function createImageDraft(req: NextRequest, userId: string, imageFile: Fil
             size: imageFile.size,
             storagePath,
         }, imageUrl, userId);
+
+        await recordFounderGrowthEvent({
+            attribution: growthAcquisition,
+            draftId: draftToken,
+            stage: 'draft_created',
+        });
 
         logSecurityDiagnostic(PUBLIC_MENU_ENTRY_DRAFT_CREATED, {
             ...buildPublicMenuEntryLogContext({ draftToken, ipHash, jobId, sourceType: 'image_upload', userId }),
@@ -501,6 +523,7 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
     }
 
     const requestedSourceUrl = validation.data.url.trim();
+    const growthAcquisition = normalizeGrowthAcquisitionAttribution(validation.data.growthAcquisition);
     const sourceInputHash = hashString(requestedSourceUrl);
     const reusableDraft = await findReusableDraftForUser(userId, { sourceInputHash });
     if (reusableDraft) {
@@ -570,6 +593,7 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
             fileType: acquisition.artifactContentType,
             fileSize: acquisition.size,
             sourceType: 'menu_link_import',
+            ...(growthAcquisition ? { growthAcquisition } : {}),
             contentHash: acquisition.contentHash,
             sourceInputHash,
             sourceMetadata: {
@@ -618,6 +642,12 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
             sourceUrl: requestedSourceUrl,
             storagePath,
         }, sourceArtifactUrl, userId);
+
+        await recordFounderGrowthEvent({
+            attribution: growthAcquisition,
+            draftId: draftToken,
+            stage: 'draft_created',
+        });
 
         logSecurityDiagnostic(PUBLIC_MENU_ENTRY_LINK_DRAFT_CREATED, {
             ...buildPublicMenuEntryLogContext({ draftToken, ipHash, jobId, sourceKind: acquisition.sourceKind, userId }),
@@ -708,6 +738,11 @@ export const POST = withAuth(async (req: NextRequest, session) => {
 
         const formData = formDataResult.formData;
         const imageFile = formData.get('image') as File | null;
+        const growthAcquisition = normalizeGrowthAcquisitionAttribution({
+            source: formData.get('growthAcquisitionSource'),
+            medium: formData.get('growthAcquisitionMedium'),
+            campaign: formData.get('growthAcquisitionCampaign'),
+        });
 
         if (!imageFile) {
             return NextResponse.json(
@@ -716,7 +751,7 @@ export const POST = withAuth(async (req: NextRequest, session) => {
             );
         }
 
-        return createImageDraft(req, userId, imageFile);
+        return createImageDraft(req, userId, imageFile, growthAcquisition);
     } catch (error) {
         logSecurityFailure(PUBLIC_MENU_ENTRY_UPLOAD_FAILED, error, buildPublicMenuEntryLogContext({ userId }));
         return NextResponse.json(

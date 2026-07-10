@@ -64,7 +64,7 @@ The following files have been **consolidated** into this folder:
 
 | Legacy File                                            | Status                    |
 | ------------------------------------------------------ | ------------------------- |
-| `Assessments/assessment-03-editor.md`                  | → Consolidated            |
+| `assessments/assessment-03-editor.md`                  | → Consolidated            |
 | `04-DATA-EDITOR.md`                                    | → Consolidated            |
 | `development_done/3-implementation-editor-complete.md` | → Consolidated            |
 | `Editor/` folder (8 files)                             | → Referenced in \_impl.md |

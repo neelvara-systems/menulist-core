@@ -1,6 +1,6 @@
 # Asset Brief - menulist.home.og.official-source
 
-**Generated:** 2026-05-31
+**Generated:** 2026-07-10
 **Brand:** menulist
 **Status:** generated
 **Approval:** automatic
@@ -54,6 +54,7 @@ Provide a share preview derived from the official-source homepage visual.
 
 - packages/asset-factory/brand/menulist.asset-context.md: MenuList Asset Context
 - __docs__/main-website/main-website_image-assets.md: Website Image & Asset Requirements
+- __docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md: MenuList Coordinated Launch Pack
 - scripts/website-assets/generate-stage6-assets.mjs: Source file
 - public/images/website/menulist-hero-official-source.webp: Source file
 

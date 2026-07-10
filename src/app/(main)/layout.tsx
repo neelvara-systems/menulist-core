@@ -62,12 +62,17 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       <LocalisationProvider locale={locale}>
         <ReduxStoreProvider>
             <SessionProvider session={session}>
-            {/* Monitor session expiry and show friendly modal when session expires */}
-            <SessionExpiryMonitor />
-            <OwnerAppUpdatePrompt />
-            <MenuListAnswerlatticeWidgetEmbed />
             <NoSSRProvider>
-              <AntdLayoutWrapper>
+              <AntdLayoutWrapper
+                globalOverlays={(
+                  <>
+                    {/* Monitor session expiry and show friendly modal when session expires */}
+                    <SessionExpiryMonitor />
+                    <OwnerAppUpdatePrompt />
+                    <MenuListAnswerlatticeWidgetEmbed />
+                  </>
+                )}
+              >
                 <OwnerPermissionGuard>
                   {children}
                 </OwnerPermissionGuard>

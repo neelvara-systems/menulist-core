@@ -54,9 +54,9 @@ const demo = {
   url: 'thedailyplate.menulist.online',
   updated: 'Updated today',
   activity: [
-    ['Menu opens', '186', '+14%'],
-    ['Official page views', '74', '+8%'],
-    ['QR and link activity', '39', 'Stable'],
+    ['Menu activity', 'Available', 'Current'],
+    ['Official page', 'Visible', 'Ready'],
+    ['QR and link activity', 'Available', 'Ready'],
   ],
 };
 
@@ -353,7 +353,7 @@ function drawHealthChecks(ctx, x, y, w) {
 function drawBusinessHealthAsset() {
   const { canvas, ctx } = makeCanvas(1280, 900, C.page);
   text(ctx, 'Business Health stable state', 72, 58, { size: 42, weight: 800 });
-  text(ctx, 'A calm owner view for freshness, customer activity, locations and safe handoff when action is needed.', 74, 116, {
+  text(ctx, 'A calm owner view for freshness, public status, locations and safe handoff when action is needed.', 74, 116, {
     size: 20,
     color: C.muted,
     maxWidth: 800,
@@ -373,8 +373,8 @@ function drawBusinessHealthAsset() {
     const x = panelX + i * 218;
     rounded(ctx, x, app.y + 96, 196, 116, 20, '#f8fafc', C.border);
     text(ctx, demo.activity[i][0], x + 18, app.y + 118, { size: 13, color: C.muted, weight: 800 });
-    text(ctx, demo.activity[i][1], x + 18, app.y + 151, { size: 32, weight: 800 });
-    text(ctx, demo.activity[i][2], x + 126, app.y + 162, { size: 13, color: C.green, weight: 800 });
+    text(ctx, demo.activity[i][1], x + 18, app.y + 151, { size: 22, weight: 800 });
+    text(ctx, demo.activity[i][2], x + 18, app.y + 184, { size: 11, color: C.green, weight: 800 });
   }
 
   rounded(ctx, panelX, app.y + 246, 326, 284, 22, '#f8fafc', C.border);
@@ -401,7 +401,7 @@ function drawBusinessHealthAsset() {
 function drawOwnerPhoneDashboardAsset() {
   const { canvas, ctx } = makeCanvas(900, 1400, C.page);
   text(ctx, 'Owner phone dashboard', 86, 62, { size: 38, weight: 800 });
-  text(ctx, 'The owner can see today, share, health and customer activity without opening a desktop dashboard.', 88, 116, {
+  text(ctx, 'The owner can see menu status, share, health and customer links without opening a desktop dashboard.', 88, 116, {
     size: 19,
     color: C.muted,
     maxWidth: 660,
@@ -418,20 +418,20 @@ function drawOwnerPhoneDashboardAsset() {
   text(ctx, 'Menu state is stable', box.x + 50, box.y + 164, { size: 13, weight: 800, color: C.greenDark });
 
   const cardW = (box.w - 68) / 2;
-  const metrics = [
-    ['Menu opens', '186'],
-    ['Page views', '74'],
-    ['QR activity', '39'],
-    ['Reports', '0'],
+  const publicStates = [
+    ['Menu', 'Current'],
+    ['Official page', 'Visible'],
+    ['QR and link', 'Ready'],
+    ['Reports', 'None'],
   ];
-  for (let i = 0; i < metrics.length; i += 1) {
+  for (let i = 0; i < publicStates.length; i += 1) {
     const col = i % 2;
     const row = Math.floor(i / 2);
     const x = box.x + 26 + col * (cardW + 16);
     const y = box.y + 226 + row * 116;
     rounded(ctx, x, y, cardW, 96, 18, C.white, C.border);
-    text(ctx, metrics[i][0], x + 18, y + 18, { size: 12, color: C.muted, weight: 800 });
-    text(ctx, metrics[i][1], x + 18, y + 48, { size: 26, weight: 800 });
+    text(ctx, publicStates[i][0], x + 18, y + 18, { size: 12, color: C.muted, weight: 800 });
+    text(ctx, publicStates[i][1], x + 18, y + 50, { size: 18, weight: 800 });
   }
 
   rounded(ctx, box.x + 26, box.y + 484, box.w - 52, 120, 20, C.white, C.border);
@@ -441,11 +441,18 @@ function drawOwnerPhoneDashboardAsset() {
   text(ctx, 'Copy link', box.x + 113, box.y + 580, { size: 12, color: C.white, weight: 800, align: 'center' });
 
   rounded(ctx, box.x + 26, box.y + 632, box.w - 52, 156, 20, '#f8fafc', C.border);
-  text(ctx, 'Today', box.x + 50, box.y + 658, { size: 17, weight: 800 });
-  const actions = ['Viewed menu', 'Tapped directions', 'Opened WhatsApp'];
+  text(ctx, 'Public links', box.x + 50, box.y + 658, { size: 17, weight: 800 });
+  const actions = ['Public menu', 'Directions', 'WhatsApp'];
   for (let i = 0; i < actions.length; i += 1) {
     text(ctx, actions[i], box.x + 50, box.y + 698 + i * 30, { size: 13, color: C.muted, weight: 700 });
-    rounded(ctx, box.x + 200, box.y + 702 + i * 30, 90 - i * 22, 8, 4, i === 0 ? C.blue : '#bfdbfe');
+    pill(ctx, 'Ready', box.x + 212, box.y + 689 + i * 30, {
+      fill: i === 0 ? C.blueSoft : C.white,
+      stroke: i === 0 ? '#bfdbfe' : C.border,
+      color: i === 0 ? C.blueDark : C.muted,
+      size: 10,
+      padX: 8,
+      padY: 4,
+    });
   }
 
   const navY = box.y + box.h - 72;
@@ -459,7 +466,7 @@ function drawOwnerPhoneDashboardAsset() {
     });
   });
 
-  pill(ctx, 'Dummy data', 148, 1190, { fill: C.white, stroke: C.border, color: C.muted, size: 14 });
+  pill(ctx, 'Fictional demo data', 120, 1190, { fill: C.white, stroke: C.border, color: C.muted, size: 14 });
   pill(ctx, 'Aligned with owner mobile outputs', 310, 1190, { fill: C.greenSoft, stroke: '#bbf7d0', color: C.greenDark, size: 14 });
   return canvas;
 }
@@ -484,7 +491,7 @@ async function main() {
   const note = [
     '# Stage 8 Product Proof Demo Asset Pack',
     '',
-    'Generated: 2026-07-06',
+    'Generated: 2026-07-10',
     '',
     'This pack adds market-first product proof images for the current MenuList website pass. The assets use fictional demo data for The Daily Plate and are not real customer screenshots, testimonials, customer proof, or live usage evidence.',
     '',
@@ -495,9 +502,9 @@ async function main() {
     '## Alignment Notes',
     '',
     '- AI Menu Manager visual mirrors the owner message -> prepared card -> approval -> receipt contract.',
-    '- Business Health visual mirrors the stable latest-check state, No action needed language, owner activity, and safe handoff posture.',
-    '- Owner phone dashboard visual mirrors the mobile owner output pattern: Today, health state, share link, activity, and tab navigation.',
-    '- All metrics, business details, menu items, and URLs are fictional demo values.',
+    '- Business Health visual mirrors the stable latest-check state, No action needed language, public-status availability, and safe handoff posture.',
+    '- Owner phone dashboard visual mirrors the mobile owner output pattern: health state, share link, public-link readiness, and tab navigation.',
+    '- Business details, menu items, prices, and URLs are fictional demo values. No invented activity counts or performance percentages are shown.',
     '',
     '## Public Usage Rule',
     '',

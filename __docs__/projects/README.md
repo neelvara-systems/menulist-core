@@ -44,7 +44,7 @@ Feature-specific documentation in standardized format (`_spec.md`, `_impl.md`, `
 
 1. Start with [00-overview.md](./00-overview.md) for architecture and concepts
 2. Browse feature folders above for detailed spec/implementation/marketing docs
-3. Review [Assessments/](./Assessments/) for production readiness evaluations
+3. Review [assessments/](./assessments/) for production readiness evaluations
 4. Reference [13-types-interfaces.md](./13-types-interfaces.md) for type definitions
 5. Check [12-api-routes.md](./12-api-routes.md) for API contracts
 
@@ -55,9 +55,9 @@ Feature-specific documentation in standardized format (`_spec.md`, `_impl.md`, `
 | Folder                                          | Purpose                                      | Contents                                |
 | ----------------------------------------------- | -------------------------------------------- | --------------------------------------- |
 | **Feature folders** (e.g., `data-editor/`)      | Consolidated feature documentation           | `_spec.md`, `_impl.md`, `_marketing.md` |
-| **[`/Assessments/`](./Assessments/)**           | Historical readiness assessments per feature | `assessment-01-upload.md`               |
+| **[`/assessments/`](./assessments/)**           | Historical readiness assessments per feature | `assessment-01-upload.md`               |
 | **[`/development_done/`](./development_done/)** | Completed development documentation          | Implementation completion logs          |
-| **[`/Editor/`](./Editor/)**                     | Detailed editor sub-component docs           | Views, modals, hooks                    |
+| **[`/editor/`](./editor/)**                     | Detailed editor sub-component docs           | Views, modals, hooks                    |
 | **`/` (Root)**                                  | Cross-cutting technical documentation        | Database, API, Types, Utilities         |
 
 ---
@@ -74,30 +74,30 @@ Feature-specific documentation in standardized format (`_spec.md`, `_impl.md`, `
 | [13-types-interfaces.md](./13-types-interfaces.md) | TypeScript definitions, type guards, examples       | ✅ Complete |
 | [14-utilities.md](./14-utilities.md)               | Helper functions, utilities                         | ✅ Complete |
 
-### **Historical Readiness Assessments**
+### **Historical Readiness assessments**
 
 #### **Phase 1: Core Infrastructure** ✅ COMPLETE
 
 | File                                                                       | Focus Area                          | Priority     | Status                  |
 | -------------------------------------------------------------------------- | ----------------------------------- | ------------ | ----------------------- |
 | [production-readiness-assessment.md](./production-readiness-assessment.md) | **Historical Master Assessment & Action Plan** | Historical | Current launch approval requires active audit/runbook evidence |
-| [assessment-01-upload.md](./Assessments/assessment-01-upload.md)                       | File Upload & Processing Issues     | 🔴 Critical  | ✅ **COMPLETED** Nov 13 |
-| [assessment-02-ai-extraction.md](./Assessments/assessment-02-ai-extraction.md)         | AI Cost Control & Quality           | 🔴 Critical  | ✅ **COMPLETED** Nov 14 |
-| [assessment-03-editor.md](./Assessments/assessment-03-editor.md)                       | Data Editor UX & Safety             | 🔴 Critical  | ✅ **COMPLETED** Nov 14 |
-| [assessment-04-performance.md](./Assessments/assessment-04-performance.md)             | Performance Optimization            | 🟢 Optimized | ✅ **COMPLETED** Nov 19 |
-| [assessment-05-security.md](./Assessments/assessment-05-security.md)                   | Security Hardening                  | 🟢 Secure    | ✅ **COMPLETED** Nov 19 |
-| [assessment-06-ux-usability.md](./Assessments/assessment-06-ux-usability.md)           | User Experience & Interface         | 🟢 Polished  | ✅ **COMPLETED** Nov 19 |
+| [assessment-01-upload.md](./assessments/assessment-01-upload.md)                       | File Upload & Processing Issues     | 🔴 Critical  | ✅ **COMPLETED** Nov 13 |
+| [assessment-02-ai-extraction.md](./assessments/assessment-02-ai-extraction.md)         | AI Cost Control & Quality           | 🔴 Critical  | ✅ **COMPLETED** Nov 14 |
+| [assessment-03-editor.md](./assessments/assessment-03-editor.md)                       | Data Editor UX & Safety             | 🔴 Critical  | ✅ **COMPLETED** Nov 14 |
+| [assessment-04-performance.md](./assessments/assessment-04-performance.md)             | Performance Optimization            | 🟢 Optimized | ✅ **COMPLETED** Nov 19 |
+| [assessment-05-security.md](./assessments/assessment-05-security.md)                   | Security Hardening                  | 🟢 Secure    | ✅ **COMPLETED** Nov 19 |
+| [assessment-06-ux-usability.md](./assessments/assessment-06-ux-usability.md)           | User Experience & Interface         | 🟢 Polished  | ✅ **COMPLETED** Nov 19 |
 
 #### **Phase 2: Core Features** ✅ 67% COMPLETE
 
 | File                                                                                 | Focus Area                         | Priority    | Status                  |
 | ------------------------------------------------------------------------------------ | ---------------------------------- | ----------- | ----------------------- |
-| [assessment-07-ai-image-generation.md](./Assessments/assessment-07-ai-image-generation.md)       | AI Image Generation & Cost Control | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
-| [assessment-08-image-editing.md](./Assessments/assessment-08-image-editing.md)                   | Image Upload, Editing & Management | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
-| [assessment-09-description-generation.md](./Assessments/assessment-09-description-generation.md) | AI Description Generation          | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
-| [assessment-10-b2b-view.md](./Assessments/assessment-10-b2b-view.md)                             | B2B API Integration & JSON Editor  | 🟡 Medium   | ⏳ **NEEDS REVIEW**     |
-| [assessment-11-b2c-view.md](./Assessments/assessment-11-b2c-view.md)                             | B2C Menu Builder & Customer UI     | 🔴 Critical | ⏳ **NEEDS REVIEW**     |
-| [assessment-12-project-management.md](./Assessments/assessment-12-project-management.md)         | Project CRUD & Multi-Tenant Safety | 🔴 Critical | ✅ **COMPLETED** Nov 20 |
+| [assessment-07-ai-image-generation.md](./assessments/assessment-07-ai-image-generation.md)       | AI Image Generation & Cost Control | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
+| [assessment-08-image-editing.md](./assessments/assessment-08-image-editing.md)                   | Image Upload, Editing & Management | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
+| [assessment-09-description-generation.md](./assessments/assessment-09-description-generation.md) | AI Description Generation          | 🟡 Medium   | ✅ **COMPLETED** Nov 20 |
+| [assessment-10-b2b-view.md](./assessments/assessment-10-b2b-view.md)                             | B2B API Integration & JSON Editor  | 🟡 Medium   | ⏳ **NEEDS REVIEW**     |
+| [assessment-11-b2c-view.md](./assessments/assessment-11-b2c-view.md)                             | B2C Menu Builder & Customer UI     | 🔴 Critical | ⏳ **NEEDS REVIEW**     |
+| [assessment-12-project-management.md](./assessments/assessment-12-project-management.md)         | Project CRUD & Multi-Tenant Safety | 🔴 Critical | ✅ **COMPLETED** Nov 20 |
 
 **Latest Update**: Nov 20, 2025 - Phase 1 complete (100%). Phase 2 now 67% complete (4/6 assessments done). Remaining: B2B View and B2C View assessments. All critical AI security features implemented. 🎯
 

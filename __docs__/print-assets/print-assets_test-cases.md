@@ -1,7 +1,7 @@
 # Print Assets Test Cases
 
 **Status:** Implemented
-**Last Updated:** June 21, 2026
+**Last Updated:** July 9, 2026
 
 ## Automated
 
@@ -43,7 +43,7 @@
 | Format actions | Single printable assets expose separate PDF and image download actions from the modal or sheet. |
 | Desktop customization | Supported single assets open **Customize in editor**, keep QR/link source layers locked, keep MenuList attribution out of the editor canvas, and download edited Image/Print PDF output with runtime plan-aware attribution. |
 | Reprint guidance | Explains that content/price updates do not require reprint and lists the cases that do. |
-| Mobile More | Assets opens inside More sub-screen. |
+| Mobile More | `QR and print assets` opens Assets inside the More sub-screen. |
 | Mobile Share | Assets shortcut opens mobile sub-screen without reload. |
 | Mobile Assets to Print Menu | Print Menu opens by shell callback without route reload. |
 | Mobile Menu to Print Menu | Menu command opens Print Menu by shell callback after pending saves, without route reload. |

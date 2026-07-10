@@ -4,11 +4,13 @@ They just want customers to see the correct menu, correct prices, correct hours,
 
 But in real life, public information spreads everywhere: QR codes, WhatsApp, Instagram, old PDFs, print, and staff phones.
 
+Owners also should not have to type the whole menu into another tool.
+
+With MenuList, start by uploading photos of the menu or service list you already have. MenuList prepares the customer version for review.
+
 That is why MenuList is built around one approved customer link.
 
-Start with the list your business already has. Review the version customers will see. Publish it after approval.
-
-Then keep QR, page, print, and customer actions tied to that approved version.
+Review the version customers will see. Publish it after approval. Then keep QR, page, print, and customer actions tied to that approved version.
 
 When something changes, MenuList should reduce repeated cleanup, not create another dashboard to manage.
 

@@ -532,7 +532,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         : { color: 'default', label: tShare('feedbackOff') };
 
     const moduleItems: MoreListItem[] = [
-        ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color={token.colorPrimary} size={20} />, keywords: ['business status', 'public status', 'dashboard', 'needs attention'], label: 'Business status', description: 'What customers can see and what needs attention.', onClick: () => openSubScreen('dashboard') }] : []),
+        ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color={token.colorPrimary} size={20} />, keywords: ['public readiness', 'business status', 'public status', 'dashboard', 'needs attention'], label: 'Public readiness', description: 'Menu, hours, customer link, feedback, and activity in one check.', onClick: () => openSubScreen('dashboard') }] : []),
         ...(canOpenMenuSetupShortcut && menuSetupSummary ? [{
             key: 'menuSetup',
             icon: <LuListChecks color={token.colorPrimary} size={20} />,
@@ -547,16 +547,16 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             },
             onClick: openMenuSetupShortcut,
         }] : []),
-        ...(FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && canViewAnalytics ? [{ key: 'businessHealth', icon: <LuActivity color={token.colorSuccess} size={20} />, keywords: ['business health', 'status', 'checks'], label: 'Business Health', description: 'Public checks and items that need attention.', onClick: () => openSubScreen('businessHealth') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && canViewAnalytics ? [{ key: 'businessHealth', icon: <LuActivity color={token.colorSuccess} size={20} />, keywords: ['business health', 'status', 'checks', 'public truth', 'feedback'], label: 'Detailed checks', description: 'Public checks, private feedback, and items that need attention.', onClick: () => openSubScreen('businessHealth') }] : []),
         ...(FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER && FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER_MOBILE && canManageMenu ? [{ key: 'aiMenuManager', icon: <LuMessageCircle color={token.colorPrimary} size={20} />, keywords: ['menu manager', 'ai menu manager', 'agent', 'price', 'availability', 'menu update'], label: 'Menu Manager', description: 'Tell MenuList what changed and approve the prepared menu card.', onClick: () => openSubScreen('aiMenuManager') }] : []),
-        ...((FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES || FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE) && canManageDailyActions ? [{ key: 'printAssets', icon: <LuPrinter color={token.colorPrimary} size={20} />, keywords: ['assets', 'print assets', 'templates', 'table tent', 'counter sticker', 'qr print', 'printables'], label: 'Assets', description: 'Download branded table, counter, entrance, feedback, and menu files.', onClick: openPrintAssets }] : []),
+        ...((FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES || FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE) && canManageDailyActions ? [{ key: 'printAssets', icon: <LuPrinter color={token.colorPrimary} size={20} />, keywords: ['assets', 'print assets', 'templates', 'table tent', 'counter sticker', 'qr print', 'printables'], label: 'QR and print assets', description: 'Download table, counter, entrance, feedback, and menu files.', onClick: openPrintAssets }] : []),
         ...(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT && canManageDailyActions ? [{ key: 'printMenu', icon: <LuPrinter color={token.colorSuccess} size={20} />, keywords: ['print menu', 'menu pdf', 'download menu', 'export menu', 'print shop'], label: 'Print Menu', description: 'Preview and create a PDF or print-shop packet.', onClick: openMenuCardExport }] : []),
         ...(canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? [{ key: 'todayHistory', icon: <LuClock3 color={token.colorInfo} size={20} />, keywords: ['history', 'past', 'activity', 'completed', 'skipped', 'today'], label: 'Past Activity', description: 'Review today actions completed or skipped in the last 7 days.', onClick: () => openSubScreen('todayHistory') }] : []),
-        ...(canManageFeedback ? [{ key: 'feedback', icon: <LuMessageCircle color={token.colorSuccess} size={20} />, keywords: ['review', 'rating', 'guest feedback', 'comments', 'feedback qr'], label: tFeedback('title'), description: tFeedback('feedbackQrDesc'), onClick: () => openSubScreen('feedback') }] : []),
+        ...(canManageFeedback ? [{ key: 'feedback', icon: <LuMessageCircle color={token.colorSuccess} size={20} />, keywords: ['review', 'rating', 'guest feedback', 'comments', 'feedback qr', 'private feedback'], label: 'Private feedback', description: 'Catch guest issues before they become public reviews.', onClick: () => openSubScreen('feedback') }] : []),
         ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS && canManageStore ? [{ key: 'tempStatus', icon: <LuAlertTriangle color={token.colorWarning} size={20} />, keywords: ['temporary closed', 'holiday', 'closed today', 'special hours', 'status'], label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => openSubScreen('tempStatus') }] : []),
         ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING && canManageMenu ? [{ key: 'specialMenus', icon: <LuSparkles color={token.colorWarning} size={20} />, keywords: ['seasonal menu', 'festival menu', 'limited time', 'brunch', 'special menu'], label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => openSubScreen('specialMenus') }] : []),
         ...(canManageMenuDesign ? [{ key: 'designEditor', icon: <LuPalette color={token.colorPrimary} size={20} />, keywords: ['theme', 'colors', 'fonts', 'layout', 'images', 'design'], label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => openSubScreen('designEditor') }] : []),
-        ...(FEATURE_FLAGS.ENABLE_OBP && canManagePublicPresence ? [{ key: 'officialPageTop', icon: <LuGlobe color={token.colorPrimary} size={20} />, keywords: ['official page', 'business page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openOfficialPage('main') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_OBP && canManagePublicPresence ? [{ key: 'officialPageTop', icon: <LuGlobe color={token.colorPrimary} size={20} />, keywords: ['official page', 'business page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: 'Menu, actions, photos, and business facts on the public page.', onClick: () => openOfficialPage('main') }] : []),
         ...(canManageDigitalScreens ? [{ key: 'digitalScreens', icon: <LuTv color={token.colorInfo} size={20} />, keywords: ['tv', 'screen', 'menu board', 'highlights', 'slides', 'display'], label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => openSubScreen('digitalScreens') }] : []),
         ...(canAccessBilling ? [
             { key: 'billing', icon: <LuCreditCard color={token.colorPrimary} size={20} />, keywords: ['plan', 'subscription', 'payment', 'invoice', 'upgrade'], label: t('billing'), description: t('billingDesc'), onClick: () => openSubScreen('billing') },
@@ -565,8 +565,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     ];
 
     const businessIdentityItems: MoreListItem[] = [
-        ...(canManageBusinessProfile ? [{ key: 'businessProfileHub', icon: <LuBuilding2 color={token.colorWarning} size={20} />, keywords: ['brand', 'official page', 'social media', 'customer app', 'business profile'], label: 'Business Profile', description: 'Brand, public identity, social links, official page, and app branding.', onClick: () => openSubScreen('businessProfileHub') }] : []),
-        ...(canManageSearchDiscovery ? [{ key: 'searchDiscoveryHub', icon: <LuSearch color={token.colorInfo} size={20} />, keywords: ['seo', 'search', 'discovery', 'domain', 'business copy', 'google listing'], label: 'Search & Discovery', description: 'Domain, SEO, business copy, and discovery setup in one place.', statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('searchDiscoveryHub') }] : []),
+        ...(canManageBusinessProfile ? [{ key: 'businessProfileHub', icon: <LuBuilding2 color={token.colorWarning} size={20} />, keywords: ['brand', 'official page', 'social media', 'customer app', 'business profile'], label: 'Business details', description: 'Name, logo, contact details, public identity, and app branding.', onClick: () => openSubScreen('businessProfileHub') }] : []),
+        ...(canManageSearchDiscovery ? [{ key: 'searchDiscoveryHub', icon: <LuSearch color={token.colorInfo} size={20} />, keywords: ['seo', 'search', 'discovery', 'domain', 'business copy', 'google listing', 'instagram', 'whatsapp'], label: 'Place customer link', description: 'Google, Instagram, WhatsApp, domain, and discovery setup.', statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('searchDiscoveryHub') }] : []),
         ...(canManageStore ? [
             { key: 'locale', icon: <LuGlobe color={token.colorSuccess} size={20} />, keywords: ['timezone', 'time zone', 'date format', 'currency', 'language', 'region'], label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => openSubScreen('locale') },
             { key: 'hoursEdit', icon: <LuClock color={token.colorPrimary} size={20} />, keywords: ['opening hours', 'closing time', 'business hours', 'open', 'close'], label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => openSubScreen('hoursEdit') },
@@ -579,7 +579,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const businessPresenceItems: MoreListItem[] = [
         ...(canManageStore ? [{ key: 'analyticsSettings', icon: <LuBarChart3 color={token.colorSuccess} size={20} />, keywords: ['google analytics', 'search console', 'facebook pixel', 'tracking'], label: t('analyticsSettings'), description: t('analyticsSettingsDesc'), onClick: () => openSubScreen('analyticsSettings') }] : []),
-        ...(canManageFeedback ? [{ key: 'feedbackSettings', icon: <LuMessageCircle color={token.colorSuccess} size={20} />, keywords: ['feedback form', 'ask for name', 'ask for phone', 'comment form'], label: tBusiness('feedback'), description: t('feedbackSettingsDesc'), statusTag: feedbackTag, onClick: () => openSubScreen('feedbackSettings') }] : []),
+        ...(canManageFeedback ? [{ key: 'feedbackSettings', icon: <LuMessageCircle color={token.colorSuccess} size={20} />, keywords: ['feedback form', 'ask for name', 'ask for phone', 'comment form', 'private feedback'], label: 'Feedback settings', description: 'Private feedback form and review handoff settings.', statusTag: feedbackTag, onClick: () => openSubScreen('feedbackSettings') }] : []),
         ...(FEATURE_FLAGS.ENABLE_POS_SYNC && canManageIntegrations ? [{ key: 'posSync', icon: <LuShield color={token.colorTextSecondary} size={20} />, keywords: ['external sync', 'connected systems', 'provider', 'pos', 'webhook', 'integration secret', 'menu sync'], label: tPosSync('title'), description: tPosSync('enablePosSyncDesc'), onClick: () => openSubScreen('posSync') }] : []),
     ];
 
@@ -596,7 +596,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             { key: 'domainSettings', icon: <LuGlobe color={token.colorInfo} size={20} />, keywords: ['domain', 'subdomain', 'custom domain', 'dns', 'website link'], label: tBusiness('domain'), description: tBusiness('customDomainDesc'), statusTag: domainTag, onClick: () => openSubScreen('domainSettings') },
             ...(FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? [{ key: 'businessCopySetup', icon: <LuSparkles color={token.colorPrimary} size={20} />, keywords: ['copy setup', 'generate business copy', 'seo copy', 'official page copy', 'customer app copy'], label: tBusiness('businessCopySetup'), description: tBusiness('businessCopySetupDesc'), statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('businessCopySetup') }] : []),
             { key: 'seoSettings', icon: <LuGlobe color={token.colorInfo} size={20} />, keywords: ['seo', 'meta title', 'meta description', 'keywords', 'canonical', 'tagline'], label: t('seoSettings'), description: t('seoSettingsDesc'), onClick: () => openSubScreen('seoSettings') },
-            ...(FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? [{ key: 'presenceMonitor', icon: <LuSearch color={token.colorInfo} size={20} />, keywords: ['google business', 'instagram bio', 'whatsapp profile', 'discovery', 'easy to find', 'presence'], label: 'Discovery Setup', description: 'Set up Google, Instagram, and WhatsApp with your official page link.', onClick: () => openSubScreen('presenceMonitor') }] : []),
+            ...(FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? [{ key: 'presenceMonitor', icon: <LuSearch color={token.colorInfo} size={20} />, keywords: ['google business', 'instagram bio', 'whatsapp profile', 'discovery', 'easy to find', 'presence'], label: 'Google, Instagram, WhatsApp', description: 'Paste and confirm your official link on external profiles.', onClick: () => openSubScreen('presenceMonitor') }] : []),
         ] : []),
         ...(FEATURE_FLAGS.ENABLE_GBP_SYNC && canManageIntegrations ? [{ key: 'integrations', icon: <LuGlobe color={token.colorPrimary} size={20} />, keywords: ['google business', 'gbp', 'integration', 'google listing'], label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
     ];
@@ -736,15 +736,19 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         return keys.map((key) => lookup.get(key)).filter((item): item is MoreListItem => Boolean(item));
     };
 
-    const publicBusinessItems = [
-        ...pickItems(moduleItems, ['dashboard', 'menuSetup', 'businessHealth', 'aiMenuManager']),
+    const customerUpdateItems = [
+        ...pickItems(moduleItems, ['menuSetup', 'aiMenuManager']),
         ...pickItems(businessIdentityItems, ['businessProfileHub', 'hoursEdit']),
-        ...pickItems(moduleItems, ['tempStatus', 'specialMenus', 'officialPageTop', 'designEditor', 'digitalScreens', 'feedback']),
+        ...pickItems(moduleItems, ['tempStatus', 'specialMenus', 'officialPageTop', 'designEditor', 'digitalScreens']),
     ];
 
-    const shareAndMaterialItems = [
+    const shareAndPlacementItems = [
         ...pickItems(businessIdentityItems, ['searchDiscoveryHub']),
         ...pickItems(moduleItems, ['printAssets', 'printMenu']),
+    ];
+
+    const feedbackAndActivityItems = [
+        ...pickItems(moduleItems, ['dashboard', 'businessHealth', 'feedback', 'todayHistory']),
         ...pickItems(businessPresenceItems, ['feedbackSettings']),
     ];
 
@@ -755,12 +759,12 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const advancedOwnerItems = [
         ...pickItems(businessPresenceItems, ['analyticsSettings', 'posSync']),
-        ...pickItems(moduleItems, ['todayHistory']),
     ];
 
     const itemSections = useMemo(() => ([
-        { items: publicBusinessItems, title: 'What customers see' },
-        { items: shareAndMaterialItems, title: 'Public links and materials' },
+        { items: customerUpdateItems, title: 'Update what customers see' },
+        { items: shareAndPlacementItems, title: 'Share and place the link' },
+        { items: feedbackAndActivityItems, title: 'Check feedback and activity' },
         { items: accountAdminItems, title: 'Account and team' },
         { items: advancedOwnerItems, title: 'Advanced setup' },
         ...(platformMonitoringItems.length ? [{ items: platformMonitoringItems, title: 'Platform Monitoring' }] : []),
@@ -773,9 +777,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         answerlatticeManagementItems,
         platformManagementItems,
         platformMonitoringItems,
-        publicBusinessItems,
+        customerUpdateItems,
+        feedbackAndActivityItems,
         resellerManagementItems,
-        shareAndMaterialItems,
+        shareAndPlacementItems,
     ]);
 
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();

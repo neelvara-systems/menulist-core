@@ -180,6 +180,7 @@ export default function AntdLayoutWrapper(props: any) {
     }
     return (
         <AntdThemeProvider>
+            {props.globalOverlays}
             <GlobalKeyboardShortcutsProvider>
                 <NetworkStatusProvider>
                     {renderContent()}

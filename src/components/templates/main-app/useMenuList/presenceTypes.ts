@@ -6,7 +6,7 @@
 
 export type SurfaceStatus = 'active' | 'missing';
 
-export type ManualSurfaceId = 'googleBusiness' | 'instagramBio' | 'whatsappProfile';
+export type ManualSurfaceId = 'googleBusiness' | 'appleBusiness' | 'bingPlaces' | 'instagramBio' | 'whatsappProfile';
 export type AutoSurfaceId = 'tableQr' | 'digitalScreens' | 'feedbackQr';
 export type SurfaceId = ManualSurfaceId | AutoSurfaceId;
 

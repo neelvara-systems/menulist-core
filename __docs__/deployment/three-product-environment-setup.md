@@ -3,6 +3,7 @@
 > Status: one-time infrastructure setup runbook
 > Scope: MenuList, Answerlattice, CampaignCue, MyCodex
 > Last updated: June 26, 2026
+> Launch boundary: not current launch certification or deploy approval. This setup checklist cannot certify a release; production deployment approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
 
 This document is the setup checklist for fresh staging/local and production
 infrastructure. It is written from the current codebase contract, not from a

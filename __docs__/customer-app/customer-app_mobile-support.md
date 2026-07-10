@@ -2,9 +2,11 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Mobile Support Assessment  
-**Status:** Runtime implemented; manual device QA still required
+**Status:** Runtime/mobile source evidence; not current mobile launch certification
 **Last Updated:** July 4, 2026
 **Audience:** Engineering, Product
+
+> **Launch Boundary:** This mobile-support note records source evidence and mobile admission. Current mobile release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:customer-app-pwa`, real browser/device Customer App QA, target deploy evidence, and production-host smoke.
 
 ---
 

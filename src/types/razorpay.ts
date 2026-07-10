@@ -116,6 +116,13 @@ export interface FirestoreSubscriptionDoc {
     remark: string
   }>;
 
+  cancellation?: {
+    reasonCode: 'no_longer_needed' | 'missing_functionality' | 'too_expensive' | 'switched_provider' | 'purchased_accidentally' | 'other';
+    detail?: string;
+    requestedAt: Timestamp;
+    source: 'owner';
+  };
+
   // --- Multi-Outlet Billing (Feature #4C-B) ---
   quantity?: number;                // Number of billable stores. Default: 1. Master + outlets.
 

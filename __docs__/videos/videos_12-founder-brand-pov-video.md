@@ -69,8 +69,8 @@ The viewer should feel: "This product understands real owner friction and is bui
 
 1. Hook: Owners do not need another dashboard.
 2. Problem: Customers need correct menu, prices, hours, and contact details.
-3. Product entry: Public information spreads across QR, WhatsApp, Instagram, PDFs, print, and staff phones.
-4. Proof: MenuList creates one approved customer link.
+3. Product entry: Owners should not have to type the whole menu into another tool.
+4. Proof: Upload menu photos, review a prepared customer version, then create one approved customer link.
 5. Outcome: Less repeated cleanup, more public consistency.
 6. CTA: Start from your current list.
 
@@ -82,7 +82,7 @@ The viewer should feel: "This product understands real owner friction and is bui
 | 0:08-0:18 | 10s | Product/real-world cutaways: menu, phone, counter | Founder VO continues over B-roll | They just want customers to see the correct menu, correct prices, correct hours, and the right way to contact them. | Correct menu. Prices. Hours. Contact. | Soft B-roll cuts | Owner-first language | Menu, customer phone, counter |
 | 0:18-0:34 | 16s | WhatsApp, Instagram, QR, PDF, print, staff phone montage | Cutaway montage | But in real life, the menu spreads everywhere: WhatsApp, Instagram, QR codes, old PDFs, Google, printed cards, and staff phones. | Public information spreads. | Controlled montage | Avoid visual clutter | Channel mockups |
 | 0:34-0:48 | 14s | Founder plus product UI cutaway | Talking head with UI overlay | That is why MenuList is built around one approved customer link. | One approved customer link. | UI overlay beside founder | Brand line moment | Founder, customer link UI |
-| 0:48-1:06 | 18s | Source list -> preview -> approval -> customer link | Product sequence | Start with the list you already have. Review the version customers will see. Publish it once. Then keep QR, page, print, and customer actions tied to that approved version. | Start. Review. Publish. Keep aligned. | Product flow sequence | Show actual workflow | Source UI, preview, approval, outputs |
+| 0:48-1:06 | 18s | Menu photo upload -> preview -> approval -> customer link | Product sequence | Start by uploading photos of the menu or service list you already have. MenuList prepares the customer version for review. | Upload photos. Review. Publish. Keep aligned. | Product flow sequence | Show setup is easy | Upload UI, preview, approval, outputs |
 | 1:06-1:20 | 14s | Founder returns, Business Health stable state cutaway | Calm closer | When something changes, MenuList should reduce repeated work, not create another dashboard to manage. | Less repeated cleanup. | Slow fade | Important doctrine line | Founder, Business Health |
 | 1:20-1:30 | 10s | Logo, founder looking at product, CTA | End card | MenuList is for owners who want their public menu and business details to stay correct, even when no one is watching. | Start from your current list. | Fade to CTA | Low-hype finish | Logo, CTA |
 
@@ -97,7 +97,11 @@ But in real life, the menu spreads everywhere: WhatsApp, Instagram, QR codes, ol
 
 That is why MenuList is built around one approved customer link.
 
-Start with the list you already have. Review the version customers will see. Publish it once. Then keep QR, page, print, and customer actions tied to that approved version.
+Owners also should not have to type the whole menu into another tool.
+
+With MenuList, start by uploading photos of the menu or service list you already have. MenuList prepares the customer version for review.
+
+Review the version customers will see. Publish it after approval. Then keep QR, page, print, and customer actions tied to that approved version.
 
 When something changes, MenuList should reduce repeated work, not create another dashboard to manage.
 
@@ -110,13 +114,14 @@ MenuList is for owners who want their public menu and business details to stay c
 2. Correct menu. Prices. Hours. Contact.
 3. Public information spreads.
 4. One approved customer link.
-5. Start. Review. Publish. Keep aligned.
+5. Upload photos. Review. Publish. Keep aligned.
 6. Less repeated cleanup.
 7. Start from your current list.
 
 ### K. UI Screens Required
 
-- source upload screen;
+- menu photo upload screen;
+- PDF upload screen;
 - private preview;
 - owner approval;
 - customer link live;

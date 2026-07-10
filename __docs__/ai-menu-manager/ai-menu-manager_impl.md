@@ -2,7 +2,7 @@
 
 **Status:** Initial implementation validated - enabled behind AMM feature flags in current config
 **Audience:** Engineering / implementation maintainers
-**Last Updated:** June 30, 2026
+**Last Updated:** July 10, 2026
 
 ---
 
@@ -61,6 +61,7 @@ Evidence:
 ```text
 src/
   app/api/ai-menu-manager/
+    plan/route.ts
     command/route.ts
     inbox/route.ts
     proposals/[proposalId]/actions/route.ts
@@ -98,10 +99,17 @@ src/
     commandResolver.ts
     contextPacket.ts
     domainConversationRouter.ts
+    presentation.ts
     entityResolver.ts
     idempotency.ts
     proposalState.ts
     receiptBuilder.ts
+    modelRouter/
+      plannerContext.ts
+      plannerActionContracts.ts
+      providerResultPolicy.ts
+      modelRouteCard.ts
+      routerOutcomeSchema.ts
     storageArtifacts.ts
     actions/
       priceUpdate.ts
@@ -140,11 +148,11 @@ Add to `src/config/features.ts`:
 ```ts
 ENABLE_AI_MENU_MANAGER: true,
 ENABLE_AI_MENU_MANAGER_MOBILE: true,
-ENABLE_AI_MENU_MANAGER_VOICE_INPUT: true,
+ENABLE_AI_MENU_MANAGER_VOICE_INPUT: false,
 ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS: true,
 ENABLE_AI_MENU_MANAGER_RULES: true,
-ENABLE_AI_MENU_MANAGER_MODEL_ROUTER: false,
-ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER: false,
+ENABLE_AI_MENU_MANAGER_MODEL_ROUTER: true,
+ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER: true,
 ENABLE_AI_MENU_MANAGER_LOCAL_ASSIST: false,
 ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES: true,
 ENABLE_AI_MENU_MANAGER_DEBUG_ARTIFACTS: false,
@@ -157,11 +165,11 @@ Flag meaning:
 | --- | --- |
 | `ENABLE_AI_MENU_MANAGER` | Main route/API visibility. |
 | `ENABLE_AI_MENU_MANAGER_MOBILE` | MobileShell screen and mobile entry points. |
-| `ENABLE_AI_MENU_MANAGER_VOICE_INPUT` | Voice-input readiness only until a production speech-to-command UI is verified. Voice commands must enter the same text resolver and approval flow. |
+| `ENABLE_AI_MENU_MANAGER_VOICE_INPUT` | Disabled until a production speech-to-command UI is verified. Future voice commands must enter the same text resolver and approval flow. |
 | `ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS` | Generated-image cards. |
 | `ENABLE_AI_MENU_MANAGER_RULES` | Rule suggestion/registry visibility only until rule execution infra is verified. |
-| `ENABLE_AI_MENU_MANAGER_MODEL_ROUTER` | Enables the model-provider abstraction only; defaults off to preserve deterministic cost. |
-| `ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER` | Allows a future cloud planner such as Gemini after a guarded adapter exists. Defaults off. |
+| `ENABLE_AI_MENU_MANAGER_MODEL_ROUTER` | Admits the model-provider abstraction after deterministic routing returns no outcome. |
+| `ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER` | Enables the guarded Gemini planner for unresolved in-domain messages only. |
 | `ENABLE_AI_MENU_MANAGER_LOCAL_ASSIST` | Allows a future local/on-device assist provider after browser/device support is verified. Defaults off. |
 | `ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES` | Allows approved cards to execute menu/store mutations. |
 | `ENABLE_AI_MENU_MANAGER_DEBUG_ARTIFACTS` | Enables detailed Storage artifacts for bounded debugging. |
@@ -170,22 +178,26 @@ Flags are kill switches, not product scope reducers.
 
 ---
 
-## 4A. Future Model Provider Contract
+## 4A. Model Provider Contract
 
-The current shipped path is deterministic and DAL-first. Future Gemini, Gemma, or other model providers may improve conversation routing only through the disabled-by-default model-router lane.
+The normal path remains deterministic and DAL-first. The cloud planner is a bounded fallback for unresolved in-domain owner language; it is not called for exact commands, known diagnostics, local exports, unsupported external destinations, or out-of-scope questions. Local/on-device assist remains disabled.
 
 Model provider contract:
 
 | Contract area | Rule |
 | --- | --- |
-| Input | Use a compact selected store/project/menu context packet. Do not send full raw project JSON, staff data, billing data, secrets, or unrelated store history. |
-| Output | Return one router outcome: answer, diagnostic, recommendation, clarification, prepare action, local export, manual handoff, unsupported, or receipt/status. |
+| Input | Use a compact selected store/project/menu context packet capped to 32 relevant items, 18 relevant categories, 5 pending-card summaries, and bounded native-language aliases. Include one compact target/value contract for each currently executable action. Do not send full raw project JSON, staff data, billing data, secrets, or unrelated store history. |
+| Output | Return one cloud-planner outcome through the provider SDK structured response schema: answer, diagnostic, recommendation, clarification, prepare action, or unsupported. Local export, handoff, receipt, and completion/status authority remain deterministic MenuList outcomes. |
 | Allowed tools | Read and prepare tools only: search menu items, get selected menu status, get item/category detail, prepare cards, prepare local exports, prepare clarification, or prepare unsupported card. |
 | Forbidden tools | No execute, write, publish, delete, external post, Firestore write, `updateProject()`, `updateStore()`, billing/account, staff mutation, or third-party posting tools. |
-| Validation | MenuList validates action type, selected store/project scope, entity IDs, feature flags, approval policy, patch whitelist, base hash, and unsupported boundaries before any card is executable. |
+| Validation | MenuList validates action type, selected store/project scope, entity IDs, feature flags, approval policy, patch whitelist, base hash, and unsupported boundaries before any card is executable. Cloud answer/diagnostic/recommendation outcomes must include at least one selected-context grounding target; entity labels are canonicalized from MenuList context. |
 | Authority | Provider output is never authority. MenuList builds cards and patches; owner approval triggers existing MenuList execution paths. |
 
 Provider flags do not make checklist rows executable. A model may choose what to prepare, but only the registered adapter and approval policy decide what can be shown, approved, or executed.
+
+Planner action contracts are provider argument metadata for the current executable list, not a second action catalog. `verify:ai-menu-manager` requires their keys to match `AI_MENU_MANAGER_EXECUTABLE_ACTIONS` exactly. The provider response schema and Zod boundary admit only cloud-planner outcomes, current executable action IDs, bounded entity shapes, and known value fields. `receipt_status` is intentionally excluded because the planner packet does not carry authoritative receipt history. Deterministic re-resolution still performs semantic validation because schema-valid provider output is not business authority.
+
+For `prepare_action`, MenuList materializes the provider intent into an owner-readable command plus structured entity IDs, re-runs the deterministic resolver, and accepts the result only when the registered resolved action is compatible with the planned action. For clarification, every supplied item/category ID must exist in the selected context and the validated ID is carried through the clarification option into the next resolver pass on desktop and mobile. The provider cannot supply a project patch, approval level, execution directive, receipt, or completion state. Owner-facing planner copy is also rejected when it exposes internal implementation terms or claims unverified completion.
 
 ---
 
@@ -203,7 +215,7 @@ Read-only domain answers are not execution adapters, but they still use the regi
 - resolver precedence: direct operation commands must win before this layer; imperative edits such as "increase all drinks price by 10" must create the matching proposal card instead of an answer card.
 - suggested replies: draft-only; sending a reply must re-enter the normal command resolver and action-card flow.
 
-Clarification cards are different from read-only answer suggestions. A clarification option may submit the selected answer, replace the pending clarification, and create the next card in one compact session write. It must not approve, execute, publish, or persist menu truth by itself.
+Clarification cards are different from read-only answer suggestions. A clarification option may submit the selected answer with its validated structured item/category ID, replace the pending clarification, and create the next card in one compact session write. It must not approve, execute, publish, or persist menu truth by itself. Name text remains owner-readable context; the entity ID is the execution-scope authority when present.
 
 Every action adapter implements:
 
@@ -336,6 +348,17 @@ Command resolution must prefer the smallest existing manual equivalent that matc
 
 If more than one interpretation is plausible, `system_clarification_request` is required before proposal creation.
 
+### Compound Commands And Restore Semantics
+
+- The deterministic compound resolver considers `and`, `also`, `then`, and semicolon boundaries, but accepts a partition only when every part independently produces a registered `client_project_mutation` proposal with a stored patch.
+- It evaluates alternative partitions so item names such as `Fish and chips` remain intact when that is the valid entity match.
+- A command is capped at four operations. Any overlapping patch touch key rejects grouped preparation and falls back to normal single-message routing/clarification.
+- Accepted operations share `commandGroupId`, `sourceFingerprint`, base project hash, and selected project scope. They remain separate review cards.
+- `buildAiMenuManagerClientBatchExecution()` revalidates every action-scoped patch and stale base, applies the non-overlapping patches to one cloned project, and returns one patched project for the existing project DAL.
+- `completeAiMenuManagerClientOperations()` removes all completed group cards and appends all receipts in one compact session write.
+- `Restore <item>` resolves to availability for a visible sold-out item, visibility for an available hidden item, and a clarification when the item is both hidden and sold out.
+- Immediate duplicate suppression is intentionally bounded to ten seconds so double taps/retries are free while a later deliberate repeat remains a new owner command.
+
 ---
 
 ## 8. API Contracts
@@ -352,6 +375,26 @@ Direct-DAL permission fallback:
 - Fallback cards are rendered as server-backed operations in the same owner UI. They still use proposal action and completion routes, approval policy, patch hash, base hash, and existing `updateProject()` execution.
 - Clarification and short follow-up replacement must preserve `replaceOperationId` so the server-backed fallback removes the previous clarification/pending card instead of duplicating cards.
 - Browser clients must parse AMM API fallback responses through the shared 64KB bounded JSON reader. Malformed, oversized, or empty successful responses log `ai_menu_manager_response_parse_failed` with phase/status metadata only and then use fixed owner-safe failure handling.
+
+### `POST /api/ai-menu-manager/plan`
+
+Purpose: classify or prepare a bounded router outcome only after the deterministic selected-project resolver returns no result.
+
+Input is limited to owner text, selected store/project IDs, structured composer context, the executable action allowlist, and the capped planner context. The route must not re-read the selected project, receive full project JSON, or write menu/session/proposal truth.
+
+Required controls:
+
+- `withAuth()` and selected-store `MANAGE_MENU` permission.
+- hashed AI-operation rate limit before provider work.
+- `SAFE_MODE` and AI capacity admission before Gemini.
+- 48KB bounded body and Zod validation.
+- executable action allowlist and selected-context entity-ID validation.
+- compact action-specific target/value contracts and an SDK `responseSchema` limited to current executable actions.
+- read/prepare-only system instruction; no write, publish, delete, external-post, raw patch, approval, or receipt tools.
+- bounded operation accounting without storing raw provider output.
+- `{ route: null }` owner-safe fallback when the provider is unavailable or returns an invalid outcome.
+
+The client DAL may use a read-only planner card directly. For a planned mutation, it must re-run the deterministic resolver and action registry before creating a proposal card.
 
 ### `POST /api/ai-menu-manager/command`
 
@@ -526,7 +569,7 @@ Compact session/day doc.
   sessionDate: "YYYY-MM-DD";
   storageMode: "daily_compact" | "detailed";
   status: "active" | "closed";
-  compactMessages: CompactMessage[];
+  compactMessages: Array<CompactMessage & { kind?: "reply" | "receipt" | "status" }>;
   pendingCardSummaries: CardSummary[];
   pendingOperations: PendingOperation[]; // full current cards plus approved patch metadata, capped
   recentReceiptSummaries: ReceiptSummary[];
@@ -556,7 +599,7 @@ Use a deterministic session id where safe, derived from tenant, store, project, 
 
 Deterministic selected-project actions such as price, availability, visibility, featured section, menu note, and design preset do not create a separate proposal document by default. The client DAL stores the pending operation in this capped session doc, applies the exact stored patch through the existing `updateProject()` path after approval, then moves the card to `recentReceiptSummaries` in the same session doc.
 
-Command submit, completion, and cancel use the current compact session already loaded by the AMM screen. Desktop and mobile pass that session snapshot into the client DAL, the DAL appends or removes capped pending operations locally, and then writes the daily session doc once. Completion and cancel verify the loaded session scope/card id before writing; they do not transaction-read the session again for deterministic cards.
+Command submit, completion, and cancel use the current compact session already loaded by the AMM screen. Desktop and mobile pass that session snapshot into the client DAL, the DAL appends or removes capped pending operations locally, and then writes the daily session doc once. Completion also appends the compact receipt timeline entry in that same write. Completion and cancel verify the loaded session scope/card id before writing; they do not transaction-read the session again for deterministic cards.
 
 Before any direct client-DAL session read/write, AMM must reuse the existing Firebase Auth claim sync for the selected store context. This prevents platform/HQ or multi-store owners from preparing a card under one store context while the Firebase token still carries another store.
 
@@ -689,6 +732,8 @@ Cache rules:
 - fallback to one bounded project read when cache is absent.
 - do not use the context packet cache as a second menu source of truth; it is discarded when the project update marker changes.
 
+The client builds the planner packet from the selected project already loaded in the screen. It ranks selected or message-matching entities first and caps the provider payload at 32 items, 18 categories, and 5 pending-card summaries. The planner route does not re-read project/store truth.
+
 ---
 
 ## 12. UI Components
@@ -700,11 +745,11 @@ Desktop route:
 - legacy `/use-menulist/ai-menu-manager` redirects to `/menu-manager` for compatibility only.
 - full-height workspace.
 - selected project context in the chat header.
-- conversation timeline.
+- loaded-project status line and compact conversation timeline with owner replies and receipts.
 - card stack.
-- composer with text, upload, voice-ready button.
+- composer with text and one `+` tool menu. Voice control stays hidden while the voice flag is disabled.
 - empty-state starter cards for daily draft prompts: store closed today, working-hours changes, and contextual sold-out/time-slot work. Starter cards use the same suggestion helper as the full suggestion sheet and never submit automatically.
-- separate composer tools for Work on and Suggestions below the input.
+- one composer tool menu containing Work on and Suggestions.
 - Work on context picker inside the composer. It uses selected-project data already loaded in the screen, supports item multi-select and single category selection, and can scope commands to menu design, digital menu, official page, digital screens, feedback, or store settings. Item/category choices render as compact selectable rows/grid cells; search is shown only for longer lists or active search text.
 - Work on selection rewrites the outgoing owner message into explicit text before resolver execution. It does not create cards, write Firestore, or bypass the resolver/action registry.
 - suggestion chooser opens as an inline tray inside the chat frame; suggestions are grouped from selected-menu context and may use a two-layer guided flow: first choose the action area, then choose the exact option. Final options fill the composer without submitting automatically.
@@ -714,19 +759,19 @@ Desktop route:
 - known Mobile More/manual surfaces resolve to exact action-family cards such as `store_working_hours_update`, `menu_temp_status_set`, `digital_screen_status_card`, `billing_screen_open`, and `print_menu_open`. `system_manual_task_create` remains only for true ad hoc owner tasks that do not map to a known MenuList flow.
 - theme, layout, color, and display-option cards reuse the existing Menu design tone/layout/color/display settings and show those choices before preparing specific changes.
 - card Edit drafts an owner-readable command back into the composer instead of mutating the pending card silently.
-- inbox/history side panel.
+- pending/history side panel; receipts remain visible in the main conversation timeline.
 
 Mobile:
 
 - `MobileShell` sub-screen.
-- bottom composer.
+- bottom composer with one `+` tool sheet entry.
 - empty-state starter cards above the composer for common daily drafts, including closed today, working hours, and sold-out/time-slot work.
 - Work on context picker opens as a MobileShell-friendly bottom sheet with large target rows. Item/category choices use the same selected-project context as desktop, render as compact 44px selectable rows, and only affect the next message sent.
 - suggestion chooser opens as a bottom sheet; suggestions are grouped from selected-menu context and may use a two-layer guided flow: first choose the action area, then choose the exact option. Final options fill the composer without submitting automatically.
 - Work on and Suggestions are mutually exclusive MobileShell sheets; opening either sheet closes the other and clears any active nested suggestion view.
 - clarification option rows resolve the pending clarification into the next card in one compact session write; card Edit remains draft-first composer behavior.
 - theme, layout, color, and display-option clarification cards use the same choices already shown in Mobile More > Menu design.
-- card stack.
+- card stack above the composer inside the main conversation surface.
 - approval-first view.
 - no heavy dashboard.
 
@@ -749,6 +794,8 @@ All protected AMM APIs must use:
 
 No API response should expose raw provider prompts, raw debug traces, full security context, or stack traces.
 
+The planner route additionally must reject fabricated entity IDs and checklist-only action types, and must not expose or accept raw project patches. Provider failure must preserve the normal deterministic clarification fallback.
+
 ---
 
 ## 14. Firebase Cost Controls
@@ -769,6 +816,9 @@ Implementation must preserve these controls:
 - active pending cards available without scanning old daily sessions.
 - safe approve-all flows merge related project patches into one `updateProject()` call.
 - active job polling backs off and stops when hidden, backgrounded, or terminal.
+- deterministic answers and exact commands never pay planner cost.
+- planner-assisted commands use the same one compact-session command write as deterministic commands; the provider route adds no project/session/proposal read or write.
+- completion appends its timeline receipt in the existing one compact-session completion write.
 
 ---
 
@@ -779,6 +829,7 @@ Implementation must preserve these controls:
 | Types and flags | Feature flags, shared types, statuses, schemas. |
 | Repository layer | Session/proposal/rule repositories with compact writes. |
 | Context packet | Cached menu context builder from current project/store truth. |
+| Conversation planner | Guarded unresolved-language route, capped context packet, read/prepare-only outcomes, and deterministic revalidation. |
 | Action registry | Adapter contract and initial action adapters. |
 | APIs | Command, inbox, proposal action, completion routes. |
 | Desktop UI | Conversation, cards, composer, context/inbox panels. |

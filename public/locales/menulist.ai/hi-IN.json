@@ -93,6 +93,9 @@
     "Status": "स्थिति",
     "What customers see": "ग्राहक क्या देखते हैं",
     "Public links and materials": "सार्वजनिक लिंक और सामग्री",
+    "Update what customers see": "ग्राहक क्या देखते हैं अपडेट करें",
+    "Share and place the link": "लिंक शेयर और लगाएं",
+    "Check feedback and activity": "प्रतिक्रिया और गतिविधि देखें",
     "Account and team": "खाता और टीम",
     "Advanced setup": "उन्नत सेटअप",
     "Internal tools": "आंतरिक टूल"
@@ -951,6 +954,20 @@
     "keepSubscription": "Keep Subscription",
     "subscriptionCancelled": "Subscription cancelled",
     "failedToCancel": "Failed to cancel",
+    "cancellationReasonTitle": "आप सदस्यता क्यों छोड़ रहे हैं?",
+    "cancellationReasonPrompt": "मुख्य कारण चुनें। इससे हमें समझने में मदद मिलती है कि मालिकों को क्या चाहिए।",
+    "cancellationReasonRequired": "सदस्यता रद्द करने का कारण चुनें",
+    "cancellationOtherReasonRequired": "संक्षेप में कारण लिखें",
+    "cancellationOtherReasonPlaceholder": "संक्षेप में कारण लिखें",
+    "continueCancellation": "रद्द करने की प्रक्रिया जारी रखें",
+    "cancellationReasons": {
+      "no_longer_needed": "अब MenuList की आवश्यकता नहीं है",
+      "missing_functionality": "ज़रूरी सुविधा उपलब्ध नहीं है",
+      "too_expensive": "बहुत महंगा है",
+      "switched_provider": "दूसरी सेवा चुन ली है",
+      "purchased_accidentally": "गलती से खरीद लिया",
+      "other": "अन्य"
+    },
     "failedToLoadHistory": "Failed to load history",
     "processing": "Processing...",
     "billingCycle": "Billing Cycle",
@@ -1042,7 +1059,14 @@
     "reply": "Reply",
     "writeReply": "Write a reply...",
     "sendReply": "Send Reply",
-    "resolve": "Resolve"
+    "resolve": "Resolve",
+    "needsAttention": "Needs Attention",
+    "statusNew": "New",
+    "feedbackLabel": "Feedback",
+    "contactLabel": "Contact",
+    "replyDrafts": "Reply drafts",
+    "replyHint": "Reply and resolve in one step, or mark this feedback handled automatically.",
+    "alreadyResolved": "No action needed. This feedback is already resolved."
   },
   "HelpCenter": {
     "heroTitle": "How can we",
@@ -2822,10 +2846,10 @@
         "brokenMessage": "आपके घंटे गुम या अमान्य हैं. उन्हें अपडेट करें ताकि ग्राहक देख सकें कि आप कब खुले हैं।"
       },
       "menuQuality": {
-        "menuCheck": "मेन्यू जांच",
+        "menuCheck": "मेन्यू भरोसा जांच",
         "checkedJustNow": "अभी जांचा गया",
         "noActionNeeded": "कोई कार्रवाई नहीं चाहिए",
-        "publicMenuReady": "आपका सार्वजनिक मेन्यू तैयार है।",
+        "publicMenuReady": "कीमतें, उपलब्धता और जरूरी जानकारी सार्वजनिक मेन्यू पर तैयार हैं।",
         "repairNow": "जो अभी ठीक किया जा सकता है उसे सुधारें",
         "reviewTopIssue": "शीर्ष मुद्दे की समीक्षा करें",
         "repairMenu": "मेन्यू रिपेयर करें",
@@ -9915,6 +9939,24 @@
           "paste": "Paste your menu link into the website field"
         }
       },
+      "appleBusiness": {
+        "label": "Apple Business Connect",
+        "explanation": "Apple Maps का उपयोग करने वाले ग्राहक आपका आधिकारिक बिज़नेस पेज खोल सकते हैं।",
+        "steps": {
+          "open": "Apple Business Connect खोलें और अपनी लोकेशन चुनें",
+          "edit": "लोकेशन विवरण या स्वीकृत एक्शन खोलें",
+          "paste": "अपना आधिकारिक बिज़नेस लिंक जोड़ें और बदलाव सबमिट करें"
+        }
+      },
+      "bingPlaces": {
+        "label": "Bing Places",
+        "explanation": "Bing पर खोजने वाले ग्राहक आपका आधिकारिक बिज़नेस पेज खोल सकते हैं।",
+        "steps": {
+          "open": "Bing Places खोलें और अपना बिज़नेस चुनें",
+          "edit": "बिज़नेस प्रोफ़ाइल जानकारी संपादित करें",
+          "paste": "अपना आधिकारिक बिज़नेस लिंक वेबसाइट या मेन्यू लिंक के रूप में जोड़ें और प्रकाशित करें"
+        }
+      },
       "instagramBio": {
         "label": "Instagram Bio",
         "explanation": "Add the menu link to your bio so followers can open it fast.",
@@ -9966,5 +10008,53 @@
     "needsReview": "Needs review",
     "notAvailable": "Google Business Profile sync is not available on this account yet.",
     "off": "Off"
+  },
+  "OwnerReferral": {
+    "title": "किसी अन्य बिज़नेस को आमंत्रित करें",
+    "preparing": "आपका आमंत्रण तैयार हो रहा है...",
+    "unavailable": "आमंत्रण भुगतान किए गए MenuList सब्सक्रिप्शन वाले बिज़नेस के लिए उपलब्ध हैं।",
+    "tryAgain": "फिर कोशिश करें",
+    "yourBusiness": "आपका बिज़नेस",
+    "invitedBusiness": "आमंत्रित बिज़नेस",
+    "credits": "क्रेडिट",
+    "rewardRule": "दोनों MenuList सब्सक्रिप्शन का भुगतान होने पर क्रेडिट जोड़े जाते हैं। रेफरल की कोई सीमा या अतिरिक्त गतिविधि की शर्त नहीं है।",
+    "share": "शेयर करें",
+    "shareInvitation": "आमंत्रण शेयर करें",
+    "whatsApp": "WhatsApp",
+    "copy": "कॉपी करें",
+    "invitationCopied": "आमंत्रण कॉपी हो गया",
+    "copyFailed": "आमंत्रण कॉपी नहीं हो सका",
+    "shareFailed": "आमंत्रण शेयर नहीं हो सका",
+    "recentInvitations": "हाल के आमंत्रण",
+    "noRecentInvitations": "अभी तक आपके आमंत्रण से कोई बिज़नेस शुरू नहीं हुआ है।",
+    "status": {
+      "issued": "क्रेडिट जोड़े गए",
+      "waitingForBothPayments": "दोनों भुगतानों का इंतज़ार",
+      "waitingForPayment": "भुगतान का इंतज़ार"
+    },
+    "invite": {
+      "unavailableTitle": "यह आमंत्रण उपलब्ध नहीं है",
+      "unavailableBody": "जिस बिज़नेस ने आपको आमंत्रित किया है उससे नया लिंक माँगें, या सामान्य MenuList सेटअप जारी रखें।",
+      "createLink": "अपना कस्टमर लिंक बनाएँ",
+      "eyebrow": "बिज़नेस मालिक का आमंत्रण",
+      "title": "एक अन्य बिज़नेस मालिक ने आपको MenuList पर आमंत्रित किया है।",
+      "body": "अपनी मेन्यू और सार्वजनिक बिज़नेस जानकारी को एक जगह से अपडेट रखें, ऐसे एक कस्टमर लिंक के साथ जो हमेशा वर्तमान रहे।",
+      "referredReward": "आपके बिज़नेस को <strong>50 क्रेडिट</strong> मिलते हैं।",
+      "referrerReward": "आमंत्रित करने वाले बिज़नेस को <strong>100 क्रेडिट</strong> मिलते हैं।",
+      "rewardRule": "दोनों MenuList सब्सक्रिप्शन का भुगतान होने पर क्रेडिट जोड़े जाते हैं। रेफरल की कोई सीमा या अतिरिक्त गतिविधि की शर्त नहीं है।",
+      "preparing": "सेटअप तैयार हो रहा है...",
+      "continueWithoutReferral": "रेफरल के बिना जारी रखें",
+      "imageAlt": "फोन पर MenuList की सार्वजनिक मेन्यू",
+      "stepsTitle": "मेन्यू से कस्टमर लिंक तक",
+      "steps": {
+        "addTitle": "अपनी मेन्यू जोड़ें",
+        "addBody": "मेन्यू की फोटो अपलोड करें या अपनी सार्वजनिक सूची का उपयोग करें।",
+        "reviewTitle": "अपनी जानकारी जाँचें",
+        "reviewBody": "तैयार मेन्यू और बिज़नेस जानकारी की जाँच करें।",
+        "publishTitle": "एक लिंक प्रकाशित करें",
+        "publishBody": "QR, WhatsApp, Google और सोशल प्रोफाइल पर उसी वर्तमान लिंक का उपयोग करें।"
+      },
+      "privacy": "आमंत्रित करने वाला बिज़नेस आपके बिज़नेस का नाम और सामान्य रेफरल स्थिति देख सकता है। वह आपका प्लान, कीमत, भुगतान विधि, संपर्क जानकारी या अकाउंट गतिविधि नहीं देख सकता।"
+    }
   }
 }

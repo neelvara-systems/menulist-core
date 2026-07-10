@@ -61,7 +61,7 @@ const projectDal = read('src/database/projects/index.ts');
 const publicClientCache = read('src/lib/cache/publicClientCache.ts');
 const screenInvalidation = read('src/lib/screen/screenInvalidation.ts');
 const projectsReadme = read('__docs__/projects/README.md');
-const editorReadme = read('__docs__/projects/Editor/README.md');
+const editorReadme = read('__docs__/projects/editor/README.md');
 const projectsMobileSupport = read('__docs__/projects/projects_mobile-support.md');
 const commandCenterReadme = read('__docs__/menu-command-center/README.md');
 const commandCenterMobileSupport = read('__docs__/menu-command-center/menu-command-center_mobile-support.md');
@@ -71,7 +71,7 @@ const commandCenterMarketing = read('__docs__/menu-command-center/menu-command-c
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 
 requireToken(
   packageJson,

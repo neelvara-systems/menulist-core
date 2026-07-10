@@ -23,7 +23,7 @@
 | `src/services/ai/description/descriptionUtils.ts:8-42`                                    | Added `DescriptionGovernanceOptions` and `shouldGenerateDescriptionForItem()`     |
 | `src/services/ai/description/descriptionUtils.ts:44-48,97-105`                            | Updated `prepareDescriptionPayload()` and `addDescription()` to accept governance |
 | `src/components/.../DescriptionGenerationModal.tsx:6-7,36-39,48-55,77-79,107-109,142-143` | Accept governance props, filter item counts, pass to service                      |
-| `src/components/.../Editor.tsx:960-962`                                                   | Pass `itemStates` and `isMasterLinked` to DescriptionGenerationModal              |
+| `src/components/.../editor.tsx:960-962`                                                   | Pass `itemStates` and `isMasterLinked` to DescriptionGenerationModal              |
 | `__docs__/projects/description-generation/description-generation_impl.md:168-207`         | Added Multi-Outlet Governance section                                             |
 
 ### Verification Checklist

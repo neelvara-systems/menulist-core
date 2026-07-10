@@ -53,6 +53,8 @@ export interface StoreSummaryData {
 type StorePresenceValue = boolean | string | null | { linked?: boolean | null };
 
 export type StoreDistributionPresenceSummary = {
+    appleBusiness?: StorePresenceValue;
+    bingPlaces?: StorePresenceValue;
     googleBusiness?: StorePresenceValue;
     instagramBio?: StorePresenceValue;
     qrCodeInstalled?: StorePresenceValue;
@@ -164,6 +166,8 @@ const getStoresSummaryDocRef = () => {
 }
 
 const STORE_DISTRIBUTION_PRESENCE_KEYS: Array<keyof StoreDistributionPresenceSummary> = [
+    'appleBusiness',
+    'bingPlaces',
     'googleBusiness',
     'instagramBio',
     'qrCodeInstalled',

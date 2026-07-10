@@ -51,6 +51,8 @@ Launch proof status is also derived in `src/lib/answerlattice/activationSummary.
 
 Security note: the API must not fall back to the generic MenuList `session.user.tenantId/storeId`. A user needs a real Answerlattice product scope (`productAccounts.AL` or a native Answerlattice session) before any Answerlattice workspace summary is loaded.
 
+Activation management route persisted scope checks fail closed. Activation summary, Daily Governance, tenant-summary sync, and manual compiled-context rebuild routes use the already-normalized Answerlattice session scope directly, and normalize persisted store, legacy subscription, scheduler run-log, and request body `tId/sId` fields through `normalizeAnswerlatticeScopeDocumentId()` before comparing scope. Malformed persisted or body scope returns forbidden/invalid responses instead of passing through loose numeric coercion.
+
 `GET /api/answerlattice/operations/status`:
 
 1. Resolves the same Answerlattice tenant/store scope.

@@ -829,11 +829,12 @@ The form itself must not render a separate `Powered by MenuList` line or its own
 | `src/middleware/publicApi.ts`                                       | Public endpoint middleware        | 80         |
 | `src/lib/rateLimit/publicLimiter.ts`                                | IP-based rate limiter             | 60         |
 | `src/lib/utils/whatsappLink.ts`                                     | WhatsApp deep link generator      | 30         |
+| `src/lib/feedback/feedbackReplyTemplates.ts`                        | Browser-local deterministic reply drafts | 40         |
 | `src/lib/utils/feedbackQrCode.ts`                                   | QR code generator utility         | 50         |
 | `src/components/atoms/GuestFeedbackForm/index.tsx`                  | Guest-facing form component       | 200        |
 | `src/components/atoms/GuestFeedbackForm/StarRating.tsx`             | Star rating input                 | 80         |
 | `src/components/templates/main-app/feedback/index.tsx`              | Owner inbox page                  | 280        |
-| `src/components/templates/main-app/feedback/FeedbackCard.tsx`       | Individual feedback card          | 150        |
+| `src/components/templates/main-app/feedback/FeedbackCard.tsx`       | Individual feedback card with reply drafts | 150        |
 | `src/components/templates/main-app/feedback/FeedbackFilters.tsx`    | Filter controls                   | 60         |
 | `src/components/templates/main-app/feedback/FeedbackQrDownload.tsx` | QR code download component        | 80         |
 | **Total**                                                           | —                                 | **~1,660** |

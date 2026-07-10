@@ -71,7 +71,7 @@ const mobileDoc = read('__docs__/platform-pull-api/platform-pull-api_mobile-supp
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 
 requireToken(
   packageJson,

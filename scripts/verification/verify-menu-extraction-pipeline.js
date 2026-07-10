@@ -335,7 +335,7 @@ contains(
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   [
     'Menu Extraction Retry Job ID Boundary',
     'whitespace-mutated',
@@ -346,13 +346,13 @@ contains(
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   ['Menu Extraction Project ID Boundary', 'whitespace-mutated', 'Menu Extraction Identity Helper Project ID Normalization'],
   'Changelog records Menu Extraction project ID boundary',
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   [
     'Menu Intake Identity Scope Document ID Boundary',
     'normalizeMenuIntakeScopeDocumentId()',
@@ -942,7 +942,7 @@ contains(
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   [
     'Desktop Menu Upload Job Diagnostics',
     'Desktop job-start debug breadcrumbs were removed',
@@ -998,7 +998,7 @@ contains(
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   [
     'Extraction Review MOL Diagnostics',
     'Extraction review MOL failures are visible',
@@ -1042,7 +1042,7 @@ contains(
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   [
     'Extraction Review Apply ID Boundary',
     'Extraction review apply and discard IDs are validated before client Firestore refs',
@@ -1478,7 +1478,7 @@ contains(
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   ['Public create-menu preview stored-error display boundary'],
   'Changelog records public preview stored-error display boundary',
 );
@@ -1687,7 +1687,7 @@ contains(
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   ['Public create-menu success business-name query display boundary'],
   'Changelog records public success business-name query display boundary',
 );
@@ -1820,7 +1820,7 @@ contains(
   'Production-readiness audit records claim target document-ID boundary',
 );
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   ['Public Create Menu Claim Target Document ID Boundary'],
   'Changelog records claim target document-ID boundary',
 );
@@ -2009,7 +2009,7 @@ contains(
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   [
     'Menu Link Import Render Fallback Diagnostics',
     'menu_link_import_render_fallback_failed',
@@ -2551,7 +2551,7 @@ contains(
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   [
     'Messaging Preview Session Route-Param Boundary',
     'Preview session route params are shape-checked',
@@ -3231,7 +3231,7 @@ contains(
 );
 
 contains(
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
   [
     'Extraction Cost Monitor Load Diagnostics',
     'extraction_cost_monitor_load_failed',
@@ -3348,6 +3348,53 @@ notContains(
     "onClick={() => window.open(sourceUrl, '_blank', 'noopener,noreferrer')}",
   ],
   'Project file source-link preview does not use raw inline browser open',
+);
+
+for (const [docPath, label] of [
+  ['__docs__/menu-extraction-pipeline/README.md', 'Menu Extraction Pipeline README'],
+  ['__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md', 'Menu Extraction Pipeline implementation doc'],
+  ['__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md', 'Menu Extraction Pipeline Firebase doc'],
+  ['__docs__/menu-extraction-pipeline/menu-extraction-pipeline_mobile-support.md', 'Menu Extraction Pipeline mobile doc'],
+]) {
+  contains(
+    docPath,
+    [
+      'Not current launch certification or deploy approval',
+      'External Certification Runbook',
+      '`npm run verify:production-readiness-local`',
+      '`npm run verify:menu-extraction-pipeline`',
+      '`npm run verify:ai-accounting`',
+      '`npm run verify:functions-deploy-preflight`',
+      'provider smoke for the target extraction model and environment',
+      'authenticated desktop/mobile upload, identity-preflight, preview/review/apply QA',
+      'real-device mobile upload/review QA',
+      'public create-menu upload/link/preview/claim QA',
+      'owner review before publish',
+      'target Firebase deploy evidence where rules, Storage, indexes, or Functions change',
+      'target Vercel deploy evidence where app routes or browser clients change',
+      'production-host smoke',
+    ],
+    `${label} top launch boundary`,
+  );
+}
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Menu Extraction Pipeline technical-doc top-boundary checkpoint',
+    'provider smoke for the target extraction model/environment',
+    'owner review before publish',
+  ],
+  'Production-readiness audit records Menu Extraction Pipeline technical-doc boundary',
+);
+
+contains(
+  '__docs__/changelog.md',
+  [
+    'Menu Extraction Pipeline Technical Doc Boundary',
+    'Extraction technical docs are source-bounded',
+  ],
+  'Changelog records Menu Extraction Pipeline technical-doc boundary',
 );
 
 const failed = checks.filter((check) => !check.passed);

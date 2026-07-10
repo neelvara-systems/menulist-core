@@ -50,7 +50,7 @@ function forbidToken(source, token, label) {
   'FEATURE_SWEEP_MASTER_INVENTORY.md',
   'FEATURE_SWEEP_MASTER_REPORT.md',
   '__docs__/audits/menulist-production-readiness-audit.md',
-  '__docs__/CHANGELOG.md',
+  '__docs__/changelog.md',
 ].forEach(read);
 
 const packageJson = read('package.json');
@@ -75,6 +75,8 @@ const messageTemplates = read('src/lib/communication/messageTemplates.ts');
   'export function getTodayHours',
   'isClosedToday',
   'activeProjects',
+  'staff_daily_replies',
+  'Staff Daily Replies',
   'getOfferingLabels',
   'getLocalizedText',
   'communication_kit_today_hours_timezone_fallback_failed',
@@ -243,9 +245,12 @@ const printableRenderer = read('src/lib/printable-asset-templates/renderPrintabl
 
 const customerReadme = read('__docs__/customer-communication-kit/README.md');
 [
+  '**Launch boundary:** Not current launch certification or deploy approval.',
+  'This README is source-gated browser-local template evidence only; Customer Communication Kit release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:communication-kit-boundary`, browser/device output QA, WhatsApp/copy/share smoke where release scope requires it, print artifact review for related Menu Kit/printable output, and production-host smoke.',
   '**Pure UI + string templates.**',
   'Zero new collections. Zero new API routes. Zero Firebase cost.',
   'raw generated messages and raw public URLs must not be logged',
+  'Staff Daily Replies',
   'npm run verify:communication-kit-boundary',
 ].forEach((token) => requireToken(customerReadme, token, 'Customer Communication Kit README'));
 
@@ -317,11 +322,13 @@ const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 [
   'Communication Kit and physical-surface output boundary checkpoint',
   'Communication Kit today-hours diagnostics checkpoint',
+  'Customer Communication Kit README top-boundary checkpoint',
   'npm run verify:communication-kit-boundary',
 ].forEach((token) => requireToken(audit, token, 'production readiness audit'));
 
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 [
+  'Customer Communication Kit README has a top launch boundary',
   'Customer Communication Kit Today-Hours Diagnostics',
   'July 2, 2026 - Communication Kit and Physical Surface Output Boundary',
   'verify:communication-kit-boundary',

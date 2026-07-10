@@ -5,6 +5,8 @@
 **Audience:** Founder, Developers  
 **Purpose:** When to use what, where, how — single reference for all ops systems
 
+**Launch boundary:** Not current launch certification or deploy approval. This ops guide documents implemented source systems and manual use; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
+
 ---
 
 ## Quick Reference: What's Available

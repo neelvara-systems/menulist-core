@@ -2,9 +2,11 @@
 
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Release Test Plan / Go-Live Checklist  
-**Status:** 🚧 Pre-Production Validation Required  
+**Status:** Pre-production validation checklist; not current launch certification
 **Last Updated:** May 2, 2026
 **Audience:** Engineering, QA, Founder
+
+> **Launch Boundary:** This checklist is a release-evidence template, not current Customer App launch approval. Current approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:customer-app-pwa`, browser/device Customer App QA, target deploy evidence, and production-host smoke.
 
 ---
 

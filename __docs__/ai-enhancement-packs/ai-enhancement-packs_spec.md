@@ -171,7 +171,7 @@ Free means zero owner-pack units. These operations may still write internal toke
 | Operation                                            | Internal Action Type     | Why Paid                                     |
 | ---------------------------------------------------- | ------------------------ | -------------------------------------------- |
 | Description rewrite / tone change / SEO optimization | `REWRITE_DESCRIPTION`    | Creative regeneration, repeated Gemini calls |
-| Image generation (single)                            | `IMAGE_GENERATION`       | Expensive Gemini/Imagen API call             |
+| Image generation (single)                            | `IMAGE_GENERATION`       | Expensive Gemini image-generation API call   |
 | Batch image generation                               | `BATCH_IMAGE_GENERATION` | Multiple expensive API calls                 |
 | Image editing (background, enhance, etc.)            | `IMAGE_GENERATION`       | Gemini image model call                      |
 | Language addition (translation)                      | `LANGUAGE_ADDITION`      | Per-language Gemini translation call         |
@@ -276,10 +276,9 @@ Every AI operation has an internal unit cost. Units are abstract — they do not
 | Operation                          | Internal Units | Rationale                            |
 | ---------------------------------- | -------------- | ------------------------------------ |
 | Description rewrite                | [TBD]          | ~500-2000 Gemini tokens per call     |
-| Image generation (Gemini)          | [TBD]          | Gemini 2.0 Flash image gen call      |
-| Image generation (Imagen 3)        | [TBD]          | Imagen 3 API call (higher cost)      |
+| Image generation                   | [TBD]          | Gemini 2.5 Flash Image call          |
 | Image editing                      | [TBD]          | Similar to image generation          |
-| Language addition (per language)   | [TBD]          | Gemini 2.0 Flash translation         |
+| Language addition (per language)   | [TBD]          | Gemini 2.5 Flash translation         |
 | Item translation                   | [TBD]          | Per-item, smaller than full language |
 | Image translation                  | [TBD]          | OCR + translation + regen            |
 | Batch image generation (per image) | [TBD]          | Same as single, multiplied           |

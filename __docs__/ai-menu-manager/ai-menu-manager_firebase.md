@@ -2,7 +2,7 @@
 
 **Status:** Initial implementation validated - cost model active for implemented foundation
 **Cost posture:** Firestore cost is the top constraint
-**Last Updated:** June 30, 2026
+**Last Updated:** July 10, 2026
 
 ---
 
@@ -17,8 +17,8 @@ Estimated default cost at 1,000 stores with 10 AMM commands per store per month:
 - Session/inbox reads: low, because one compact session doc is the default load.
 - Proposal writes: zero for normal deterministic cards; proportional only to server-backed/durable cards.
 - Project writes: same cost as manual action because AMM uses existing project update path. Desktop and mobile approval flows require project-write acknowledgement before local project state or executed receipts update; this adds no extra read/write. Failed project-update receipt/proposal completion diagnostics change only failure logging and add no Firestore operations beyond the already-attempted completion writes.
-- AI/provider accounting: existing AI operation accounting where reused.
-- Read-only domain answers: no provider call and no extra Firestore read; one compact session write when the owner sends the question.
+- AI/provider accounting: deterministic routing runs first. An unresolved in-domain planner call uses one existing AI operation log write after a valid provider result and is platform-absorbed at zero owner units. Compact action contracts, bounded aliases, and the structured response schema change provider input/output quality only; they add no Firestore operation.
+- Read-only domain answers: known questions use no provider and no extra Firestore read. Only unresolved in-domain language may use the planner; either path still uses one compact session write for the owner command/card.
 - Storage: low unless generated images/import artifacts are used heavily.
 - Browser-local copy/open/download card actions add no Firestore operations. Local-action hardening changes only bounded runtime diagnostics for failed desktop/mobile card actions, blocked URL opens, unavailable clipboard support, and failed textarea-copy fallbacks.
 
@@ -103,6 +103,7 @@ The normal deterministic AMM path stays client-DAL-first. Server fallback routes
 - AMM server DAL ID boundary: `src/database/aiMenuManager/server.ts` repeats the same session/proposal/project ID admission before building session, proposal, scoped project, or legacy project document refs, and it filters stored pending-card proposal IDs before inbox proposal hydration.
 - AMM scope document-ID admission: `src/lib/ai-menu-manager/routeIds.ts`, `src/lib/ai-menu-manager/apiGuards.ts`, and `src/database/aiMenuManager/server.ts` require exact positive safe-integer MenuList tenant/store document IDs before selected-store authorization, tenant access fallback checks, limiter scope material, scoped project reads, session/proposal scope comparisons, or AMM proposal/session writes.
 - `POST /api/ai-menu-manager/command`: `DATA_WRITE` rate limit, then 64KB bounded JSON, then selected-store scope and project/proposal reads.
+- `POST /api/ai-menu-manager/plan`: AI-operation rate limit, then one SAFE_MODE read when cost protection is enabled, then a 48KB bounded body, selected-store permission, free-capacity admission, and one bounded provider call. It does not read or write selected project/session/proposal truth; a valid provider result records one existing AI operation log document.
 - `POST /api/ai-menu-manager/proposals/{proposalId}/actions`: `DATA_WRITE` rate limit, then 16KB bounded JSON, then selected-store scope and proposal/project checks.
 - `POST /api/ai-menu-manager/proposals/{proposalId}/complete`: `DATA_WRITE` rate limit, then 16KB bounded JSON, then selected-store scope and proposal/project checks.
 
@@ -188,9 +189,12 @@ Cost rule: AMM context packets are built for the selected store and selected pro
 | Choose Work on context | none | Composer context picker | 0 | 0 | Uses the selected project already loaded in memory. Item/category selections only rewrite the next owner message before resolver execution. |
 | Pick starter card | none | Empty-state contextual starter | 0 | 0 | Starter cards are derived from the selected project already loaded in memory and only draft text or open the second suggestion layer. |
 | Browse suggestion groups | none | Opening desktop inline tray or mobile sheet | 0 | 0 | Suggestions and second-layer guided choices are derived from the selected project already loaded in memory. Selecting a final option only fills the composer. |
-| Pick clarification option | `aiMenuManagerSessions` | Card option row click | 0 additional | 1 compact session write | Clarification choices submit the selected answer, remove the old clarification, and create the next card in one compact session write. No proposal doc and no separate cancel write. |
+| Pick clarification option | `aiMenuManagerSessions` | Card option row click | 0 additional | 1 compact session write | Clarification choices submit the selected answer plus one bounded structured entity selection when present, remove the old clarification, and create the next card in one compact session write. No proposal doc and no separate cancel write. |
 | Short follow-up to one pending card | `aiMenuManagerSessions` | "Actually 25", "Try warmer", "Restore it" | 0 additional | 1 compact session write | The DAL uses the loaded compact session snapshot to rewrite the resolver input, replace the previous pending card, and keep the owner text as typed. |
+| Compound deterministic command | `aiMenuManagerSessions` | Up to four independent registered project changes in one owner message | 0 additional | 1 compact session write | All cards are appended to the same capped daily session write. No proposal doc and no provider call are required. |
+| Immediate duplicate command | loaded `aiMenuManagerSessions` snapshot | Same normalized text/context/base hash within ten seconds | 0 | 0 | Returns the matching pending card group already in memory. A later deliberate repeat remains a new command. |
 | Answer selected-menu question | selected project already loaded | Questions like "What should I fix today?" or "Which items have no photos?" | 0 additional | included in compact session write | Uses `system_context_answer` from the loaded context packet; no provider call, no proposal doc, no external lookup. |
+| Plan unresolved in-domain language | existing SAFE_MODE + AI operation log | Only after deterministic routing returns no outcome | 1 SAFE_MODE read when cost protection is enabled; 0 project/session/proposal reads | 1 existing AI operation log write after a valid provider result; no project/session/proposal write | Sends at most 32 relevant items, 18 categories, and 5 pending summaries. Provider receipts/completion claims and invalid/fabricated clarification IDs are rejected. Invalid/provider-failed results fall back without an AI operation log write or extra session write. |
 | Store pending operation | `aiMenuManagerSessions` | Actionable card | included above | included above | Full card plus exact patch/hash/base-project marker is capped in `pendingOperations`. |
 | Create proposal doc | `aiMenuManagerProposals` | Server-backed adapters only | 0 | N | Only when secrets/jobs/external policy/durable ledger require the server path. |
 | Permission fallback command | `aiMenuManagerSessions` + `aiMenuManagerProposals` | Only after direct compact-session write returns Firestore `permission-denied` | bounded server reads | up to 1 session/proposal write | Sends only the bounded command payload, not full project/session JSON. This is an exception for `MANAGE_MENU` users whose Firebase Auth token cannot directly write the compact session. |
@@ -201,12 +205,16 @@ Cost rule: AMM context packets are built for the selected store and selected pro
 | --- | --- | --- | --- | --- | --- |
 | Verify pending operation | in-memory selected session state | Approve deterministic card | 0 | 0 | The approved patch comes from the stored pending operation, not from freeform card text. |
 | Execute project mutation | `projects` | Approved project action | Existing `updateProject()` cost | Existing `updateProject()` cost | Preserves MCE/MOL/cache path. |
-| Complete operation | `aiMenuManagerSessions` | After execution/manual done/cancel | 0 AMM session reads when the loaded session snapshot is passed | 1 session write | Move card from pending to recent receipt, capped. |
+| Execute grouped project mutations | `projects` | Approve all for one non-overlapping command group | Existing single `updateProject()` cost | Existing single `updateProject()` cost | Patches are revalidated and merged on one cloned project before one existing save. |
+| Complete operation | `aiMenuManagerSessions` | After execution/manual done/cancel | 0 AMM session reads when the loaded session snapshot is passed | 1 session write | Move card from pending to recent receipt and append its compact receipt timeline entry in the same capped write. |
+| Complete grouped operations | `aiMenuManagerSessions` | After grouped project save | 0 AMM session reads | 1 session write | Removes every completed group card and appends all capped receipt summaries/messages together. |
 | Lock/complete proposal | `aiMenuManagerProposals` | Server-backed adapters only | 1-2 | 1-2 | Use only when the adapter requires the protected API path. |
 
 Existing `updateProject()` may fetch old project state when MCE/MOL/master awareness is enabled, then writes the project and triggers revalidation. Evidence: `src/database/projects/index.ts:931`, `src/database/projects/index.ts:995`, `src/database/projects/index.ts:1003`, `src/database/projects/index.ts:1070`.
 
 If several approved cards share the same project, risk class, and approval scope, implementation should prefer one merged `updateProject()` call over multiple sequential project writes.
+
+Route-quality counters (`deterministicRoutes`, `plannerAttempts`, `plannerAccepted`, `plannerFallbacks`, `compoundCommands`, and `clarifications`) are aggregate numbers inside the same compact session write. They do not store raw prompts, provider payloads, per-token events, or new documents.
 
 AMM must treat `storeId` and `projectId` as the current selector context. Store-level actions use the selected store. Project-level actions use the selected project. Cross-project, all-project, or all-store behavior is not the default and requires an explicit scope proposal before execution.
 
@@ -220,6 +228,10 @@ Scale estimate for two successful deterministic project operations after the scr
 - AMM completion overhead: 0 AMM session reads + 2 session writes when the loaded session snapshot is passed.
 - Existing project mutation overhead: 2 existing `updateProject()` saves plus any enabled MCE/MOL/cache side effects.
 - No proposal-doc reads/writes are needed for those deterministic operations.
+
+If the owner requests those two non-overlapping operations in one accepted compound command and uses **Approve all**, the same work becomes 0 AMM session reads + 1 command session write + 1 existing `updateProject()` save + 1 completion session write. This optimization is not used when patches overlap, scope differs, or any segment is not a registered deterministic project proposal.
+
+Planner-assisted commands do not change these AMM session counts. They add a provider call only when deterministic routing has no result, plus the SAFE_MODE read and existing AI operation accounting write described above. Exact commands, known diagnostics, local exports, unsupported external requests, and general out-of-scope questions add no provider cost.
 
 ### Image Generation
 
@@ -339,6 +351,7 @@ The table below is the family-level cost rule. Exact per-action cost classes are
 | Action family | Additional Firebase cost over manual path |
 | --- | --- |
 | Price/availability/theme/item/category/attribute patch | Deterministic path: command submit uses the loaded compact session snapshot and 1 compact session write; completion/cancel also uses the loaded compact session snapshot and 1 compact session write; no proposal-doc read/write and no deterministic-session transaction read. Project write cost same as manual. Server-backed path only when adapter needs server authority. |
+| Unresolved-language planner | No project/session/proposal read or write inside the planner route. One SAFE_MODE read when enabled, one bounded Gemini call, and one existing AI operation accounting write after a valid result. The provider packet keeps the same 32-item/18-category/5-pending caps while adding bounded aliases and compact contracts for only the 19 current executable actions. The validated card still uses the normal single compact-session command write. |
 | Image generation | Existing image generation accounting/storage plus proposal/session writes. |
 | Menu import | Existing extraction job cost plus proposal/session writes. |
 | Project metadata, active status, and cover image | Existing project metadata/summary/cache path plus proposal/session writes; cover image may add Storage cost. |

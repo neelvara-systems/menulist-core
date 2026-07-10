@@ -19,7 +19,7 @@ import {
 } from '@lib/answerlattice/activationSummary';
 import { getAnswerlatticeBundleManifestDocId } from '@lib/answerlattice/compiledContext';
 import { getContextContentSummaryDocId } from '@lib/answerlattice/productSurfaceContent';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import * as admin from 'firebase-admin';
@@ -68,11 +68,7 @@ const getAnswerlatticeDb = () => {
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
     if (!answerlatticeScope) return null;
-
-    const tenantId = Number(answerlatticeScope.tenantId);
-    const storeId = Number(answerlatticeScope.storeId);
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return null;
-    return { tenantId, storeId };
+    return { tenantId: answerlatticeScope.tenantId, storeId: answerlatticeScope.storeId };
 };
 
 const readLegacySubscription = async (db: any, tId: number, sId: number) => {
@@ -85,7 +81,7 @@ const readLegacySubscription = async (db: any, tId: number, sId: number) => {
     const match = snapshot.docs
         .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
         .find((data: any) => {
-            const tenantMatches = Number(data.tenantId || data.tId) === tId;
+            const tenantMatches = normalizeAnswerlatticeScopeDocumentId(data.tenantId ?? data.tId) === tId;
             const productMatches = !data.productId || data.productId === 'AL' || data.pId === 'AL' || data.onboardingSource === 'ANSWERLATTICE_ONBOARDING';
             return tenantMatches && productMatches;
         });
@@ -138,8 +134,8 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
         }
 
         const storeData = storeSnap.data() || {};
-        const storeTenantId = Number(storeData.tenantId || storeData.tId);
-        if (Number.isFinite(storeTenantId) && storeTenantId !== tId) {
+        const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+        if (storeTenantId !== tId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

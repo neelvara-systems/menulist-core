@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Spec
 
 > **Version:** 2.0 (post-ChatGPT feedback)
-> **Last Updated:** March 16, 2026
+> **Last Updated:** July 10, 2026
 > **Audience:** CEO, PM, Business stakeholders
 
 ---
@@ -10,7 +10,7 @@
 
 **What:** A simple status checklist showing source-derived readiness and owner-confirmed external placement status for the surfaces where customers may look for the menu.
 
-**Why:** Owners publish their menu once and forget distribution work. They may still need to place the link on Google Business, Instagram, WhatsApp, or review printed QR placement. Menu Presence Monitor surfaces those gaps with simple ✓/⚠ signals without claiming external-platform verification.
+**Why:** Owners publish their official page once and forget distribution work. They may still need to place the link on Google Business, Apple Business Connect, Bing Places, Instagram, WhatsApp, or review printed QR placement. Menu Presence Monitor surfaces those gaps with simple ✓/⚠ signals without claiming external-platform verification.
 
 **For Whom:** All MenuList business owners (restaurants, salons, cafes, gyms — any business type).
 
@@ -52,9 +52,9 @@
 
 1. Owner opens `/use-menulist` page
 2. At the top (below Quick Actions), sees **"Menu Visibility"** card
-3. Card shows 6 surface statuses with ✓/⚠ icons
+3. Desktop shows 8 bounded surface statuses; mobile shows 7 because Digital Screens is not part of the mobile Share loader
 4. MenuList-recorded surfaces (QR, Screens, Feedback) show source-derived readiness status
-5. Manual surfaces (Google, Instagram, WhatsApp) show ⚠ until confirmed
+5. Manual surfaces (Google, Apple, Bing, Instagram, WhatsApp) show ⚠ until confirmed
 
 ### 5.2 Confirm Manual Surface
 
@@ -78,6 +78,8 @@
 | Surface              | Why It Matters                                                                     | Detection                  |
 | -------------------- | ---------------------------------------------------------------------------------- | -------------------------- |
 | **Google Business**  | #1 discovery surface for restaurants. Customers search → see menu.                 | Manual                     |
+| **Apple Business Connect** | Apple Maps location/action placement for the official business page. | Manual |
+| **Bing Places** | Bing business listing website or menu-link placement. | Manual |
 | **Instagram Bio**    | Second most common discovery for food businesses. Bio link = menu access.          | Manual                     |
 | **WhatsApp Profile** | Many Indian SMBs use WhatsApp Business. Profile description should have menu link. | Manual                     |
 | **Table QR**         | Primary in-restaurant access point. Printed placement still needs owner review.    | Source-derived readiness   |
@@ -155,6 +157,8 @@
 ```typescript
 menuPresence?: {
   googleBusiness?: string;   // ISO 8601 timestamp when owner confirmed
+  appleBusiness?: string;    // ISO 8601 timestamp when owner confirmed
+  bingPlaces?: string;       // ISO 8601 timestamp when owner confirmed
   instagramBio?: string;     // ISO 8601 timestamp when owner confirmed
   whatsappProfile?: string;  // ISO 8601 timestamp when owner confirmed
 }
@@ -162,7 +166,7 @@ menuPresence?: {
 
 Auto-detected surfaces (QR, Screens, Feedback) derive status from existing store/screen data — no new fields needed.
 
-Surface IDs are **IMMUTABLE** — never rename. Max **6 surfaces forever**.
+Surface IDs are **IMMUTABLE** — never rename. The approved boundary is five manual discovery placements plus three desktop product-readiness surfaces. The two-signal starter activation target is unchanged.
 
 ---
 

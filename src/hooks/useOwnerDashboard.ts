@@ -305,6 +305,8 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 return todayLoading && !todayData;
             case 'overview':
                 return settledLoading;
+            case 'graph':
+                return settledLoading;
             case 'daily':
                 return !settledData?.daily && dailyLoading;
             case 'weekly':
@@ -328,6 +330,8 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             case 'today':
                 return todayError || null;
             case 'overview':
+                return settledError || null;
+            case 'graph':
                 return settledError || null;
             case 'daily':
                 return settledError || dailyError || null;
@@ -357,6 +361,8 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             wtd: settledData?.wtd || settledData?.overview?.wtd || null,
             mtd: settledData?.mtd || settledData?.overview?.mtd || null,
             historicalWeeks: settledData?.historicalWeeks || settledData?.overview?.historicalWeeks || [],
+            daily30d: settledData?.daily30d || [],
+            trendSummary: settledData?.trendSummary,
             overall: settledData?.overall || null,
             ownerActionPlan: settledData?.ownerActionPlan || settledData?.overview?.ownerActionPlan,
             ownerConfidence: settledData?.ownerConfidence || settledData?.overview?.ownerConfidence,
@@ -373,6 +379,8 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             case 'today':
                 return todayData || null;
             case 'overview':
+                return settledData?.overview || null;
+            case 'graph':
                 return settledData?.overview || null;
             case 'daily':
                 return settledData?.daily || dailyData || settledData?.overview?.yesterday || null;
@@ -399,6 +407,9 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 await mutateToday();
                 break;
             case 'overview':
+                await Promise.all(loadHistorical ? [mutateSettled(), mutateToday()] : [mutateToday()]);
+                break;
+            case 'graph':
                 await Promise.all(loadHistorical ? [mutateSettled(), mutateToday()] : [mutateToday()]);
                 break;
             case 'daily':

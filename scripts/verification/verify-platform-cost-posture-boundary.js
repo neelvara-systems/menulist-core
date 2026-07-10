@@ -322,7 +322,7 @@ function verifyPlatformCostPostureBoundary() {
     firebaseDoc: read('__docs__/platform-cost-posture/platform-cost-posture_firebase.md'),
     mobileDoc: read('__docs__/platform-cost-posture/platform-cost-posture_mobile-support.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
-    changelog: read('__docs__/CHANGELOG.md'),
+    changelog: read('__docs__/changelog.md'),
   };
 
   verifyRoute(files.route);

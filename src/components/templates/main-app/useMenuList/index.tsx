@@ -46,6 +46,7 @@ import {
     type StarterActivationSignal,
 } from '@lib/onboarding/starterActivation';
 import { buildScreenUrl } from '@lib/screen/utils';
+import { isOwnerReferralAcquisitionEnabledForStore } from '@lib/ownerReferral/ownerReferralFeature';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
@@ -74,6 +75,7 @@ import {
 } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger } from '../../../shared/ProjectSelector';
 import CommunicationKit from './CommunicationKit';
+import OwnerReferralModal from './OwnerReferralModal';
 import PresenceMonitor from './PresenceMonitor';
 import ShareLinkCard from '../ShareLinkCard';
 import { PageState, ProjectLink, UseMenuListData } from './types';
@@ -1128,6 +1130,12 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                     </Col>
                 ) : null}
             </Row>
+
+            {isOwnerReferralAcquisitionEnabledForStore(storeDetails?.storeId) ? (
+                <Flex justify="flex-end" style={{ marginBottom: 24 }}>
+                    <OwnerReferralModal />
+                </Flex>
+            ) : null}
 
             {/*
              * ─── QR Codes ──────────────────────────────────────────

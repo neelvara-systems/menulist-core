@@ -44,6 +44,7 @@ Unless explicitly approved:
 - no contact from Foursquare PAYG data;
 - no GBP API lead mining.
 - no Apify source data used for outreach unless contact use is explicitly approved and the normal suppression, evidence, draft, and human approval gates pass.
+- no public-business research row gains contact or personalization permission without a separate permissioned manual introduction or referral basis.
 
 ## Approval Workflow
 

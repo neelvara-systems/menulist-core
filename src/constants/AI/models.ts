@@ -28,8 +28,6 @@ export const GEMINI_MODELS = {
     // Image Generation Models
     IMAGE_GEN: 'gemini-2.5-flash-image',
     IMAGE_FRONTIER_STABLE: 'gemini-3.1-flash-image',
-    // Legacy generateImages() branch. The active image routes default to IMAGE_GEN.
-    IMAGEN_3: 'imagen-3.0-generate-002',
 
     // Embedding Model
     TEXT_EMBEDDING: 'gemini-embedding-001',
@@ -146,23 +144,6 @@ export const AI_MODELS = {
             temperature: 1.0,
         },
         description: 'AI-generated food/menu images with Gemini',
-    },
-
-    /**
-     * 🎨 Image Generation (legacy Imagen 3 branch)
-     *
-     * Model: imagen-3.0-generate-002
-     * Why: Preserved for the dormant generateImages() branch. Do not make this
-     *      the production default without a provider-specific migration and
-     *      current model/deprecation check.
-     */
-    IMAGEN: {
-        model: GEMINI_MODELS.IMAGEN_3,
-        config: {
-            aspectRatio: '1:1',
-            numberOfImages: 1,
-        },
-        description: 'High-quality image generation with Imagen 3',
     },
 
     /**

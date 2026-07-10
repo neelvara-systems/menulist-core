@@ -12,7 +12,7 @@ import {
 } from '@lib/answerlattice/schedulerSettings';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -34,10 +34,7 @@ const VALID_STATUSES = new Set<AnswerlatticeOwnerOperationStatus>([
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const scope = resolveAnswerlatticeSessionScope(session);
     if (!scope) return null;
-    const tenantId = Number(scope.tenantId);
-    const storeId = Number(scope.storeId);
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return null;
-    return { tenantId, storeId };
+    return { tenantId: scope.tenantId, storeId: scope.storeId };
 };
 
 const getAnswerlatticeDb = () => {
@@ -130,8 +127,8 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         if (!storeSnap.exists) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
         const storeData = storeSnap.data() || {};
-        const storeTenantId = Number(storeData.tenantId || storeData.tId);
-        if (Number.isFinite(storeTenantId) && storeTenantId !== tId) {
+        const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+        if (storeTenantId !== tId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -142,7 +139,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const latestRuns = (runLogSnap.docs || []).flatMap((docSnap: any) => {
             const data = docSnap.data() || {};
             const tenantRun = Array.isArray(data.tenantRuns)
-                ? data.tenantRuns.find((run: any) => Number(run.tId) === tId && Number(run.sId) === sId)
+                ? data.tenantRuns.find((run: any) => (
+                    normalizeAnswerlatticeScopeDocumentId(run.tId) === tId
+                    && normalizeAnswerlatticeScopeDocumentId(run.sId) === sId
+                ))
                 : null;
             if (!tenantRun) return [];
             return [{

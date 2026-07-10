@@ -36,8 +36,8 @@ export const getBillingHistoryForStore = async (tenantId: number, storeId: numbe
                 getCollectionRef(),
                 where("tenantId", "==", Number(tenantId)),
                 where("storeId", "==", Number(storeId)),
-                // We only care about events that represent a successful payment.
-                where("event", "in", ["subscription.charged", "order.paid"]),
+                // Successful payments plus zero-cash referral credit rewards.
+                where("event", "in", ["subscription.charged", "order.paid", "owner_referral.reward_issued"]),
                 orderBy("created_at", "desc"), // Show the most recent payments first
                 limit(50),
             );

@@ -48,7 +48,7 @@ Safe review URL boundary now includes review URL parse diagnostics. Malformed co
 - ❌ A review manager
 - ❌ A sentiment analyzer
 - ❌ A reputation dashboard
-- ❌ A response automation tool
+- ❌ A response automation tool. Reply drafts are deterministic copy helpers only; owners still decide what to send or save.
 - ❌ A CRM or customer relationship system
 
 ---
@@ -116,6 +116,7 @@ Safe review URL boundary now includes review URL parse diagnostics. Malformed co
 | `src/app/api/public/feedback/submit/route.ts`                                     | Public submit endpoint (no auth, rate limited, Admin SDK write)                   | ✅     |
 | `src/app/feedback/[projectId]/page.tsx`                                           | Standalone feedback page (QR surface, server component)                           | ✅     |
 | `src/lib/feedback/publicFeedbackDiagnostics.ts`                                   | Bounded public feedback page/form failure diagnostics                             | ✅     |
+| `src/lib/feedback/feedbackReplyTemplates.ts`                                      | Browser-local deterministic reply drafts for owner follow-up                      | ✅     |
 | `src/lib/feedback/guestFeedbackSubmitResponse.ts`                                 | Shared public feedback submit response cap and shape guard                        | ✅     |
 | `src/middleware/publicApi.ts`                                                     | Public rate limiting + honeypot + sanitization                                    | ✅     |
 | `src/lib/utils/whatsappLink.ts`                                                   | WhatsApp deep link + phone validation + formatting                                | ✅     |
@@ -124,12 +125,12 @@ Safe review URL boundary now includes review URL parse diagnostics. Malformed co
 | `src/components/atoms/GuestFeedbackForm/StarRating.tsx`                           | Star rating input + display component                                             | ✅     |
 | `src/components/templates/main-app/feedback/index.tsx`                            | Owner feedback inbox page                                                         | ✅     |
 | `src/components/templates/main-app/feedback/feedbackInboxDiagnostics.ts`           | Bounded desktop inbox failure diagnostics                                         | ✅     |
-| `src/components/templates/main-app/feedback/FeedbackCard.tsx`                     | Feedback card with contact/WhatsApp/resolve                                       | ✅     |
+| `src/components/templates/main-app/feedback/FeedbackCard.tsx`                     | Feedback card with contact/WhatsApp/resolve and reply drafts                      | ✅     |
 | `src/components/templates/main-app/feedback/FeedbackFilters.tsx`                  | All / Needs Attention / Resolved filters                                          | ✅     |
 | `src/components/templates/main-app/feedback/FeedbackQrDownload.tsx`               | QR code preview + download modal                                                  | ✅     |
 | `src/components/templates/main-app/businessSettings/tabs/FeedbackSettingsTab.tsx` | Store-level feedback settings                                                     | ✅     |
 | `src/components/mobile/screens/MobileFeedbackScreen.tsx`                          | Mobile feedback list (antd-mobile)                                                | ✅     |
-| `src/components/mobile/screens/MobileFeedbackDetail.tsx`                          | Mobile feedback detail view                                                       | ✅     |
+| `src/components/mobile/screens/MobileFeedbackDetail.tsx`                          | Mobile feedback detail view with reply draft fill                                 | ✅     |
 | `src/hooks/useFeedback.ts`                                                        | Generic feedback hook (KB articles/changelog)                                     | ✅     |
 | `functions/src/analytics/guestFeedbackRetention.ts`                               | Nightly 90-day retention cleanup CF                                               | ✅     |
 | `scripts/verification/verify-guest-feedback-boundary.js`                          | Source gate for public submit, safe review URL, owner/mobile parity, docs parity   | ✅     |

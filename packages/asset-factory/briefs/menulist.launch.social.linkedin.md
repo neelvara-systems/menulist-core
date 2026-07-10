@@ -1,8 +1,8 @@
 # Asset Brief - menulist.launch.social.linkedin
 
-**Generated:** 2026-05-31
+**Generated:** 2026-07-10
 **Brand:** menulist
-**Status:** draft
+**Status:** approved
 **Approval:** founder-review
 **Autonomy level:** 3
 **Output file:** packages/asset-factory/briefs/menulist.launch.social.linkedin.md
@@ -16,7 +16,7 @@ Provide a professional launch preview for founder distribution.
 - Page: MenuList launch assets
 - Route: /
 - Placement: LinkedIn launch image
-- Component: not mounted yet
+- Component: not runtime-mounted
 - Destination: public/images/website/menulist-linkedin-launch.png
 
 ## Output Contract
@@ -52,6 +52,7 @@ Provide a professional launch preview for founder distribution.
 
 - packages/asset-factory/brand/menulist.asset-context.md: MenuList Asset Context
 - __docs__/main-website/main-website_image-assets.md: Website Image & Asset Requirements
+- __docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md: MenuList Coordinated Launch Pack
 - scripts/website-assets/generate-stage6-assets.mjs: Source file
 
 ## Brand Context Snapshot

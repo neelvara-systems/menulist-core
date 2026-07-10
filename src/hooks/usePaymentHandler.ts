@@ -3,6 +3,7 @@ import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { isFeatureEnabled } from '@config/features';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
+import type { CancellationReasonCode } from '@lib/billing/cancellationReasons';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { useSession } from 'next-auth/react';
 import { useCallback, useState } from 'react';
@@ -266,7 +267,15 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
         })
     };
 
-    const onCancelSubscription = async ({ reason, otherReason, consent }: { reason: string, otherReason: string, consent: boolean }) => {
+    const onCancelSubscription = async ({
+        reason,
+        otherReason,
+        consent,
+    }: {
+        reason: CancellationReasonCode;
+        otherReason?: string;
+        consent: boolean;
+    }) => {
         const response = await fetch('/api/razorpay/cancel-subscription', {
             ...PAYMENT_ROUTE_REQUEST_OPTIONS,
             method: 'POST',

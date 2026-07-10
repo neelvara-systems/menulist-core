@@ -8,6 +8,8 @@
 **Surfaces:** QR/Web Menu + Digital Screens + Staff Prompt
 **Actual Effort:** ~2 hours
 
+> **Launch boundary:** Not current launch certification or deploy approval. This implementation doc is source-gated working-hours runtime evidence only; Hours release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, and production-host smoke.
+
 ---
 
 ## Source Gate

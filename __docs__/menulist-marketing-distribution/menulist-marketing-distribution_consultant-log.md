@@ -37,7 +37,7 @@ HyperFrames TTS failed because the local Kokoro/espeak package expected a missin
 
 ### Verification
 
-- `npm run check` passed inside the HyperFrames project.
+- `cd __docs__/videos/hyperframes/menulist-launch-announcement-30s && npm run check` passed inside the HyperFrames project.
 - HyperFrames lint: 0 errors.
 - HyperFrames validate: no console errors and all text passed WCAG AA.
 - HyperFrames inspect: 0 layout issues.
@@ -1365,7 +1365,7 @@ The founder asked Codex to continue without waiting for more permission and act 
 
 ### Verification
 
-- HyperFrames `npm run check` passed with 0 lint warnings, no console errors, 57 WCAG-passing text elements, and 0 layout issues.
+- `cd __docs__/videos/hyperframes/menulist-founder-brand-pov && npm run check` passed with 0 lint warnings, no console errors, 57 WCAG-passing text elements, and 0 layout issues.
 - Rendered MP4 passed metadata check: H.264, 1920 x 1080, 30fps, 2,250 frames, 75.03 seconds.
 - Review frames were extracted and visually checked at 2s, 12s, 24s, 36s, 48s, 60s, and 70s.
 
@@ -1375,3 +1375,51 @@ The founder asked Codex to continue without waiting for more permission and act 
 - Founder audio or founder talking-head footage should replace the local generated review narration before public use.
 - Product screens remain CSS-built mockups until approved demo screenshots or final UI captures are available.
 - No public website copy, locale files, runtime code, Firebase target, production build, Vercel deploy, paid campaign, or external upload was changed.
+
+---
+
+## July 10, 2026 - Growth Learning System Wired
+
+### Decisions
+
+- Measured the `Powered by MenuList` loop with fixed non-tenant attribution through create-menu draft, claim, and Founder Monitor counters.
+- Replaced cancellation display strings and the mobile catch-all reason with stable cross-surface reason codes; aggregate founder views never receive free text.
+- Expanded owner-confirmed discovery placement to Apple Business Connect and Bing Places without external sync or verification claims.
+- Created a physical partner pilot for printers, photographers, hospitality consultants, and QR/signage suppliers.
+- Created the first ten-business Bengaluru learning board without scraping or inventing business data.
+- Kept extraction as intake; the market position remains owner-approved official source alignment.
+
+### Owner-Controlled Next Action
+
+The founder supplies the first permissioned businesses or approved partner introductions and the sender identity. Codex can then operate the maintained cohort board and review real activation, payment, churn, and proof-permission evidence.
+
+---
+
+## July 10, 2026 - Current Market Growth Systems Gap Audit
+
+### Context
+
+The founder requested deep internet research into growth systems used by other restaurant, SMB, local-discovery, partner, review, and AI-distribution platforms that MenuList might be ignoring.
+
+### Decisions
+
+- Corrected the initial market hypothesis against repo truth: MenuList already has public free tools, machine-readable business truth, owner referral, a role-gated reseller dashboard, physical partner pilot, SignalDesk partner/revenue rails, activation tracking, and public-loop growth intelligence.
+- Identified the primary operating gap as real permissioned proof, paid/day-30 evidence, and independent reviews rather than another frontend feature or acquisition channel.
+- Added a separate proof-and-retention review to the Bengaluru ten-business board so acquisition source can be reviewed against activation, first payment, day-30 state, interviews, approved proof, and neutral review requests.
+- Recommended a small invitation-only founder owner clinic after three activated businesses; rejected building a community product.
+- Kept Google/Apple/API and direct AI-provider work behind an explicit eligibility, delegation, consent, revocation, reporting, and data-authority dossier after cohort proof.
+- Rejected POS/order/loyalty/guest-CRM expansion, UCP commerce, broad listings syndication, another partner portal, generic free tools, and tiny-sample benchmark claims.
+
+### Files Added Or Updated
+
+- `menulist-marketing-distribution_market-growth-gap-audit-2026-07-10.md`
+- `menulist-marketing-distribution_bengaluru-ten-business-pilot.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_consultant-log.md`
+- `README.md`
+
+### Boundaries
+
+- No product runtime, website route, public copy, locale, Firebase target, provider account, outreach, review request, paid campaign, build, or deploy was changed.
+- Real businesses, sender identity, proof permission, and external account decisions remain founder-controlled.
+- Runtime source-to-day-30 work remains gated until the manual cohort demonstrates a repeated founder decision need.

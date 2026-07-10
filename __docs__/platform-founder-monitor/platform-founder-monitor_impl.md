@@ -13,6 +13,7 @@ The implementation follows the internal platform monitor pattern:
 7. The API reads bounded precomputed summaries and returns one compact response.
 8. The browser DAL reads the response with `readJsonResponseWithLimit`.
 9. The UI renders cards, tables, data gaps, and source coverage.
+10. The API also reads the bounded `founderMonitorGrowth` summary for allowlisted draft/claim source counts.
 
 ## Data Sources
 
@@ -20,6 +21,7 @@ The implementation follows the internal platform monitor pattern:
 | --- | --- | --- |
 | `platformSummary/founderMonitorSnapshot` | Precomputed store, onboarding, support, and truth snapshot | 1 read |
 | `platformSummary/founderMonitorRevenue` | Live revenue summary updated by transaction-time Razorpay writes and reconciled by scheduler | 1 read |
+| `platformSummary/founderMonitorGrowth` | Idempotent attributed draft and claimed-business counters by fixed source | 1 read |
 | `platformSummary/founderMonitorRevenueDaily_YYYY-MM-DD` | Selected-period daily revenue counters | 1 read per selected day |
 | `founderRevenueMovements` | Latest revenue movement rows | Capped read; API returns hashed row identifiers, not provider payment/order IDs |
 | `founderOnboardingTransitions` | Payment-to-first-live timestamps completed by the scheduler | Scheduler-only read/write; dashboard reads precomputed average |
@@ -38,6 +40,8 @@ Revenue is not calculated by scanning subscriptions or payment transactions duri
 
 Those movements are stored in `founderRevenueMovements`. The same transaction increments `platformSummary/founderMonitorRevenue` and `platformSummary/founderMonitorRevenueDaily_YYYY-MM-DD`.
 
+Owner-initiated churn movements may include one stable cancellation reason code. The same first-write transaction increments the matching reason counter; replaying `churn:<subscriptionId>` does not double-count it. Free-form cancellation detail is never copied into the movement description or founder summary.
+
 Founder revenue movement document IDs pass through `src/lib/firebase/firestoreDocumentId.ts`, and payment-to-live transition store IDs use exact positive numeric MenuList store document scope before the same Firestore document-ID guard. Valid Razorpay-derived `cash:...`, `failed_payment:...`, `new_mrr:...`, `churn:...`, `refund:...`, `expansion_mrr:...`, and `downgrade_mrr:...` movement IDs keep the same deterministic write shape; malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric movement/store IDs return without creating invalid `founderRevenueMovements/{movementId}` or `founderOnboardingTransitions/{storeId}` refs.
 
 New MRR movement writes also seed `founderOnboardingTransitions/{storeId}` with `paymentAt`. The 30-minute scheduler completes `firstLiveAt` and `timeToLiveHours` once the store has a published menu. Historical data can be seeded with `scripts/backfill-founder-revenue-read-model.ts`, which is dry-run by default and uses Firestore billing/audit documents only.
@@ -52,6 +56,7 @@ The response returns:
 
 - `scorecard`
 - `revenue`
+- `growth`
 - `storeTruth`
 - `onboarding`
 - `support`

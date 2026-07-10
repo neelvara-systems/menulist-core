@@ -33,6 +33,7 @@
 | `aiSearchHistory`        | 0-12 READS | `/api/answerlattice/widget-activity` recent widget questions panel in `/answerlattice/widget`; protected tenant/store read after the shared `DATA_READ` gate | Rate-limited refreshes perform no search-history reads |
 | Browser request/response validation | 0 READ / 0 WRITE | Widget Management uses no-store, same-origin, manual-redirect request policy and validates widget-config, widget-activity, widget-key, and hosted-help settings response bodies before local UI state changes | $0.00 |
 | Widget activity timestamp normalization | 0 READ / 0 WRITE | `/api/answerlattice/widget-activity` accepts Firestore Timestamp-like values and canonical ISO `...Z` strings only when sorting fallback rows or serializing `createdAt`; malformed stored values become `null`/oldest instead of permissive parsed dates | $0.00 |
+| Widget management persisted scope checks fail closed | 0 READ / 0 WRITE | Protected widget-config, widget-activity fallback filtering, and hosted-help registry/store checks normalize persisted tenant/store scope before comparing the active workspace | $0.00 |
 | Public iframe response validation | 0 READ / 0 WRITE | WidgetClient validates widget search responses in the browser before rendering assistant messages; feedback request policy changes stay browser-local | $0.00 |
 
 ## No New Collections
@@ -108,7 +109,8 @@ Note: Canonical hit rate directly reduces Gemini API costs (canonical hits = $0 
 23. **Bounded public widget diagnostics** — widget search/config/feedback/predictive-help failure logs use fixed runtime codes and tenant/store presence-length metadata, not raw tenant/store IDs or route-specific exception payloads.
 24. **Observable config capability degradation** — predictive-summary read failures log `answerlattice_widget_config_predictive_summary_load_failed` and public bundle-manifest read failures log `answerlattice_widget_config_bundle_manifest_load_failed`; the response keeps the existing degraded capability shape without adding Firestore reads, writes, or Storage operations.
 25. **Bounded widget-management requests and responses** — dashboard widget-config, widget-activity, widget-key, and hosted-help calls use no-store, same-origin, manual-redirect request policy, then parse responses with a browser-side 256 KB cap and shape guards before state mutation. This adds no Firestore reads, writes, collections, listeners, or provider calls.
-26. **Bounded public widget responses** — iframe search responses are parsed with a browser-side 256 KB cap and shape guard before rendering. This adds no Firestore reads, writes, collections, listeners, Storage operations, provider calls, rules, indexes, or deployment work.
+26. **Widget management persisted scope checks fail closed** — management store, registry, and fallback activity rows reuse the shared exact tenant/store document-ID normalizer before comparison. This changes malformed-data admission only and adds no reads, writes, collections, listeners, rules, indexes, provider calls, or deployment work.
+27. **Bounded public widget responses** — iframe search responses are parsed with a browser-side 256 KB cap and shape guard before rendering. This adds no Firestore reads, writes, collections, listeners, Storage operations, provider calls, rules, indexes, or deployment work.
 
 ## Cache Strategy Decision
 

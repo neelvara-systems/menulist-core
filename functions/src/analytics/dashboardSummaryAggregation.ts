@@ -15,6 +15,36 @@ const INTELLIGENCE_ITEM_LIMIT = 250;
 const DASHBOARD_ITEM_LIMIT = 75;
 const OWNER_ACTION_RECEIPT_LIMIT = 20;
 const OWNER_ACTION_RESULT_MIN_SESSIONS = 10;
+const TREND_STABLE_CHANGE_PCT = 15;
+const TREND_METRICS = [
+    'menu_activity',
+    'customer_actions',
+    'search_demand',
+    'item_interest',
+    'unavailable_demand',
+    'missing_searches',
+] as const;
+
+type OwnerTrendMetric = typeof TREND_METRICS[number];
+type OwnerTrendPeriod = 'week' | 'month';
+type OwnerTrendStatus = 'up' | 'down' | 'stable' | 'not_enough_data';
+
+interface OwnerTrendComparison {
+    metric: OwnerTrendMetric;
+    period: OwnerTrendPeriod;
+    label: string;
+    status: OwnerTrendStatus;
+    message: string;
+    currentValue: number;
+    previousValue: number;
+    changePct: number | null;
+    currentStart: string;
+    currentEnd: string;
+    previousStart: string;
+    previousEnd: string;
+    currentDaysWithData: number;
+    previousDaysWithData: number;
+}
 
 export interface OwnerDashboardAISummaryPayload {
     markdown: string;
@@ -350,6 +380,230 @@ function getDashboardMetrics(data: Record<string, any> = {}) {
         zeroResultSearches: data.zeroResultSearches || 0,
         smartPicksRendered: data.totalDecisionBlocksRendered || 0,
         smartPicksClicks: data.totalRecommendationClicks || 0,
+    };
+}
+
+function trendMetricLabel(metric: OwnerTrendMetric): string {
+    switch (metric) {
+        case 'customer_actions':
+            return 'Customer actions';
+        case 'search_demand':
+            return 'Search demand';
+        case 'item_interest':
+            return 'Item interest';
+        case 'unavailable_demand':
+            return 'Unavailable demand';
+        case 'missing_searches':
+            return 'Missing searches';
+        case 'menu_activity':
+        default:
+            return 'Menu activity';
+    }
+}
+
+function trendMetricMinimum(metric: OwnerTrendMetric): number {
+    switch (metric) {
+        case 'customer_actions':
+            return 3;
+        case 'search_demand':
+            return 3;
+        case 'item_interest':
+            return 3;
+        case 'unavailable_demand':
+            return 3;
+        case 'missing_searches':
+            return 3;
+        case 'menu_activity':
+        default:
+            return 20;
+    }
+}
+
+function trendMetricValue(doc: Record<string, any>, metric: OwnerTrendMetric): number {
+    switch (metric) {
+        case 'customer_actions':
+            return Number(doc.totalMenuActionClicks || 0);
+        case 'search_demand':
+            return Number(doc.totalSearches || 0);
+        case 'item_interest':
+            return Number(doc.totalClicks || 0);
+        case 'unavailable_demand':
+            return Number(doc.totalUnavailableItemTaps || 0);
+        case 'missing_searches':
+            return Number(doc.zeroResultSearches || 0);
+        case 'menu_activity':
+        default:
+            return Number(doc.totalViews || 0);
+    }
+}
+
+function trendMessage(metric: OwnerTrendMetric, status: OwnerTrendStatus, period: OwnerTrendPeriod): string {
+    if (status === 'not_enough_data') {
+        return period === 'month'
+            ? 'Not enough settled monthly history yet.'
+            : 'Not enough settled activity yet.';
+    }
+
+    const week = period === 'week';
+    if (metric === 'customer_actions') {
+        if (status === 'up') return week ? 'More customers took action this week.' : 'More customers took action than the same part of last month.';
+        if (status === 'down') return week ? 'Customer actions are lower this week.' : 'Customer actions are lower than the same part of last month.';
+        return 'Customer actions are steady.';
+    }
+
+    if (metric === 'search_demand') {
+        if (status === 'up') return week ? 'Search demand is rising this week.' : 'Search demand is higher than the same part of last month.';
+        if (status === 'down') return week ? 'Search demand is quieter this week.' : 'Search demand is lower than the same part of last month.';
+        return 'Search demand is steady.';
+    }
+
+    if (metric === 'item_interest') {
+        if (status === 'up') return week ? 'More customers opened items this week.' : 'Item interest is higher than the same part of last month.';
+        if (status === 'down') return week ? 'Item interest is lower this week.' : 'Item interest is lower than the same part of last month.';
+        return 'Item interest is steady.';
+    }
+
+    if (metric === 'unavailable_demand') {
+        if (status === 'up') return week ? 'More customers tapped unavailable items this week.' : 'Unavailable demand is higher than the same part of last month.';
+        if (status === 'down') return week ? 'Unavailable demand is lower this week.' : 'Unavailable demand is lower than the same part of last month.';
+        return 'Unavailable demand is steady.';
+    }
+
+    if (metric === 'missing_searches') {
+        if (status === 'up') return week ? 'More searches found no match this week.' : 'Missing searches are higher than the same part of last month.';
+        if (status === 'down') return week ? 'Missing searches are lower this week.' : 'Missing searches are lower than the same part of last month.';
+        return 'Missing searches are steady.';
+    }
+
+    if (status === 'up') return week ? 'More customers used the menu this week.' : 'Menu activity is higher than the same part of last month.';
+    if (status === 'down') return week ? 'Menu activity is lower than last week.' : 'Menu activity is lower than the same part of last month.';
+    return 'Menu activity is steady.';
+}
+
+function getTrendDocs(dailyMap: Map<string, Record<string, any>>, startDate: string, endDate: string): Record<string, any>[] {
+    return getDateRange(startDate, endDate)
+        .map((date) => dailyMap.get(date))
+        .filter(isAnalyticsRow);
+}
+
+function buildTrendComparison(params: {
+    metric: OwnerTrendMetric;
+    period: OwnerTrendPeriod;
+    currentStart: string;
+    currentEnd: string;
+    previousStart: string;
+    previousEnd: string;
+    availableStartDate: string;
+    dailyMap: Map<string, Record<string, any>>;
+}): OwnerTrendComparison {
+    const currentDocs = getTrendDocs(params.dailyMap, params.currentStart, params.currentEnd);
+    const previousDocs = getTrendDocs(params.dailyMap, params.previousStart, params.previousEnd);
+    const currentValue = currentDocs.reduce((sum, doc) => sum + trendMetricValue(doc, params.metric), 0);
+    const previousValue = previousDocs.reduce((sum, doc) => sum + trendMetricValue(doc, params.metric), 0);
+    const comparisonWindowCached = params.previousStart >= params.availableStartDate
+        && params.currentStart >= params.availableStartDate;
+    const enoughData = comparisonWindowCached
+        && currentDocs.length > 0
+        && previousDocs.length > 0
+        && currentValue + previousValue >= trendMetricMinimum(params.metric);
+    const changePct = previousValue > 0
+        ? Math.round(((currentValue - previousValue) / previousValue) * 100)
+        : currentValue > 0
+            ? null
+            : 0;
+    let status: OwnerTrendStatus = 'not_enough_data';
+
+    if (enoughData) {
+        if (previousValue === 0 && currentValue > 0) {
+            status = 'up';
+        } else if (changePct !== null && Math.abs(changePct) < TREND_STABLE_CHANGE_PCT) {
+            status = 'stable';
+        } else if ((changePct || 0) > 0) {
+            status = 'up';
+        } else {
+            status = 'down';
+        }
+    }
+
+    return {
+        metric: params.metric,
+        period: params.period,
+        label: trendMetricLabel(params.metric),
+        status,
+        message: trendMessage(params.metric, status, params.period),
+        currentValue,
+        previousValue,
+        changePct: enoughData ? changePct : null,
+        currentStart: params.currentStart,
+        currentEnd: params.currentEnd,
+        previousStart: params.previousStart,
+        previousEnd: params.previousEnd,
+        currentDaysWithData: currentDocs.length,
+        previousDaysWithData: previousDocs.length,
+    };
+}
+
+function formatTrendDateKey(date: Date): string {
+    return date.toISOString().split('T')[0];
+}
+
+function getSamePeriodLastMonthRange(settlementDate: string): {
+    currentStart: string;
+    currentEnd: string;
+    previousStart: string;
+    previousEnd: string;
+} {
+    const settled = parseAnalyticsDateKey(settlementDate);
+    const currentStart = new Date(Date.UTC(settled.getUTCFullYear(), settled.getUTCMonth(), 1));
+    const previousStart = new Date(Date.UTC(settled.getUTCFullYear(), settled.getUTCMonth() - 1, 1));
+    const previousMonthEnd = new Date(Date.UTC(settled.getUTCFullYear(), settled.getUTCMonth(), 0));
+    const daysToCompare = Math.min(settled.getUTCDate(), previousMonthEnd.getUTCDate());
+    const previousEnd = new Date(previousStart);
+    previousEnd.setUTCDate(previousStart.getUTCDate() + daysToCompare - 1);
+
+    return {
+        currentStart: formatTrendDateKey(currentStart),
+        currentEnd: settlementDate,
+        previousStart: formatTrendDateKey(previousStart),
+        previousEnd: formatTrendDateKey(previousEnd),
+    };
+}
+
+function buildOwnerDashboardTrendSummary(dailyMap: Map<string, Record<string, any>>, settlementDate: string) {
+    const availableStartDate = addDaysToAnalyticsDateKey(settlementDate, -(MENU_DAILY_CACHE_DAYS - 1));
+    const weeklyCurrentStart = addDaysToAnalyticsDateKey(settlementDate, -6);
+    const weeklyPreviousEnd = addDaysToAnalyticsDateKey(weeklyCurrentStart, -1);
+    const weeklyPreviousStart = addDaysToAnalyticsDateKey(weeklyPreviousEnd, -6);
+    const monthRange = getSamePeriodLastMonthRange(settlementDate);
+    const weekly = TREND_METRICS.map((metric) => buildTrendComparison({
+        metric,
+        period: 'week',
+        currentStart: weeklyCurrentStart,
+        currentEnd: settlementDate,
+        previousStart: weeklyPreviousStart,
+        previousEnd: weeklyPreviousEnd,
+        availableStartDate,
+        dailyMap,
+    }));
+    const monthly = TREND_METRICS.map((metric) => buildTrendComparison({
+        metric,
+        period: 'month',
+        ...monthRange,
+        availableStartDate,
+        dailyMap,
+    }));
+    const primary = weekly.find((comparison) => comparison.metric === 'menu_activity')
+        || weekly.find((comparison) => comparison.status !== 'not_enough_data')
+        || weekly[0];
+
+    return {
+        source: 'dashboard_summary',
+        lastSettledLocalDate: settlementDate,
+        generatedForLocalDate: addDaysToAnalyticsDateKey(settlementDate, 1),
+        primary,
+        weekly,
+        monthly,
+        enoughData: weekly.some((comparison) => comparison.status !== 'not_enough_data'),
     };
 }
 
@@ -1949,6 +2203,11 @@ async function writeMenuDashboardSummary(
         firstDataDate: summary.firstDataDate,
         lastUpdated: summary.modifiedOn || summary.lastUpdated || null,
     } : null;
+    const trendSummary = buildOwnerDashboardTrendSummary(dailyMap, settlementDate);
+    const daily30d = Array.from(dailyMap.entries())
+        .filter(([date]) => date >= addDaysToAnalyticsDateKey(settlementDate, -(MENU_DAILY_CACHE_DAYS - 1)) && date <= settlementDate)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, data]) => compactAnalyticsDay(date, data));
 
     await dashboardRef.set({
         tId,
@@ -1982,16 +2241,14 @@ async function writeMenuDashboardSummary(
         ownerActionReceipts,
         ownerConfidence,
         sourceQuality,
+        trendSummary,
         analyticsAiEntitlement,
         ...(canUseAnalyticsAi ? {
             catalogInsightCount,
             catalogInsightGeneratedAt: FieldValue.serverTimestamp(),
         } : {}),
         analyticsSummary: summary,
-        daily30d: Array.from(dailyMap.entries())
-            .filter(([date]) => date >= addDaysToAnalyticsDateKey(settlementDate, -(MENU_DAILY_CACHE_DAYS - 1)) && date <= settlementDate)
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([date, data]) => compactAnalyticsDay(date, data)),
+        daily30d,
         modifiedOn: FieldValue.serverTimestamp(),
     }, { merge: true });
 

@@ -51,7 +51,7 @@ Current evidence:
 
 - Route map lives in `src/components/mobile/MobileShell.tsx:36`.
 - `/assets` maps to More -> `printAssets` in `src/components/mobile/MobileShell.tsx:42`.
-- More entry is named `Assets` in `src/components/mobile/screens/MobileMoreScreen.tsx:452`.
+- More entry is named `QR and print assets` in `src/components/mobile/screens/MobileMoreScreen.tsx`.
 - Mobile Assets mode lives inside `MobileShareScreen` at `src/components/mobile/screens/MobileShareScreen.tsx:871`.
 
 ## Mobile Layout

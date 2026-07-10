@@ -41,11 +41,13 @@ No setup needed. The messages appear automatically on your "Use MenuList" page a
 | **Quick Reply** | Just the menu link (minimal) |
 | **Business Info** | Name + menu link + address + phone + hours |
 | **Share with Staff** | Menu link + note for your team |
+| **Staff Daily Replies** | Link, address, and today's hours for your team |
 
 ## Tips
 
 - Use "Quick Reply" during busy hours for the fastest response
 - Share the "Share with Staff" message with your team
+- Share "Staff Daily Replies" when counter or phone staff need the same details for the day
 - The menu link in every message always shows your latest, updated menu
 
 ## Need More Help?
@@ -55,3 +57,4 @@ Contact us on WhatsApp or email for assistance.
 ---
 
 **Created:** March 15, 2026
+**Last Updated:** July 9, 2026

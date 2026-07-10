@@ -59,7 +59,7 @@ const codeReviewDoc = read('__docs__/staff-prompt/staff-prompt_code-review.md');
 const logicVerificationDoc = read('__docs__/staff-prompt/staff-prompt_logic-verification.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 const productionReadinessReadme = read('__docs__/production-readiness/README.md');
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 
 const activeStaffPromptHelperFiles = listFiles('src/lib/staff-prompt');
 assert(

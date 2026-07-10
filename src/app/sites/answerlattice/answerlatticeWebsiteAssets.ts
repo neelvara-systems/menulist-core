@@ -5,9 +5,16 @@ export type AnswerlatticeWebsiteAsset = {
     alt: string;
 };
 
+export type AnswerlatticeWebsiteMotionAsset = AnswerlatticeWebsiteAsset & {
+    fallbackSrc: string;
+    poster: string;
+};
+
 const DUMMY_ASSET_BASE = '/answerlattice-website-assets/dummy';
 const DESKTOP_SCREEN_WIDTH = 1440;
 const DESKTOP_SCREEN_HEIGHT = 1200;
+const MOTION_WIDTH = 1280;
+const MOTION_HEIGHT = 720;
 
 function desktopScreen(fileName: string, alt: string): AnswerlatticeWebsiteAsset {
     return {
@@ -18,9 +25,41 @@ function desktopScreen(fileName: string, alt: string): AnswerlatticeWebsiteAsset
     };
 }
 
+function motionAsset(src: string, fallbackSrc: string, poster: string, alt: string): AnswerlatticeWebsiteMotionAsset {
+    return {
+        src,
+        fallbackSrc,
+        poster,
+        width: MOTION_WIDTH,
+        height: MOTION_HEIGHT,
+        alt,
+    };
+}
+
 export const ANSWERLATTICE_HOME_HERO_ASSET = desktopScreen(
     'answerlattice-home-hero-workspace.png',
     'Sample AnswerLattice workspace showing billing support, safe context, and review queue'
+);
+
+export const ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION = motionAsset(
+    '/answerlattice-support-control-motion.webm',
+    '/answerlattice-support-control-motion.mp4',
+    '/answerlattice-support-control-motion-poster.png',
+    'Governed AnswerLattice answer layer connecting product sources to approved support surfaces'
+);
+
+export const ANSWERLATTICE_AUTHORITY_TRANSFER_MOTION = motionAsset(
+    '/answerlattice-authority-transfer.webm',
+    '/answerlattice-authority-transfer.mp4',
+    '/answerlattice-authority-transfer-poster.png',
+    'AnswerLattice authority transfer from incoming support questions to reviewed support knowledge'
+);
+
+export const ANSWERLATTICE_PAGE_AWARE_WIDGET_MOTION = motionAsset(
+    '/answerlattice-page-aware-widget-clip.webm',
+    '/answerlattice-page-aware-widget-clip.mp4',
+    '/answerlattice-page-aware-widget-clip-poster.png',
+    'AnswerLattice page-aware widget using safe page context and approved answers'
 );
 
 export const ANSWERLATTICE_WIDGET_RUNTIME_ASSET = desktopScreen(

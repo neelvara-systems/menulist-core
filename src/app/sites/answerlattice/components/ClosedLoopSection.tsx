@@ -1,5 +1,7 @@
 import { AnswerlatticeLoopDiagram } from './AnswerlatticeFlowDiagram';
+import AnswerlatticeMotionAsset from './AnswerlatticeMotionAsset';
 import SectionHeader from './SectionHeader';
+import { ANSWERLATTICE_AUTHORITY_TRANSFER_MOTION } from '../answerlatticeWebsiteAssets';
 
 const LOOP_STEPS = [
     {
@@ -44,6 +46,15 @@ export default function ClosedLoopSection() {
                     title="Every missed question becomes a support fix."
                     description="AnswerLattice’s aha moment is not that a widget answers questions. It is that in-app support, fallback, tickets, private board notes, and feedback become review work that improves future answers."
                 />
+
+                <div className="mx-auto mb-12 max-w-5xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/25 sm:p-3">
+                    <AnswerlatticeMotionAsset
+                        asset={ANSWERLATTICE_AUTHORITY_TRANSFER_MOTION}
+                        assetSlotId="answerlattice.home.section.authority-transfer"
+                        assetRole="home-authority-transfer-motion"
+                        className="rounded-[1.5rem] border border-white/[0.08]"
+                    />
+                </div>
 
                 <AnswerlatticeLoopDiagram idPrefix="al-closed-loop" items={LOOP_STEPS} />
 

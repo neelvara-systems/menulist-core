@@ -631,8 +631,8 @@ npm run dev
 | -------------------------------------------------------- | --------------------- |
 | `_spec.md`                                               | Product specification |
 | `_marketing.md`                                          | Sales collateral      |
-| `../Assessments/menu-image-processing-job-queue-spec.md` | Full job queue spec   |
-| `../Assessments/assessment-02-ai-extraction.md`          | Original assessment   |
+| `../assessments/menu-image-processing-job-queue-spec.md` | Full job queue spec   |
+| `../assessments/assessment-02-ai-extraction.md`          | Original assessment   |
 
 ---
 

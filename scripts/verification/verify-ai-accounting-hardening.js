@@ -532,7 +532,7 @@ for (const route of billableRoutes) {
   const aiImageFirebase = read('__docs__/projects/ai-image-generation/ai-image-generation_firebase.md');
   const aiImageVerification = read('__docs__/projects/ai-image-generation/ai-image-generation_verification.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     'App-route rows store count/shape summaries for `clientResponse` in `accounting_only` mode',
@@ -1234,7 +1234,7 @@ for (const route of billableRoutes) {
 	  const aiSystemImpl = read('__docs__/ai-system-layer/ai-system-layer_impl.md');
 	  const aiSystemFirebase = read('__docs__/ai-system-layer/ai-system-layer_firebase.md');
 	  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-	  const changelog = read('__docs__/CHANGELOG.md');
+	  const changelog = read('__docs__/changelog.md');
 	  [
 	    ['AI System Layer README', aiSystemReadme],
 	    ['AI System Layer implementation', aiSystemImpl],
@@ -1533,6 +1533,10 @@ for (const route of billableRoutes) {
         "logger.error('Failed to record image generation transaction'",
         "logger.error('Image generation API error'",
       ],
+      forbidden: [
+        'CHARGE_PER_IMAGEN_IMAGE',
+        'TOKENS_PER_IMAGEN_IMAGE',
+      ],
     },
     {
       route: 'src/app/api/image-editing/route.ts',
@@ -1557,7 +1561,6 @@ for (const route of billableRoutes) {
       route: 'src/app/api/image-generation/generators.ts',
       codes: [
         'image_generation_gemini_flash_failed',
-        'image_generation_imagen3_failed',
       ],
       bounded: [
         'logAIRouteFailure',
@@ -1567,10 +1570,36 @@ for (const route of billableRoutes) {
         "logger.error('Error generating image (Gemini Flash)'",
         "logger.error('Error generating image (Imagen 3)'",
       ],
+      forbidden: [
+        'GenerateImagesResponse',
+        'generateImages(',
+        'IMAGE_AI_MODELS.IMAGEN',
+        'IMAGEN_3',
+        'image_generation_imagen3_failed',
+      ],
     },
-  ].forEach(({ route, codes, bounded, legacy }) => {
+    {
+      route: 'src/app/api/image-generation/batch-generation/route.ts',
+      codes: [
+        'image_batch_worker_generation_failed',
+      ],
+      bounded: [
+        'logRuntimeFailure',
+        'workerLogContext',
+      ],
+      legacy: [],
+      forbidden: [
+        'CHARGE_PER_IMAGEN_IMAGE',
+        'TOKENS_PER_IMAGEN_IMAGE',
+      ],
+    },
+  ].forEach(({ route, codes, bounded, legacy, forbidden = [] }) => {
     const source = read(route);
-    assert(source.includes('logAIRouteFailure'), `${route} uses bounded AI route failure diagnostics`);
+    if (route === 'src/app/api/image-generation/batch-generation/route.ts') {
+      assert(source.includes('logRuntimeFailure'), `${route} uses bounded runtime failure diagnostics`);
+    } else {
+      assert(source.includes('logAIRouteFailure'), `${route} uses bounded AI route failure diagnostics`);
+    }
     codes.forEach((code) => {
       assert(source.includes(code), `${route} includes stable AI route failure code ${code}`);
     });
@@ -1579,6 +1608,9 @@ for (const route of billableRoutes) {
     });
     legacy.forEach((token) => {
       assert(!source.includes(token), `${route} removes legacy raw diagnostic token ${token}`);
+    });
+    forbidden.forEach((token) => {
+      assert(!source.includes(token), `${route} avoids deprecated Imagen image generation token ${token}`);
     });
     assert(!source.includes('logger.error('), `${route} must not pass raw route exceptions to logger.error`);
   });
@@ -2382,7 +2414,7 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     ['AI System implementation docs', '__docs__/ai-system-layer/ai-system-layer_impl.md'],
     ['AI System Firebase docs', '__docs__/ai-system-layer/ai-system-layer_firebase.md'],
     ['Production-readiness audit', '__docs__/audits/menulist-production-readiness-audit.md'],
-    ['Changelog', '__docs__/CHANGELOG.md'],
+    ['Changelog', '__docs__/changelog.md'],
     ['Lowercase changelog', '__docs__/changelog.md'],
   ].forEach(([label, filePath]) => {
     const content = read(filePath);
@@ -2393,7 +2425,7 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     ['AI image implementation docs', '__docs__/projects/ai-image-generation/ai-image-generation_impl.md'],
     ['AI image Firebase docs', '__docs__/projects/ai-image-generation/ai-image-generation_firebase.md'],
     ['Production-readiness audit', '__docs__/audits/menulist-production-readiness-audit.md'],
-    ['Changelog', '__docs__/CHANGELOG.md'],
+    ['Changelog', '__docs__/changelog.md'],
     ['Lowercase changelog', '__docs__/changelog.md'],
   ].forEach(([label, filePath]) => {
     const content = read(filePath);
@@ -2468,7 +2500,7 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
   const aiImageImpl = read('__docs__/projects/ai-image-generation/ai-image-generation_impl.md');
   const aiImageFirebase = read('__docs__/projects/ai-image-generation/ai-image-generation_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const systemLedger = read('__docs__/system-strengthening/menulist-system-data-flow-audit-2026-06-20.md');
   [
     ['AI image implementation docs', aiImageImpl],
@@ -2601,7 +2633,7 @@ assert(!aiOperationsApi.includes('.collection(String(storeId))'), 'AI operations
 assert(read('__docs__/ai-system-layer/ai-system-layer_impl.md').includes('AI Operations History Scope Document ID Boundary'), 'AI System implementation docs must record AI operations history scope boundary');
 assert(read('__docs__/ai-system-layer/ai-system-layer_firebase.md').includes('AI Operations History Scope Document ID Boundary'), 'AI System Firebase docs must record AI operations history scope boundary');
 assert(read('__docs__/audits/menulist-production-readiness-audit.md').includes('AI Operations History Scope Document ID Boundary checkpoint'), 'Production audit must record AI operations history scope boundary');
-assert(read('__docs__/CHANGELOG.md').includes('AI Operations History Scope Document ID Boundary'), 'Changelog must record AI operations history scope boundary');
+assert(read('__docs__/changelog.md').includes('AI Operations History Scope Document ID Boundary'), 'Changelog must record AI operations history scope boundary');
 assert(read('__docs__/changelog.md').includes('AI Operations History Scope Document ID Boundary'), 'Lowercase changelog must record AI operations history scope boundary');
 const platformVisibleFieldsMatch = aiOperationsApi.match(/const PLATFORM_VISIBLE_FIELDS = new Set\(\[([\s\S]*?)\]\);/);
 assert(Boolean(platformVisibleFieldsMatch), 'AI operations API declares platform-visible fields in one allowlist');
@@ -2659,7 +2691,7 @@ const capacityCheck = read('src/lib/ai/capacityCheck.ts');
 const aiEnhancementPacksImpl = read('__docs__/ai-enhancement-packs/ai-enhancement-packs_impl.md');
 const aiEnhancementPacksFirebase = read('__docs__/ai-enhancement-packs/ai-enhancement-packs_firebase.md');
 const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 assert(
   capacityCheck.indexOf('if (isFreeTierAction(actionType))') !== -1
     && capacityCheck.indexOf('if (isFreeTierAction(actionType))') < capacityCheck.indexOf('if (!FEATURE_FLAGS.ENABLE_AI_ENHANCEMENTS)'),
@@ -2816,6 +2848,34 @@ assert(operationPresentation.includes('getAiOperationOwnerSummary'), 'AI operati
 assert(operationPresentation.includes('formatAiOperationCredits'), 'AI operation presentation helper centralizes owner credit wording');
 assert(operationPresentation.includes('dataSummary?.itemsCount'), 'AI operation presentation helper summarizes compact image-processing item counts');
 assert(operationPresentation.includes('dataSummary?.categoriesCount'), 'AI operation presentation helper summarizes compact image-processing category counts');
+
+const aiSystemFirebaseLaunchBoundaryDoc = read('__docs__/ai-system-layer/ai-system-layer_firebase.md');
+[
+  'Not current launch certification or deploy approval',
+  'External Certification Runbook',
+  '`npm run verify:production-readiness-local`',
+  '`npm run verify:ai-accounting`',
+  '`npm run verify:functions-deploy-preflight`',
+  'scoped Firebase deploy evidence for affected Functions',
+  'provider smoke',
+  'authenticated browser/device QA for affected owner/platform surfaces',
+  'production-host smoke',
+].forEach((token) => {
+  assert(aiSystemFirebaseLaunchBoundaryDoc.includes(token), `AI System Firebase doc includes top launch boundary token ${token}`);
+});
+[
+  'AI billing and AI System Layer top-boundary checkpoint',
+  'AI System Firebase cost guide',
+  'source-gated ledger/provider-health/Firebase-cost evidence only',
+].forEach((token) => {
+  assert(productionReadinessAudit.includes(token), `production readiness audit includes AI System top-boundary token ${token}`);
+});
+[
+  'AI Billing and System Layer Doc Boundary',
+  'AI System Firebase guide is source-bounded',
+].forEach((token) => {
+  assert(changelog.includes(token), `changelog includes AI System top-boundary token ${token}`);
+});
 
 if (failures > 0) {
   console.error(`\nAI accounting hardening verification failed with ${failures} issue(s).`);

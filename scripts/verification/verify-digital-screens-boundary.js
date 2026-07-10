@@ -235,7 +235,7 @@ function verifyDocsParity() {
   const marketing = read('__docs__/digital-screens/digital-screens_marketing.md');
   const helpdoc = read('__docs__/digital-screens/digital-screens_helpdoc.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     [readme, 'Digital Screens README'],
@@ -312,6 +312,24 @@ function verifyDocsParity() {
   assertIncludes(spec, 'Vercel deploy evidence where app routes or display clients change', 'Digital Screens spec Vercel deploy gate');
   assertIncludes(spec, 'production-host smoke for the target tenant and screen URL', 'Digital Screens spec production-host smoke gate');
   assertNotIncludes(spec, 'Production complete. Only readability/reliability/scale fixes allowed.', 'Digital Screens spec stale production-complete status');
+  [
+    [impl, 'Digital Screens implementation doc'],
+    [firebase, 'Digital Screens Firebase doc'],
+    [mobile, 'Digital Screens mobile doc'],
+  ].forEach(([content, label]) => {
+    [
+      'Not current launch certification or deploy approval',
+      'External Certification Runbook',
+      '`npm run verify:production-readiness-local`',
+      '`npm run verify:digital-screens-boundary`',
+      'browser TV smoke for Menu Board and Highlights modes',
+      'authenticated desktop/mobile owner settings QA',
+      'physical-device TV/tablet/browser QA',
+      'target Firebase deploy evidence where rules, indexes, Storage, or Functions change',
+      'target Vercel deploy evidence where app routes or display clients change',
+      'production-host smoke for the target tenant and screen URL',
+    ].forEach((token) => assertIncludes(content, token, `${label} top launch boundary`));
+  });
   assertIncludes(impl, 'Seen-signal request boundary', 'Digital Screens implementation seen-signal boundary');
   assertIncludes(impl, 'content-version listener', 'Digital Screens implementation listener refresh boundary');
   assertIncludes(firebase, 'Seen signal cheap-fail ordering', 'Digital Screens Firebase cheap-fail optimization');
@@ -325,9 +343,11 @@ function verifyDocsParity() {
   assertIncludes(audit, 'Digital Screens boundary source-gate checkpoint', 'Production readiness audit Digital Screens checkpoint');
   assertIncludes(audit, 'Digital Screens spec launch-boundary checkpoint', 'Production readiness audit Digital Screens spec checkpoint');
   assertIncludes(audit, 'Digital Screens freshness-copy boundary checkpoint', 'Production readiness audit Digital Screens freshness-copy checkpoint');
+  assertIncludes(audit, 'Digital Screens technical-doc top-boundary checkpoint', 'Production readiness audit Digital Screens technical-doc checkpoint');
   assertIncludes(audit, '`npm run verify:digital-screens-boundary`', 'Production readiness audit Digital Screens verifier command');
   assertIncludes(changelog, 'Digital Screens Spec Launch Boundary', 'Changelog Digital Screens spec boundary entry');
   assertIncludes(changelog, 'Digital Screens Freshness-Copy Boundary', 'Changelog Digital Screens freshness-copy boundary entry');
+  assertIncludes(changelog, 'Digital Screens Technical Doc Boundary', 'Changelog Digital Screens technical-doc boundary entry');
   assertIncludes(changelog, '`npm run verify:digital-screens-boundary` passed.', 'Changelog Digital Screens verifier evidence');
 }
 

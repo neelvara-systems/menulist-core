@@ -7,17 +7,14 @@
  * Philosophy: "Answers, not data. Confidence, not insight."
  * 
  * View Hierarchy:
- * - Overview (PRIMARY) - Default, hero status + expandable detail
- * - Daily (secondary) - Quick check, guarded
- * - Weekly (secondary) - Last 7 days detail
- * - Monthly (secondary) - Subscription justification
- * - Overall (footer) - Lifetime anchor
- * 
- * v2 Changes:
- * - Overview is now default (simplified hero + WTD/MTD/historical)
- * - Weekly/Monthly are detail views (lazy loaded)
- * - Historical weeks comparison
- * - Project selector for multi-catalog support
+ * - Today (default) - live confirmation with compact activity
+ * - Overview / Graphs / settled periods - owner-requested detail
+ * - Overall (footer) - lifetime anchor
+ *
+ * Current shape:
+ * - The first screen starts with the official customer source.
+ * - Historical reads stay lazy until a settled tab is selected.
+ * - Project selector supports multi-catalog stores.
  */
 
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
@@ -26,6 +23,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getProjectData } from '@database/projects';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import { getStoredOwnerProjectId, setStoredOwnerProjectId } from '@lib/projects/projectSelection';
+import { buildOwnerActionLayer, type OwnerActionId } from '@lib/ownerActions/buildOwnerActionLayer';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import {
     getProjectPageProjectLogContext,
@@ -37,7 +35,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { LuCalendarClock, LuClock, LuEye, LuImage, LuListChecks, LuShieldCheck, LuStore, LuUtensils } from 'react-icons/lu';
+import { LuCalendarClock, LuClock, LuEye, LuImage, LuLink, LuListChecks, LuMessageCircle, LuQrCode, LuSearch, LuShieldCheck, LuStore, LuUtensils } from 'react-icons/lu';
 
 import DailyView from './DailyView';
 import { DashboardProjectSelector } from './DashboardProjectSelector';
@@ -46,6 +44,7 @@ import MenuAnalyticsDetailsCard from './MenuAnalyticsDetailsCard';
 import MenuQualitySignals from '../MenuQualitySignals';
 import MenuSetupProgress from '../MenuSetupProgress';
 import MonthlyView from './MonthlyView';
+import OwnerDashboardGraphMode from './OwnerDashboardGraphMode';
 import OverallFooter from './OverallFooter';
 import OverviewView from './OverviewView';
 import TodaySoFarCard from './TodaySoFarCard';
@@ -60,6 +59,15 @@ import styles from './OwnerDashboard.module.scss';
 import useSWR from 'swr';
 
 const { Text, Title } = Typography;
+
+const renderOwnerActionIcon = (id: OwnerActionId) => {
+    if (id === 'set_hours' || id === 'set_today_status') return <LuCalendarClock size={15} />;
+    if (id === 'set_customer_link' || id === 'place_customer_link') return <LuLink size={15} />;
+    if (id === 'open_private_feedback') return <LuMessageCircle size={15} />;
+    if (id === 'prepare_staff_handoff') return <LuQrCode size={15} />;
+    if (id === 'capture_daily_change' || id === 'update_prices') return <LuListChecks size={15} />;
+    return <LuUtensils size={15} />;
+};
 
 const formatRelativeUpdatedLabel = (value: unknown): string => {
     if (!value) return 'Not updated yet';
@@ -169,6 +177,10 @@ const OwnerDashboard: React.FC = () => {
         : dashboardProjectData || null;
     const hasPublicLink = Boolean(storeDetails?.customDomain || storeDetails?.subdomain);
     const hasWorkingHours = Boolean(storeDetails?.workingHours && Object.values(storeDetails.workingHours as Record<string, unknown>).some(Boolean));
+    const confirmedPlacementCount = ['googleBusiness', 'instagramBio', 'whatsappProfile']
+        .filter((surface) => Boolean((storeDetails as any)?.menuPresence?.[surface])).length;
+    const feedbackReady = Boolean(storeDetails) && storeDetails.feedbackEnabled !== false;
+    const hasConfirmedPlacement = confirmedPlacementCount > 0;
     const menuUpdatedLabel = formatRelativeUpdatedLabel(
         (dashboardProjectForChildren as any)?.modifiedOn
         || (dashboardProjectForChildren as any)?.updatedAt
@@ -187,8 +199,26 @@ const OwnerDashboard: React.FC = () => {
     ].filter(Boolean) as Array<{ key: string; path: string }>;
     const needsAttentionCount = dashboardAttentionItems.length;
     const primaryAttentionPath = dashboardAttentionItems[0]?.path || '/projects';
+    const publicSourceTitle = needsAttentionCount
+        ? 'Needs attention'
+        : hasConfirmedPlacement
+            ? 'Official customer source is active'
+            : 'Official customer source is ready to place';
+    const publicSourceDescription = needsAttentionCount
+        ? 'Fix menu, hours, or the customer link before sharing it widely.'
+        : hasConfirmedPlacement
+            ? 'No action needed. Customers can use your current public details from one source.'
+            : 'Your customer link is ready. Add it to Google, Instagram, WhatsApp, QR, or print so customers use the current source.';
+    const ownerActionLayer = FEATURE_FLAGS.ENABLE_OWNER_ACTION_LAYER && !dashboardProjectLoading
+        ? buildOwnerActionLayer({
+            project: dashboardProjectForChildren || null,
+            storeDetails: storeDetails as any,
+        })
+        : null;
+    const primaryStatusActionPath = needsAttentionCount ? primaryAttentionPath : '/projects?view=b2c';
+    const primaryStatusActionLabel = needsAttentionCount ? 'Fix what needs attention' : 'Preview public menu';
 
-    const hasMenuData = Boolean(data?.today || data?.overview || data?.weekly || data?.daily || data?.monthly || data?.overall);
+    const hasMenuData = Boolean(data?.today || data?.overview || data?.daily30d?.length || data?.weekly || data?.daily || data?.monthly || data?.overall);
     const hasOBPSettledData = Boolean(obpDashboard.data?.overview || obpDashboard.data?.overall);
     const hasOBPData = Boolean(obpDashboard.data?.today || hasOBPSettledData);
 
@@ -271,6 +301,18 @@ const OwnerDashboard: React.FC = () => {
                             mode="overview"
                         />
                         <CustomerAppMetrics />
+                    </Space>
+                );
+            case 'graph':
+                if (loading && !data?.daily30d?.length && !hasOBPSettledData) return <LoadingState />;
+                return (
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <Title level={4} style={{ margin: 0 }}>Graphs</Title>
+                        <Text type="secondary">{t('settledTabHelper')}</Text>
+                        <OwnerDashboardGraphMode
+                            data={data}
+                            obpData={obpDashboard.data}
+                        />
                     </Space>
                 );
             case 'daily':
@@ -357,16 +399,14 @@ const OwnerDashboard: React.FC = () => {
                             <Flex align="center" gap={10} wrap="wrap">
                                 <LuShieldCheck size={22} color={needsAttentionCount ? 'var(--ant-color-warning)' : 'var(--ant-color-success)'} />
                                 <Title level={3} style={{ margin: 0 }}>
-                                    {needsAttentionCount ? 'Needs attention' : 'Your business profile is live'}
+                                    {publicSourceTitle}
                                 </Title>
                                 <Tag color={hasPublicLink ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
-                                    {hasPublicLink ? 'Live' : 'Not live yet'}
+                                    {hasPublicLink ? 'Customer link ready' : 'Customer link missing'}
                                 </Tag>
                             </Flex>
                             <Text type="secondary" style={{ fontSize: 15 }}>
-                                {needsAttentionCount
-                                    ? 'Fix the public details customers rely on first.'
-                                    : 'No action needed. Customers can use your current public details.'}
+                                {publicSourceDescription}
                             </Text>
                             <Flex gap={8} wrap="wrap">
                                 <Tag icon={<LuUtensils size={13} />} style={{ marginInlineEnd: 0 }}>
@@ -376,22 +416,75 @@ const OwnerDashboard: React.FC = () => {
                                     Hours: {hasWorkingHours ? 'Set' : 'Missing'}
                                 </Tag>
                                 <Tag icon={<LuStore size={13} />} color={hasPublicLink ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
-                                    Public listing: {hasPublicLink ? 'Visible' : 'Not ready'}
+                                    Customer link: {hasPublicLink ? 'Ready' : 'Not ready'}
+                                </Tag>
+                                <Tag icon={<LuSearch size={13} />} color={hasConfirmedPlacement ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
+                                    Placed: {confirmedPlacementCount}/3
+                                </Tag>
+                                <Tag icon={<LuMessageCircle size={13} />} color={feedbackReady ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
+                                    Private feedback: {feedbackReady ? 'On' : 'Off'}
                                 </Tag>
                             </Flex>
                         </Flex>
                         <Flex gap={8} wrap="wrap" style={{ flex: '0 1 390px' }}>
-                            <Button icon={<LuListChecks size={16} />} onClick={() => router.push(primaryAttentionPath)} type="primary">
-                                Fix what needs attention
+                            <Button
+                                icon={needsAttentionCount ? <LuListChecks size={16} /> : <LuEye size={16} />}
+                                onClick={() => router.push(primaryStatusActionPath)}
+                                type="primary"
+                            >
+                                {primaryStatusActionLabel}
                             </Button>
-                            <Button icon={<LuEye size={16} />} onClick={() => router.push('/projects?view=b2c')}>
-                                Preview public menu
+                            <Button icon={<LuQrCode size={16} />} onClick={() => router.push('/use-menulist')}>
+                                Share and QR
                             </Button>
                         </Flex>
                     </Flex>
                 </Card>
 
-                <Card className={styles.quickActionsCard} size="small" title="Common updates">
+                {ownerActionLayer ? (
+                    <Card className={styles.quickActionsCard} size="small" title="Next owner action">
+                        <Flex align="flex-start" justify="space-between" gap={12} wrap="wrap">
+                            <Flex gap={6} style={{ flex: '1 1 360px', minWidth: 0 }} vertical>
+                                <Flex align="center" gap={8} wrap="wrap">
+                                    {renderOwnerActionIcon(ownerActionLayer.primaryAction.id)}
+                                    <Text strong>{ownerActionLayer.primaryAction.label}</Text>
+                                    <Tag color={ownerActionLayer.primaryAction.tone === 'attention' ? 'warning' : 'success'} style={{ marginInlineEnd: 0 }}>
+                                        {ownerActionLayer.primaryAction.statusLabel}
+                                    </Tag>
+                                </Flex>
+                                <Text type="secondary">{ownerActionLayer.primaryAction.description}</Text>
+                                <Flex gap={8} wrap="wrap">
+                                    <Tag color={ownerActionLayer.statusLabel === 'Stable' ? 'success' : 'warning'} style={{ marginInlineEnd: 0 }}>
+                                        {ownerActionLayer.statusLabel}
+                                    </Tag>
+                                    <Tag color={ownerActionLayer.placement.confirmedCount > 0 ? 'success' : 'default'} style={{ marginInlineEnd: 0 }}>
+                                        {ownerActionLayer.placement.latestConfirmedLabel}
+                                    </Tag>
+                                </Flex>
+                            </Flex>
+                            <Button
+                                icon={renderOwnerActionIcon(ownerActionLayer.primaryAction.id)}
+                                onClick={() => router.push(ownerActionLayer.primaryAction.desktopHref)}
+                                type="primary"
+                            >
+                                Open
+                            </Button>
+                        </Flex>
+                        <Flex gap={8} wrap="wrap" style={{ marginTop: 12 }}>
+                            {ownerActionLayer.supportingActions.slice(0, 6).map((item) => (
+                                <Button
+                                    icon={renderOwnerActionIcon(item.id)}
+                                    key={item.id}
+                                    onClick={() => router.push(item.desktopHref)}
+                                >
+                                    {item.label}
+                                </Button>
+                            ))}
+                        </Flex>
+                    </Card>
+                ) : null}
+
+                <Card className={styles.quickActionsCard} size="small" title="Update what customers see">
                     <Flex gap={8} wrap="wrap">
                         <Button icon={<LuUtensils size={15} />} onClick={() => router.push('/projects')}>Update menu</Button>
                         <Button icon={<LuClock size={15} />} onClick={() => router.push('/business-settings?section=hours&focus=working-hours')}>Change hours</Button>
@@ -437,6 +530,7 @@ const OwnerDashboard: React.FC = () => {
                         onModeChange={handleViewModeChange}
                         hasToday={true}
                         hasOverview={true}
+                        hasGraph={FEATURE_FLAGS.ENABLE_OWNER_DASHBOARD_GRAPH_MODE}
                         hasDaily={true}
                         hasWeekly={true}
                         hasMonthly={true}

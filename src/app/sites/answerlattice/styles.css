@@ -587,6 +587,37 @@ html[data-answerlattice-theme='dark'] body:has(.answerlattice-site) {
     margin-top: 2.15rem;
 }
 
+.al-motion-asset {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    background: #09091a;
+}
+
+.al-motion-asset__video,
+.al-motion-asset__poster {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.al-motion-asset__poster {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .al-motion-asset__video {
+        display: none;
+    }
+
+    .al-motion-asset__poster {
+        display: block;
+    }
+}
+
 .al-page-flow > section:first-child h1:not(.al-page-hero__title) {
     max-width: 64rem;
     color: var(--al-text);

@@ -3,10 +3,10 @@
 > **Feature:** AI Menu Manager
 > **Internal slug:** `ai-menu-manager`
 > **Product:** MenuList
-> **Status:** Initial implementation source-gated; not current launch certification
+> **Status:** Deterministic core and guarded conversation planner implemented; not current launch certification
 > **Release boundary:** Current approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:ai-menu-manager`, authenticated desktop/mobile Menu Manager QA, supported-adapter smoke behind AMM feature flags, public website/help copy review, target deploy evidence, and production-host smoke.
-> **Last Updated:** June 30, 2026
-> **Version:** 1.2
+> **Last Updated:** July 10, 2026
+> **Version:** 1.3
 
 ---
 
@@ -36,7 +36,9 @@ AI Menu Manager is the owner-facing menu operations layer where owners can tell 
 
 It is a bounded conversational operations agent over real MenuList actions, not a separate menu system. Conversation is flexible; execution is registered. AMM understands owner input, creates proposal cards, gets approval when needed, and applies supported approved work through registered MenuList action adapters.
 
-AMM can also answer MenuList-domain questions from the loaded selected menu context. These read-only answers use `system_context_answer` cards, do not call an AI provider, do not read extra Firestore documents, and do not mutate menu truth. Examples include "What should I fix today?", "Which items have no photos?", "Is my menu ready to share?", and "What items are unavailable?"
+AMM can also answer MenuList-domain questions from the loaded selected menu context. Known diagnostics and recommendations use deterministic `system_context_answer` cards with no provider call or extra Firestore read. When deterministic routing cannot understand an in-domain message, the guarded cloud planner may receive a capped selected-menu packet and return a read-only router outcome or a prepare-action intent. Provider output never mutates truth and is never accepted as an executable patch.
+
+One owner message may prepare up to four independent deterministic project updates, for example `Masala Tea 20 and Cold coffee sold out`. AMM accepts the split only when every part independently resolves to a registered client-project proposal and the patches do not touch the same field. The cards share a command group and expose **Approve all** on desktop and MobileShell. Approval applies the whitelisted patches to one cloned project, performs one existing project save, and records all compact receipts in one session write. Immediate duplicate submits return the pending cards from loaded state without another write or planner call.
 
 One-sentence product definition:
 
@@ -53,7 +55,8 @@ AI Menu Manager is:
 - an action registry over existing menu operations.
 - a selected-context answer surface for menu readiness, content gaps, visibility, and share-readiness checks.
 - an approval-safe route for supported price, availability, design, selected-menu answer, and browser-local/share actions, with image, import, publish, rule, rollback, staff, and special-menu families kept behind adapter readiness and review/handoff cards until their safe execution paths are connected.
-- a voice-ready command contract. A production voice UI must enter the same command pipeline as text and cannot bypass cards, approvals, or receipts.
+- a deterministic-first conversation router with a bounded cloud-planner fallback only for unresolved in-domain language.
+- a voice-ready command contract, with the production voice flag disabled until a verified speech-to-command UI exists. Any future voice input must enter the same command pipeline as text and cannot bypass cards, approvals, or receipts.
 - hardened local copy handoffs on desktop and mobile: rejected Clipboard API writes retry the acknowledged textarea fallback before copied feedback can appear.
 
 AI Menu Manager is not:
@@ -74,7 +77,10 @@ AI Menu Manager is not:
 Owner text / voice / upload / suggested action
   -> selected store and selected project context
   -> AMM command intake
-  -> intent and entity resolution
+  -> deterministic intent and entity resolution
+  -> if unresolved and still inside the MenuList domain:
+       guarded cloud planner over capped selected-menu context
+       -> MenuList revalidates targets and re-runs prepare actions through the deterministic resolver
   -> if read-only MenuList question:
        context answer card -> compact session
   -> if MenuList operation:
@@ -92,9 +98,11 @@ The most important rule:
 
 Suggestion prompts are draft helpers only. The empty chat state should lead with frequent daily owner work: store closed today, working-hours changes, and a contextual sold-out item when the selected menu has items. If item context is unavailable, the third starter can fall back to time-slot work. AMM groups the full suggestion sheet by current menu context such as quick fixes, promotion, photos/content, style, daily operations, and publish/import. When a suggestion has sub-options, AMM first shows the owner a focused second layer such as presentation tone, layout, theme color, working-hours choice, customer app task, or digital screen task. Choosing a final option places the command in the composer; the owner must still send it before a card is prepared.
 
-The composer exposes **Work on** and **Suggestions** as separate tools. Opening one closes the other, so the owner never has two guidance panels competing for the composer. **Work on** scopes the next message to an item, multiple items, one category, menu design, digital menu, official page, digital screens, feedback, or store settings. Item/category choices use compact selectable rows; search appears only for longer lists or active search text. Picking context does not create a card or write Firestore. AMM keeps the owner-visible text explicit, such as `Selected items: Masala Tea, Cold coffee. increase price by 10`, and passes the selected entity IDs into the resolver so duplicate item/category names still resolve to exactly what the owner picked. The normal resolver, action registry, approval card, existing mutation path, and receipt flow still apply.
+The composer exposes one familiar `+` tool entry for **Work on** and **Suggestions**. Opening either guided surface closes the other, so the owner never has competing panels around the composer. **Work on** scopes the next message to an item, multiple items, one category, menu design, digital menu, official page, digital screens, feedback, or store settings. Item/category choices use compact selectable rows; search appears only for longer lists or active search text. Picking context does not create a card or write Firestore. AMM keeps the owner-visible text explicit, such as `Selected items: Masala Tea, Cold coffee. increase price by 10`, and passes the selected entity IDs into the resolver so duplicate item/category names still resolve to exactly what the owner picked. The normal resolver, action registry, approval card, existing mutation path, and receipt flow still apply.
 
-Clarification cards can also show option rows. Choosing an option submits that selected answer, removes the old clarification, and creates the next answer/proposal/unsupported card in the same compact session write. It does not approve, execute, publish, or persist menu truth by itself.
+Compact Menu Manager replies and receipts appear in the conversation timeline. Completion appends the receipt to the existing capped session payload in the same completion write; it does not add a receipt document or another session write. The selected menu status line is derived from the already loaded project.
+
+Clarification cards can also show option rows. Choosing an item/category option submits that selected answer with its validated selected-menu entity ID, removes the old clarification, and creates the next answer/proposal/unsupported card in the same compact session write. It does not approve, execute, publish, or persist menu truth by itself.
 
 Read-only answer cards are different from clarification and manual-task cards. They summarize what MenuList can see in the selected menu context, such as missing photos, missing descriptions, unavailable items, hidden categories, or share readiness. They can offer suggested replies, but those replies only draft the next command. Any resulting change still becomes a registered proposal card and follows approval.
 
@@ -131,9 +139,9 @@ Feedback link and feedback QR requests are dedicated browser-local export cards,
 | Store/project context | AMM screen includes store and project selectors; actions default to the currently selected store and project, not all projects. |
 | Data model | Compact session/day docs for normal cards, proposal docs only for server-backed/durable cards, Storage for heavy artifacts. |
 | Firebase cost | Reads are cached and bounded; no per-token/per-message Firestore writes. |
-| AI cost | Acceptable when bounded by safe mode, rate limits, capacity, and accounting. |
+| AI cost | Deterministic routing runs first. Only unresolved in-domain language can reach the capped planner route, which is protected by safe mode, rate limits, capacity checks, validation, and accounting. |
 | Image generation | Generate draft images; owner must approve before menu use. |
-| Voice | Voice input is an input adapter into the same command flow. |
+| Voice | Voice input remains disabled until a verified input adapter can enter the same command flow. |
 | Mobile | Mobile supports fast cards and approvals inside MobileShell; heavy authoring stays controlled. |
 | Business Health | Separate product surface; AMM may consume signals only through explicit action adapters. |
 
@@ -190,7 +198,7 @@ Readiness rule: this catalog is the day-one product contract and production chec
 - mixed-language command
 - completion/failure receipt
 
-Unsupported or unavailable external actions become manual-task/export cards, not fake automation.
+Unsupported external actions become destination-specific unsupported cards. Where MenuList already has a truthful browser-local copy/download output, that output remains a separate local export action; AMM never claims the external destination was updated.
 
 ---
 
@@ -200,11 +208,11 @@ Unsupported or unavailable external actions become manual-task/export cards, not
 // src/config/features.ts
 ENABLE_AI_MENU_MANAGER: true
 ENABLE_AI_MENU_MANAGER_MOBILE: true
-ENABLE_AI_MENU_MANAGER_VOICE_INPUT: true
+ENABLE_AI_MENU_MANAGER_VOICE_INPUT: false
 ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS: true
 ENABLE_AI_MENU_MANAGER_RULES: true
-ENABLE_AI_MENU_MANAGER_MODEL_ROUTER: false
-ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER: false
+ENABLE_AI_MENU_MANAGER_MODEL_ROUTER: true
+ENABLE_AI_MENU_MANAGER_CLOUD_PLANNER: true
 ENABLE_AI_MENU_MANAGER_LOCAL_ASSIST: false
 ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES: true
 ENABLE_AI_MENU_MANAGER_DEBUG_ARTIFACTS: false
@@ -214,6 +222,8 @@ AI_MENU_MANAGER_SESSION_STORAGE_MODE: "daily_compact"
 The feature is designed as a complete day-one contract. Flags are safety controls, not scope-reduction switches.
 
 Flag note: enabled flags only allow the AMM surface and registered card families to appear. They do not bypass the action checklist. A rule, image, import, publish, rollback, or staff request still remains blocked, manual-task-only, or review-only unless its registered adapter is marked ready and verified.
+
+Planner note: enabling the model router does not route every message to Gemini. Exact commands, known diagnostics, local exports, unsupported external destinations, and out-of-scope questions resolve deterministically first. The planner is called only after that resolver returns no outcome, and a planned prepare action is accepted only when MenuList can reproduce it as a registered deterministic action against validated selected-menu entity IDs. Cloud output cannot originate receipts/completion states, and internal or unverified completion copy is rejected before a card is shown.
 
 ## Firebase Cost Rule
 
@@ -231,3 +241,4 @@ Command submit, completion, and cancel reuse the compact session already loaded 
 | --- | --- | --- |
 | 1.0 | June 17, 2026 | Initial docs-first contract created from the captured ChatGPT conversation, current Codex planning discussion, and MenuList codebase cross-check. |
 | 1.1 | June 18, 2026 | Deterministic project actions moved to the client DAL compact-session model to avoid proposal-doc reads/writes for normal owner operations. |
+| 1.3 | July 10, 2026 | Added guarded unresolved-language planning, unified composer tools, inline compact replies/receipts, loaded-project status, and truthful voice gating without changing the compact deterministic write model. |

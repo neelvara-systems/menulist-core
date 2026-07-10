@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
+import { DEFAULT_PRODUCT_ID } from '@constant/product';
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
 import {
     getProductSubscriptionById,
@@ -25,6 +26,7 @@ import {
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateRazorpayWebhookSignature } from "@lib/razorpay/webhook-validator";
 import { markResellerTransactionsActiveForSubscription } from "@lib/reseller/resellerLedger";
+import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import { readBoundedTextBody, rejectInvalidOrOversizedDeclaredBody } from "@lib/security/boundedRequestBody";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
@@ -681,6 +683,20 @@ export async function POST(request: NextRequest) {
                         } as FirestoreSubscriptionDoc,
                         `webhook:${event.event}`,
                     );
+                    if (eventProductId === DEFAULT_PRODUCT_ID) {
+                        await safelyRecordOwnerReferralPaymentAndRepair({
+                            paidScope: {
+                                tenantId: Number(internalSub.tenantId),
+                                storeId: Number(internalSub.storeId),
+                            },
+                            evidence: {
+                                paidAt: new Date(Number(paymentEntity?.created_at || event.created_at || Math.floor(Date.now() / 1000)) * 1000),
+                                paymentEvidenceId: String(paymentEntity?.id || paymentHistoryId),
+                                source: `webhook:${event.event}`,
+                                subscriptionId: internalSub.id,
+                            },
+                        });
+                    }
                     if (internalSub.status !== 'active') {
                         const activatedSubscription = {
                             ...internalSub,

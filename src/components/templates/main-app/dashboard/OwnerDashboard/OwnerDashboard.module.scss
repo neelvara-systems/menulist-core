@@ -81,7 +81,7 @@ $spacing-xl: 32px;
     border-radius: $radius-md;
     box-shadow: $shadow-sm;
     border: 1px solid $border-color;
-    min-width: 720px;
+    min-width: 820px;
     width: 100%;
   }
 
@@ -111,7 +111,7 @@ $spacing-xl: 32px;
 
   @media (max-width: 768px) {
     :global(.ant-segmented) {
-      min-width: 640px;
+      min-width: 740px;
     }
 
     :global(.ant-segmented-item-label) {
@@ -955,6 +955,368 @@ $spacing-xl: 32px;
   flex-shrink: 0;
   text-align: right;
   white-space: nowrap;
+}
+
+// Graph Mode
+.graphMode {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.graphHeaderCard,
+.graphCard {
+  border-radius: $radius-md;
+  border: 1px solid $border-color;
+  box-shadow: $shadow-sm;
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+
+    @media (max-width: 576px) {
+      padding: $spacing-md;
+    }
+  }
+}
+
+.graphHeader {
+  margin-bottom: $spacing-md;
+
+  h4 {
+    margin: 0 0 $spacing-xs 0;
+  }
+}
+
+.graphSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $spacing-sm;
+
+  @media (max-width: 576px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.graphSummaryItem {
+  display: flex;
+  min-height: 72px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: $spacing-md;
+  border: 1px solid $border-color;
+  border-radius: $radius-sm;
+  background: $background-light;
+}
+
+.graphSummaryValue {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: $text-primary;
+}
+
+.graphSummaryLabel {
+  font-size: 12px;
+  color: $text-secondary;
+}
+
+.trendSummaryPanel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.6fr);
+  gap: $spacing-md;
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1px solid $border-color;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trendPrimary {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: $spacing-xs;
+  padding: $spacing-md;
+  border: 1px solid color-mix(in srgb, var(--ant-color-primary) 18%, var(--ant-color-border));
+  border-radius: $radius-sm;
+  background: color-mix(in srgb, var(--ant-color-primary) 6%, $background-card);
+
+  h5 {
+    margin: 0;
+    line-height: 1.25;
+  }
+}
+
+.trendEyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: $primary-color;
+  text-transform: uppercase;
+}
+
+.trendSignalGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: $spacing-sm;
+
+  @media (max-width: 1180px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 576px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trendSignalCard {
+  display: flex;
+  min-height: 104px;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: $spacing-xs;
+  padding: $spacing-sm $spacing-md;
+  border: 1px solid $border-color;
+  border-radius: $radius-sm;
+  background: $background-card;
+}
+
+.trendSignalTop {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trendSignalIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 999px;
+  background: $background-light;
+}
+
+.trendSignalLabel {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: $text-primary;
+}
+
+.trendSignalMeta {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.3;
+  color: $text-secondary;
+}
+
+.trendSignalUp {
+  border-color: color-mix(in srgb, var(--ant-color-success) 34%, var(--ant-color-border));
+
+  .trendSignalTop,
+  .trendSignalIcon {
+    color: $success-color;
+  }
+}
+
+.trendSignalDown {
+  border-color: color-mix(in srgb, var(--ant-color-warning) 38%, var(--ant-color-border));
+
+  .trendSignalTop,
+  .trendSignalIcon {
+    color: $warning-color;
+  }
+}
+
+.trendSignalStable {
+  border-color: color-mix(in srgb, var(--ant-color-primary) 28%, var(--ant-color-border));
+
+  .trendSignalTop,
+  .trendSignalIcon {
+    color: $primary-color;
+  }
+}
+
+.trendSignalQuiet {
+  .trendSignalTop,
+  .trendSignalIcon {
+    color: $text-tertiary;
+  }
+}
+
+.comparisonChartsHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: $spacing-md;
+
+  h5 {
+    margin: 0 0 2px 0;
+  }
+}
+
+.comparisonChartGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $spacing-md;
+
+  @media (max-width: 1180px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.comparisonChartCard {
+  min-width: 0;
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  background: $background-card;
+  box-shadow: $shadow-sm;
+
+  :global(.ant-card-body) {
+    display: flex;
+    min-height: 288px;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-md;
+  }
+}
+
+.comparisonChartHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-sm;
+}
+
+.comparisonChartTitle {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+
+  h5 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.15;
+  }
+
+  span {
+    font-size: 12px;
+    font-weight: 600;
+    color: $text-secondary;
+  }
+}
+
+.comparisonBadgeRow {
+  display: flex;
+  max-width: 144px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.comparisonBadge {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow-wrap: anywhere;
+  border: 1px solid $border-color;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: $background-light;
+  color: $text-secondary;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.comparisonBadgeUp {
+  border-color: color-mix(in srgb, var(--ant-color-success) 34%, var(--ant-color-border));
+  background: color-mix(in srgb, var(--ant-color-success) 9%, $background-card);
+  color: $success-color;
+}
+
+.comparisonBadgeDown {
+  border-color: color-mix(in srgb, var(--ant-color-warning) 38%, var(--ant-color-border));
+  background: color-mix(in srgb, var(--ant-color-warning) 10%, $background-card);
+  color: $warning-color;
+}
+
+.comparisonBadgeStable {
+  border-color: color-mix(in srgb, var(--ant-color-primary) 28%, var(--ant-color-border));
+  background: color-mix(in srgb, var(--ant-color-primary) 8%, $background-card);
+  color: $primary-color;
+}
+
+.comparisonBadgeQuiet {
+  color: $text-tertiary;
+}
+
+.comparisonChartCanvas {
+  width: 100%;
+  height: 190px;
+  min-height: 190px;
+}
+
+.graphCardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  h5 {
+    margin: 0;
+  }
+}
+
+.graphGridTwo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $spacing-md;
+
+  @media (max-width: 980px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.graphViewport {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.graphCanvas,
+.graphCanvasCompact {
+  min-width: 560px;
+  height: 300px;
+}
+
+.graphCanvasCompact {
+  height: 260px;
+}
+
+.graphEmpty {
+  padding: $spacing-xl 0;
 }
 
 // Print styles

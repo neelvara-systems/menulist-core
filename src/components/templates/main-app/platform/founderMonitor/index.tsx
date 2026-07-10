@@ -254,6 +254,12 @@ export default function PlatformFounderMonitor() {
             />
             <MetricCard detail="Current active recurring revenue." title="MRR" value={formatInrPaise(data.revenue.currentMrrPaise)} />
             <MetricCard
+              detail={`${formatCount(data.growth.draftsCreated)} attributed drafts. ${data.growth.draftToClaimRatePercent}% draft-to-claim.`}
+              status={data.growth.businessesClaimed > 0 ? 'healthy' : 'watch'}
+              title="Attributed Claims"
+              value={formatCount(data.growth.businessesClaimed)}
+            />
+            <MetricCard
               detail={`New ${formatInrPaise(data.revenue.newMrrPaise)} minus churn ${formatInrPaise(data.revenue.churnedMrrPaise)}.`}
               status={data.revenue.netNewMrrPaise >= 0 ? 'healthy' : 'action_required'}
               title="Net New MRR"
@@ -307,6 +313,22 @@ export default function PlatformFounderMonitor() {
                 <Text>Past-due MRR: {formatInrPaise(data.revenue.pastDueMrrPaise)}</Text>
                 <Text>ARPA: {formatInrPaise(data.revenue.arpaPaise)}</Text>
                 <Text>Revenue per trusted store: {formatInrPaise(data.revenue.revenuePerTrustedLiveStorePaise)}</Text>
+              </Space>
+            </Card>
+            <Card title="Cancellation Reasons">
+              <Space direction="vertical" size={8}>
+                {Object.entries(data.revenue.churnReasons).map(([reason, count]) => (
+                  <Text key={reason}>{labelize(reason)}: <Text strong>{formatCount(count)}</Text></Text>
+                ))}
+              </Space>
+            </Card>
+            <Card title="Acquisition Sources">
+              <Space direction="vertical" size={8}>
+                {Object.entries(data.growth.bySource).map(([source, counts]) => (
+                  <Text key={source}>
+                    {labelize(source)}: <Text strong>{formatCount(counts.businessesClaimed)}</Text> claimed / {formatCount(counts.draftsCreated)} drafts
+                  </Text>
+                ))}
               </Space>
             </Card>
             <Card title="Onboarding">

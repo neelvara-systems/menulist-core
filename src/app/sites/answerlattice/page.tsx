@@ -24,10 +24,13 @@ import PageProofStrip from './components/PageProofStrip';
 import PricingPreviewSection from './components/PricingPreviewSection';
 import SectionHeader from './components/SectionHeader';
 import SupportSurfaceStoryNav from './components/SupportSurfaceStoryNav';
-import { AnswerlatticeDiagramCore, AnswerlatticeHeroAutomationDiagram, AnswerlatticeLoopDiagram } from './components/AnswerlatticeFlowDiagram';
+import { AnswerlatticeDiagramCore, AnswerlatticeLoopDiagram } from './components/AnswerlatticeFlowDiagram';
+import AnswerlatticeMotionAsset from './components/AnswerlatticeMotionAsset';
 import {
+    ANSWERLATTICE_AUTHORITY_TRANSFER_MOTION,
     ANSWERLATTICE_FEATURE_ASSETS,
     ANSWERLATTICE_DEMO_SURFACE_ASSETS,
+    ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION,
     ANSWERLATTICE_PRODUCT_AREA_ASSETS,
     ANSWERLATTICE_PRODUCT_PREVIEW_ASSETS,
 } from './answerlatticeWebsiteAssets';
@@ -598,7 +601,13 @@ function HomepageHero({ basePath }: { basePath: string }) {
                 </div>
 
                 <div className="al-home-hero__image mx-auto mt-12 max-w-6xl" data-answerlattice-visual-slot="home.hero.product-loop">
-                    <AnswerlatticeHeroAutomationDiagram />
+                    <AnswerlatticeMotionAsset
+                        asset={ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION}
+                        assetSlotId="answerlattice.home.hero.support-control-motion"
+                        assetRole="home-hero-support-control-motion"
+                        priority
+                        className="rounded-[2rem] border border-white/[0.08] shadow-2xl shadow-black/30"
+                    />
                 </div>
 
                 <div className="al-home-hero__proof">
@@ -1218,6 +1227,14 @@ function ConnectedLoopSection() {
                     title="Keep every support surface aligned."
                     description="When an answer is missing, fallback becomes review work. When the fix is approved, the next user gets better support."
                 />
+                <div className="mx-auto mb-8 max-w-5xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/25 sm:p-3" data-answerlattice-reveal>
+                    <AnswerlatticeMotionAsset
+                        asset={ANSWERLATTICE_AUTHORITY_TRANSFER_MOTION}
+                        assetSlotId="answerlattice.home.section.authority-transfer"
+                        assetRole="home-authority-transfer-motion"
+                        className="rounded-[1.5rem] border border-white/[0.08]"
+                    />
+                </div>
                 <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6" data-answerlattice-reveal>
                     <AnswerlatticeLoopDiagram idPrefix="al-home-support-loop" items={SUPPORT_LOOP} />
                 </div>

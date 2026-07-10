@@ -12,6 +12,8 @@ Menu Setup Progress is a calm onboarding progress layer for MenuList-specific se
 
 It tracks menu creation/import, key menu details, publish status, optional content polish, and placement of the official link.
 
+On the owner dashboard, Menu setup now sits inside the broader official customer source loop: prepare the menu, publish it, place the same link on customer surfaces, then keep prices, availability, hours, and feedback clear. This remains a read-only progress layer over existing project/store truth.
+
 ## What It Is Not
 
 - Not business setup progress
@@ -19,6 +21,7 @@ It tracks menu creation/import, key menu details, publish status, optional conte
 - Not a Public Presence duplicate
 - Not a score or gamified badge
 - Not a blocker for optional descriptions, images, photos, or social links
+- Not an external-platform scan, Google/social sync, or new placement report
 
 ## Setup Model
 
@@ -73,4 +76,4 @@ It tracks menu creation/import, key menu details, publish status, optional conte
 ---
 
 **Created:** July 7, 2026
-**Last Updated:** July 7, 2026
+**Last Updated:** July 9, 2026

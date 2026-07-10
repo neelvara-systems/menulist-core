@@ -1,9 +1,9 @@
 # Website Image & Asset Requirements
 
 **Status:** ✅ CURRENT — Market-first product-proof asset plan plus selected clean feature screenshot proof assets
-**Last Updated:** July 6, 2026
+**Last Updated:** July 10, 2026
 **Primary Stage Output:** `website-prep-codex-prompts/stage-06-output-screenshot-asset-production-system.md`
-**Latest Asset Output:** `asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md`
+**Latest Asset Output:** `asset-production/launch-pack-2026-07/menulist-launch-pack.md`
 
 ---
 
@@ -14,7 +14,7 @@ The current asset pack contains founder-approved fictional demo visuals for **la
 Market-first correction, July 2026:
 
 - Product proof is not optional polish for the MenuList website. Restaurant/SMB operators comparing tools need to see the customer page, owner approval surface, and operating state quickly, especially before they know the brand.
-- The active compressed homepage now mounts `HeroSection` with `menulist-hero-official-source.webp`, `CustomerBrowseSection` with `menulist-public-menu-mobile.webp`, and `OwnerProofSection` with AI Menu Manager and Business Health product-proof images. `SetupReliefSection`, `SurfacesSection`, `BusinessSection`, and `AnalyticsInsightsSection` are available components but are not mounted in the active homepage flow.
+- The active compressed homepage now mounts `HeroSection` with the `menulist-business-truth-loop` WebM/MP4 and poster fallbacks, `CustomerBrowseSection` with `menulist-public-menu-mobile.webp`, and `OwnerProofSection` with AI Menu Manager and Business Health product-proof images. `menulist-hero-official-source.webp` remains a CSS background fallback and OG source. `SetupReliefSection`, `SurfacesSection`, `BusinessSection`, and `AnalyticsInsightsSection` are available components but are not mounted in the active homepage flow.
 - Treat the next conversion pass as a product-proof pass, not a copy-expansion pass: add or replace visuals with real routed demo screenshots where they matter most, then keep the page short.
 - Use static AVIF/WebP screenshots for first-viewport and feature-page proof, short muted WebM/MP4 loops only for workflows that need sequence, SVG/HTML only for source-to-surface system logic, and a short product video only after screenshot proof is already present.
 - Do not describe fictional or synthetic visuals as real customer screenshots, testimonials, customer proof, or live usage evidence.
@@ -111,16 +111,17 @@ Structure now mirrored in the generated assets:
 
 | Asset | File | Status | Notes |
 | --- | --- | --- | --- |
-| Hero official-source composite | `public/images/website/menulist-hero-official-source.webp` | Generated + visible demo | Fictional The Daily Plate product composite; mounted directly in current active `HeroSection.tsx` |
+| Hero official-source composite | `public/images/website/menulist-hero-official-source.webp` | Generated fallback demo | Fictional The Daily Plate product composite; retained as the homepage CSS background fallback and OG source |
+| Hero business-truth motion | `public/images/website/menulist-business-truth-loop.webm` | Approved + visible demo | Mounted directly in current active `HeroSection.tsx` with MP4 and WebP poster fallbacks |
 | Open Graph image | `public/images/website/menulist-og-official-source.png` | Generated | Current website metadata target |
 | Backward-compatible OG image | `public/og-image.png` | Generated | Copy of the new OG image |
 | Mobile public menu visual | `public/images/website/menulist-public-menu-mobile.webp` | Generated + visible demo | Fictional customer-browse visual; mounted in `CustomerBrowseSection.tsx` |
 | OBP browser visual | `public/images/website/menulist-obp-browser.webp` | Generated + visible feature-page demo | Fictional Official Business Page visual; mounted in `/features/official-business-page` through `FeatureScreenshotProofGallery.tsx` |
 | Setup relief workflow | `public/images/website/menulist-setup-relief-workflow.webp` | Generated supporting asset | Upload/review/publish workflow strip; available through `SetupReliefSection.tsx`, which is not mounted in the active compressed homepage |
-| Public surfaces matrix | `public/images/website/menulist-public-surfaces-matrix.webp` | Generated supporting asset | MenuList-controlled surfaces visual with feedback/status concepts; available through `SurfacesSection.tsx`, which is not mounted in the active compressed homepage |
-| Analytics/status visual | `public/images/website/menulist-analytics-proof.webp` | Generated + visible feature-page demo | Synthetic activity/status signals only; mounted in `/features/analytics` through `FeatureScreenshotProofGallery.tsx` |
+| Public surfaces matrix | `public/images/website/menulist-public-surfaces-matrix.webp` | Approved supporting asset | MenuList-controlled surfaces visual with categorical activity availability and no invented counts; available through `SurfacesSection.tsx`, which is not mounted in the active compressed homepage |
+| Analytics/status visual | `public/images/website/menulist-analytics-proof.webp` | Approved + visible feature-page demo | Categorical activity/status availability only; mounted in `/features/analytics` through `FeatureScreenshotProofGallery.tsx` |
 | Launch square image | `public/images/website/menulist-launch-square.png` | Generated | Square social/launch asset |
-| LinkedIn launch image | `public/images/website/menulist-linkedin-launch.png` | Generated | Social preview derivative |
+| LinkedIn launch image | `public/images/website/menulist-linkedin-launch.png` | Approved | The Daily Plate social derivative aligned with the coordinated launch pack |
 
 ## Stage 8 Product Proof Demo Asset Pack
 
@@ -130,10 +131,14 @@ Stage 8 mounts product-proof demo visuals in the current active website instead 
 | --- | --- | --- | --- |
 | AI Menu Manager approval visual | `public/images/website/product-proof/ai-menu-manager-approval-card.webp` | Generated + visible demo | Mounted in `OwnerProofSection.tsx` and `/ai-menu-manager`; shows message -> prepared card -> owner approval |
 | Business Health stable visual | `public/images/website/product-proof/business-health-stable-check.webp` | Generated + visible demo | Mounted in `OwnerProofSection.tsx` and `/features/business-health`; shows latest check, No action needed state, activity, and owner phone context |
-| Owner phone dashboard visual | `public/images/website/product-proof/owner-phone-dashboard.webp` | Generated + visible demo | Mounted in `FeatureScreenshotProofGallery.tsx` for `/features/owner-phone-dashboard`; shows mobile Today, status, share link, and activity |
-| Hero official-source composite | `public/images/website/menulist-hero-official-source.webp` | Generated + visible demo | Mounted directly in `HeroSection.tsx` for first-viewport product proof |
+| Owner phone dashboard visual | `public/images/website/product-proof/owner-phone-dashboard.webp` | Approved + visible demo | Mounted in `FeatureScreenshotProofGallery.tsx` for `/features/owner-phone-dashboard`; shows mobile status, share link, and public-link readiness without invented activity counts |
+| Hero business-truth motion | `public/images/website/menulist-business-truth-loop.webm` | Approved + visible demo | Mounted directly in `HeroSection.tsx` for first-viewport product proof |
 | OBP browser visual | `public/images/website/menulist-obp-browser.webp` | Generated + visible demo | Mounted in `FeatureScreenshotProofGallery.tsx` for `/features/official-business-page` |
 | Analytics/status visual | `public/images/website/menulist-analytics-proof.webp` | Generated + visible demo | Mounted in `FeatureScreenshotProofGallery.tsx` for `/features/analytics` |
+
+## Coordinated Launch Pack - July 2026
+
+The governed launch pack combines the live website hero motion, its static fallback, square and LinkedIn social assets, the Owner PWA Dashboard device proof, and four deterministic film keyframes. The complete mapping and regeneration commands live in `asset-production/launch-pack-2026-07/menulist-launch-pack.md`.
 
 Generator:
 
@@ -185,7 +190,7 @@ Publishing rule:
 
 | Priority | Asset | Recommended file | Role | Source | Blocking |
 | --- | --- | --- | --- | --- | --- |
-| P0 | Hero official-source composite | `menulist-hero-official-source.webp` | First-screen credibility | OBP + public menu + source-card composite | Generated demo asset is mounted in the active homepage; replace with routed screenshot composite when demo tenant exists |
+| P0 | Hero business-truth motion | `menulist-business-truth-loop.webm` | First-screen credibility | Approved source-to-surface HyperFrames loop | Mounted in the active homepage with MP4 and poster fallbacks |
 | P0 | Open Graph image | `menulist-og-official-source.png` | Social/link preview | Hero/source-card derivative | Generated metadata asset exists |
 | P0 | Mobile public menu screenshot | `menulist-public-menu-mobile.webp` | Customer browse proof | Real public menu route | P0 demo visual is mounted; replace with routed screenshot when demo tenant exists |
 | P0 | OBP browser screenshot | `menulist-obp-browser.webp` | Public-presence authority proof | Real Official Business Page route | Generated demo asset is mounted on `/features/official-business-page`; replace with routed screenshot when demo tenant exists |
@@ -194,6 +199,8 @@ Publishing rule:
 | P1 | Public surfaces matrix | `menulist-public-surfaces-matrix.webp` | Multi-surface proof | OBP, menu, QR/share, saved shortcut, issue reports, activity signals | Generated asset exists in an unmounted section; final needs real source screenshots or a tighter homepage proof grid |
 | P1 | LinkedIn launch image | `menulist-linkedin-launch.png` | Launch distribution | Hero/OBP/menu composite | Useful |
 | P2 | Square launch visual | `menulist-launch-square.png` | Instagram/WhatsApp launch | Workflow strip | Useful |
+| P2 | Owner device visual | `product-proof/owner-phone-dashboard.webp` | Device mockup and mobile-owner proof | Owner PWA Dashboard product surface | Mounted and AssetOS-tracked |
+| P2 | Launch-film keyframes | `packages/asset-factory/published/menulist/launch-video-frames/` | Film storyboard and edit handoff | Approved business-truth loop | Four deterministic 16:9 frames |
 | P2 | Digital screen proof | `menulist-digital-screen-proof.webp` | Store-display proof | `src/app/screen/[token]/ScreenDisplay.tsx` | Optional |
 
 ---

@@ -6,6 +6,7 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import type {
   FounderMonitorData,
+  FounderMonitorGrowthSummary,
   FounderMonitorRevenueMovementRow,
   FounderMonitorRevenueSummary,
   FounderMonitorScorecard,
@@ -274,6 +275,14 @@ function buildRevenueSummary(revenueDoc: Record<string, any>, periodDaily: Retur
   const activeSubscriptions = safeNumber(revenueDoc.activeSubscriptions);
   const activeStores = safeNumber(revenueDoc.activeStores);
   const trustedLiveStores = safeNumber(revenueDoc.trustedLiveStores);
+  const churnReasons = Object.fromEntries([
+    'no_longer_needed',
+    'missing_functionality',
+    'too_expensive',
+    'switched_provider',
+    'purchased_accidentally',
+    'other',
+  ].map((reason) => [reason, safeNumber(revenueDoc.churnReasons?.[reason])]));
 
   return {
     currentMrrPaise,
@@ -292,6 +301,29 @@ function buildRevenueSummary(revenueDoc: Record<string, any>, periodDaily: Retur
     arpaPaise: activeSubscriptions > 0 ? Math.round(currentMrrPaise / activeSubscriptions) : 0,
     arpsPaise: activeStores > 0 ? Math.round(currentMrrPaise / activeStores) : 0,
     revenuePerTrustedLiveStorePaise: trustedLiveStores > 0 ? Math.round(currentMrrPaise / trustedLiveStores) : 0,
+    churnReasons,
+  };
+}
+
+function buildGrowthSummary(growthDoc: Record<string, any>): FounderMonitorGrowthSummary {
+  const draftsCreated = safeNumber(growthDoc.draftsCreated);
+  const businessesClaimed = safeNumber(growthDoc.businessesClaimed);
+  const allowedSources = ['menulist_public_surface', 'physical_partner', 'founder_pilot'];
+  const bySource = Object.fromEntries(allowedSources.map((source) => {
+    const sourceData = growthDoc.bySource?.[source] || {};
+    return [source, {
+      draftsCreated: safeNumber(sourceData.draftsCreated),
+      businessesClaimed: safeNumber(sourceData.businessesClaimed),
+    }];
+  }));
+
+  return {
+    draftsCreated,
+    businessesClaimed,
+    draftToClaimRatePercent: draftsCreated > 0
+      ? Math.round((businessesClaimed / draftsCreated) * 1000) / 10
+      : 0,
+    bySource,
   };
 }
 
@@ -371,9 +403,10 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
 
     const dayKeys = getRecentIndiaDayKeys(parsed.data.days);
     const todayKey = getIndiaDayKey(new Date());
-    const [snapshotRead, revenueRead, dailyRead, movementRead] = await Promise.all([
+    const [snapshotRead, revenueRead, growthRead, dailyRead, movementRead] = await Promise.all([
       readPlatformSummaryDoc('founder-monitor-snapshot', 'Founder Monitor snapshot', 'founderMonitorSnapshot'),
       readPlatformSummaryDoc('founder-monitor-revenue', 'Founder Monitor live revenue summary', 'founderMonitorRevenue'),
+      readPlatformSummaryDoc('founder-monitor-growth', 'Founder Monitor growth summary', 'founderMonitorGrowth'),
       readDailyRevenueDocs(dayKeys),
       readRevenueMovements(),
     ]);
@@ -381,6 +414,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     const periodDaily = aggregateDailyRevenue(dailyRead.docs);
     const todayDaily = aggregateDailyRevenue(dailyRead.docs.filter((doc) => cleanText(doc.dateKey, 20) === todayKey));
     const revenue = buildRevenueSummary(revenueRead.data, periodDaily, todayDaily);
+    const growth = buildGrowthSummary(growthRead.data);
     const status: FounderMonitorStatus = snapshotRead.coverage.status === 'available' && revenueRead.coverage.status === 'available'
       ? normalizeMonitorStatus(snapshotRead.data.status)
       : 'setup_required';
@@ -403,6 +437,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
       status,
       scorecard,
       revenue,
+      growth,
       storeTruth: snapshotRead.data.storeTruth || {
         averageScore: 0,
         scoredStores: 0,
@@ -438,6 +473,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
       sourceCoverage: [
         snapshotRead.coverage,
         revenueRead.coverage,
+        growthRead.coverage,
         dailyRead.coverage,
         movementRead.coverage,
       ],

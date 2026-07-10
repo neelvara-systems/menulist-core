@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import type { GrowthAcquisitionAttribution } from "@lib/growth/acquisitionAttribution";
 import type { LocalizedStringList, LocalizedText } from "@lib/localization/text";
 import type { OutletPolicy } from "../multiOutlet.types";
 import type { PlatformBlockDetails } from "./blocking";
@@ -718,12 +719,15 @@ export type StoreDataType = {
     // ─────────────────────────────────────────────────────────────
 
     /** Timestamp-only presence. Exists = confirmed, missing = not confirmed.
-     *  Surface IDs are IMMUTABLE — never rename. Max 6 surfaces forever. */
+     *  Surface IDs are IMMUTABLE — never rename. */
     menuPresence?: {
         googleBusiness?: string;   // ISO 8601 timestamp when owner confirmed
+        appleBusiness?: string;    // ISO 8601 timestamp when owner confirmed
+        bingPlaces?: string;       // ISO 8601 timestamp when owner confirmed
         instagramBio?: string;     // ISO 8601 timestamp when owner confirmed
         whatsappProfile?: string;  // ISO 8601 timestamp when owner confirmed
     };
+    growthAcquisition?: GrowthAcquisitionAttribution;
 };
 
 export type MinimalStoreDataType = Pick<

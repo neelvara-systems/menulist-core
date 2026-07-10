@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuRefreshCw } from 'react-icons/lu';
+import { theme } from 'antd';
 import {
     DEPLOYMENT_VERSION_REQUEST_POLICY,
     readDeploymentVersionResponse,
@@ -26,6 +27,7 @@ function formatBuildTime(value?: string): string {
 }
 
 export default function OwnerAppUpdatePrompt() {
+    const { token } = theme.useToken();
     const [serverVersion, setServerVersion] = useState<DeploymentVersionResponse | null>(null);
     const [isDismissed, setIsDismissed] = useState(false);
     const isCheckingRef = useRef(false);
@@ -109,13 +111,13 @@ export default function OwnerAppUpdatePrompt() {
                 zIndex: 2147483000,
                 width: 'min(520px, calc(100vw - 24px))',
                 borderRadius: 18,
-                border: '1px solid rgba(15, 23, 42, 0.12)',
-                background: '#ffffff',
+                border: `1px solid ${token.colorBorderSecondary}`,
+                background: token.colorBgElevated,
                 boxSizing: 'border-box',
-                boxShadow: '0 18px 50px rgba(15, 23, 42, 0.22)',
+                boxShadow: token.boxShadowSecondary,
                 padding: 14,
-                color: '#0f172a',
-                fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
+                color: token.colorText,
+                fontFamily: token.fontFamily,
             }}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
@@ -132,9 +134,9 @@ export default function OwnerAppUpdatePrompt() {
                         aria-hidden="true"
                         style={{
                             alignItems: 'center',
-                            background: '#0054D0',
+                            background: token.colorPrimary,
                             borderRadius: 14,
-                            color: '#ffffff',
+                            color: token.colorTextLightSolid,
                             display: 'flex',
                             height: 44,
                             justifyContent: 'center',
@@ -147,11 +149,11 @@ export default function OwnerAppUpdatePrompt() {
                         <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>
                             Update available
                         </div>
-                        <div style={{ color: '#64748b', fontSize: 13, lineHeight: 1.35, marginTop: 4 }}>
+                        <div style={{ color: token.colorTextSecondary, fontSize: 13, lineHeight: 1.35, marginTop: 4 }}>
                             A newer MenuList version is ready. Refresh when you are not editing.
                         </div>
                         {buildTime ? (
-                            <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.35, marginTop: 3 }}>
+                            <div style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.35, marginTop: 3 }}>
                                 Build: {buildTime}
                             </div>
                         ) : null}
@@ -163,7 +165,7 @@ export default function OwnerAppUpdatePrompt() {
                             alignItems: 'center',
                             background: 'transparent',
                             border: 'none',
-                            color: '#64748b',
+                            color: token.colorTextSecondary,
                             cursor: 'pointer',
                             display: 'flex',
                             height: 44,
@@ -180,11 +182,11 @@ export default function OwnerAppUpdatePrompt() {
                     onClick={handleRefresh}
                     style={{
                         alignItems: 'center',
-                        background: '#0054D0',
+                        background: token.colorPrimary,
                         border: 'none',
                         borderRadius: 999,
                         boxSizing: 'border-box',
-                        color: '#ffffff',
+                        color: token.colorTextLightSolid,
                         cursor: 'pointer',
                         display: 'flex',
                         fontSize: 14,

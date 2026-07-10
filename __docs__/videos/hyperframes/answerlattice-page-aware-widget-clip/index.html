@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=720" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1280px;
+        height: 720px;
+        overflow: hidden;
+        background: #05070d;
+      }
+
+      body {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #f8fafc;
+      }
+
+      .clip {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+
+      .scene {
+        width: 1280px;
+        height: 720px;
+        padding: 46px 56px;
+      }
+
+      .grid {
+        position: absolute;
+        inset: 0;
+        opacity: 0.28;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+        background-size: 40px 40px;
+        mask-image: radial-gradient(circle at 50% 50%, black, transparent 72%);
+      }
+
+      .brand-row {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .brand-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .logo-tile {
+        width: 54px;
+        height: 54px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+      }
+
+      .logo-tile img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .logo-tile.answerlattice img {
+        width: 42px;
+        height: 42px;
+        object-fit: contain;
+      }
+
+      .brand-name {
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 760;
+        letter-spacing: 0;
+      }
+
+      .brand-kicker {
+        margin-top: 6px;
+        font-size: 13px;
+        line-height: 1.2;
+        color: rgba(255, 255, 255, 0.64);
+      }
+
+      .status-pill {
+        min-height: 36px;
+        padding: 9px 15px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 18px currentColor;
+      }
+
+      .mono {
+        font-family: monospace;
+      }
+
+      .card {
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.26);
+      }
+
+      
+      .answerlattice-control,
+      .answerlattice-authority,
+      .answerlattice-widget {
+        color: #f8fafc;
+        background:
+          radial-gradient(circle at 18% 22%, rgba(45, 212, 191, 0.13), transparent 26%),
+          radial-gradient(circle at 82% 14%, rgba(125, 92, 255, 0.12), transparent 24%),
+          linear-gradient(135deg, #070714 0%, #0d1020 54%, #07131b 100%);
+      }
+
+      .answerlattice-control .status-pill,
+      .answerlattice-authority .status-pill,
+      .answerlattice-widget .status-pill {
+        color: #5eead4;
+      }
+
+      .al-layout {
+        position: relative;
+        z-index: 2;
+        margin-top: 36px;
+        min-height: 500px;
+      }
+
+      .al-panel {
+        border-radius: 24px;
+        background: rgba(9, 12, 28, 0.72);
+        border: 1px solid rgba(94, 234, 212, 0.15);
+        box-shadow: 0 34px 100px rgba(0, 0, 0, 0.32);
+      }
+
+      .al-card-title {
+        font-size: 14px;
+        line-height: 1.2;
+        font-weight: 760;
+        color: rgba(255, 255, 255, 0.92);
+      }
+
+      .al-card-sub {
+        margin-top: 6px;
+        font-size: 12px;
+        line-height: 1.35;
+        color: rgba(226, 232, 240, 0.62);
+      }
+
+      .al-chip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 54px;
+        padding: 13px 14px;
+        border-radius: 15px;
+        color: #e2e8f0;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .al-chip span {
+        font-size: 12px;
+        color: #5eead4;
+      }
+
+      .al-core {
+        position: absolute;
+        left: 50%;
+        top: 48%;
+        width: 300px;
+        min-height: 230px;
+        transform: translate(-50%, -50%);
+        border-radius: 30px;
+        padding: 26px;
+        background: rgba(8, 16, 28, 0.94);
+        border: 1px solid rgba(94, 234, 212, 0.28);
+        box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.06), 0 32px 120px rgba(45, 212, 191, 0.16);
+      }
+
+      .al-core h2 {
+        margin: 0;
+        font-size: 31px;
+        line-height: 1.04;
+        letter-spacing: 0;
+      }
+
+      .al-core p {
+        margin: 13px 0 0;
+        font-size: 14px;
+        line-height: 1.45;
+        color: rgba(226, 232, 240, 0.67);
+      }
+
+      .al-rule {
+        margin-top: 18px;
+        padding: 12px;
+        border-radius: 15px;
+        background: rgba(94, 234, 212, 0.08);
+        color: #a7f3d0;
+        font-size: 13px;
+        line-height: 1.35;
+        border: 1px solid rgba(94, 234, 212, 0.12);
+      }
+
+      .al-line {
+        position: absolute;
+        z-index: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(94, 234, 212, 0.46), transparent);
+        transform-origin: left center;
+        pointer-events: none;
+      }
+
+      .al-dot {
+        position: absolute;
+        z-index: 0;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #5eead4;
+        box-shadow: 0 0 24px rgba(94, 234, 212, 0.72);
+        pointer-events: none;
+      }
+
+      .al-columns {
+        display: grid;
+        grid-template-columns: 290px 1fr 290px;
+        gap: 38px;
+        min-height: 500px;
+        align-items: center;
+      }
+
+      .chip-stack {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        gap: 14px;
+      }
+
+      .output-card {
+        position: relative;
+        z-index: 2;
+        padding: 18px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .authority-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 22px;
+      }
+
+      .authority-lane {
+        min-height: 430px;
+        padding: 20px;
+      }
+
+      .lane-heading {
+        font-size: 13px;
+        font-weight: 800;
+        color: #5eead4;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .question-card,
+      .review-card,
+      .knowledge-card {
+        margin-top: 16px;
+        padding: 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .review-card {
+        background: rgba(94, 234, 212, 0.07);
+        border-color: rgba(94, 234, 212, 0.18);
+      }
+
+      .knowledge-card {
+        background: rgba(45, 212, 191, 0.1);
+        border-color: rgba(94, 234, 212, 0.22);
+      }
+
+      .browser-mock {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 330px;
+        gap: 24px;
+        min-height: 500px;
+        padding: 22px;
+      }
+
+      .browser-window {
+        min-height: 456px;
+        border-radius: 20px;
+        overflow: hidden;
+      }
+
+      .browser-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 13px 16px;
+        background: rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .traffic {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.28);
+      }
+
+      .url-pill {
+        margin-left: 10px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.22);
+        color: rgba(226, 232, 240, 0.8);
+        font-size: 12px;
+      }
+
+      .page-body {
+        padding: 24px;
+      }
+
+      .page-title {
+        font-size: 30px;
+        line-height: 1.05;
+        font-weight: 800;
+      }
+
+      .context-grid {
+        margin-top: 24px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+
+      .context-card {
+        padding: 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .widget-panel {
+        position: relative;
+        min-height: 456px;
+        padding: 20px;
+      }
+
+      .widget-answer {
+        margin-top: 18px;
+        padding: 18px;
+        border-radius: 18px;
+        background: rgba(94, 234, 212, 0.09);
+        border: 1px solid rgba(94, 234, 212, 0.22);
+      }
+
+      .boundary-list {
+        margin-top: 18px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .boundary-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.06);
+        font-size: 13px;
+      }
+
+      .boundary-row strong {
+        color: #5eead4;
+      }
+
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-width="1280"
+      data-height="720"
+    >
+      <section id="scene" class="clip scene answerlattice-widget" data-start="0" data-duration="6" data-track-index="1">
+        
+        <div class="grid"></div>
+        <div class="brand-row">
+          <div class="brand-left">
+            <div class="logo-tile answerlattice"><img src="./assets/brand/answerlattice-logo.svg" alt="" /></div>
+            <div>
+              <div class="brand-name">Answerlattice</div>
+              <div class="brand-kicker">Page-aware support, safe by default</div>
+            </div>
+          </div>
+          <div class="status-pill"><span class="status-dot"></span> Private fields excluded</div>
+        </div>
+        <div class="al-layout al-panel browser-mock">
+          <div class="browser-window al-panel">
+            <div class="browser-top">
+              <span class="traffic"></span><span class="traffic"></span><span class="traffic"></span>
+              <span class="url-pill mono">/product/page-aware-widget</span>
+            </div>
+            <div class="page-body">
+              <div class="page-title">Billing settings support</div>
+              <div class="al-card-sub">The page contributes only approved route context.</div>
+              <div class="context-grid">
+                <div class="context-card"><div class="al-card-title">Current page</div><div class="al-card-sub">Feature: billing settings</div></div>
+                <div class="context-card"><div class="al-card-title">Allowed source</div><div class="al-card-sub">Approved help answer</div></div>
+                <div class="context-card"><div class="al-card-title">Question intent</div><div class="al-card-sub">Change billing role</div></div>
+                <div class="context-card"><div class="al-card-title">Fallback state</div><div class="al-card-sub">Escalate if uncovered</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="widget-panel al-panel">
+            <div class="lane-heading">Embedded widget</div>
+            <div class="widget-answer">
+              <div class="al-card-title">Approved answer shown</div>
+              <div class="al-card-sub">Use role settings to control who can change billing. This answer comes from reviewed support knowledge.</div>
+            </div>
+            <div class="boundary-list">
+              <div class="boundary-row"><span>Page context</span><strong>Allowed</strong></div>
+              <div class="boundary-row"><span>Private tickets</span><strong>Excluded</strong></div>
+              <div class="boundary-row"><span>Payment details</span><strong>Excluded</strong></div>
+              <div class="boundary-row"><span>Unknown answer</span><strong>Escalate</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const hold = { progress: 0 };
+      tl.to(hold, { progress: 1, duration: 6, ease: "none" }, 0);
+      
+      tl.from(".brand-left", { opacity: 0, y: 16, duration: 0.45, ease: "power2.out" }, 0.1);
+      tl.from(".status-pill", { opacity: 0, x: 18, duration: 0.45, ease: "power2.out" }, 0.2);
+      tl.from(".browser-mock", { opacity: 0, y: 24, duration: 0.58, ease: "power2.out" }, 0.52);
+      tl.from(".context-card", { opacity: 0, y: 18, stagger: 0.1, duration: 0.38, ease: "power2.out" }, 1.08);
+      tl.from(".widget-panel", { opacity: 0, x: 28, duration: 0.55, ease: "power2.out" }, 1.44);
+      tl.from(".widget-answer", { opacity: 0, scale: 0.96, duration: 0.45, ease: "power2.out" }, 1.92);
+      tl.from(".boundary-row", { opacity: 0, x: 18, stagger: 0.1, duration: 0.34, ease: "power2.out" }, 2.34);
+      tl.to(".context-card", { borderColor: "rgba(94, 234, 212, 0.32)", stagger: 0.1, duration: 0.32, yoyo: true, repeat: 1, ease: "power1.inOut" }, 3.2);
+      tl.to(".widget-answer", { boxShadow: "0 0 0 1px rgba(94, 234, 212, 0.24), 0 28px 90px rgba(45, 212, 191, 0.14)", duration: 0.5, yoyo: true, repeat: 3, ease: "power1.inOut" }, 3.75);
+      tl.to(".status-dot", { scale: 1.45, duration: 0.32, yoyo: true, repeat: 3, ease: "power2.inOut" }, 4.55);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

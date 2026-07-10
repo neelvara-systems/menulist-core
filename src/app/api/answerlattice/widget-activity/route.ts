@@ -12,7 +12,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,11 +26,7 @@ const CANONICAL_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
     if (!answerlatticeScope) return null;
-
-    const tenantId = Number(answerlatticeScope.tenantId);
-    const storeId = Number(answerlatticeScope.storeId);
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return null;
-    return { tenantId, storeId };
+    return { tenantId: answerlatticeScope.tenantId, storeId: answerlatticeScope.storeId };
 };
 
 const getAnswerlatticeDb = () => {
@@ -103,8 +99,8 @@ const isWidgetActivityRow = (
     tenantId: number,
     storeId: number,
 ) => (
-    Number(data.tId) === tenantId
-    && Number(data.sId) === storeId
+    normalizeAnswerlatticeScopeDocumentId(data.tId) === tenantId
+    && normalizeAnswerlatticeScopeDocumentId(data.sId) === storeId
     && (data.mountContext === 'widget' || data.uId === 'widget')
 );
 

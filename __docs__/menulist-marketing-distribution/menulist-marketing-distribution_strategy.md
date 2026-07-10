@@ -12,6 +12,8 @@ It should be launched like a visible public-truth deployment system for SMBs:
 
 > A business sends the current list customers already see. MenuList turns it into one official public source. That source is placed where customers actually look.
 
+Extraction is the starting workflow, not the category claim. Competitors and listing platforms can parse photos or PDFs. MenuList must lead with the owner-approved official source, controlled publication, and multi-surface alignment that continues after intake.
+
 The marketing job is to make that transformation obvious, believable, and repeatable.
 
 ## AI Startup Playbook Correction

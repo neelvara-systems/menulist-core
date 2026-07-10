@@ -2,6 +2,7 @@
 
 **Status:** Active log
 **Created:** June 23, 2026
+**Last Updated:** July 10, 2026
 **Purpose:** Preserve decisions that should not be lost in chat.
 
 ## June 23, 2026 - Initial Documentation Set
@@ -500,3 +501,138 @@ The founder shared a consolidated review of how fast-growing AI products and sol
 ### Boundaries
 
 No runtime feature was added from this review. No provider send, paid campaign automation, auto-publish, cold social automation, public SignalDesk page, Firebase deploy, Vercel deploy, or MenuList truth write was introduced.
+
+## July 10, 2026 - Revenue Operating Layer Implemented
+
+### Context
+
+The founder asked to turn the reviewed Revenue Operating System direction into docs and working code end to end. The useful repo-fit slice is a bounded commercial lifecycle over existing SignalDesk targets, policies, offers/CTAs, outcomes, audit, cost, and owner-control rails. It is not authorization for autonomous provider send, calendar/proposal/payment providers, or MenuList truth ownership.
+
+### Decisions
+
+1. Add a private `/signaldesk/revenue` workspace rather than separate Marketing and Sales products.
+2. Link each existing target idempotently to one revenue account and create at most one automatic commercial opportunity when deterministic qualification passes.
+3. Keep lifecycle, engagement, compliance, automation, activation, opportunity stage, and opportunity status as separate state dimensions.
+4. Make commercial offer terms immutable within a version; price, discount authority, eligibility, or terms changes require a new version.
+5. Build operating envelopes as references to existing source, offer, pod, budget, sender, template, time, cost, volume, stop, fallback, and approval controls.
+6. Keep executable state at shadow or approval-only. A requested `exception-only` envelope is stored as held and falls back to per-item approval.
+7. Derive activation watches only from SignalDesk outcome summaries. MenuList remains authoritative for store, menu, project, publish, billing, customer, and activation truth.
+8. Materialize one compact revenue-control summary, including founder-attention minutes, instead of scanning raw messages or event collections.
+9. Keep all revenue mutations server-only, mobile-blocked, audited, timeline-traced, cost-accounted, and client-write denied by Firestore rules.
+
+### Cross-Check Corrections
+
+The July 10 findings-first pass closed integrity gaps that were not visible in the initial sequential happy path:
+
+1. Revenue envelopes no longer auto-attach the first active provider budget. Only compatible global or matching active-pod budgets may be referenced.
+2. Every envelope requires an active market pod. Draft, held, expired, and exception-only records cannot expose approval-only execution.
+3. Offer and envelope IDs are deterministic from name/version, and immutable terms cannot be overwritten inside a version.
+4. Account/opportunity creation and revenue/activation summary deltas use Firestore transactions so concurrent retries remain exact.
+5. Opportunity currency comes from its offer; valued opportunities require an offer and unlike minor-unit currencies cannot be combined.
+6. Two-surface activation closes the linked opportunity, updates win/open/forecast summaries once, and moves the account to customer lifecycle.
+7. Expired envelopes read as held, paused envelopes preserve approval history, operators can explicitly select active offer versions, and mobile revenue forms are actually disabled in addition to server blocking.
+
+### Local Proof
+
+- `npm run verify:signaldesk` passes.
+- `npx tsc --noEmit --pretty false` passes.
+- `npm run test:signaldesk:e2e:local` passes under Node 20.
+- `npm run test:signaldesk:rules` passes under Node 20.
+
+### Boundaries
+
+No provider send was enabled. No scheduler, calendar provider, proposal/e-sign provider, payment provider, social auto-publish, paid campaign automation, public SignalDesk page, or MenuList truth write was added. The required QA-only Firestore rules/index deploy was attempted against `menulist-signaldesk-qa` and blocked by Firebase Rules API HTTP 403 because the current caller lacks permission; no cloud resources were changed.
+
+## July 10, 2026 - First-Trial Revenue Loop Wired
+
+### Context
+
+The founder authorized the bounded trial-readiness work after reviewing SignalDesk as a founder-controlled Revenue Operating System. The implementation closes routine coordination gaps without granting provider send, spend, source, offer, or MenuList product authority.
+
+### Decisions
+
+1. Keep the recommended Bengaluru first pod create-only, held, and zero-budget in seed data; migrate only the exact old unapproved held Mumbai seed; initialization cannot approve strategy or spend, and reseeding cannot overwrite founder approval.
+2. Align first-run import, source, partner, research, and seven-day envelope defaults to the maintained Bengaluru/Indiranagar/Koramangala hypothesis.
+3. Treat an interested reply as an authorized deterministic qualification trigger after reply, suppression, contactability, and source-policy state is durable.
+4. Automatically refresh the SignalDesk activation projection after a target-scoped outcome when a revenue account exists.
+5. Preserve reply/outcome truth if a derived commercial projection needs recovery; log bounded state without raw reply/contact data.
+6. Derive elapsed seven-day activation deadlines as stalled during bounded workspace/mission reads instead of adding a scheduler.
+7. Put stalled activations and overdue opportunities ahead of scale work in Daily Growth Mission, with open-pipeline, founder-attention, and estimated-spend context.
+8. Retain the explicit activation-watch action as a recovery recheck only.
+9. Reconcile prior outcome summaries when qualification creates an account after the outcome, so event order cannot determine activation visibility.
+
+### Boundaries
+
+No pod was activated, no budget was approved, no real source list or sender identity was inferred, no provider send or social auto-publish was enabled, no calendar/proposal/payment connector was added, and no MenuList store/menu/project/publish/billing/customer truth was read or written.
+
+The scoped QA Firestore rules/index deployment was retried after all local gates passed. Firebase Rules API again returned HTTP 403 `The caller does not have permission`; no QA cloud resource changed.
+
+## July 10, 2026 - Revenue Authority Cross-Check Corrections
+
+### Findings
+
+1. Market-pod recommendation and Research Agent Table could write `status: active` from system evidence and the recommendation path attached a `$300` pod budget without founder approval.
+2. Revenue qualification treated legacy target `status: converted` as won/customer authority, although that state could be produced by a single `published` outcome.
+3. Activation watch derivation used an unordered 30-summary target query, so long histories could omit an older terminal activation and derive the seven-day deadline from an incomplete window.
+4. The legacy pod migration guard did not match every old default field, so a modified unapproved pod could still be mistaken for the exact legacy seed.
+
+### Corrections
+
+1. Added founder-only `review-market-pod` approve/hold/reject with actor, timestamp, reason, audit, and timeline evidence.
+2. Recommendation and research paths now keep unreviewed pods held, attach zero approved pod budget, preserve founder-controlled scope/decisions, and cannot activate themselves.
+3. Operating envelopes now require active status plus `reviewDecision: approved` and `approvedBy`, so a manually or system-written active flag is insufficient.
+4. Commercial won/customer state now requires a recorded `two_surface_activation`; published-only targets remain open with a published watch.
+5. Activation derivation now uses indexed latest-30, exact-earliest, and separate terminal-activation reads so bounded history remains deterministic.
+6. Tightened the legacy migration to the complete old unapproved held Mumbai default shape.
+7. Added E2E cases for non-founder review, unreviewed active-pod rejection, recommendation/research holds, published-only qualification, and terminal activation outside 30 newer summaries.
+
+### Boundaries
+
+No provider send, paid automation, pod spend, public SignalDesk route, scheduler, calendar/proposal/payment connector, or MenuList truth write was enabled by these corrections.
+
+## July 10, 2026 - Social Channel Market Research And Next Trial
+
+The founder requested a current deep research pass across X, Reddit, Instagram, YouTube, and Google to determine what restaurant owners, local creators, operators, consultants, and restaurant-technology vendors are doing and what SignalDesk should do next.
+
+Decision:
+
+1. Do not add more horizontal SignalDesk automation before the first activation-proof trial.
+2. Do not position MenuList as a QR-menu replacement, restaurant OS, POS, ordering platform, or marketing agency.
+3. Use Google as the primary high-intent discovery and activation surface; the owner remains responsible for authorized Business Profile placement.
+4. Use Instagram for permissioned proof and local creator/photographer/consultant trust channels, with manual approval and publishing.
+5. Use Reddit for listening and objection learning, YouTube for durable post-activation proof, and X for founder/partner learning rather than primary restaurant acquisition.
+6. Keep public customer menu viewing no-login and avoid forced phone/email/WhatsApp capture.
+7. Run a zero-external-spend, manual-first Bengaluru trial: 25 candidates, 12 evidence packets, five private previews, three two-surface activations, one permissioned proof asset, and one bounded trust-partner referral test.
+8. Select later product work only from measured trial bottlenecks.
+
+Source and operating detail are maintained in `menulist-signaldesk_social-channel-market-research-and-next-plan-2026-07-10.md` and its self-contained HTML brief.
+
+## July 10, 2026 - Bengaluru Trial Preparation Approved And Operationalized
+
+### Approval
+
+After reviewing the exact social-channel market plan, the founder instructed Codex to do the needful. This is recorded as approval to prepare the proposed zero-external-spend Bengaluru trial and align internal defaults. It is not approval to send messages, contact businesses through public data, spend money, publish content, enable providers, or change Google, Meta, or MenuList truth.
+
+### Decisions
+
+1. Approve the first pod as Indiranagar and Koramangala, Bengaluru, covering independent cafes, dessert shops, QSRs, and customer-facing cloud kitchens.
+2. Use manual/in-person or expected founder introduction first; use permissioned referral second; hold founder email until sender identity, physical address, unsubscribe, bounce, complaint, and domain readiness are complete.
+3. Split source authority into a 30-day public-business research policy with contact and personalization blocked, and a separate permissioned manual-introduction policy.
+4. Keep Google Places and other external discovery providers unapproved and at zero trial budget.
+5. Keep the first menu-photographer/restaurant-consultant learning test at zero fee and zero budget.
+6. Use a manual experiment card with 25 candidates, 12 evidence packets, five private previews, three two-surface activations within seven days, and one permissioned proof asset.
+7. Stop after five owner conversations with no accepted preview, or when fewer than two of the first five accepted previews activate on two surfaces.
+8. Keep the separate ten-business onboarding board permissioned-only. Public candidate research may identify business entities for internal evidence review but cannot create contact authority.
+
+### Implemented Preparation
+
+- Replaced stale Hadapsar/Pune Market Search presets and placeholder copy with the approved Bengaluru pod.
+- Made evidence-only public-business research the safe first manual policy and import selection.
+- Removed contact examples from the default manual-import rows.
+- Aligned experiment, partner-attempt, evidence, activation, and stop-rule defaults to the approved plan.
+- Changed the seeded Google Places and trust-partner trial controls to zero approval/spend.
+- Added `menulist-signaldesk_bengaluru-activation-trial-operating-pack-2026-07-10.md` with the 25-row board, evidence packet, draft-only scripts, preview checklist, tracking routes, and stop conditions.
+
+### Remaining External Gates
+
+No business was contacted. The intended QA runtime still needs Firebase permission because the scoped rules/index deploy is blocked by HTTP 403. A real permissioned business or partner introduction, sender identity, physical-address policy, and first owner-approved activation proof also remain external inputs.

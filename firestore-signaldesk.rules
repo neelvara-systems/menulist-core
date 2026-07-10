@@ -337,6 +337,36 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /signaldeskRevenueAccounts/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskCommercialOpportunities/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskCommercialOffers/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskOperatingEnvelopes/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskActivationWatches/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskRevenueControlSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
     function isAuthenticated() {
       return request.auth != null;
     }

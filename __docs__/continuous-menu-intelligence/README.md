@@ -2,6 +2,8 @@
 
 **Menu behavioral observation and priority-based ranking layer**
 
+> **Launch boundary:** Not current launch certification or deploy approval. This README documents source-gated CMI observation, scheduler, and Decision Blocks behavior only; full CMI release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped Functions deploy evidence for the scheduler bundle, runtime/provider smoke where relevant, downstream consumer certification, and production-host smoke.
+
 ---
 
 ## What This Is

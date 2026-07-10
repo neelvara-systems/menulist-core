@@ -1,6 +1,6 @@
 # Asset Brief - answerlattice.pwa.icons
 
-**Generated:** 2026-05-31
+**Generated:** 2026-07-10
 **Brand:** answerlattice
 **Status:** generated
 **Approval:** automatic
@@ -9,7 +9,7 @@
 
 ## Intent
 
-Keep installed Answerlattice app icons tied to the final approved mark.
+Keep installed Answerlattice app icons tied to the approved mark.
 
 ## Placement
 
@@ -23,13 +23,6 @@ Keep installed Answerlattice app icons tied to the final approved mark.
 
 - primary: png, icon, max 140 KB
 - fallback: png, icon, max 140 KB
-
-## Approved Source
-
-- Canonical source: `public/answerlattice-logo.svg`
-- Design status: final
-- Handling rule: scale and rasterize only; do not recolor, reshape, crop into a different mark, or redraw the logo.
-- Transparency rule: the logo source and logo-derived PNGs must not bake in the exported black canvas/frame; UI, splash, and OpenGraph surfaces own their backgrounds separately.
 
 ## Existing Files
 
@@ -72,8 +65,9 @@ Keep installed Answerlattice app icons tied to the final approved mark.
 ## Source Files To Inspect
 
 - packages/asset-factory/brand/answerlattice.asset-context.md: Answerlattice Asset Context
-- __docs__/answerlattice/answerlattice-website/README.md: Answerlattice Website (answerlattice.com)
+- __docs__/answerlattice/answerlattice-website/README.md: AnswerLattice Website (answerlattice.com)
 - public/answerlattice.webmanifest: Source file
+- public/answerlattice-logo.svg: Source file
 - scripts/website-assets/generate-answerlattice-logo-assets.js: Source file
 
 ## Brand Context Snapshot
@@ -89,6 +83,8 @@ Keep installed Answerlattice app icons tied to the final approved mark.
 Answerlattice assets should show governed support knowledge moving from product surfaces, docs, FAQs, tickets, and releases into approved support answers and controlled customer-facing surfaces.
 
 Assets must feel systemic, dark, restrained, and infrastructure-grade. Use Answerlattice's existing diagrams, status boards, proof blocks, and public website visual language as the reference system.
+
+The official Answerlattice logo is design-final at `public/answerlattice-logo.svg`. Use that file as the canonical transparent source for Answerlattice logo UI, metadata, favicon, PWA, OpenGraph, and splash derivatives. UI components must follow the MenuList inline SVG-path pattern through `src/components/atoms/answerlatticeLogoMark/index.tsx` so the design-team geometry, colors, gradients, filters, and stroke widths are not reinterpreted. Visible website diagrams must stay vector-based through inline SVG paths and the shared logo atom, not PNGs, screenshots, or image-wrapped logo assets. Do not add external CSS blur or drop-shadow to the logo; any shadow/effect must come from the SVG-native design filters. Do not leave visible diagram sections on persistent transform/will-change compositing layers that can make inline SVG look rasterized while zooming. Do not redraw, recolor, reshape, simplify, reinterpret the logo mark, or reintroduce the exported black canvas/frame into logo assets.
 
 ## Approved Directions
 
@@ -112,8 +108,6 @@ Assets must feel systemic, dark, restrained, and infrastructure-grade. Use Answe
 - `__docs__/answerlattice/answerlattice-website/README.md`
 - `__docs__/answerlattice/doctrine/01-core-doctrine.md`
 - `__docs__/answerlattice/doctrine/02-non-goals-charter.md`
-- `__docs__/answerlattice/doctrine/03-infrastructure-freeze-v1.md`
-
 
 ## Safe Next Action
 

@@ -113,7 +113,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         err,
                         buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType),
                     );
-                    setError('Could not set status');
+                    setError('Failed to set status');
                 } finally {
                     setIsLoading(false);
                 }
@@ -159,7 +159,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         err,
                         buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type),
                     );
-                    setError('Could not clear status');
+                    setError('Failed to clear status');
                 } finally {
                     setIsLoading(false);
                 }

@@ -56,7 +56,7 @@ The following files have been **consolidated** into this folder:
 
 | Legacy File                                            | Status         |
 | ------------------------------------------------------ | -------------- |
-| `Assessments/assessment-01-upload.md`                  | → Consolidated |
+| `assessments/assessment-01-upload.md`                  | → Consolidated |
 | `01-UPLOAD-FILE-PROCESSING.md`                         | → Consolidated |
 | `development_done/1-implementation-upload-complete.md` | → Consolidated |
 | `development_done/1-testing-guide-upload.md`           | → Consolidated |

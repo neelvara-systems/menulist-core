@@ -1,8 +1,8 @@
 # Asset Brief - menulist.home.hero.business-truth-loop
 
-**Generated:** 2026-05-31
+**Generated:** 2026-07-10
 **Brand:** menulist
-**Status:** missing
+**Status:** approved
 **Approval:** founder-required
 **Autonomy level:** 3
 **Output file:** packages/asset-factory/briefs/menulist.home.hero.business-truth-loop.md
@@ -15,7 +15,7 @@ Show the menu truth loop across owner approval, public menu, OBP, QR, and screen
 
 - Page: MenuList homepage
 - Route: /
-- Placement: future hero motion layer
+- Placement: homepage hero motion layer
 - Component: src/components/website/home/HeroSection.tsx
 - Destination: public/images/website/menulist-business-truth-loop.webm
 
@@ -27,7 +27,9 @@ Show the menu truth loop across owner approval, public menu, OBP, QR, and screen
 
 ## Existing Files
 
-- none yet
+- primary: public/images/website/menulist-business-truth-loop.webm
+- fallback: public/images/website/menulist-business-truth-loop.mp4
+- poster: public/images/website/menulist-business-truth-loop-poster.webp
 
 ## Narrative Rules
 
@@ -54,8 +56,14 @@ Show the menu truth loop across owner approval, public menu, OBP, QR, and screen
 
 - packages/asset-factory/brand/menulist.asset-context.md: MenuList Asset Context
 - __docs__/main-website/main-website_image-assets.md: Website Image & Asset Requirements
+- scripts/website-assets/generate-assetos-motion-compositions.mjs: Source file
+- scripts/website-assets/transcode-assetos-motion-assets.mjs: Source file
+- __docs__/videos/hyperframes/menulist-business-truth-loop/index.html: Source file
+- __docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json: Source file
+- public/icons/icon-512x512.png: Source file
 - src/components/website/home/HeroSection.tsx: Source file
 - src/components/website/home/SurfacesSection.tsx: Source file
+- src/styles/website.css: Source file
 
 ## Brand Context Snapshot
 

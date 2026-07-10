@@ -6,6 +6,8 @@
 **Created:** February 20, 2026
 **Source:** ChatGPT launch infra review → Cascade critical review
 
+**Launch boundary:** Not current launch certification or deploy approval. This README documents source-built SAFE_MODE protection; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, SAFE_MODE browser/provider/Functions smoke, and production-host smoke.
+
 ---
 
 ## Quick Navigation

@@ -39,8 +39,26 @@ npm run assets:audit
 npm run assets:review
 npm run assets:brief -- --slot menulist.home.hero.official-source
 npm run assets:fingerprint
+npm run assets:fingerprint -- --slot menulist.home.hero.official-source
+npm run assets:launch:frames
 npm run assets:generate:missing -- --slot answerlattice.home.hero.support-control-motion
+node scripts/website-assets/generate-assetos-motion-compositions.mjs
+node scripts/website-assets/transcode-assetos-motion-assets.mjs
+node scripts/website-assets/generate-assetos-motion-compositions.mjs --approve-manifest
 ```
+
+## Creative Helper Skills
+
+AssetOS can use installed creative skills as helpers after a slot brief exists:
+
+| Skill | Use |
+| --- | --- |
+| `imagegen-frontend-web` | Website hero images, section assets, browser mockups, social images, and product-proof compositions. |
+| `imagegen-frontend-mobile` | Phone mockups, mobile screenshots, onboarding frames, and app-store-style visuals. |
+| `brandkit` | Brand boards and identity exploration for new or materially refreshed brands. |
+| `image-to-code-skill` | Converting an approved visual reference into implementation guidance. |
+
+These skills do not override AssetOS. The manifest, slot file, brand context, source files, approval level, and audit/review commands remain the authority.
 
 ## Operating Rules
 
@@ -49,9 +67,26 @@ npm run assets:generate:missing -- --slot answerlattice.home.hero.support-contro
 3. Keep product identities separate.
 4. Do not move raw/working captures into `public/`.
 5. Do not publish real customer screenshots without founder approval.
-6. Do not add Remotion, Playwright, Motion Canvas, FFmpeg wrappers, OpenScreen, or OpenVid as package dependencies until a specific implementation plan justifies it.
-7. Run `npm run assets:fingerprint` only after generated/approved assets and their watched sources are intentionally accepted.
-8. Do not add Firebase, Vercel deploys, public routes, or scheduled jobs for this package.
+6. Use local HyperFrames plus FFmpeg by default for MenuList video and motion assets; cloud video tools or parallel render stacks require explicit founder approval for the specific asset.
+7. Do not add Remotion, Playwright, Motion Canvas, FFmpeg wrappers, OpenScreen, or OpenVid as package dependencies until a specific implementation plan justifies it.
+8. Run `npm run assets:fingerprint -- --slot <slot-id>` only after a generated/approved asset and its watched sources are intentionally accepted. Use all-slot `npm run assets:fingerprint` only when every non-missing asset in the manifest has been reviewed against current sources.
+9. Do not add Firebase, Vercel deploys, public routes, or scheduled jobs for this package.
+10. If a better asset workflow requires a repo-rule change, update the AssetOS docs and skill instructions rather than leaving the decision only in chat.
+
+## Motion Asset Path
+
+Current short website motion clips use HyperFrames source folders under `__docs__/videos/hyperframes/`, local MP4 source renders under each folder's `renders/` directory, and final public webm/mp4/poster outputs declared in `manifest/assets.json`.
+
+The local flow is:
+
+1. Generate/update deterministic HyperFrames source with `node scripts/website-assets/generate-assetos-motion-compositions.mjs`.
+2. Run each source folder's `npm run check`.
+3. Render each source MP4 with `npm run render -- --output ./renders/<slug>-source.mp4 --workers 1 --experimental-fast-capture=false --quiet`.
+4. Transcode public outputs with `node scripts/website-assets/transcode-assetos-motion-assets.mjs`.
+5. Approve the manifest only after visual review with `node scripts/website-assets/generate-assetos-motion-compositions.mjs --approve-manifest`.
+6. Lock fingerprints and rerun `npm run assets:audit` and `npm run assets:review`.
+
+For coordinated MenuList launch packs, reuse approved website, social, and device slots. Run `npm run assets:launch:frames` to refresh editorial keyframes from the approved business-truth loop instead of creating a parallel video stack.
 
 ## Product Boundary
 

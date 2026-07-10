@@ -463,6 +463,10 @@ Stage output:
 
 - `__docs__/main-website/asset-production/stage-06-3/stage-06-3-p0-fictional-demo-asset-pack.md`
 
+The July 2026 coordinated launch pack now binds the live hero motion, static website fallback, square and LinkedIn social assets, Owner PWA Dashboard device proof, and four deterministic launch-film frames under AssetOS:
+
+- `__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md`
+
 Reference captures used for structure only:
 
 - `__docs__/main-website/asset-production/stage-06-4-reference/habibis-root-mobile.png`

@@ -4,6 +4,8 @@
 **Last Updated: June 11, 2026**
 **Status: Implemented — billing-slice audited; full MenuList certification pending**
 
+> **Launch boundary:** Not current launch certification or deploy approval. This founder explainer records source-gated billing and AI accounting behavior only. Current approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:billing-entitlement-boundary`, `npm run verify:ai-accounting`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke.
+
 This document explains the complete subscription, credit, and AI billing system as it exists in the codebase today. Nothing here is proposed or planned — everything described is built and working.
 
 ---
@@ -336,13 +338,13 @@ User upgrades to Pro (200 credits/mo):
 
 | Operation           | Google Cost (USD) | Google Cost (₹) | Model Used              |
 | ------------------- | ----------------- | --------------- | ----------------------- |
-| Image Generation    | $0.040            | ₹3.38           | Imagen 3 / Flash Image  |
-| Image Editing       | $0.040            | ₹3.38           | Gemini 2.0 Flash        |
+| Image Generation    | $0.040            | ₹3.38           | Gemini 2.5 Flash Image  |
+| Image Editing       | $0.040            | ₹3.38           | Gemini 2.5 Flash Image  |
 | Batch Image Gen     | $0.040            | ₹3.38           | Per image               |
 | Image Translation   | $0.045            | ₹3.80           | OCR + translate + regen |
-| Language Addition   | $0.0044           | ₹0.37           | Gemini 2.0 Flash        |
+| Language Addition   | $0.0044           | ₹0.37           | Gemini 2.5 Flash        |
 | Rewrite Description | $0.0016           | ₹0.13           | Gemini 2.5 Flash        |
-| Item Translation    | $0.0004           | ₹0.04           | Gemini 2.0 Flash        |
+| Item Translation    | $0.0004           | ₹0.04           | Gemini 2.5 Flash        |
 
 ### Per-Pack Economics (₹2,999 Enhancement Pack = 250 units)
 

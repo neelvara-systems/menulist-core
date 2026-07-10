@@ -1,6 +1,6 @@
 'use client';
 
-import { LuCheck, LuFileText, LuGavel, LuShield, LuUsers, LuX } from 'react-icons/lu';
+import { LuCheck, LuFileText, LuGavel, LuGift, LuShield, LuUsers, LuX } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
@@ -33,6 +33,21 @@ const accountCards = [
             'Business catalogs, menus, product images, and descriptions',
             'Restaurant, retail, or service business use',
             'Violation of these policies may result in immediate account suspension',
+        ],
+    },
+    {
+        icon: LuGift,
+        title: 'Owner referral credits',
+        desc: 'Eligible MenuList businesses may invite another business using the referral link provided inside MenuList.',
+        points: [
+            'The invitation must be attached before the invited business completes its first successful MenuList subscription payment',
+            'The referring business receives 100 credits and the invited business receives 50 credits when both distinct direct MenuList subscription wallets are verified paid',
+            'If one subscription is not currently paid, the referral remains pending without a reward deadline and credits are added when both subscriptions are verified paid',
+            'There is no referral-count limit or additional publishing, sharing, usage, distribution, or waiting requirement after payment',
+            'Plan tier, billing interval, ownership, business category, geography, and supported onboarding or payment source do not change the two-paid-wallet rule',
+            'Referral credits have no cash value and are added to the existing non-expiring Pack balance',
+            'One referred business can issue one reward pair; credits already issued are not reversed from a consumed or pooled balance',
+            'MenuList may pause new invitation generation or investigate payment and account abuse without changing a valid issued reward',
         ],
     },
 ];
@@ -116,7 +131,7 @@ const terminationReasons = [
 ];
 
 export default function TermsOfServicePage() {
-    const lastUpdated = 'May 19, 2026';
+    const lastUpdated = 'July 10, 2026';
 
     return (
         <div className="ws-page">

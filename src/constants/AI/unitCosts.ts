@@ -10,9 +10,7 @@ export const USD_TO_INR = 94.87; // As of May 2026, update periodically for inte
 // Source: https://ai.google.dev/gemini-api/docs/pricing (May 2026)
 //
 // Gemini 2.5 Flash:  Input $0.30/1M tokens, Output $2.50/1M tokens
-// Gemini 2.0 Flash:  Input $0.30/1M tokens, Output $2.50/1M tokens (approx)
 // Gemini 2.5 Flash Image: $0.039/image (1290 output tokens)
-// Imagen 3: $0.04/image (standard)
 //
 // INTERNAL ONLY — never expose to customers.
 // ═══════════════════════════════════════════════════════════════
@@ -29,6 +27,7 @@ export const GEMINI_COST_USD: Record<string, number> = {
     [AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION]: 0.0080, // Public draft extraction
     [AI_ACTIONS_TYPES.WEEKLY_NARRATIVE]: 0.0016, // Analytics summary narrative
     [AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER]: 0.0016, // Grounded owner answer over cached packet
+    [AI_ACTIONS_TYPES.AI_MENU_MANAGER_PLANNER]: 0.0006, // Unresolved AMM intent over capped selected-menu context
     [AI_ACTIONS_TYPES.HELP_CENTER_SEARCH]: 0.0016, // Support answer generation
     [AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING]: 0.0002, // Article/query embedding
     [AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION]: 0.0020, // KB article translation
@@ -47,7 +46,7 @@ export const GEMINI_COST_USD: Record<string, number> = {
     // Paid operations
     [AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION]: 0.0008, // Owner-requested review reply draft
     [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 0.0016, // ~1K input + ~500 output tokens
-    [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 0.0400, // Imagen 3: $0.04/image or Flash Image: $0.039
+    [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 0.0400, // Gemini 2.5 Flash Image: approx $0.039/image
     [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: 0.0400, // Per image
     [AI_ACTIONS_TYPES.LANGUAGE_ADDITION]: 0.0044, // ~2K input + ~1.5K output tokens
     [AI_ACTIONS_TYPES.ITEM_TRANSLATION]: 0.0004, // ~200 input + ~150 output tokens
@@ -80,6 +79,7 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     [AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION]: 0, // Public lead/intake operation — absorbed by platform
     [AI_ACTIONS_TYPES.WEEKLY_NARRATIVE]: 0, // Internal analytics summary — absorbed by platform
     [AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER]: 0, // Deterministic/grounded owner assistant answers are absorbed unless later monetized
+    [AI_ACTIONS_TYPES.AI_MENU_MANAGER_PLANNER]: 0, // Deterministic-first fallback; provider use is bounded, logged, and platform absorbed
     [AI_ACTIONS_TYPES.HELP_CENTER_SEARCH]: 0, // Support/control-plane operation — not owner pack usage
     [AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING]: 0, // Support/control-plane operation — not owner pack usage
     [AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION]: 0, // Answerlattice/control-plane operation — not MenuList owner pack usage

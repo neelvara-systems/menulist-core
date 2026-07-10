@@ -1,4 +1,9 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
+import {
+    CANCELLATION_REASON,
+    CANCELLATION_REASON_OPTIONS,
+    type CancellationReasonCode,
+} from '@lib/billing/cancellationReasons';
 import { Button, Checkbox, Flex, Form, Input, Modal, Radio, Space, Typography, theme } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -7,19 +12,10 @@ import { LuArrowLeft, LuArrowRight, LuBan, LuX } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 
-const CANCELLATION_REASONS = [
-    'No longer need a website',
-    'Lack of functionality',
-    'Too expensive',
-    'Found another tool',
-    'Purchased accidentally',
-    'Other (Please specify)',
-];
-
 interface CancellationModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (reason: string, otherReason: string | undefined, consent: boolean) => void;
+    onConfirm: (reason: CancellationReasonCode, otherReason: string | undefined, consent: boolean) => void;
     subscriptionEndDate: Timestamp; // Expects a pre-formatted date string
 }
 
@@ -43,7 +39,7 @@ const stepVariants = {
 const CancellationModal = ({ isOpen, onClose, onConfirm, subscriptionEndDate }: CancellationModalProps) => {
     const { token } = theme.useToken();
     const [step, setStep] = useState(1);
-    const [reason, setReason] = useState<string | null>(null);
+    const [reason, setReason] = useState<CancellationReasonCode | null>(null);
     const [otherReason, setOtherReason] = useState('');
     const [isConfirmed, setIsConfirmed] = useState(false);
     const [direction, setDirection] = useState(1);
@@ -71,10 +67,10 @@ const CancellationModal = ({ isOpen, onClose, onConfirm, subscriptionEndDate }: 
     };
 
     const handleConfirm = () => {
-        onConfirm(reason!, reason === 'Other (Please specify)' ? otherReason : undefined, isConfirmed);
+        onConfirm(reason!, reason === CANCELLATION_REASON.OTHER ? otherReason : undefined, isConfirmed);
     };
 
-    const isNextDisabled = !reason || (reason === 'Other (Please specify)' && !otherReason.trim());
+    const isNextDisabled = !reason || (reason === CANCELLATION_REASON.OTHER && !otherReason.trim());
 
     return (
         <Modal
@@ -85,7 +81,7 @@ const CancellationModal = ({ isOpen, onClose, onConfirm, subscriptionEndDate }: 
             width={500}
             centered
         >
-            <div style={{ minHeight: reason === 'Other (Please specify)' ? '450px' : '350px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ minHeight: reason === CANCELLATION_REASON.OTHER ? '450px' : '350px', position: 'relative', overflow: 'hidden' }}>
                 <AnimatePresence initial={false} custom={direction}>
                     {step === 1 && (
                         <motion.div
@@ -105,12 +101,12 @@ const CancellationModal = ({ isOpen, onClose, onConfirm, subscriptionEndDate }: 
                                 <Form layout="vertical">
                                     <Radio.Group onChange={(e) => setReason(e.target.value)} value={reason}>
                                         <Space direction="vertical">
-                                            {CANCELLATION_REASONS.map((r) => (
-                                                <Radio key={r} value={r}>{r}</Radio>
+                                            {CANCELLATION_REASON_OPTIONS.map((option) => (
+                                                <Radio key={option.code} value={option.code}>{option.label}</Radio>
                                             ))}
                                         </Space>
                                     </Radio.Group>
-                                    {reason === 'Other (Please specify)' && (
+                                    {reason === CANCELLATION_REASON.OTHER && (
                                         <Form.Item style={{ marginTop: 16 }}>
                                             <Input.TextArea
                                                 rows={3}

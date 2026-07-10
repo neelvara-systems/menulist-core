@@ -14,6 +14,7 @@ import WebsitePageStructuredData from '@/components/website/WebsitePageStructure
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import '@/styles/website.css';
 import { FEATURE_FLAGS } from '@config/features';
+import { getGrowthAcquisitionFromSearchParams } from '@lib/growth/acquisitionAttribution';
 import { Metadata } from 'next';
 import { useTranslations } from 'next-intl';
 import CreateMenuClient from './CreateMenuClient';
@@ -31,8 +32,13 @@ export const metadata: Metadata = {
     },
 };
 
-export default function CreateMenuPage() {
+export default function CreateMenuPage({
+    searchParams,
+}: {
+    searchParams?: Record<string, string | string[] | undefined>;
+}) {
     const t = useTranslations('Website');
+    const growthAcquisition = getGrowthAcquisitionFromSearchParams(searchParams);
 
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return (
@@ -76,7 +82,7 @@ export default function CreateMenuPage() {
                 description="Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public."
             />
             <Header />
-            <CreateMenuClient />
+            <CreateMenuClient growthAcquisition={growthAcquisition} />
             <Footer />
         </div>
     );

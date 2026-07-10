@@ -137,7 +137,7 @@ Publish:
 | Old PDF/menu screenshot | Hero, reels, paid ads | Use fictional menu only |
 | Stale QR page | Hero, QR reel | Show problem without blaming owner |
 | WhatsApp/Instagram/print price drift | Hero, reels | Avoid implying automatic platform sync |
-| Source upload | Hero, demo, setup reel | Show photo, PDF, owned link, typed list |
+| Source upload | Hero, demo, setup reel | Show menu photos, PDF, owned link, and no typing required to start |
 | Private preview | Hero, demo, approval reel | Must clearly show not-public-yet state |
 | Approval step | Hero, demo, trust videos | Owner approval first |
 | Customer link live | All | Core product proof |

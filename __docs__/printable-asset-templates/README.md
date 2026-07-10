@@ -77,7 +77,7 @@ The feature is a template orchestration layer. It uses Creative Editor documents
 | Asset type catalog | `src/lib/printable-asset-templates/assetTypes.ts:1` |
 | Shared render adapter | `src/lib/printable-asset-templates/renderPrintableAsset.ts:1` |
 | Existing mobile route mapping | `src/components/mobile/MobileShell.tsx:36` |
-| Mobile Print Assets entry | `src/components/mobile/screens/MobileMoreScreen.tsx:450` |
+| Mobile Print Assets entry | `src/components/mobile/screens/MobileMoreScreen.tsx` |
 
 ---
 

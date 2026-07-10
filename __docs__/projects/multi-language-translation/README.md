@@ -117,7 +117,7 @@ Provider-response parsing is bounded and fail-closed: fenced JSON and extractabl
 | -------------------------------- | -------------------------------------------------- |
 | `_spec.md`                       | Superseded by `multi-language-translation_spec.md` |
 | `_impl.md`                       | Superseded by `multi-language-translation_impl.md` |
-| `Assessments/ASSESSMENT-13-*.md` | Archived (reference only)                          |
+| `assessments/ASSESSMENT-13-*.md` | Archived (reference only)                          |
 
 ---
 

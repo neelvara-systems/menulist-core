@@ -1,14 +1,14 @@
 # Menu Presence Monitor — Help Documentation
 
 > **Version:** 1.0
-> **Last Updated:** March 15, 2026
+> **Last Updated:** July 10, 2026
 > **Audience:** Business owners (customers)
 
 ---
 
 ## Quick Summary
 
-Menu Presence Monitor shows one checklist for the places where your menu should be easy to find. Some rows are MenuList-recorded, such as QR, screen, or feedback readiness. Google Business, Instagram, and WhatsApp are owner-confirmed: MenuList stores your confirmation after you add the link, but it does not crawl or verify Google Business, Instagram, or WhatsApp for you.
+Menu Presence Monitor shows one checklist for the places where your official business page should be easy to find. Some rows are MenuList-recorded, such as QR, screen, or feedback readiness. Google Business, Apple Business Connect, Bing Places, Instagram, and WhatsApp are owner-confirmed: MenuList stores your confirmation after you add the link, but it does not crawl or verify Google Business, Apple Business Connect, Bing Places, Instagram, or WhatsApp for you.
 
 ## Getting Started
 
@@ -20,7 +20,7 @@ No separate setup is needed for the checklist itself. Review the status as MenuL
 
 1. Open the **Use MenuList** page from the sidebar
 2. Look at the **Menu Visibility** card near the top
-3. You'll see 6 surfaces with status indicators:
+3. You'll see the available discovery and in-store surfaces with status indicators:
    - ✓ = MenuList recorded the action/readiness, or you confirmed an external placement
    - ⚠ = MenuList has not recorded the action/readiness, or you have not confirmed the external placement
 
@@ -44,6 +44,8 @@ If you removed your menu link from a surface:
 | Surface | What It Means |
 |---------|--------------|
 | **Google Business** | You confirm after adding your menu link to your Google Business profile |
+| **Apple Business Connect** | You confirm after adding the official page to your Apple business location or action |
+| **Bing Places** | You confirm after adding the official page to your Bing business listing |
 | **Instagram Bio** | You confirm after adding your menu link to your Instagram bio |
 | **WhatsApp Profile** | You confirm after adding your menu link to your WhatsApp Business profile |
 | **Table QR** | MenuList has menu/QR readiness for your current menu; printed placement still needs your review |

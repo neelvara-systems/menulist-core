@@ -38,7 +38,7 @@ The video must move through this story:
 | --- | --- | --- | --- |
 | 0-5s | Owner scrolling through WhatsApp, Instagram, old PDF, and printed menu | Your menu may be in five places. | Old PDFs. Screenshots. QR links. Printed copies. |
 | 5-12s | Customer scans QR; another customer sees old screenshot; owner checks different prices | And when prices, items, or hours change, customers may still find the old version. | One menu change. Many places to fix. |
-| 12-20s | MenuList setup: photo, PDF, existing link, typed list | MenuList starts with the menu or service list you already have. | Photo. PDF. Existing link. Typed list. |
+| 12-20s | MenuList setup: menu photos, PDF, existing link, service list | Upload photos of the menu or service list you already have. No typing required to start. | Menu photos. PDF. Existing link. |
 | 20-30s | Private preview; owner reviews items, categories, prices, and details | It prepares the customer-facing version for review. Nothing goes public until you approve it. | Private preview first. Owner approval before publishing. |
 | 30-42s | Approved customer link, then QR, official page, print files, owner-shared WhatsApp/Instagram link placement, table card | Once approved, the same list powers your customer link, QR, official business page, print files, and sharing links. | One approved customer link. |
 | 42-52s | Customer uses search, section jumps, language switch, call, WhatsApp, directions | Customers see the current menu, prices, business details, and actions in one clean place. | Menu. Prices. Hours. Actions. |
@@ -55,7 +55,7 @@ The video must move through this story:
 | Time | Visual | Voiceover | On-screen text |
 | --- | --- | --- | --- |
 | 0-3s | Old PDF, QR code, WhatsApp menu, printed menu | Your menu should not live in five different places. | Old PDFs. Old screenshots. Wrong prices. |
-| 3-9s | Owner uploads menu photo/PDF/link into MenuList | MenuList turns your current menu or service list into one official customer link. | Start with what you already have. |
+| 3-9s | Owner uploads menu photos/PDF/link into MenuList | Upload photos of your existing menu. No typing required. | Upload menu photos. No typing required. |
 | 9-15s | Private preview and approval screen | You review it before anything goes public. | Owner approval first. |
 | 15-23s | QR, official page, print file, owner-shared link, customer page | Then your QR, page, print files, and customer links stay tied to the approved version. | One approved list. Every customer link. |
 | 23-30s | MenuList logo and CTA | MenuList is ready. Create your customer link. | Create customer link. |

@@ -23,10 +23,16 @@ import {
     type AiMenuManagerPromptSuggestion,
 } from '@lib/ai-menu-manager/projectPromptHints';
 import {
+    buildAiMenuManagerTimeline,
+    getAiMenuManagerProjectStatusLine,
+} from '@lib/ai-menu-manager/presentation';
+import {
+    buildAiMenuManagerClientBatchExecution,
     buildAiMenuManagerClientExecutionDirective,
     cancelAiMenuManagerClientOperation,
     completeAiMenuManagerClientProposal,
     completeAiMenuManagerClientOperation,
+    completeAiMenuManagerClientOperations,
     getAiMenuManagerClientInbox,
     sendAiMenuManagerCommand,
     submitAiMenuManagerProposalAction,
@@ -34,9 +40,11 @@ import {
 import { assertProjectUpdateSucceeded, updateProjectWithoutLoader } from '@database/projects';
 import type {
     AiMenuManagerCardPayload,
+    AiMenuManagerCommandContextSelection,
     AiMenuManagerPendingOperation,
     AiMenuManagerReceipt,
     AiMenuManagerSessionDoc,
+    AiMenuManagerSuggestedReply,
 } from '@type/aiMenuManager';
 import type { Project } from '@template/main-app/projects/types';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -52,7 +60,7 @@ import {
     LuMegaphone,
     LuMessageSquare,
     LuPalette,
-    LuRefreshCw,
+    LuPlus,
     LuSend,
     LuSlidersHorizontal,
     LuSparkles,
@@ -98,7 +106,6 @@ export default function MobileAiMenuManagerScreen({
         selectedProjectId,
         selectedProjectSummary,
         selectProject,
-        refreshProjects,
         upsertCachedProject,
     } = useMobileProjects();
     const [, setSessionId] = useState<string | null>(null);
@@ -112,6 +119,7 @@ export default function MobileAiMenuManagerScreen({
     });
     const [contextSearch, setContextSearch] = useState('');
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const [isToolsOpen, setIsToolsOpen] = useState(false);
     const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
     const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
     const [activeSuggestion, setActiveSuggestion] = useState<AiMenuManagerPromptSuggestion | null>(null);
@@ -131,6 +139,30 @@ export default function MobileAiMenuManagerScreen({
         sessionProjectIdRef.current === projectId ? sessionIdRef.current || undefined : undefined
     ), []);
     const cards = useMemo(() => operations.map((operation) => operation.card), [operations]);
+    const approvalGroups = useMemo(() => {
+        const grouped = new Map<string, AiMenuManagerPendingOperation[]>();
+        operations.forEach((operation) => {
+            if (
+                !operation.commandGroupId
+                || operation.executionMode !== 'client_project_mutation'
+                || operation.card.kind !== 'proposal'
+                || operation.card.status !== 'pending_approval'
+                || !operation.patch
+            ) return;
+            grouped.set(operation.commandGroupId, [
+                ...(grouped.get(operation.commandGroupId) || []),
+                operation,
+            ]);
+        });
+        return Array.from(grouped.entries())
+            .filter(([, groupOperations]) => groupOperations.length > 1)
+            .map(([groupId, groupOperations]) => ({ groupId, operations: groupOperations }));
+    }, [operations]);
+    const timeline = useMemo(() => buildAiMenuManagerTimeline({
+        activeCards: cards,
+        compactMessages: currentSession?.compactMessages,
+        receipts,
+    }), [cards, currentSession?.compactMessages, receipts]);
     const storeName = useMemo(() => (
         (storeDetails as any)?.businessName
         || (storeDetails as any)?.storeName
@@ -151,6 +183,7 @@ export default function MobileAiMenuManagerScreen({
     const attentionSuggestions = useMemo(() => getAiMenuManagerAttentionSuggestions(selectedProject), [selectedProject]);
     const starterSuggestions = useMemo(() => getAiMenuManagerStarterSuggestions(promptGroups), [promptGroups]);
     const emptyStateSuggestions = attentionSuggestions.length ? attentionSuggestions : starterSuggestions;
+    const projectStatusLine = useMemo(() => getAiMenuManagerProjectStatusLine(selectedProject), [selectedProject]);
     const composerContextData = useMemo(() => getAiMenuManagerComposerContextData({
         businessType,
         project: selectedProject,
@@ -233,6 +266,7 @@ export default function MobileAiMenuManagerScreen({
     useEffect(() => {
         setComposerContext({ selectedEntityIds: [], target: null });
         setContextSearch('');
+        setIsToolsOpen(false);
         setIsContextPickerOpen(false);
     }, [selectedProjectId]);
 
@@ -285,12 +319,14 @@ export default function MobileAiMenuManagerScreen({
     }, []);
 
     const openContextPicker = useCallback(() => {
+        setIsToolsOpen(false);
         setIsSuggestionsOpen(false);
         setActiveSuggestion(null);
         setIsContextPickerOpen(true);
     }, []);
 
     const openSuggestions = useCallback(() => {
+        setIsToolsOpen(false);
         setIsContextPickerOpen(false);
         setActiveSuggestion(null);
         setIsSuggestionsOpen(true);
@@ -327,13 +363,14 @@ export default function MobileAiMenuManagerScreen({
     const submitPrompt = useCallback(async (
         prompt?: string,
         options?: {
+            composerContext?: AiMenuManagerCommandContextSelection;
             ignoreComposerContext?: boolean;
             replaceOperationId?: string;
         },
     ) => {
         const rawText = (prompt ?? input).trim();
         if (!rawText) return;
-        const shouldUseComposerContext = !options?.ignoreComposerContext;
+        const shouldUseComposerContext = !options?.ignoreComposerContext && !options?.composerContext;
         if (
             shouldUseComposerContext
             && !canUseAiMenuManagerComposerContext({ data: composerContextData, selection: composerContext })
@@ -348,12 +385,18 @@ export default function MobileAiMenuManagerScreen({
                 selection: composerContext,
             }).trim()
             : rawText;
-        const commandContext = shouldUseComposerContext && composerContext.target
-            ? {
+        let commandContext: AiMenuManagerCommandContextSelection | undefined;
+        if (options?.composerContext?.target) {
+            commandContext = {
+                target: options.composerContext.target,
+                selectedEntityIds: options.composerContext.selectedEntityIds || [],
+            };
+        } else if (shouldUseComposerContext && composerContext.target) {
+            commandContext = {
                 target: composerContext.target,
                 selectedEntityIds: composerContext.selectedEntityIds,
-            }
-            : undefined;
+            };
+        }
         if (!text) return;
         if (!storeId || !selectedProjectId || !selectedProject) {
             Toast.show({ content: 'Choose a menu first' });
@@ -399,12 +442,100 @@ export default function MobileAiMenuManagerScreen({
         }
     }, [businessType, clearComposerContext, composerContext, composerContextData, currentSession, getSessionIdForProject, input, rememberSessionId, selectedProject, selectedProjectId, storeId, storeName, storePublicContext]);
 
-    const resolveClarification = useCallback((card: AiMenuManagerCardPayload, prompt: string) => {
-        void submitPrompt(prompt, {
+    const resolveClarification = useCallback((card: AiMenuManagerCardPayload, reply: AiMenuManagerSuggestedReply) => {
+        void submitPrompt(reply.prompt, {
+            composerContext: reply.composerContext,
             ignoreComposerContext: true,
             replaceOperationId: card.cardId,
         });
     }, [submitPrompt]);
+
+    const approveOperationGroup = useCallback(async (groupId: string) => {
+        if (!storeId || !selectedProject) return;
+        const groupOperations = operations.filter((operation) => operation.commandGroupId === groupId);
+        if (groupOperations.length < 2) {
+            Toast.show({ content: 'Prepared updates no longer match this request' });
+            return;
+        }
+
+        setWorkingCardId(groupId);
+        let projectWasUpdated = false;
+        try {
+            const alreadyApplied = groupOperations.every((operation) => (
+                operation.patch && projectContainsAiMenuManagerPatch(selectedProject, operation.patch)
+            ));
+            if (!alreadyApplied) {
+                const batch = buildAiMenuManagerClientBatchExecution({
+                    operations: groupOperations,
+                    project: selectedProject,
+                    storeName,
+                    businessType,
+                });
+                const savedProject = await updateProjectWithoutLoader(batch.patchedProject);
+                assertProjectUpdateSucceeded(
+                    savedProject,
+                    batch.patchedProject.projectId,
+                    'mobile_ai_menu_manager_group_project_update_rejected',
+                );
+                projectWasUpdated = true;
+                upsertCachedProject(savedProject || batch.patchedProject);
+            }
+
+            try {
+                const result = await completeAiMenuManagerClientOperations({
+                    operations: groupOperations,
+                    result: 'executed',
+                    sessionSnapshot: currentSession,
+                });
+                setCurrentSession(result.session);
+                setOperations(result.session.pendingOperations || []);
+                setReceipts(result.session.recentReceiptSummaries || []);
+                Toast.show({
+                    content: alreadyApplied
+                        ? 'Menu already matches these updates'
+                        : `${groupOperations.length} menu updates applied`,
+                    icon: 'success',
+                });
+            } catch (error) {
+                logRuntimeFailure('mobile_ai_menu_manager_group_receipt_completion_failed', error, {
+                    ...getBoundedRuntimeStringContext('storeId', storeId),
+                    ...getBoundedRuntimeStringContext('projectId', selectedProject.projectId),
+                    ...getBoundedRuntimeStringContext('commandGroupId', groupId),
+                    actionCount: groupOperations.length,
+                });
+                Toast.show({ content: 'Menu updated. Receipts could not be saved.' });
+            }
+        } catch (error) {
+            logRuntimeFailure('mobile_ai_menu_manager_group_apply_failed', error, {
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('projectId', selectedProject.projectId),
+                ...getBoundedRuntimeStringContext('commandGroupId', groupId),
+                actionCount: groupOperations.length,
+            });
+            if (!projectWasUpdated) {
+                const failedResult = await completeAiMenuManagerClientOperations({
+                    operations: groupOperations,
+                    result: 'failed',
+                    sessionSnapshot: currentSession,
+                }).catch((completionError) => {
+                    logRuntimeFailure('mobile_ai_menu_manager_group_failed_completion_failed', completionError, {
+                        ...getBoundedRuntimeStringContext('storeId', storeId),
+                        ...getBoundedRuntimeStringContext('projectId', selectedProject.projectId),
+                        ...getBoundedRuntimeStringContext('commandGroupId', groupId),
+                    });
+                    return null;
+                });
+                if (failedResult?.session) {
+                    setCurrentSession(failedResult.session);
+                    setOperations(failedResult.session.pendingOperations || []);
+                    setReceipts(failedResult.session.recentReceiptSummaries || []);
+                }
+            }
+            Toast.show({ content: 'Unable to apply these prepared updates' });
+        } finally {
+            setWorkingCardId(null);
+        }
+    }, [businessType, currentSession, operations, selectedProject, storeId, storeName, upsertCachedProject]);
 
     const approveCard = useCallback(async (card: AiMenuManagerCardPayload) => {
         if (!storeId || !selectedProject) return;
@@ -685,17 +816,6 @@ export default function MobileAiMenuManagerScreen({
         <div style={{ minHeight: '100%', background: token.colorBgLayout, color: token.colorText, paddingBottom: 24 }}>
             <NavBar
                 onBack={onBack}
-                right={(
-                    <Button
-                        aria-label="Refresh"
-                        fill="none"
-                        icon={<LuRefreshCw />}
-                        onClick={() => {
-                            void refreshProjects({ force: true, loadSelectedProject: true, showLoader: false });
-                            void loadInbox();
-                        }}
-                    />
-                )}
             >
                 Menu Manager
             </NavBar>
@@ -707,21 +827,32 @@ export default function MobileAiMenuManagerScreen({
                     helperText="Actions apply only to this selected menu."
                     onClick={!isLoading && projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
                 />
+                {projectStatusLine ? (
+                    <Text type="secondary" style={{ display: 'block', fontSize: 12, paddingInline: 4 }}>
+                        {projectStatusLine}
+                    </Text>
+                ) : null}
 
                 <Card>
                     <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                        {!cards.length && !receipts.length && emptyStateSuggestions.length ? (
+                        {!cards.length && !timeline.length && emptyStateSuggestions.length ? (
                             <Space direction="vertical" size={8} style={{ width: '100%' }}>
                                 <div>
                                     <Text strong style={{ display: 'block', fontSize: 16 }}>
-                                        {attentionSuggestions.length ? 'Needs attention' : 'What should change?'}
+                                        {attentionSuggestions.length ? 'Start with what needs attention' : 'What should change?'}
                                     </Text>
                                     <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
                                         {attentionSuggestions.length
-                                            ? 'Start with a loaded-menu issue, or type your own message.'
-                                            : 'Start from a draft, or type your own message.'}
+                                            ? 'Use a menu issue, ask a question, or type what changed.'
+                                            : 'Type naturally, choose a suggestion, or select what to work on.'}
                                     </Text>
                                 </div>
+                                <Text
+                                    type="secondary"
+                                    style={{ alignItems: 'center', display: 'inline-flex', fontSize: 12, gap: 5 }}
+                                >
+                                    <LuCheck size={13} /> Nothing changes before you approve.
+                                </Text>
                                 <Space direction="vertical" size={8} style={{ width: '100%' }}>
                                     {emptyStateSuggestions.map((suggestion) => {
                                         const Icon = promptIconByKind[suggestion.kind];
@@ -733,7 +864,7 @@ export default function MobileAiMenuManagerScreen({
                                                     alignItems: 'center',
                                                     background: token.colorFillTertiary,
                                                     border: `1px solid ${token.colorBorderSecondary}`,
-                                                    borderRadius: 16,
+                                                    borderRadius: 8,
                                                     color: token.colorText,
                                                     display: 'flex',
                                                     gap: 12,
@@ -748,7 +879,7 @@ export default function MobileAiMenuManagerScreen({
                                                     style={{
                                                         alignItems: 'center',
                                                         background: token.colorBgContainer,
-                                                        borderRadius: 12,
+                                                        borderRadius: 8,
                                                         color: token.colorPrimary,
                                                         display: 'inline-flex',
                                                         flexShrink: 0,
@@ -772,6 +903,83 @@ export default function MobileAiMenuManagerScreen({
                             </Space>
                         ) : null}
 
+                        {timeline.map((entry) => (
+                            <div
+                                key={`message_${entry.id}`}
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: entry.role === 'owner' ? 'flex-end' : 'flex-start',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        alignItems: 'flex-start',
+                                        background: entry.role === 'owner'
+                                            ? token.colorPrimary
+                                            : entry.kind === 'receipt'
+                                                ? token.colorSuccessBg
+                                                : token.colorBgElevated,
+                                        border: entry.role === 'owner'
+                                            ? undefined
+                                            : `1px solid ${entry.kind === 'receipt' ? token.colorSuccessBorder : token.colorBorderSecondary}`,
+                                        borderRadius: 18,
+                                        color: entry.role === 'owner' ? token.colorTextLightSolid : token.colorText,
+                                        display: 'flex',
+                                        fontSize: 14,
+                                        gap: 7,
+                                        maxWidth: '88%',
+                                        padding: '10px 12px',
+                                    }}
+                                >
+                                    {entry.kind === 'receipt' ? (
+                                        <LuCheck color={token.colorSuccess} size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+                                    ) : null}
+                                    <span>{entry.text}</span>
+                                </div>
+                            </div>
+                        ))}
+
+                        {approvalGroups.map((group) => (
+                            <Card
+                                key={`approval_group_${group.groupId}`}
+                                style={{
+                                    background: token.colorPrimaryBg,
+                                    border: `1px solid ${token.colorPrimaryBorder}`,
+                                    borderRadius: 8,
+                                }}
+                            >
+                                <Flex align="center" gap={10} justify="space-between" wrap="wrap">
+                                    <div style={{ flex: '1 1 180px', minWidth: 0 }}>
+                                        <Text strong>{group.operations.length} updates prepared together</Text>
+                                        <Text color="secondary" style={{ display: 'block', fontSize: 12, marginTop: 2 }}>
+                                            Review below, then apply with one menu save.
+                                        </Text>
+                                    </div>
+                                    <Button
+                                        color="primary"
+                                        fill="solid"
+                                        loading={workingCardId === group.groupId}
+                                        disabled={Boolean(workingCardId)}
+                                        onClick={() => void approveOperationGroup(group.groupId)}
+                                        style={{ minHeight: 44 }}
+                                    >
+                                        <LuCheck size={16} />
+                                        Approve all
+                                    </Button>
+                                </Flex>
+                            </Card>
+                        ))}
+
+                        <MobileAiMenuCardStack
+                            cards={cards}
+                            workingCardId={workingCardId}
+                            onApprove={(card) => void approveCard(card)}
+                            onCancel={(card) => void cancelCard(card)}
+                            onDraftPrompt={draftPrompt}
+                            onEdit={editCard}
+                            onResolveClarification={resolveClarification}
+                        />
+
                         <div
                             style={{
                                 alignItems: 'flex-end',
@@ -781,14 +989,30 @@ export default function MobileAiMenuManagerScreen({
                                 boxShadow: token.boxShadowTertiary,
                                 display: 'flex',
                                 gap: 8,
-                                padding: '8px 8px 8px 16px',
+                                padding: 8,
                             }}
                         >
+                            <Button
+                                ariaLabel="Choose context or suggestions"
+                                disabled={!selectedProjectId || submitting}
+                                fill="outline"
+                                onClick={() => setIsToolsOpen(true)}
+                                style={{
+                                    borderRadius: '50%',
+                                    flexShrink: 0,
+                                    height: 44,
+                                    minWidth: 44,
+                                    padding: 0,
+                                    width: 44,
+                                }}
+                            >
+                                <LuPlus size={20} />
+                            </Button>
                             <TextArea
                                 autoSize={{ minRows: 1, maxRows: 4 }}
                                 disabled={!selectedProjectId || submitting}
                                 onChange={setInput}
-                                placeholder="Ask Menu Manager"
+                                placeholder="Message Menu Manager"
                                 style={{
                                     background: 'transparent',
                                     borderColor: 'transparent',
@@ -821,34 +1045,11 @@ export default function MobileAiMenuManagerScreen({
                             </Button>
                         </div>
 
-                        <Flex align="center" gap={8} wrap="wrap">
-                            <Button
-                                ariaLabel="Choose work context"
-                                disabled={!selectedProjectId || submitting}
-                                fill="outline"
-                                icon={<LuSlidersHorizontal size={16} />}
-                                onClick={openContextPicker}
-                                style={{
-                                    borderRadius: 22,
-                                    minHeight: 44,
-                                }}
-                            >
-                                {composerContextLabel}
-                            </Button>
-                            <Button
-                                ariaLabel="Show suggestions"
-                                disabled={!selectedProjectId || submitting}
-                                fill="outline"
-                                icon={<LuSparkles size={16} />}
-                                onClick={openSuggestions}
-                                style={{
-                                    borderRadius: 22,
-                                    minHeight: 44,
-                                }}
-                            >
-                                Suggestions
-                            </Button>
-                            {composerContext.target ? (
+                        {composerContext.target ? (
+                            <Flex align="center" gap={8} justify="between" wrap="wrap">
+                                <Text style={{ alignItems: 'center', display: 'inline-flex', fontSize: 12, gap: 6 }}>
+                                    <LuSlidersHorizontal size={14} /> {composerContextLabel}
+                                </Text>
                                 <Button
                                     disabled={submitting}
                                     fill="none"
@@ -857,34 +1058,9 @@ export default function MobileAiMenuManagerScreen({
                                 >
                                     Clear
                                 </Button>
-                            ) : null}
-                        </Flex>
+                            </Flex>
+                        ) : null}
                     </Space>
-                </Card>
-
-                <MobileAiMenuCardStack
-                    cards={cards}
-                    workingCardId={workingCardId}
-                    onApprove={(card) => void approveCard(card)}
-                    onCancel={(card) => void cancelCard(card)}
-                    onDraftPrompt={draftPrompt}
-                    onEdit={editCard}
-                    onResolveClarification={resolveClarification}
-                />
-
-                <Card title="Recent receipts">
-                    {receipts.length ? (
-                        <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                            {receipts.slice(0, 5).map((receipt) => (
-                                <div key={receipt.receiptId}>
-                                    <Text strong>{receipt.title}</Text>
-                                    <Text type="secondary" style={{ display: 'block' }}>{receipt.message}</Text>
-                                </div>
-                            ))}
-                        </Space>
-                    ) : (
-                        <Text type="secondary">No receipts yet.</Text>
-                    )}
                 </Card>
             </Space>
 
@@ -901,6 +1077,61 @@ export default function MobileAiMenuManagerScreen({
 
             <Popup
                 destroyOnClose
+                onMaskClick={() => setIsToolsOpen(false)}
+                visible={isToolsOpen}
+                bodyStyle={{
+                    background: token.colorBgContainer,
+                    padding: 16,
+                }}
+            >
+                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <Flex align="center" justify="space-between" gap={12}>
+                        <div>
+                            <Text strong style={{ display: 'block', fontSize: 18 }}>Start from</Text>
+                            <Text type="secondary">Add context or choose a prepared suggestion.</Text>
+                        </div>
+                        <Button
+                            ariaLabel="Close tools"
+                            fill="none"
+                            onClick={() => setIsToolsOpen(false)}
+                            style={{ minHeight: 44, minWidth: 44, padding: 0 }}
+                        >
+                            <LuX size={20} />
+                        </Button>
+                    </Flex>
+                    <Button
+                        block
+                        fill="outline"
+                        onClick={openContextPicker}
+                        style={{ borderRadius: 8, minHeight: 56, textAlign: 'left' }}
+                    >
+                        <LuSlidersHorizontal size={18} />
+                        <span>
+                            <Text strong style={{ display: 'block' }}>Work on</Text>
+                            <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                                Choose items, a category, or a MenuList area
+                            </Text>
+                        </span>
+                    </Button>
+                    <Button
+                        block
+                        fill="outline"
+                        onClick={openSuggestions}
+                        style={{ borderRadius: 8, minHeight: 56, textAlign: 'left' }}
+                    >
+                        <LuSparkles size={18} />
+                        <span>
+                            <Text strong style={{ display: 'block' }}>Suggestions</Text>
+                            <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                                Pick a useful starting point and edit before sending
+                            </Text>
+                        </span>
+                    </Button>
+                </Space>
+            </Popup>
+
+            <Popup
+                destroyOnClose
                 onMaskClick={() => setIsContextPickerOpen(false)}
                 visible={isContextPickerOpen}
                 bodyStyle={{
@@ -914,7 +1145,7 @@ export default function MobileAiMenuManagerScreen({
                     <Flex align="center" justify="space-between" gap={12}>
                         <div>
                             <Text strong style={{ display: 'block', fontSize: 18 }}>Work on</Text>
-                            <Text type="secondary">Choose context, then send your message.</Text>
+                            <Text type="secondary">Pick a menu area first, then type what to do.</Text>
                         </div>
                         <Button
                             ariaLabel="Close context picker"
@@ -1018,7 +1249,7 @@ export default function MobileAiMenuManagerScreen({
                                                 alignItems: 'center',
                                                 background: selected ? token.colorPrimaryBg : token.colorFillTertiary,
                                                 border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
-                                                borderRadius: 10,
+                                                borderRadius: 8,
                                                 color: token.colorText,
                                                 display: 'flex',
                                                 gap: 8,
@@ -1084,7 +1315,7 @@ export default function MobileAiMenuManagerScreen({
                             style={{
                                 background: token.colorFillTertiary,
                                 border: `1px solid ${token.colorBorderSecondary}`,
-                                borderRadius: 14,
+                                borderRadius: 8,
                                 padding: 12,
                             }}
                         >
@@ -1110,7 +1341,7 @@ export default function MobileAiMenuManagerScreen({
                     <Flex align="center" justify="space-between" gap={12}>
                         <div>
                             <Text strong style={{ display: 'block', fontSize: 18 }}>Suggestions</Text>
-                            <Text type="secondary">Choose one, then send when ready.</Text>
+                            <Text type="secondary">Pick one to draft it. You can edit before sending.</Text>
                         </div>
                         <Button
                             ariaLabel="Close suggestions"
@@ -1150,7 +1381,7 @@ export default function MobileAiMenuManagerScreen({
                                                     alignItems: 'center',
                                                     background: token.colorFillTertiary,
                                                     border: `1px solid ${token.colorBorderSecondary}`,
-                                                    borderRadius: 14,
+                                                    borderRadius: 8,
                                                     color: token.colorText,
                                                     display: 'flex',
                                                     gap: 12,
@@ -1197,7 +1428,7 @@ export default function MobileAiMenuManagerScreen({
                                                     alignItems: 'center',
                                                     background: token.colorFillTertiary,
                                                     border: `1px solid ${token.colorBorderSecondary}`,
-                                                    borderRadius: 14,
+                                                    borderRadius: 8,
                                                     color: token.colorText,
                                                     display: 'flex',
                                                     gap: 12,

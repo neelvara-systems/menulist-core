@@ -198,6 +198,30 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
         ]),
     });
 
+    const staffDailyLines = [
+        '*Team — customer replies for today*',
+        '',
+        `${offeringTitleReference}: ${input.menuLink}`,
+    ];
+    if (input.address) staffDailyLines.push(`Address: ${input.address}`);
+    if (input.isClosedToday) {
+        staffDailyLines.push('Hours: Closed today');
+    } else if (input.todayHours) {
+        staffDailyLines.push(`Hours today: ${input.todayHours.open} - ${input.todayHours.close}`);
+    }
+    staffDailyLines.push(
+        '',
+        `When a customer asks for the ${offeringReference}, send the link above.`,
+        'Use the same details in calls, WhatsApp, and counter replies.',
+    );
+
+    templates.push({
+        id: 'staff_daily_replies',
+        title: 'Staff Daily Replies',
+        description: 'One handoff for menu, address, and hours questions',
+        message: buildMessage(staffDailyLines),
+    });
+
     if ((input.activeProjects?.length || 0) > 1) {
         const menuOptionLines = [
             '*Hi! Here are our available menus*',

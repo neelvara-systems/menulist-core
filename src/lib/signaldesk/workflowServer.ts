@@ -14,6 +14,7 @@ import type {
     SignalDeskAccessContext,
     SignalDeskAiTask,
     SignalDeskAiScoreSummary,
+    SignalDeskActivationWatchSummary,
     SignalDeskApprovalItem,
     SignalDeskApprovalPacketSummary,
     SignalDeskAuditEvent,
@@ -27,6 +28,8 @@ import type {
     SignalDeskConnectorReadiness,
     SignalDeskConnectorSecretState,
     SignalDeskConnectorSettingSummary,
+    SignalDeskCommercialOfferSummary,
+    SignalDeskCommercialOpportunitySummary,
     SignalDeskContentAssetSummary,
     SignalDeskContentCalendarItemSummary,
     SignalDeskContentChannel,
@@ -51,6 +54,7 @@ import type {
     SignalDeskOutboundChannel,
     SignalDeskOutcomeSummary,
     SignalDeskOfferCtaSummary,
+    SignalDeskOperatingEnvelopeSummary,
     SignalDeskProviderAccountSummary,
     SignalDeskProviderId,
     SignalDeskProviderEvaluationSummary,
@@ -79,6 +83,8 @@ import type {
     SignalDeskTeamMemberSummary,
     SignalDeskTemplateSummary,
     SignalDeskReplyPlaybookSummary,
+    SignalDeskRevenueAccountSummary,
+    SignalDeskRevenueControlSummary,
     SignalDeskTrustPartnerBriefSummary,
     SignalDeskTrustPartnerDealSummary,
     SignalDeskTrustPartnerDeliverableSummary,
@@ -217,6 +223,12 @@ type AudienceSegmentInput = {
 
 type MarketPodRecommendationInput = {
     marketPodId?: string;
+};
+
+type MarketPodReviewInput = {
+    decision: NonNullable<SignalDeskMarketPodSummary["reviewDecision"]>;
+    marketPodId: string;
+    reason: string;
 };
 
 type ProviderSourceRetentionRefreshInput = {
@@ -488,6 +500,68 @@ type ContentPerformanceInput = {
     views: number;
 };
 
+type RevenueAccountQualificationInput = {
+    locationType: SignalDeskRevenueAccountSummary["locationType"];
+    organizationName?: string;
+    targetId: string;
+};
+
+type CommercialOpportunityInput = {
+    commercialOfferId?: string;
+    expectedCloseAt?: string;
+    founderAttentionMinutes: number;
+    nextAction: string;
+    nextActionDueAt?: string;
+    opportunityId: string;
+    probabilityPercent: number;
+    stage: SignalDeskCommercialOpportunitySummary["stage"];
+    stalledReason?: string;
+    status: SignalDeskCommercialOpportunitySummary["status"];
+    valueMinor: number;
+    winLossReason?: string;
+};
+
+type CommercialOfferInput = {
+    allowedDiscountBps: number;
+    billingCadence: SignalDeskCommercialOfferSummary["billingCadence"];
+    commercialOfferId?: string;
+    contents: string[];
+    currency: string;
+    eligibilitySummary: string;
+    founderApprovalConditions: string[];
+    name: string;
+    offerCtaId?: string;
+    priceMinor: number;
+    status: SignalDeskCommercialOfferSummary["status"];
+    version: number;
+};
+
+type OperatingEnvelopeInput = {
+    budgetPolicyId?: string;
+    channel: SignalDeskOperatingEnvelopeSummary["channel"];
+    commercialOfferId: string;
+    dailyVolumeCap: number;
+    expiresAt: string;
+    fallbackAction: SignalDeskOperatingEnvelopeSummary["fallbackAction"];
+    marketPodId: string;
+    maxCostUsd: number;
+    name: string;
+    operatingEnvelopeId?: string;
+    requestedApprovalMode: SignalDeskOperatingEnvelopeSummary["requestedApprovalMode"];
+    senderDomainId?: string;
+    sourcePolicyIds: string[];
+    startsAt: string;
+    status: SignalDeskOperatingEnvelopeSummary["status"];
+    stopConditions: string[];
+    templateIds: string[];
+    totalVolumeCap: number;
+    version: number;
+};
+
+type ActivationWatchInput = {
+    targetId: string;
+};
+
 const LIST_LIMIT = 30;
 const SIGNALDESK_PROVIDER_BUDGET_BLOCKED_REASON = "provider_budget_blocked";
 const SIGNALDESK_RESEARCH_AGENT_BLOCKED_REASON = "research_agent_blocked";
@@ -509,6 +583,7 @@ const normalizeUrl = (value?: string | null) => normalizeLower(value).replace(/^
 const todayKey = () => new Date().toISOString().slice(0, 10);
 const env = (key: string) => process.env[key]?.trim() || "";
 const operatingLayerEnabled = () => FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER === true;
+const revenueOperatingLayerEnabled = () => FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER === true;
 
 const toIso = (value: any): string | null => {
     if (!value) return null;
@@ -542,6 +617,7 @@ const sanitizeForFirestore = (value: any): any => {
 };
 
 const emptyWorkspace = (section: SignalDeskSection): SignalDeskWorkspaceData => ({
+    activationWatches: [],
     approvalPackets: [],
     audienceSegments: [],
     budgetPolicies: [],
@@ -556,6 +632,8 @@ const emptyWorkspace = (section: SignalDeskSection): SignalDeskWorkspaceData => 
     contentDistributionDrafts: [],
     contentPerformanceSummaries: [],
     contentSources: [],
+    commercialOffers: [],
+    commercialOpportunities: [],
     demandSignals: [],
     drafts: [],
     enrichmentResults: [],
@@ -569,6 +647,7 @@ const emptyWorkspace = (section: SignalDeskSection): SignalDeskWorkspaceData => 
     modelRoutes: [],
     outcomes: [],
     offerCtas: [],
+    operatingEnvelopes: [],
     policies: [],
     providerAccounts: [],
     providerEvaluations: [],
@@ -586,6 +665,8 @@ const emptyWorkspace = (section: SignalDeskSection): SignalDeskWorkspaceData => 
     sequencerSteps: [],
     strategistMemos: [],
     replyPlaybooks: [],
+    revenueAccounts: [],
+    revenueControlSummaries: [],
     sourceQualitySnapshots: [],
     targets: [],
     teamMembers: [],
@@ -672,6 +753,10 @@ const requireOperatingLayer = () => {
     if (!operatingLayerEnabled()) throw new Error("SignalDesk Operating Layer is disabled");
 };
 
+const requireRevenueOperatingLayer = () => {
+    if (!revenueOperatingLayerEnabled()) throw new Error("SignalDesk Revenue Operating Layer is disabled");
+};
+
 const requireNoActiveKillSwitch = async (db: any, scope: string, message: string) => {
     const killSwitchSnap = await db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc(`scope_${scope}`).get();
     if (killSwitchSnap.data()?.status === "active") throw new Error(message);
@@ -737,6 +822,8 @@ const SOURCE_POLICY_EXPIRED = "SOURCE_POLICY_EXPIRED";
 const SOURCE_POLICY_REVIEW_REQUIRED = "SOURCE_POLICY_REVIEW_REQUIRED";
 const SOURCE_POLICY_RETENTION_MISSING = "SOURCE_POLICY_RETENTION_MISSING";
 const SOURCE_POLICY_USE_NOT_ALLOWED = "SOURCE_POLICY_USE_NOT_ALLOWED";
+const SIGNALDESK_ACTIVATION_WATCH_AUTO_SYNC_FAILED = "signaldesk_activation_watch_auto_sync_failed";
+const SIGNALDESK_INTERESTED_REPLY_REVENUE_SYNC_FAILED = "signaldesk_interested_reply_revenue_sync_failed";
 const SIGNALDESK_RESEARCH_SOURCE_POLICY_SCAN_FAILED = "signaldesk_research_source_policy_scan_failed";
 
 const sourcePolicyUseAllowed = (policy: SignalDeskSourcePolicy, use: SourcePolicyUse) => {
@@ -757,6 +844,31 @@ const sourcePolicyHasActiveBlock = (policy: SignalDeskSourcePolicy) => (
     || (policy as AnyRecord).suppressionStatus === "active"
 );
 
+const sourcePolicyUsabilityError = (
+    policy: SignalDeskSourcePolicy | null | undefined,
+    options: SourcePolicyAssertionOptions,
+): string | null => {
+    if (!policy || (policy.status !== "active" && policy.status !== "approved")) {
+        return SOURCE_POLICY_REVIEW_REQUIRED;
+    }
+    if (!policy.sourceType) return SOURCE_POLICY_REVIEW_REQUIRED;
+    if (sourcePolicyHasActiveBlock(policy)) return SOURCE_POLICY_USE_NOT_ALLOWED;
+    if (options.requiredSourceType && policy.sourceType !== options.requiredSourceType) {
+        return SOURCE_POLICY_USE_NOT_ALLOWED;
+    }
+    if (policy.sourceType === "provider") {
+        const provider = (policy as AnyRecord).provider;
+        if (options.requiredProvider && provider && provider !== options.requiredProvider) return SOURCE_POLICY_USE_NOT_ALLOWED;
+        if (options.requiredProvider && !provider) return SOURCE_POLICY_REVIEW_REQUIRED;
+    }
+    if (numberOrZero(policy.retentionDays) <= 0) return SOURCE_POLICY_RETENTION_MISSING;
+    const expiryMillis = getSourcePolicyExpiryMillis(policy);
+    if (!expiryMillis) return SOURCE_POLICY_REVIEW_REQUIRED;
+    if (expiryMillis <= Date.now()) return SOURCE_POLICY_EXPIRED;
+    if (!sourcePolicyUseAllowed(policy, options.use)) return SOURCE_POLICY_USE_NOT_ALLOWED;
+    return null;
+};
+
 const getSourcePolicyState = (policy?: SignalDeskSourcePolicy | null, nowMillis = Date.now()): NonNullable<SignalDeskSourcePolicy["policyState"]> => {
     if (!policy || policy.status === "review_required" || policy.status === "inactive" || sourcePolicyHasActiveBlock(policy)) return "review_required";
     if (numberOrZero(policy.retentionDays) <= 0) return "review_required";
@@ -770,6 +882,33 @@ const annotateSourcePolicy = (policy: SignalDeskSourcePolicy): SignalDeskSourceP
     ...policy,
     policyState: getSourcePolicyState(policy),
 });
+
+const annotateOperatingEnvelope = (
+    envelope: SignalDeskOperatingEnvelopeSummary,
+    nowMillis = Date.now(),
+): SignalDeskOperatingEnvelopeSummary => {
+    const expiryMillis = toTimestampMillis(envelope.expiresAt);
+    if (!expiryMillis || expiryMillis > nowMillis) return envelope;
+    return {
+        ...envelope,
+        executionState: "held",
+        status: "expired",
+    };
+};
+
+const annotateActivationWatch = (
+    watch: SignalDeskActivationWatchSummary,
+    nowMillis = Date.now(),
+): SignalDeskActivationWatchSummary => {
+    if (watch.status === "activated" || watch.status === "stalled" || watch.status === "not-started") return watch;
+    const deadlineMillis = toTimestampMillis(watch.deadlineAt);
+    if (!deadlineMillis || deadlineMillis >= nowMillis) return watch;
+    return {
+        ...watch,
+        nextAction: "Review the stalled MenuList route without changing MenuList truth.",
+        status: "stalled",
+    };
+};
 
 const appendSourcePolicyBlockedAudit = async (
     db: any,
@@ -801,24 +940,8 @@ const assertSourcePolicyUsable = async (
         await appendSourcePolicyBlockedAudit(db, access, policy, options, code);
         throw new Error(code);
     };
-    if (!policy || (policy.status !== "active" && policy.status !== "approved")) {
-        return fail(SOURCE_POLICY_REVIEW_REQUIRED);
-    }
-    if (!policy.sourceType) return fail(SOURCE_POLICY_REVIEW_REQUIRED);
-    if (sourcePolicyHasActiveBlock(policy)) return fail(SOURCE_POLICY_USE_NOT_ALLOWED);
-    if (options.requiredSourceType && policy.sourceType !== options.requiredSourceType) {
-        return fail(SOURCE_POLICY_USE_NOT_ALLOWED);
-    }
-    if (policy.sourceType === "provider") {
-        const provider = (policy as AnyRecord).provider;
-        if (options.requiredProvider && provider && provider !== options.requiredProvider) return fail(SOURCE_POLICY_USE_NOT_ALLOWED);
-        if (options.requiredProvider && !provider) return fail(SOURCE_POLICY_REVIEW_REQUIRED);
-    }
-    if (numberOrZero(policy.retentionDays) <= 0) return fail(SOURCE_POLICY_RETENTION_MISSING);
-    const expiryMillis = getSourcePolicyExpiryMillis(policy);
-    if (!expiryMillis) return fail(SOURCE_POLICY_REVIEW_REQUIRED);
-    if (expiryMillis <= Date.now()) return fail(SOURCE_POLICY_EXPIRED);
-    if (!sourcePolicyUseAllowed(policy, options.use)) return fail(SOURCE_POLICY_USE_NOT_ALLOWED);
+    const errorCode = sourcePolicyUsabilityError(policy, options);
+    if (errorCode) return fail(errorCode);
     return policy;
 };
 
@@ -874,6 +997,12 @@ const researchRowIdFor = (researchRunId: string, targetId: string, index: number
     targetId || index,
 ].join("|")).slice(0, 22)}`;
 const growthMissionIdFor = (day: string) => `growth_mission_${day.replace(/[^a-z0-9_-]/gi, "_")}`;
+const revenueAccountIdFor = (targetId: string) => `revenue_account_${hashValue(targetId).slice(0, 22)}`;
+const opportunityIdFor = (revenueAccountId: string) => `opportunity_${hashValue(revenueAccountId).slice(0, 22)}`;
+const organizationIdFor = (name: string) => `organization_${hashValue(normalizeLower(name)).slice(0, 22)}`;
+const commercialOfferIdFor = (name: string, version: number) => `commercial_offer_${hashValue(normalizeLower(name)).slice(0, 16)}_v${version}`;
+const operatingEnvelopeIdFor = (name: string, version: number) => `operating_envelope_${hashValue(normalizeLower(name)).slice(0, 16)}_v${version}`;
+const activationWatchIdFor = (targetId: string) => `activation_watch_${hashValue(targetId).slice(0, 22)}`;
 
 const readProviderAccount = async (
     db: any,
@@ -1765,6 +1894,35 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.senderDomains = await readList<SignalDeskSenderDomainSummary>(db, SIGNALDESK_COLLECTIONS.SENDER_DOMAINS);
         workspace.sourceQualitySnapshots = await readList<SignalDeskSourceQualitySnapshotSummary>(db, SIGNALDESK_COLLECTIONS.SOURCE_QUALITY_SNAPSHOTS);
         workspace.trustPartnerProfiles = await readList<SignalDeskTrustPartnerProfileSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES);
+    } else if (section === "revenue") {
+        await readCommon();
+        const [
+            activationWatches,
+            commercialOffers,
+            commercialOpportunities,
+            operatingEnvelopes,
+            revenueAccounts,
+            revenueControlSummaries,
+        ] = await Promise.all([
+            readList<SignalDeskActivationWatchSummary>(db, SIGNALDESK_COLLECTIONS.ACTIVATION_WATCHES),
+            readList<SignalDeskCommercialOfferSummary>(db, SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS),
+            readList<SignalDeskCommercialOpportunitySummary>(db, SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES),
+            readList<SignalDeskOperatingEnvelopeSummary>(db, SIGNALDESK_COLLECTIONS.OPERATING_ENVELOPES),
+            readList<SignalDeskRevenueAccountSummary>(db, SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS),
+            readList<SignalDeskRevenueControlSummary>(db, SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES),
+        ]);
+        workspace.activationWatches = activationWatches.map((watch) => annotateActivationWatch(watch));
+        workspace.commercialOffers = commercialOffers;
+        workspace.commercialOpportunities = commercialOpportunities;
+        workspace.operatingEnvelopes = operatingEnvelopes.map((envelope) => annotateOperatingEnvelope(envelope));
+        workspace.revenueAccounts = revenueAccounts;
+        workspace.revenueControlSummaries = revenueControlSummaries;
+        workspace.budgetPolicies = await readList<SignalDeskBudgetPolicySummary>(db, SIGNALDESK_COLLECTIONS.BUDGET_POLICIES);
+        workspace.marketPods = await readList<SignalDeskMarketPodSummary>(db, SIGNALDESK_COLLECTIONS.MARKET_PODS);
+        workspace.offerCtas = await readList<SignalDeskOfferCtaSummary>(db, SIGNALDESK_COLLECTIONS.OFFER_CTAS);
+        workspace.policies = await readList<SignalDeskSourcePolicy>(db, SIGNALDESK_COLLECTIONS.SOURCE_POLICIES);
+        workspace.senderDomains = await readList<SignalDeskSenderDomainSummary>(db, SIGNALDESK_COLLECTIONS.SENDER_DOMAINS);
+        workspace.templates = await readList<SignalDeskTemplateSummary>(db, SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES);
     } else if (section === "targets") {
         workspace.targets = await readList<SignalDeskTargetSummary>(db, SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES);
         workspace.policies = await readList<SignalDeskSourcePolicy>(db, SIGNALDESK_COLLECTIONS.SOURCE_POLICIES);
@@ -1895,10 +2053,11 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
     const batch = db.batch();
     const timestamp = now();
     const policyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc("policy_manual_research_v1");
+    const discoveryPolicyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc("policy_public_business_research_v1");
     const templateRef = db.collection(SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES).doc("template_current_list_intro_v1");
     const providerDefaults: ProviderAccountInput[] = [
         { credentialState: "not_required", dailyBudgetUsd: 0, monthlyBudgetUsd: 0, ownerApproved: true, perRunBudgetUsd: 0, provider: "manual", status: "approved", use: "discovery" },
-        { credentialState: "missing", dailyBudgetUsd: 5, monthlyBudgetUsd: 75, ownerApproved: true, perRunBudgetUsd: 0.25, provider: "google-places", status: "evaluation", use: "discovery" },
+        { credentialState: "missing", dailyBudgetUsd: 0, monthlyBudgetUsd: 0, ownerApproved: false, perRunBudgetUsd: 0, provider: "google-places", status: "disabled", use: "discovery", disabledReason: "Use manual evidence-only research for the first proof trial; enable Places only after separate provider, source-policy, and budget approval." },
         { credentialState: "missing", dailyBudgetUsd: 10, monthlyBudgetUsd: 150, ownerApproved: false, perRunBudgetUsd: 0.25, provider: "apify", status: "disabled", use: "discovery", disabledReason: "Enable only after Apify source actor, legal/source policy, and budget approval." },
         { credentialState: "not_required", dailyBudgetUsd: 0, monthlyBudgetUsd: 0, ownerApproved: true, perRunBudgetUsd: 0, provider: "fhrs-fhis", status: "evaluation", use: "discovery", disabledReason: "UK official establishment seed only; separate contact source policy is required before outreach contact use." },
         { credentialState: "missing", dailyBudgetUsd: 10, monthlyBudgetUsd: 200, ownerApproved: false, perRunBudgetUsd: 1, provider: "apollo", status: "disabled", use: "enrichment", disabledReason: "Enable only after first market pod and budget approval." },
@@ -1948,10 +2107,33 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
         });
     });
 
+    batch.set(discoveryPolicyRef, sanitizeForFirestore({
+        sourcePolicyId: discoveryPolicyRef.id,
+        pId: SIGNALDESK_PRODUCT_CODE,
+        name: "Public business research",
+        sourceType: "manual-research",
+        status: "active",
+        allowedUse: {
+            contact: false,
+            evidence: true,
+            import: true,
+            personalization: false,
+            providerRun: false,
+            storage: true,
+        },
+        retentionDays: 30,
+        approvedAt: timestamp,
+        expiresAt: expiresAtForRetention(30),
+        notes: "Candidate discovery and evidence review only; contact fields, personalization, export, and send remain blocked.",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        updatedBy: access.userId,
+    }), { merge: true });
+
     batch.set(policyRef, sanitizeForFirestore({
         sourcePolicyId: policyRef.id,
         pId: SIGNALDESK_PRODUCT_CODE,
-        name: "Manual research",
+        name: "Permissioned manual introduction",
         sourceType: "manual-research",
         status: "active",
         allowedUse: {
@@ -1965,7 +2147,7 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
         retentionDays: 90,
         approvedAt: timestamp,
         expiresAt: expiresAtForRetention(90),
-        notes: "Founder-approved manual source policy for first controlled imports.",
+        notes: "Contact use is limited to a founder-supplied, permissioned referral, partner handoff, or expected manual follow-up; public availability alone is not permission.",
         createdAt: timestamp,
         updatedAt: timestamp,
         updatedBy: access.userId,
@@ -2031,21 +2213,38 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
     });
 
     const marketPodRef = db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc("market_pod_first_local_v1");
-    batch.set(marketPodRef, sanitizeForFirestore({
-        marketPodId: marketPodRef.id,
-        pId: SIGNALDESK_PRODUCT_CODE,
-        name: "First local proof pod",
-        status: "hold",
-        city: "Mumbai",
-        country: "India",
-        category: "restaurant",
-        offerAngle: "Current-list proof and private preview.",
-        monthlyBudgetUsd: 300,
-        successMetric: "preview_prepared",
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        updatedBy: access.userId,
-    }), { merge: true });
+    const existingMarketPodSnap = await marketPodRef.get();
+    const existingMarketPod = existingMarketPodSnap.exists ? toPlain(existingMarketPodSnap.data()) as AnyRecord : null;
+    const legacyUnapprovedMarketPod = Boolean(
+        existingMarketPod
+        && existingMarketPod.status === "hold"
+        && existingMarketPod.name === "First local proof pod"
+        && existingMarketPod.city === "Mumbai"
+        && existingMarketPod.country === "India"
+        && existingMarketPod.category === "restaurant"
+        && existingMarketPod.offerAngle === "Current-list proof and private preview."
+        && numberOrZero(existingMarketPod.monthlyBudgetUsd) === 300
+        && existingMarketPod.successMetric === "preview_prepared"
+        && !existingMarketPod.approvedBy
+        && !existingMarketPod.reviewedBy
+    );
+    if (!existingMarketPodSnap.exists || legacyUnapprovedMarketPod) {
+        batch.set(marketPodRef, sanitizeForFirestore({
+            marketPodId: marketPodRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            name: "Bengaluru first proof pod",
+            status: "hold",
+            city: "Bengaluru - Indiranagar and Koramangala",
+            country: "India",
+            category: "cafes, dessert shops, QSRs, and customer-facing cloud kitchens",
+            offerAngle: "Current-list proof and private preview.",
+            monthlyBudgetUsd: 0,
+            successMetric: "two_surface_activation_within_7_days",
+            createdAt: existingMarketPod?.createdAt || timestamp,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        }), { merge: true });
+    }
 
     const segmentRef = db.collection(SIGNALDESK_COLLECTIONS.AUDIENCE_SEGMENTS).doc("audience_segment_owned_signals_v1");
     batch.set(segmentRef, sanitizeForFirestore({
@@ -2056,7 +2255,7 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
         marketPodId: marketPodRef.id,
         triggerType: "demand-signal",
         criteriaSummary: "Claim attempts, QR scans, referrals, or official website evidence before paid enrichment.",
-        sourcePolicyId: policyRef.id,
+        sourcePolicyId: discoveryPolicyRef.id,
         createdAt: timestamp,
         updatedAt: timestamp,
         updatedBy: access.userId,
@@ -2195,14 +2394,14 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
     batch.set(trustPartnerBudgetRef, sanitizeForFirestore({
         budgetPolicyId: trustPartnerBudgetRef.id,
         pId: SIGNALDESK_PRODUCT_CODE,
-        name: "First trust partner test cap",
+        name: "Zero-spend trust partner learning test",
         scope: "trust-partner",
         provider: null,
         scopeId: "first_partner_test",
         status: "hold",
         dailyBudgetUsd: 0,
-        monthlyBudgetUsd: 300,
-        perRunBudgetUsd: 75,
+        monthlyBudgetUsd: 0,
+        perRunBudgetUsd: 0,
         spentTodayUsd: 0,
         spentMonthUsd: 0,
         createdAt: timestamp,
@@ -2225,10 +2424,14 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
             { label: "Offer CTA and reply playbooks seeded", status: "completed", at: toIso(timestamp) },
         ],
     });
-    updateDailyCost(db, batch, providerDefaults.length * 2 + modelRouteDefaults.length + replyPlaybooks.length + 11, 0);
+    updateDailyCost(db, batch, providerDefaults.length * 2 + modelRouteDefaults.length + replyPlaybooks.length + 12, 0);
     await batch.commit();
 
-    return { policyId: policyRef.id, templateId: templateRef.id };
+    return {
+        permissionedPolicyId: policyRef.id,
+        policyId: discoveryPolicyRef.id,
+        templateId: templateRef.id,
+    };
 }
 
 export async function createSignalDeskSourcePolicyServer(access: SignalDeskAccessContext, input: SourcePolicyInput) {
@@ -2669,6 +2872,716 @@ export async function upsertSignalDeskReplyPlaybookServer(access: SignalDeskAcce
     return toPlain(playbook) as SignalDeskReplyPlaybookSummary;
 }
 
+export async function qualifySignalDeskRevenueAccountServer(
+    access: SignalDeskAccessContext,
+    input: RevenueAccountQualificationInput,
+) {
+    requireRevenueOperatingLayer();
+    const db = requireDb();
+    const targetRef = db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(input.targetId);
+    const targetSnap = await targetRef.get();
+    if (!targetSnap.exists) throw new Error("Target not found");
+    const target = toPlain(targetSnap.data()) as SignalDeskTargetSummary;
+    const [sourcePolicy, activationOutcomeSnap] = await Promise.all([
+        readSourcePolicy(db, target.sourcePolicyId),
+        db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES)
+            .where("targetId", "==", input.targetId)
+            .where("outcomeType", "==", "two_surface_activation")
+            .limit(1)
+            .get(),
+    ]);
+    const hasTwoSurfaceActivation = !activationOutcomeSnap.empty;
+    await assertSourcePolicyUsable(db, access, sourcePolicy, {
+        entityId: target.targetId,
+        use: "evidence",
+    });
+
+    const accountRef = db.collection(SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS).doc(revenueAccountIdFor(target.targetId));
+    const opportunityRef = db.collection(SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES).doc(opportunityIdFor(accountRef.id));
+    const summaryRef = db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.REVENUE);
+    const qualification = await db.runTransaction(async (transaction: any) => {
+        const [currentTargetSnap, accountSnap, opportunitySnap] = await Promise.all([
+            transaction.get(targetRef),
+            transaction.get(accountRef),
+            transaction.get(opportunityRef),
+        ]);
+        if (!currentTargetSnap.exists) throw new Error("Target not found");
+        const currentTarget = toPlain(currentTargetSnap.data()) as SignalDeskTargetSummary;
+        if (currentTarget.sourcePolicyId !== target.sourcePolicyId) throw new Error("Target source policy changed; retry qualification");
+        const timestamp = now();
+        const existingAccount = accountSnap.exists ? toPlain(accountSnap.data()) as SignalDeskRevenueAccountSummary : null;
+        const existingOpportunity = opportunitySnap.exists ? toPlain(opportunitySnap.data()) as SignalDeskCommercialOpportunitySummary : null;
+        const activated = hasTwoSurfaceActivation;
+        const commerciallyEngaged = currentTarget.status === "replied" || currentTarget.status === "converted";
+        const hasRecordedOutcome = Boolean(currentTarget.latestOutcomeAt);
+        const eligible = currentTarget.suppressionStatus === "clear"
+            && currentTarget.contactability !== "blocked"
+            && (
+                commerciallyEngaged
+                || ((currentTarget.segment === "a" || currentTarget.segment === "b") && numberOrZero(currentTarget.fitScore) >= 70)
+            );
+        const complianceState: SignalDeskRevenueAccountSummary["complianceState"] = currentTarget.suppressionStatus !== "clear"
+            ? "suppressed"
+            : currentTarget.contactability === "blocked"
+                ? "blocked"
+                : eligible
+                    ? "eligible"
+                    : "review-required";
+        const engagementState: SignalDeskRevenueAccountSummary["engagementState"] = currentTarget.suppressionStatus !== "clear"
+            ? "opted-out"
+            : commerciallyEngaged
+                ? "replied"
+                : currentTarget.status === "contacted"
+                    ? "contacted"
+                    : currentTarget.contactability === "ready"
+                        ? "contactable"
+                        : "none";
+        const organizationName = normalizeText(input.organizationName) || currentTarget.displayName;
+        const account = {
+            activationState: existingAccount?.activationState || (hasRecordedOutcome ? "in-progress" : "not-started"),
+            automationState: existingAccount?.automationState || "manual",
+            category: currentTarget.category || null,
+            city: currentTarget.city || null,
+            complianceState,
+            country: currentTarget.country || null,
+            displayName: currentTarget.displayName,
+            engagementState,
+            lifecycleStage: activated ? "customer" : eligible ? "opportunity" : "nurture",
+            locationType: input.locationType,
+            nextAction: activated
+                ? "Refresh the activation watch from recorded outcomes."
+                : eligible
+                    ? "Review commercial fit and standard offer."
+                    : "Hold until qualification evidence is sufficient.",
+            organizationId: organizationIdFor(organizationName),
+            pId: SIGNALDESK_PRODUCT_CODE,
+            primaryTargetId: currentTarget.targetId,
+            revenueAccountId: accountRef.id,
+            targetIds: Array.from(new Set([...(existingAccount?.targetIds || []), currentTarget.targetId])),
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+
+        transaction.set(accountRef, sanitizeForFirestore(account), { merge: true });
+        let opportunity: SignalDeskCommercialOpportunitySummary | null = existingOpportunity;
+        if (eligible && !existingOpportunity) {
+            opportunity = {
+                commercialOfferId: null,
+                currency: null,
+                expectedCloseAt: null,
+                founderAttentionMinutes: 0,
+                nextAction: activated ? "Refresh activation and proof state." : "Confirm the standard offer and next customer action.",
+                nextActionDueAt: null,
+                opportunityId: opportunityRef.id,
+                probabilityPercent: activated ? 100 : commerciallyEngaged ? 40 : 20,
+                revenueAccountId: accountRef.id,
+                stage: activated ? "won" : "qualified",
+                stalledReason: null,
+                status: activated ? "won" : "open",
+                targetId: currentTarget.targetId,
+                title: `${currentTarget.displayName} - MenuList standard path`,
+                updatedAt: toIso(timestamp),
+                valueMinor: 0,
+                winLossReason: activated ? "Existing two-surface activation outcome." : null,
+            };
+            transaction.set(opportunityRef, sanitizeForFirestore({ ...opportunity, pId: SIGNALDESK_PRODUCT_CODE, createdAt: timestamp, updatedAt: timestamp, updatedBy: access.userId }));
+        }
+        transaction.set(summaryRef, sanitizeForFirestore({
+            activatedAccountCount: increment(0),
+            founderAttentionMinutes: increment(0),
+            lostOpportunityCount: increment(0),
+            openOpportunityCount: increment(eligible && !existingOpportunity && !activated ? 1 : 0),
+            pipelineValueMinor: increment(0),
+            revenueAccountCount: increment(existingAccount ? 0 : 1),
+            stalledActivationCount: increment(0),
+            updatedAt: timestamp,
+            weightedPipelineValueMinor: increment(0),
+            wonOpportunityCount: increment(eligible && !existingOpportunity && activated ? 1 : 0),
+        }), { merge: true });
+        appendAudit(db, transaction, access, "revenue_account_qualify", "revenueAccount", accountRef.id, activated ? "activated" : eligible ? "qualified" : complianceState);
+        writeRunTimeline(db, transaction, {
+            entityId: accountRef.id,
+            entityType: "revenue-account",
+            label: `Revenue account: ${currentTarget.displayName}`,
+            status: activated ? "completed" : eligible ? "ready" : complianceState === "suppressed" || complianceState === "blocked" ? "blocked" : "held",
+            steps: [
+                { label: "Existing target linked", status: "completed", at: toIso(timestamp) },
+                { label: "Source policy checked", status: "completed", at: toIso(timestamp) },
+                { label: activated ? "Existing two-surface activation preserved" : eligible ? "Commercial qualification passed" : "Commercial qualification held", status: activated || eligible ? "completed" : "held", at: toIso(timestamp) },
+            ],
+        });
+        updateDailyCost(db, transaction, eligible && !existingOpportunity ? 6 : 5, 0);
+        return {
+            account: toPlain(account) as SignalDeskRevenueAccountSummary,
+            hasRecordedOutcome,
+            opportunity: opportunity ? toPlain(opportunity) : null,
+            qualified: eligible,
+        };
+    });
+    const { hasRecordedOutcome, ...qualificationResult } = qualification;
+    let activationWatch: SignalDeskActivationWatchSummary | null = null;
+    if (hasRecordedOutcome || hasTwoSurfaceActivation) {
+        try {
+            activationWatch = await refreshSignalDeskActivationWatchServer(access, { targetId: input.targetId });
+        } catch (error) {
+            logRuntimeFailure(SIGNALDESK_ACTIVATION_WATCH_AUTO_SYNC_FAILED, error, {
+                product: "signaldesk",
+                reconciliation: "qualification-after-outcome",
+                targetIdPresent: true,
+            });
+        }
+    }
+    return { ...qualificationResult, activationWatch };
+}
+
+export async function upsertSignalDeskCommercialOpportunityServer(
+    access: SignalDeskAccessContext,
+    input: CommercialOpportunityInput,
+) {
+    requireRevenueOperatingLayer();
+    const terminalStageByStatus: Partial<Record<SignalDeskCommercialOpportunitySummary["status"], SignalDeskCommercialOpportunitySummary["stage"]>> = {
+        lost: "lost",
+        nurture: "nurture",
+        won: "won",
+    };
+    const terminalStage = terminalStageByStatus[input.status];
+    const openStage = input.stage === "qualified" || input.stage === "discovery" || input.stage === "offer" || input.stage === "decision";
+    if ((input.status === "open" && !openStage) || (terminalStage && input.stage !== terminalStage)) {
+        throw new Error("Commercial opportunity stage and status do not match");
+    }
+    if ((input.status === "won" || input.status === "lost") && !normalizeText(input.winLossReason)) {
+        throw new Error("Commercial opportunity win or loss reason is required");
+    }
+    const db = requireDb();
+    const opportunityRef = db.collection(SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES).doc(input.opportunityId);
+    const summaryRef = db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.REVENUE);
+    return db.runTransaction(async (transaction: any) => {
+        const opportunitySnap = await transaction.get(opportunityRef);
+        if (!opportunitySnap.exists) throw new Error("Commercial opportunity not found");
+        const existing = toPlain(opportunitySnap.data()) as SignalDeskCommercialOpportunitySummary;
+        const commercialOfferId = input.commercialOfferId || existing.commercialOfferId || null;
+        const offerRef = commercialOfferId
+            ? db.collection(SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS).doc(commercialOfferId)
+            : null;
+        const [offerSnap, summarySnap] = await Promise.all([
+            offerRef ? transaction.get(offerRef) : Promise.resolve(null),
+            transaction.get(summaryRef),
+        ]);
+        if (input.commercialOfferId && (!offerSnap?.exists || offerSnap.data()?.status !== "active")) {
+            throw new Error("Commercial offer is not active");
+        }
+        const valueMinor = Math.max(0, Math.round(input.valueMinor));
+        if (valueMinor > 0 && !offerSnap?.exists) throw new Error("Commercial offer is required for valued opportunity");
+        const offer = offerSnap?.exists ? toPlain(offerSnap.data()) as SignalDeskCommercialOfferSummary : null;
+        const currency = offer?.currency || existing.currency || null;
+        const summary = summarySnap.exists ? toPlain(summarySnap.data()) as SignalDeskRevenueControlSummary : null;
+        if (existing.currency && currency && existing.currency !== currency) {
+            throw new Error("Commercial opportunity currency does not match revenue pipeline");
+        }
+        if (input.status === "open" && valueMinor > 0 && summary?.pipelineCurrency && summary.pipelineCurrency !== currency) {
+            throw new Error("Commercial opportunity currency does not match revenue pipeline");
+        }
+        const timestamp = now();
+        const probabilityPercent = Math.max(0, Math.min(100, Math.round(input.probabilityPercent)));
+        const founderAttentionMinutes = Math.max(0, Math.round(input.founderAttentionMinutes));
+        const oldOpen = existing.status === "open" ? 1 : 0;
+        const newOpen = input.status === "open" ? 1 : 0;
+        const oldPipelineValue = oldOpen ? numberOrZero(existing.valueMinor) : 0;
+        const newPipelineValue = newOpen ? valueMinor : 0;
+        const oldWeightedValue = oldOpen ? Math.round(numberOrZero(existing.valueMinor) * numberOrZero(existing.probabilityPercent) / 100) : 0;
+        const newWeightedValue = newOpen ? Math.round(valueMinor * probabilityPercent / 100) : 0;
+        const opportunity = {
+            ...existing,
+            commercialOfferId,
+            currency,
+            expectedCloseAt: input.expectedCloseAt === undefined ? existing.expectedCloseAt || null : new Date(input.expectedCloseAt),
+            founderAttentionMinutes,
+            nextAction: input.nextAction,
+            nextActionDueAt: input.nextActionDueAt === undefined ? existing.nextActionDueAt || null : new Date(input.nextActionDueAt),
+            probabilityPercent,
+            stage: input.stage,
+            stalledReason: input.stalledReason === undefined ? existing.stalledReason || null : normalizeText(input.stalledReason) || null,
+            status: input.status,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+            valueMinor,
+            winLossReason: normalizeText(input.winLossReason) || null,
+        };
+        const accountLifecycle: SignalDeskRevenueAccountSummary["lifecycleStage"] = input.status === "won"
+            ? "customer"
+            : input.status === "lost"
+                ? "lost"
+                : input.status === "nurture"
+                    ? "nurture"
+                    : "opportunity";
+        transaction.set(opportunityRef, sanitizeForFirestore(opportunity), { merge: true });
+        transaction.set(db.collection(SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS).doc(existing.revenueAccountId), sanitizeForFirestore({
+            lifecycleStage: accountLifecycle,
+            nextAction: input.nextAction,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        }), { merge: true });
+        transaction.set(summaryRef, sanitizeForFirestore({
+            founderAttentionMinutes: increment(founderAttentionMinutes - numberOrZero(existing.founderAttentionMinutes)),
+            lostOpportunityCount: increment((input.status === "lost" ? 1 : 0) - (existing.status === "lost" ? 1 : 0)),
+            openOpportunityCount: increment(newOpen - oldOpen),
+            pipelineCurrency: summary?.pipelineCurrency || (newOpen && valueMinor > 0 ? currency : null),
+            pipelineValueMinor: increment(newPipelineValue - oldPipelineValue),
+            updatedAt: timestamp,
+            weightedPipelineValueMinor: increment(newWeightedValue - oldWeightedValue),
+            wonOpportunityCount: increment((input.status === "won" ? 1 : 0) - (existing.status === "won" ? 1 : 0)),
+        }), { merge: true });
+        appendAudit(db, transaction, access, "commercial_opportunity_upsert", "commercialOpportunity", opportunityRef.id, `${input.stage}:${input.status}`);
+        writeRunTimeline(db, transaction, {
+            entityId: opportunityRef.id,
+            entityType: "commercial-opportunity",
+            label: opportunity.title,
+            status: input.status === "open" ? "ready" : input.status === "lost" ? "blocked" : "completed",
+            steps: [
+                { label: `Stage: ${input.stage}`, status: "completed", at: toIso(timestamp) },
+                { label: input.nextAction, status: input.status === "open" ? "ready" : "completed", at: toIso(timestamp) },
+                { label: `${founderAttentionMinutes} founder minutes recorded`, status: "completed", at: toIso(timestamp) },
+            ],
+        });
+        updateDailyCost(db, transaction, 6, 0);
+        return toPlain(opportunity) as SignalDeskCommercialOpportunitySummary;
+    });
+}
+
+export async function upsertSignalDeskCommercialOfferServer(
+    access: SignalDeskAccessContext,
+    input: CommercialOfferInput,
+) {
+    requireRevenueOperatingLayer();
+    if (!input.founderApprovalConditions.length) throw new Error("Commercial offer approval conditions are required");
+    const db = requireDb();
+    const expectedOfferId = commercialOfferIdFor(input.name, input.version);
+    if (input.commercialOfferId && input.commercialOfferId !== expectedOfferId) {
+        throw new Error("Commercial offer ID does not match name and version");
+    }
+    const offerRef = db.collection(SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS).doc(expectedOfferId);
+    const offerCtaRef = input.offerCtaId ? db.collection(SIGNALDESK_COLLECTIONS.OFFER_CTAS).doc(input.offerCtaId) : null;
+    const normalizedTerms = {
+        allowedDiscountBps: Math.max(0, Math.min(10000, Math.round(input.allowedDiscountBps))),
+        billingCadence: input.billingCadence,
+        contents: input.contents,
+        currency: input.currency.toUpperCase(),
+        eligibilitySummary: input.eligibilitySummary,
+        founderApprovalConditions: input.founderApprovalConditions,
+        name: input.name,
+        offerCtaId: input.offerCtaId || null,
+        priceMinor: Math.max(0, Math.round(input.priceMinor)),
+        version: Math.max(1, Math.round(input.version)),
+    };
+    return db.runTransaction(async (transaction: any) => {
+        const [existingOfferSnap, offerCtaSnap] = await Promise.all([
+            transaction.get(offerRef),
+            offerCtaRef ? transaction.get(offerCtaRef) : Promise.resolve(null),
+        ]);
+        if (offerCtaRef && (!offerCtaSnap?.exists || offerCtaSnap.data()?.status === "blocked")) throw new Error("Offer CTA is blocked");
+        if (existingOfferSnap.exists) {
+            const existing = toPlain(existingOfferSnap.data()) as SignalDeskCommercialOfferSummary;
+            const existingTerms = {
+                allowedDiscountBps: existing.allowedDiscountBps,
+                billingCadence: existing.billingCadence,
+                contents: existing.contents,
+                currency: existing.currency,
+                eligibilitySummary: existing.eligibilitySummary,
+                founderApprovalConditions: existing.founderApprovalConditions,
+                name: existing.name,
+                offerCtaId: existing.offerCtaId || null,
+                priceMinor: existing.priceMinor,
+                version: existing.version,
+            };
+            if (JSON.stringify(existingTerms) !== JSON.stringify(normalizedTerms)) {
+                throw new Error("Commercial offer version already exists with different terms");
+            }
+        }
+        const timestamp = now();
+        const offer = {
+            ...normalizedTerms,
+            commercialOfferId: offerRef.id,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            status: input.status,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+        transaction.set(offerRef, sanitizeForFirestore(offer), { merge: true });
+        appendAudit(db, transaction, access, "commercial_offer_upsert", "commercialOffer", offerRef.id, `${offer.name}:v${offer.version}`);
+        writeRunTimeline(db, transaction, {
+            entityId: offerRef.id,
+            entityType: "commercial-offer",
+            label: `Commercial offer: ${offer.name}`,
+            status: offer.status === "active" ? "ready" : offer.status === "blocked" ? "blocked" : "held",
+            steps: [
+                { label: `Version ${offer.version} stored`, status: "completed", at: toIso(timestamp) },
+                { label: "Price and discount authority recorded", status: "completed", at: toIso(timestamp) },
+                { label: "Founder approval conditions recorded", status: offer.founderApprovalConditions.length ? "completed" : "held", at: toIso(timestamp) },
+            ],
+        });
+        updateDailyCost(db, transaction, 4, 0);
+        return toPlain(offer) as SignalDeskCommercialOfferSummary;
+    });
+}
+
+export async function upsertSignalDeskOperatingEnvelopeServer(
+    access: SignalDeskAccessContext,
+    input: OperatingEnvelopeInput,
+) {
+    requireRevenueOperatingLayer();
+    if (input.status === "approved" && (access.role !== "founder-admin" || !access.permissions.includes("policy.approve"))) {
+        throw new Error("Founder approval is required for operating envelopes");
+    }
+    const db = requireDb();
+    const startsAt = new Date(input.startsAt);
+    const expiresAt = new Date(input.expiresAt);
+    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(expiresAt.getTime()) || expiresAt <= startsAt || expiresAt <= new Date()) {
+        throw new Error("Operating envelope dates are invalid");
+    }
+    if (input.totalVolumeCap < input.dailyVolumeCap) throw new Error("Operating envelope total volume must cover the daily cap");
+    if (!input.marketPodId) throw new Error("Market pod is required for operating envelope");
+    const sourcePolicyRefs = input.sourcePolicyIds.map((sourcePolicyId) => db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(sourcePolicyId));
+    const offerRef = db.collection(SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS).doc(input.commercialOfferId);
+    const marketPodRef = db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(input.marketPodId);
+    const budgetRef = input.budgetPolicyId
+        ? db.collection(SIGNALDESK_COLLECTIONS.BUDGET_POLICIES).doc(input.budgetPolicyId)
+        : null;
+    const senderRef = input.senderDomainId
+        ? db.collection(SIGNALDESK_COLLECTIONS.SENDER_DOMAINS).doc(input.senderDomainId)
+        : null;
+    const templateRefs = input.templateIds.map((templateId) => db.collection(SIGNALDESK_COLLECTIONS.TEMPLATE_SUMMARIES).doc(templateId));
+    const sourcePolicies = await Promise.all(input.sourcePolicyIds.map((sourcePolicyId) => readSourcePolicy(db, sourcePolicyId)));
+    for (const policy of sourcePolicies) {
+        await assertSourcePolicyUsable(db, access, policy, {
+            entityId: input.operatingEnvelopeId || input.name,
+            use: input.channel === "email" || input.channel === "manual" ? "contact" : "evidence",
+        });
+    }
+    const offerSnap = await offerRef.get();
+    if (!offerSnap.exists || offerSnap.data()?.status !== "active") throw new Error("Commercial offer is not active");
+    const podSnap = await marketPodRef.get();
+    const marketPod = podSnap.exists ? toPlain(podSnap.data()) as SignalDeskMarketPodSummary : null;
+    if (!marketPod || marketPod.status !== "active" || marketPod.reviewDecision !== "approved" || !marketPod.approvedBy) {
+        throw new Error("Market pod is not founder-approved");
+    }
+    if (input.budgetPolicyId) {
+        const budgetSnap = await budgetRef!.get();
+        if (!budgetSnap.exists || budgetSnap.data()?.status !== "active") throw new Error("Revenue budget policy is not active");
+        const budget = toPlain(budgetSnap.data()) as SignalDeskBudgetPolicySummary;
+        const eligibleBudget = budget.scope === "global"
+            || (budget.scope === "market-pod" && Boolean(input.marketPodId) && budget.scopeId === input.marketPodId);
+        if (!eligibleBudget) throw new Error("Budget policy is not eligible for revenue envelope");
+        const remainingMonthlyBudgetUsd = Math.max(0, numberOrZero(budget.monthlyBudgetUsd) - numberOrZero(budget.spentMonthUsd));
+        if (input.maxCostUsd > remainingMonthlyBudgetUsd) throw new Error("Operating envelope exceeds the remaining budget policy");
+    }
+    if (input.channel === "email") {
+        if (!input.senderDomainId) throw new Error("Sender domain is required for email envelope");
+        const sender = await readReadySenderDomain(db, input.senderDomainId);
+        if (!isSenderDomainReady(sender)) throw new Error("Sender domain is not ready");
+    }
+    const templateSnaps = await Promise.all(templateRefs.map((templateRef) => templateRef.get()));
+    if (templateSnaps.some((snap: any) => !snap.exists || snap.data()?.status !== "active")) throw new Error("Active template is required");
+
+    const requestedApprovalMode = input.requestedApprovalMode;
+    const exceptionOnlyHeld = requestedApprovalMode === "exception-only";
+    const approvalMode: SignalDeskOperatingEnvelopeSummary["approvalMode"] = exceptionOnlyHeld
+        ? "prepare-and-approve-each"
+        : requestedApprovalMode;
+    const executionState: SignalDeskOperatingEnvelopeSummary["executionState"] = exceptionOnlyHeld
+        ? "held"
+        : input.status === "paused"
+            ? "paused"
+            : input.status === "draft" || input.status === "held" || input.status === "expired"
+                ? "held"
+                : input.status === "shadow" || approvalMode === "manual" || approvalMode === "recommendation-only"
+                ? "shadow"
+                : "approval-only";
+    const status: SignalDeskOperatingEnvelopeSummary["status"] = exceptionOnlyHeld ? "held" : input.status;
+    const expectedEnvelopeId = operatingEnvelopeIdFor(input.name, input.version);
+    if (input.operatingEnvelopeId && input.operatingEnvelopeId !== expectedEnvelopeId) {
+        throw new Error("Operating envelope ID does not match name and version");
+    }
+    const envelopeRef = db.collection(SIGNALDESK_COLLECTIONS.OPERATING_ENVELOPES).doc(expectedEnvelopeId);
+    const timestamp = now();
+    const immutableTerms = {
+        approvalMode,
+        budgetPolicyId: input.budgetPolicyId || null,
+        channel: input.channel,
+        commercialOfferId: input.commercialOfferId,
+        dailyVolumeCap: Math.max(1, Math.min(500, Math.round(input.dailyVolumeCap))),
+        expiresAt: expiresAt.toISOString(),
+        fallbackAction: input.fallbackAction,
+        marketPodId: input.marketPodId || null,
+        maxCostUsd: Math.max(0, input.maxCostUsd),
+        name: input.name,
+        requestedApprovalMode,
+        senderDomainId: input.senderDomainId || null,
+        sourcePolicyIds: input.sourcePolicyIds,
+        startsAt: startsAt.toISOString(),
+        stopConditions: input.stopConditions,
+        templateIds: input.templateIds,
+        totalVolumeCap: Math.max(1, Math.min(5000, Math.round(input.totalVolumeCap))),
+        version: Math.max(1, Math.round(input.version)),
+    };
+    const envelope = {
+        ...immutableTerms,
+        approvedAt: status === "approved" ? timestamp : null,
+        approvedBy: status === "approved" ? access.userId : null,
+        executionState,
+        expiresAt,
+        operatingEnvelopeId: envelopeRef.id,
+        pId: SIGNALDESK_PRODUCT_CODE,
+        startsAt,
+        status,
+        updatedAt: timestamp,
+        updatedBy: access.userId,
+    };
+    return db.runTransaction(async (transaction: any) => {
+        const [
+            existingEnvelopeSnap,
+            currentOfferSnap,
+            currentMarketPodSnap,
+            currentBudgetSnap,
+            currentSenderSnap,
+            currentSourcePolicySnaps,
+            currentTemplateSnaps,
+        ] = await Promise.all([
+            transaction.get(envelopeRef),
+            transaction.get(offerRef),
+            transaction.get(marketPodRef),
+            budgetRef ? transaction.get(budgetRef) : Promise.resolve(null),
+            senderRef ? transaction.get(senderRef) : Promise.resolve(null),
+            Promise.all(sourcePolicyRefs.map((sourcePolicyRef) => transaction.get(sourcePolicyRef))),
+            Promise.all(templateRefs.map((templateRef) => transaction.get(templateRef))),
+        ]);
+        if (!currentOfferSnap.exists || currentOfferSnap.data()?.status !== "active") {
+            throw new Error("Commercial offer is not active");
+        }
+        const currentMarketPod = currentMarketPodSnap.exists
+            ? toPlain(currentMarketPodSnap.data()) as SignalDeskMarketPodSummary
+            : null;
+        if (!currentMarketPod || currentMarketPod.status !== "active" || currentMarketPod.reviewDecision !== "approved" || !currentMarketPod.approvedBy) {
+            throw new Error("Market pod is not founder-approved");
+        }
+        currentSourcePolicySnaps.forEach((currentSourcePolicySnap: any) => {
+            const currentSourcePolicy = currentSourcePolicySnap.exists
+                ? toPlain(currentSourcePolicySnap.data()) as SignalDeskSourcePolicy
+                : null;
+            const errorCode = sourcePolicyUsabilityError(currentSourcePolicy, {
+                entityId: input.operatingEnvelopeId || input.name,
+                use: input.channel === "email" || input.channel === "manual" ? "contact" : "evidence",
+            });
+            if (errorCode) throw new Error(errorCode);
+        });
+        if (budgetRef) {
+            if (!currentBudgetSnap?.exists || currentBudgetSnap.data()?.status !== "active") {
+                throw new Error("Revenue budget policy is not active");
+            }
+            const currentBudget = toPlain(currentBudgetSnap.data()) as SignalDeskBudgetPolicySummary;
+            const eligibleBudget = currentBudget.scope === "global"
+                || (currentBudget.scope === "market-pod" && currentBudget.scopeId === input.marketPodId);
+            if (!eligibleBudget) throw new Error("Budget policy is not eligible for revenue envelope");
+            const remainingMonthlyBudgetUsd = Math.max(0, numberOrZero(currentBudget.monthlyBudgetUsd) - numberOrZero(currentBudget.spentMonthUsd));
+            if (input.maxCostUsd > remainingMonthlyBudgetUsd) {
+                throw new Error("Operating envelope exceeds the remaining budget policy");
+            }
+        }
+        if (input.channel === "email") {
+            const currentSender = currentSenderSnap?.exists
+                ? toPlain(currentSenderSnap.data()) as SignalDeskSenderDomainSummary
+                : null;
+            if (!isSenderDomainReady(currentSender)) throw new Error("Sender domain is not ready");
+        }
+        if (currentTemplateSnaps.some((currentTemplateSnap: any) => !currentTemplateSnap.exists || currentTemplateSnap.data()?.status !== "active")) {
+            throw new Error("Active template is required");
+        }
+        const existingEnvelope = existingEnvelopeSnap.exists
+            ? toPlain(existingEnvelopeSnap.data()) as SignalDeskOperatingEnvelopeSummary
+            : null;
+        if (existingEnvelopeSnap.exists) {
+            const existingTerms = {
+                approvalMode: existingEnvelope?.approvalMode,
+                budgetPolicyId: existingEnvelope?.budgetPolicyId || null,
+                channel: existingEnvelope?.channel,
+                commercialOfferId: existingEnvelope?.commercialOfferId,
+                dailyVolumeCap: existingEnvelope?.dailyVolumeCap,
+                expiresAt: existingEnvelope?.expiresAt,
+                fallbackAction: existingEnvelope?.fallbackAction,
+                marketPodId: existingEnvelope?.marketPodId || null,
+                maxCostUsd: existingEnvelope?.maxCostUsd,
+                name: existingEnvelope?.name,
+                requestedApprovalMode: existingEnvelope?.requestedApprovalMode,
+                senderDomainId: existingEnvelope?.senderDomainId || null,
+                sourcePolicyIds: existingEnvelope?.sourcePolicyIds,
+                startsAt: existingEnvelope?.startsAt,
+                stopConditions: existingEnvelope?.stopConditions,
+                templateIds: existingEnvelope?.templateIds,
+                totalVolumeCap: existingEnvelope?.totalVolumeCap,
+                version: existingEnvelope?.version,
+            };
+            if (JSON.stringify(existingTerms) !== JSON.stringify(immutableTerms)) {
+                throw new Error("Operating envelope version already exists with different terms");
+            }
+        }
+        const storedEnvelope = {
+            ...envelope,
+            approvedAt: status === "approved" ? timestamp : existingEnvelope?.approvedAt || null,
+            approvedBy: status === "approved" ? access.userId : existingEnvelope?.approvedBy || null,
+        };
+        transaction.set(envelopeRef, sanitizeForFirestore(storedEnvelope), { merge: true });
+        appendAudit(db, transaction, access, "operating_envelope_upsert", "operatingEnvelope", envelopeRef.id, `${requestedApprovalMode}:${executionState}`);
+        writeRunTimeline(db, transaction, {
+            entityId: envelopeRef.id,
+            entityType: "operating-envelope",
+            label: `Operating envelope: ${input.name}`,
+            status: executionState === "approval-only" ? "ready" : executionState === "held" || executionState === "paused" ? "held" : "completed",
+            steps: [
+                { label: "Existing policy references validated", status: "completed", at: toIso(timestamp) },
+                { label: `${input.dailyVolumeCap} daily / ${input.totalVolumeCap} total cap`, status: "completed", at: toIso(timestamp) },
+                { label: exceptionOnlyHeld ? "Exception-only execution held until operating proof" : `Execution remains ${executionState}`, status: exceptionOnlyHeld ? "held" : "completed", at: toIso(timestamp) },
+            ],
+        });
+        updateDailyCost(db, transaction, 4, 0);
+        return toPlain(storedEnvelope) as SignalDeskOperatingEnvelopeSummary;
+    });
+}
+
+export async function refreshSignalDeskActivationWatchServer(
+    access: SignalDeskAccessContext,
+    input: ActivationWatchInput,
+) {
+    requireRevenueOperatingLayer();
+    const db = requireDb();
+    const accountRef = db.collection(SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS).doc(revenueAccountIdFor(input.targetId));
+    const watchRef = db.collection(SIGNALDESK_COLLECTIONS.ACTIVATION_WATCHES).doc(activationWatchIdFor(input.targetId));
+    const opportunityRef = db.collection(SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES).doc(opportunityIdFor(accountRef.id));
+    const summaryRef = db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.REVENUE);
+    const outcomeCollection = db.collection(SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES);
+    const latestOutcomeQuery = outcomeCollection
+        .where("targetId", "==", input.targetId)
+        .orderBy("updatedAt", "desc")
+        .limit(30);
+    const earliestOutcomeQuery = outcomeCollection
+        .where("targetId", "==", input.targetId)
+        .orderBy("updatedAt", "asc")
+        .limit(1);
+    const activationOutcomeQuery = outcomeCollection
+        .where("targetId", "==", input.targetId)
+        .where("outcomeType", "==", "two_surface_activation")
+        .limit(1);
+    return db.runTransaction(async (transaction: any) => {
+        const [accountSnap, latestOutcomeSnap, earliestOutcomeSnap, activationOutcomeSnap, existingSnap, opportunitySnap] = await Promise.all([
+            transaction.get(accountRef),
+            transaction.get(latestOutcomeQuery),
+            transaction.get(earliestOutcomeQuery),
+            transaction.get(activationOutcomeQuery),
+            transaction.get(watchRef),
+            transaction.get(opportunityRef),
+        ]);
+        if (!accountSnap.exists) throw new Error("Revenue account not found");
+        const account = toPlain(accountSnap.data()) as SignalDeskRevenueAccountSummary;
+        const existing = existingSnap.exists ? toPlain(existingSnap.data()) as SignalDeskActivationWatchSummary : null;
+        const outcomes = latestOutcomeSnap.docs.map((doc: any) => toPlain(doc.data()) as SignalDeskOutcomeSummary);
+        const outcomeTypes = Array.from(new Set(outcomes.filter((outcome) => numberOrZero(outcome.count) > 0).map((outcome) => outcome.outcomeType)));
+        const activationRecorded = !activationOutcomeSnap.empty || existing?.status === "activated";
+        if (activationRecorded && !outcomeTypes.includes("two_surface_activation")) outcomeTypes.push("two_surface_activation");
+        const earliestOutcome = earliestOutcomeSnap.docs[0]
+            ? toPlain(earliestOutcomeSnap.docs[0].data()) as SignalDeskOutcomeSummary
+            : null;
+        const outcomeTimes = outcomes.map((outcome) => toTimestampMillis(outcome.updatedAt) || new Date(`${outcome.day}T00:00:00.000Z`).getTime()).filter(Number.isFinite);
+        const firstOutcomeMillis = earliestOutcome
+            ? toTimestampMillis(earliestOutcome.updatedAt) || new Date(`${earliestOutcome.day}T00:00:00.000Z`).getTime()
+            : null;
+        const lastOutcomeMillis = outcomeTimes.length ? Math.max(...outcomeTimes) : null;
+        const deadlineMillis = firstOutcomeMillis ? firstOutcomeMillis + (7 * 24 * 60 * 60 * 1000) : null;
+        let status: SignalDeskActivationWatchSummary["status"] = "not-started";
+        if (activationRecorded) status = "activated";
+        else if (outcomeTypes.includes("published")) status = "published";
+        else if (outcomeTypes.includes("upload_started") || outcomeTypes.includes("preview_prepared")) status = "in-progress";
+        else if (outcomeTypes.includes("route_created")) status = "routed";
+        if (status !== "activated" && status !== "not-started" && deadlineMillis && deadlineMillis < Date.now()) status = "stalled";
+        const activationState: SignalDeskRevenueAccountSummary["activationState"] = status === "activated"
+            ? "activated"
+            : status === "stalled"
+                ? "stalled"
+                : status === "routed"
+                    ? "routed"
+                    : status === "not-started"
+                        ? "not-started"
+                        : "in-progress";
+        const opportunity = opportunitySnap.exists ? toPlain(opportunitySnap.data()) as SignalDeskCommercialOpportunitySummary : null;
+        const closeOpportunity = status === "activated" && opportunity && opportunity.status !== "won";
+        const timestamp = now();
+        const nextAction = status === "activated"
+            ? "Request approved proof or referral only when eligible."
+            : status === "stalled"
+                ? "Review the stalled MenuList route without changing MenuList truth."
+                : status === "not-started"
+                    ? "Create or attach an approved MenuList route."
+                    : "Wait for the next MenuList-owned activation outcome.";
+        const watch = {
+            activationWatchId: watchRef.id,
+            deadlineAt: deadlineMillis ? new Date(deadlineMillis) : null,
+            lastOutcomeAt: lastOutcomeMillis ? new Date(lastOutcomeMillis) : null,
+            nextAction,
+            outcomeTypes,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            revenueAccountId: account.revenueAccountId,
+            source: "signaldesk-outcome-summaries",
+            status,
+            targetId: input.targetId,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+        const oldOpen = closeOpportunity && opportunity?.status === "open" ? 1 : 0;
+        const oldPipelineValue = oldOpen ? numberOrZero(opportunity?.valueMinor) : 0;
+        const oldWeightedValue = oldOpen ? Math.round(numberOrZero(opportunity?.valueMinor) * numberOrZero(opportunity?.probabilityPercent) / 100) : 0;
+        transaction.set(watchRef, sanitizeForFirestore(watch), { merge: true });
+        transaction.set(accountRef, sanitizeForFirestore({
+            activationState,
+            lifecycleStage: status === "activated" ? "customer" : account.lifecycleStage,
+            nextAction,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        }), { merge: true });
+        if (closeOpportunity && opportunity) {
+            transaction.set(opportunityRef, sanitizeForFirestore({
+                nextAction,
+                probabilityPercent: 100,
+                stage: "won",
+                status: "won",
+                updatedAt: timestamp,
+                updatedBy: access.userId,
+                winLossReason: "Two-surface activation outcome recorded.",
+            }), { merge: true });
+        }
+        transaction.set(summaryRef, sanitizeForFirestore({
+            activatedAccountCount: increment((status === "activated" ? 1 : 0) - (existing?.status === "activated" ? 1 : 0)),
+            lostOpportunityCount: increment(closeOpportunity && opportunity?.status === "lost" ? -1 : 0),
+            openOpportunityCount: increment(-oldOpen),
+            pipelineValueMinor: increment(-oldPipelineValue),
+            stalledActivationCount: increment((status === "stalled" ? 1 : 0) - (existing?.status === "stalled" ? 1 : 0)),
+            updatedAt: timestamp,
+            weightedPipelineValueMinor: increment(-oldWeightedValue),
+            wonOpportunityCount: increment(closeOpportunity ? 1 : 0),
+        }), { merge: true });
+        appendAudit(db, transaction, access, "activation_watch_refresh", "activationWatch", watchRef.id, status);
+        writeRunTimeline(db, transaction, {
+            entityId: watchRef.id,
+            entityType: "activation-watch",
+            label: `Activation watch: ${account.displayName}`,
+            status: status === "activated" ? "completed" : status === "stalled" ? "held" : status === "not-started" ? "held" : "ready",
+            steps: [
+                { label: "SignalDesk outcome summaries read", status: "completed", at: toIso(timestamp) },
+                { label: outcomeTypes.length ? outcomeTypes.join(", ") : "No activation outcomes yet", status: outcomeTypes.length ? "completed" : "held", at: toIso(timestamp) },
+                { label: `Activation state: ${status}`, status: status === "activated" ? "completed" : status === "stalled" ? "held" : "ready", at: toIso(timestamp) },
+            ],
+        });
+        updateDailyCost(db, transaction, closeOpportunity ? 7 : 6, 0);
+        return toPlain(watch) as SignalDeskActivationWatchSummary;
+    });
+}
+
 export async function createSignalDeskExperimentCardServer(access: SignalDeskAccessContext, input: ExperimentCardInput) {
     requireOperatingLayer();
     const db = requireDb();
@@ -2774,6 +3687,10 @@ export async function createSignalDeskDailyGrowthMissionServer(access: SignalDes
         trustPartners,
         outcomes,
         demandSignals,
+        commercialOpportunities,
+        activationWatches,
+        revenueControlSummaries,
+        costSnap,
     ] = await Promise.all([
         readList<SignalDeskApprovalItem>(db, SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE),
         readList<SignalDeskConversationSummary>(db, SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES),
@@ -2786,6 +3703,10 @@ export async function createSignalDeskDailyGrowthMissionServer(access: SignalDes
         readList<SignalDeskTrustPartnerProfileSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES),
         readList<SignalDeskOutcomeSummary>(db, SIGNALDESK_COLLECTIONS.OUTCOME_SUMMARIES),
         readList<SignalDeskDemandSignalSummary>(db, SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES),
+        readList<SignalDeskCommercialOpportunitySummary>(db, SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES),
+        readList<SignalDeskActivationWatchSummary>(db, SIGNALDESK_COLLECTIONS.ACTIVATION_WATCHES),
+        readList<SignalDeskRevenueControlSummary>(db, SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES),
+        db.collection(SIGNALDESK_COLLECTIONS.COST_DAILY_SUMMARIES).doc(day).get(),
     ]);
 
     type MissionAction = SignalDeskGrowthMissionSummary["missionActions"][number];
@@ -2826,6 +3747,52 @@ export async function createSignalDeskDailyGrowthMissionServer(access: SignalDes
             label: `Handle ${replyQueue.length} reply exception${replyQueue.length === 1 ? "" : "s"}`,
             reason: conversation.lastMessagePreview || "Reply state needs founder review.",
             riskLevel: conversation.state === "interested" ? "medium" : "high",
+        });
+    }
+
+    const nowMillis = Date.now();
+    const currentActivationWatches = activationWatches.map((watch) => annotateActivationWatch(watch, nowMillis));
+    const stalledActivationWatches = currentActivationWatches
+        .filter((watch) => watch.status === "stalled")
+        .sort((left, right) => (
+            (toTimestampMillis(left.deadlineAt) || Number.POSITIVE_INFINITY)
+            - (toTimestampMillis(right.deadlineAt) || Number.POSITIVE_INFINITY)
+        ));
+    if (stalledActivationWatches.length) {
+        const watch = stalledActivationWatches[0];
+        pushAction({
+            actionType: "review",
+            entityId: watch.targetId,
+            entityType: "target",
+            expectedOutcome: "Stalled activation receives one bounded recovery action without changing MenuList truth.",
+            label: `Recover ${stalledActivationWatches.length} stalled activation${stalledActivationWatches.length === 1 ? "" : "s"}`,
+            reason: watch.nextAction,
+            riskLevel: "high",
+        });
+    }
+
+    const overdueOpportunities = commercialOpportunities
+        .filter((opportunity) => (
+            opportunity.status === "open"
+            && (
+                Boolean(opportunity.stalledReason)
+                || (toTimestampMillis(opportunity.nextActionDueAt) || Number.POSITIVE_INFINITY) < nowMillis
+            )
+        ))
+        .sort((left, right) => (
+            (toTimestampMillis(left.nextActionDueAt) || Number.POSITIVE_INFINITY)
+            - (toTimestampMillis(right.nextActionDueAt) || Number.POSITIVE_INFINITY)
+        ));
+    if (overdueOpportunities.length) {
+        const opportunity = overdueOpportunities[0];
+        pushAction({
+            actionType: "review",
+            entityId: opportunity.targetId,
+            entityType: "target",
+            expectedOutcome: "The opportunity is advanced, moved to nurture, or held with a current next action.",
+            label: `Resolve ${overdueOpportunities.length} overdue revenue next action${overdueOpportunities.length === 1 ? "" : "s"}`,
+            reason: opportunity.stalledReason || opportunity.nextAction,
+            riskLevel: opportunity.stalledReason ? "high" : "medium",
         });
     }
 
@@ -2916,13 +3883,20 @@ export async function createSignalDeskDailyGrowthMissionServer(access: SignalDes
     const activeOfferCount = offerCtas.filter((offer) => offer.status === "active").length;
     const weekActivationCount = outcomes.filter((outcome) => outcome.day >= day.slice(0, 8)).reduce((sum, outcome) => sum + numberOrZero(outcome.count), 0);
     const demandSignalCount = demandSignals.reduce((sum, signal) => sum + numberOrZero(signal.count), 0);
+    const revenueSummary = revenueControlSummaries[0];
+    const cost = toPlain(costSnap.data() || {}) as Partial<SignalDeskCostSummary>;
+    const estimatedSpendToday = numberOrZero(cost.aiCostEstimate) + numberOrZero(cost.providerCostEstimate);
     const mission = {
         growthMissionId: missionRef.id,
         pId: SIGNALDESK_PRODUCT_CODE,
         day,
         title: `Daily Growth Mission - ${day}`,
-        summary: `${missionActions.length} founder action${missionActions.length === 1 ? "" : "s"} prepared from approvals, replies, sources, sender readiness, content, partner, and experiment state.`,
-        expectedOutcome: activeOfferCount
+        summary: `${missionActions.length} founder decision${missionActions.length === 1 ? "" : "s"}; ${numberOrZero(revenueSummary?.openOpportunityCount)} open opportunities; ${stalledActivationWatches.length} stalled activations; ${numberOrZero(revenueSummary?.founderAttentionMinutes)} founder minutes; $${estimatedSpendToday.toFixed(2)} estimated spend today.`,
+        expectedOutcome: stalledActivationWatches.length
+            ? "Recover the oldest stalled activation before adding more targets or send volume."
+            : overdueOpportunities.length
+                ? "Resolve the oldest overdue revenue next action before widening the pod."
+                : activeOfferCount
             ? "Move one narrow pod toward current-list upload, preview, or two-surface activation without expanding send volume."
             : "Create at least one approved offer CTA before outbound or partner work continues.",
         recommendedMarketPodId: selectedPod?.marketPodId || null,
@@ -3236,17 +4210,27 @@ export async function recommendSignalDeskMarketPodPlanServer(
     const recommendation: NonNullable<SignalDeskMarketPodSummary["recommendation"]> = confidence === "low" ? "hold" : outcomeCount ? "expand" : "activate";
     const timestamp = now();
     const podRef = db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(input.marketPodId || `market_pod_${hashValue(`${best.city}|${best.category}`).slice(0, 18)}`);
+    const existingPodSnap = await podRef.get();
+    const existingPod = existingPodSnap.exists ? toPlain(existingPodSnap.data()) as SignalDeskMarketPodSummary : null;
+    const founderControlledScope = Boolean(existingPod?.reviewedBy || existingPod?.approvedBy);
+    const status: SignalDeskMarketPodSummary["status"] = existingPod?.reviewDecision === "approved" && existingPod.approvedBy
+        ? "active"
+        : existingPod?.reviewDecision === "rejected"
+            ? "blocked"
+            : "hold";
     const pod = {
+        approvedAt: existingPod?.approvedAt || null,
+        approvedBy: existingPod?.approvedBy || null,
         marketPodId: podRef.id,
         pId: SIGNALDESK_PRODUCT_CODE,
-        name: `${best.city} ${best.category} pod`,
-        status: recommendation === "hold" ? "hold" : "active",
-        city: best.city,
-        country: "India",
-        category: best.category,
-        offerAngle: "Current-list proof and private preview.",
-        monthlyBudgetUsd: 300,
-        successMetric: outcomeCount ? "two_surface_activation" : "preview_prepared",
+        name: founderControlledScope ? existingPod?.name : `${best.city} ${best.category} pod`,
+        status,
+        city: founderControlledScope ? existingPod?.city || null : best.city,
+        country: founderControlledScope ? existingPod?.country || null : "India",
+        category: founderControlledScope ? existingPod?.category || null : best.category,
+        offerAngle: founderControlledScope ? existingPod?.offerAngle : "Current-list proof and private preview.",
+        monthlyBudgetUsd: founderControlledScope ? numberOrZero(existingPod?.monthlyBudgetUsd) : 0,
+        successMetric: founderControlledScope ? existingPod?.successMetric : outcomeCount ? "two_surface_activation" : "preview_prepared",
         confidence,
         recommendation,
         recommendationReason: `${best.count} matching targets, ${demandCount} demand signals, ${outcomeCount} outcomes.`,
@@ -3255,6 +4239,10 @@ export async function recommendSignalDeskMarketPodPlanServer(
             "Prepare evidence packets before outbound.",
             "Use one CTA until outcomes prove another angle.",
         ],
+        reviewDecision: existingPod?.reviewDecision || null,
+        reviewedAt: existingPod?.reviewedAt || null,
+        reviewedBy: existingPod?.reviewedBy || null,
+        reviewReason: existingPod?.reviewReason || null,
         updatedAt: timestamp,
         updatedBy: access.userId,
     };
@@ -3275,6 +4263,54 @@ export async function recommendSignalDeskMarketPodPlanServer(
     updateDailyCost(db, batch, 4, 0, 0);
     await batch.commit();
     return toPlain(pod) as SignalDeskMarketPodSummary;
+}
+
+export async function reviewSignalDeskMarketPodServer(
+    access: SignalDeskAccessContext,
+    input: MarketPodReviewInput,
+) {
+    requireOperatingLayer();
+    if (access.role !== "founder-admin" || !access.permissions.includes("signaldesk.configure")) {
+        throw new Error("Founder approval is required for market pod decisions");
+    }
+    const db = requireDb();
+    const podRef = db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(input.marketPodId);
+    return db.runTransaction(async (transaction: any) => {
+        const podSnap = await transaction.get(podRef);
+        if (!podSnap.exists) throw new Error("Market pod not found");
+        const existing = toPlain(podSnap.data()) as SignalDeskMarketPodSummary;
+        const timestamp = now();
+        const status: SignalDeskMarketPodSummary["status"] = input.decision === "approved"
+            ? "active"
+            : input.decision === "rejected"
+                ? "blocked"
+                : "hold";
+        const updates = {
+            approvedAt: input.decision === "approved" ? timestamp : existing.approvedAt || null,
+            approvedBy: input.decision === "approved" ? access.userId : existing.approvedBy || null,
+            reviewDecision: input.decision,
+            reviewedAt: timestamp,
+            reviewedBy: access.userId,
+            reviewReason: normalizeText(input.reason),
+            status,
+            updatedAt: timestamp,
+            updatedBy: access.userId,
+        };
+        transaction.set(podRef, sanitizeForFirestore(updates), { merge: true });
+        appendAudit(db, transaction, access, "market_pod_review", "marketPod", input.marketPodId, `${input.decision}: ${normalizeText(input.reason)}`);
+        writeRunTimeline(db, transaction, {
+            entityId: input.marketPodId,
+            entityType: "market-pod",
+            label: `Market pod reviewed: ${existing.name}`,
+            status: input.decision === "approved" ? "ready" : input.decision === "rejected" ? "blocked" : "held",
+            steps: [
+                { label: "Founder decision recorded", status: "completed", at: toIso(timestamp) },
+                { label: `Decision: ${input.decision}`, status: input.decision === "approved" ? "ready" : input.decision === "rejected" ? "blocked" : "held", at: toIso(timestamp) },
+            ],
+        });
+        updateDailyCost(db, transaction, 4, 0);
+        return toPlain({ ...existing, ...updates }) as SignalDeskMarketPodSummary;
+    });
 }
 
 export async function createSignalDeskWeeklyStrategistMemoServer(
@@ -4978,6 +6014,17 @@ export async function createSignalDeskResearchAgentRunServer(access: SignalDeskA
         const failCount = rows.filter((row) => row.fitDecision === "fail").length;
         const unsureCount = rows.filter((row) => row.fitDecision === "unsure").length;
         const completedAt = now();
+        const researchPodRef = db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(marketPodId);
+        const existingResearchPodSnap = await researchPodRef.get();
+        const existingResearchPod = existingResearchPodSnap.exists
+            ? toPlain(existingResearchPodSnap.data()) as SignalDeskMarketPodSummary
+            : null;
+        const founderControlledScope = Boolean(existingResearchPod?.reviewedBy || existingResearchPod?.approvedBy);
+        const researchPodStatus: SignalDeskMarketPodSummary["status"] = existingResearchPod?.reviewDecision === "approved" && existingResearchPod.approvedBy
+            ? "active"
+            : existingResearchPod?.reviewDecision === "rejected"
+                ? "blocked"
+                : "hold";
         const completeBatch = db.batch();
         rows.forEach((row) => {
             completeBatch.set(db.collection(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS).doc(row.researchRowId), sanitizeForFirestore({
@@ -5001,21 +6048,33 @@ export async function createSignalDeskResearchAgentRunServer(access: SignalDeskA
             unsureCount,
             updatedAt: completedAt,
         }), { merge: true });
-        completeBatch.set(db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(marketPodId), sanitizeForFirestore({
-            category,
-            city: location.city || null,
+        completeBatch.set(researchPodRef, sanitizeForFirestore({
+            approvedAt: existingResearchPod?.approvedAt || null,
+            approvedBy: existingResearchPod?.approvedBy || null,
+            category: founderControlledScope ? existingResearchPod?.category || null : category,
+            city: founderControlledScope ? existingResearchPod?.city || null : location.city || null,
             confidence: passCount > 0 ? "medium" : "low",
-            country: location.country || null,
+            country: founderControlledScope ? existingResearchPod?.country || null : location.country || null,
             marketPodId,
-            monthlyBudgetUsd: 0,
-            name: [category, location.city || location.country || "market"].filter(Boolean).join(" / "),
-            offerAngle: input.researchType === "partner-list"
+            monthlyBudgetUsd: founderControlledScope ? numberOrZero(existingResearchPod?.monthlyBudgetUsd) : 0,
+            name: founderControlledScope
+                ? existingResearchPod?.name
+                : [category, location.city || location.country || "market"].filter(Boolean).join(" / "),
+            offerAngle: founderControlledScope
+                ? existingResearchPod?.offerAngle
+                : input.researchType === "partner-list"
                 ? "Find trusted operators who can introduce MenuList to restaurant owners."
                 : "Find businesses with weak current-list presence and route them to a reviewable MenuList preview.",
             recommendation: passCount > 0 ? "activate" : "hold",
             recommendationReason: `${passCount} pass, ${unsureCount} unsure, ${failCount} fail from research run ${researchRunId}.`,
-            status: passCount > 0 ? "active" : "hold",
-            successMetric: "Activated businesses with current lists live on two customer surfaces within seven days.",
+            reviewDecision: existingResearchPod?.reviewDecision || null,
+            reviewedAt: existingResearchPod?.reviewedAt || null,
+            reviewedBy: existingResearchPod?.reviewedBy || null,
+            reviewReason: existingResearchPod?.reviewReason || null,
+            status: researchPodStatus,
+            successMetric: founderControlledScope
+                ? existingResearchPod?.successMetric
+                : "Activated businesses with current lists live on two customer surfaces within seven days.",
             updatedAt: completedAt,
         }), { merge: true });
         writeRunTimeline(db, completeBatch, {
@@ -5871,7 +6930,25 @@ export async function captureSignalDeskReplyServer(access: SignalDeskAccessConte
     updateDailyCost(db, batch, 7, 0);
     await batch.commit();
 
-    return { conversationId: conversationRef.id, state };
+    let revenueSyncStatus: "not-applicable" | "updated" | "pending" = "not-applicable";
+    if (state === "interested" && FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER) {
+        try {
+            await qualifySignalDeskRevenueAccountServer(access, {
+                locationType: "single-location",
+                targetId: input.targetId,
+            });
+            revenueSyncStatus = "updated";
+        } catch (error) {
+            revenueSyncStatus = "pending";
+            logRuntimeFailure(SIGNALDESK_INTERESTED_REPLY_REVENUE_SYNC_FAILED, error, {
+                channel: input.channel,
+                product: "signaldesk",
+                targetIdPresent: true,
+            });
+        }
+    }
+
+    return { conversationId: conversationRef.id, revenueSyncStatus, state };
 }
 
 export async function recordSignalDeskOutcomeServer(access: SignalDeskAccessContext, input: {
@@ -5928,7 +7005,33 @@ export async function recordSignalDeskOutcomeServer(access: SignalDeskAccessCont
     updateDailyCost(db, batch, 5, 0);
     await batch.commit();
 
-    return { outcomeEventId: outcomeRef.id, outcomeSummaryId: summaryId };
+    let activationWatch: SignalDeskActivationWatchSummary | null = null;
+    let activationWatchSyncStatus: "not-applicable" | "updated" | "pending" = "not-applicable";
+    if (input.targetId && FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER) {
+        const accountSnap = await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_ACCOUNTS)
+            .doc(revenueAccountIdFor(input.targetId))
+            .get();
+        if (accountSnap.exists) {
+            try {
+                activationWatch = await refreshSignalDeskActivationWatchServer(access, { targetId: input.targetId });
+                activationWatchSyncStatus = "updated";
+            } catch (error) {
+                activationWatchSyncStatus = "pending";
+                logRuntimeFailure(SIGNALDESK_ACTIVATION_WATCH_AUTO_SYNC_FAILED, error, {
+                    outcomeType: input.outcomeType,
+                    product: "signaldesk",
+                    targetIdPresent: true,
+                });
+            }
+        }
+    }
+
+    return {
+        activationWatch,
+        activationWatchSyncStatus,
+        outcomeEventId: outcomeRef.id,
+        outcomeSummaryId: summaryId,
+    };
 }
 
 export async function captureSignalDeskDemandSignalServer(access: SignalDeskAccessContext, input: {

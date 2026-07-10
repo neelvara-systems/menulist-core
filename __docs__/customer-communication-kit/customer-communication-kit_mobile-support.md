@@ -25,7 +25,7 @@
 - **UI Library:** antd-mobile `Card` + `Button`
 - **Primary action:** "Send via WhatsApp" (India = WhatsApp-first market)
 - **Secondary action:** "Copy Message"
-- **Data Source:** Same store data from context, same `generateMessageTemplates()` function
+- **Data Source:** Same store data from context, same `generateMessageTemplates()` function. Staff Daily Replies use the same browser-local template path, so desktop and mobile show the same staff handoff without a separate mobile data loader.
 - **Diagnostics:** Failed mobile copy, native share, and WhatsApp handoff actions log `mobile_communication_kit_copy_failed`, `mobile_communication_kit_native_share_failed`, and `mobile_communication_kit_whatsapp_open_failed` with bounded Mobile Share context plus generated-message and WhatsApp URL lengths only. Desktop copy and WhatsApp handoff failures log `use_menulist_communication_kit_copy_failed` and `use_menulist_communication_kit_whatsapp_open_failed` with bounded Use MenuList context plus generated-message and WhatsApp URL lengths only. Desktop and mobile copied feedback must wait for Clipboard API or acknowledged textarea fallback success; failed copy diagnostics may include clipboard/fallback support booleans. WhatsApp handoffs open with `noopener,noreferrer`.
 
 ## Design Priority
@@ -43,3 +43,4 @@ Same NextAuth session, same RBAC — no separate mobile auth.
 ---
 
 **Created:** March 15, 2026
+**Last Updated:** July 9, 2026

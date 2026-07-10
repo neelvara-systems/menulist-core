@@ -10,6 +10,7 @@
  */
 
 import { StarDisplay } from '@atoms/GuestFeedbackForm/StarRating';
+import { buildFeedbackReplyTemplates, type FeedbackReplyTemplate } from '@lib/feedback/feedbackReplyTemplates';
 import { formatPhoneForDisplay, generateWhatsAppLink, isValidWhatsAppNumber } from '@lib/utils/whatsappLink';
 import { GuestFeedback } from '@type/guestFeedback';
 import { toDate } from '@util/dateTime';
@@ -19,12 +20,69 @@ import { useTranslations } from 'next-intl';
 import React, { useState } from 'react';
 import {
     LuCheck,
+    LuCopy,
     LuMail,
     LuMessageCircle,
     LuPhone,
     LuRotateCcw,
     LuUser,
 } from 'react-icons/lu';
+import { getBoundedFeedbackInboxStringContext, logFeedbackInboxFailure } from './feedbackInboxDiagnostics';
+
+const DESKTOP_FEEDBACK_REPLY_COPY_UNAVAILABLE = 'desktop_feedback_reply_copy_unavailable';
+const DESKTOP_FEEDBACK_REPLY_COPY_FALLBACK_FAILED = 'desktop_feedback_reply_copy_fallback_failed';
+
+const hasFeedbackReplyClipboardWrite = () =>
+    typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function';
+
+const hasFeedbackReplyCopyFallback = () =>
+    typeof document !== 'undefined'
+    && Boolean(document.body)
+    && typeof document.createElement === 'function'
+    && typeof document.execCommand === 'function';
+
+async function copyFeedbackReplyToClipboard(value: string): Promise<void> {
+    let clipboardWriteError: unknown;
+
+    if (hasFeedbackReplyClipboardWrite()) {
+        try {
+            await navigator.clipboard.writeText(value);
+            return;
+        } catch (error) {
+            clipboardWriteError = error;
+        }
+    }
+
+    if (!hasFeedbackReplyCopyFallback()) {
+        throw Object.assign(new Error(DESKTOP_FEEDBACK_REPLY_COPY_UNAVAILABLE), {
+            code: DESKTOP_FEEDBACK_REPLY_COPY_UNAVAILABLE,
+            clipboardWriteRejected: Boolean(clipboardWriteError),
+        });
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.readOnly = true;
+    textarea.setAttribute('aria-hidden', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    try {
+        const copied = document.execCommand('copy');
+        if (!copied) {
+            throw Object.assign(new Error(DESKTOP_FEEDBACK_REPLY_COPY_FALLBACK_FAILED), {
+                code: DESKTOP_FEEDBACK_REPLY_COPY_FALLBACK_FAILED,
+            });
+        }
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
 
 interface FeedbackCardProps {
     /** Feedback data */
@@ -47,6 +105,13 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
     const hasContactInfo = feedback.customerPhone || feedback.customerEmail || feedback.customerName;
     const isResolved = feedback.status === 'resolved';
     const needsAttention = feedback.rating <= 3 && !isResolved;
+    const replyTemplates = buildFeedbackReplyTemplates({
+        customerName: feedback.customerName,
+        rating: feedback.rating,
+        storeName,
+    });
+    const primaryReplyTemplate = replyTemplates[0];
+    const canOpenWhatsApp = Boolean(feedback.customerPhone && isValidWhatsAppNumber(feedback.customerPhone));
 
     const handleStatusToggle = async () => {
         if (!onStatusUpdate) return;
@@ -66,6 +131,23 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
         if (!timestamp) return '';
         const date = toDate(timestamp);
         return timeAgo(date);
+    };
+
+    const handleCopyReply = async (replyTemplate: FeedbackReplyTemplate) => {
+        try {
+            await copyFeedbackReplyToClipboard(replyTemplate.message);
+            message.success('Reply copied');
+        } catch (error) {
+            logFeedbackInboxFailure('desktop_feedback_reply_copy_failed', error, {
+                ...getBoundedFeedbackInboxStringContext('feedbackId', feedback.id),
+                ...getBoundedFeedbackInboxStringContext('templateId', replyTemplate.id),
+                ...getBoundedFeedbackInboxStringContext('templateTitle', replyTemplate.title),
+                replyMessageLength: replyTemplate.message.length,
+                hasClipboardWrite: hasFeedbackReplyClipboardWrite(),
+                hasCopyFallback: hasFeedbackReplyCopyFallback(),
+            });
+            message.error('Could not copy reply');
+        }
     };
 
     return (
@@ -140,12 +222,12 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                                 </span>
 
                                 {/* WhatsApp Button */}
-                                {isValidWhatsAppNumber(feedback.customerPhone) && (
+                                {canOpenWhatsApp && (
                                     <Tooltip title="Open WhatsApp">
                                         <a
                                             href={generateWhatsAppLink(
                                                 feedback.customerPhone,
-                                                `Hi${feedback.customerName ? ` ${feedback.customerName}` : ''}, thank you for your feedback. We'd love to make things right.`
+                                                primaryReplyTemplate.message
                                             )}
                                             target="_blank"
                                             rel="noopener noreferrer"
@@ -175,7 +257,58 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                 </div>
             )}
 
-                {/* Actions */}
+            {needsAttention && (
+                <div
+                    className="rounded-lg p-3 mb-4"
+                    style={{ backgroundColor: token.colorFillTertiary, border: `1px solid ${token.colorBorderSecondary}` }}
+                >
+                    <div className="text-sm font-medium mb-2" style={{ color: token.colorText }}>
+                        Reply drafts
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+                        {replyTemplates.map((replyTemplate) => (
+                            <div
+                                key={replyTemplate.id}
+                                className="rounded-md p-2 flex flex-col gap-2 min-w-0"
+                                style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}
+                            >
+                                <div className="text-xs font-medium" style={{ color: token.colorText }}>
+                                    {replyTemplate.title}
+                                </div>
+                                <div
+                                    className="text-xs whitespace-pre-wrap"
+                                    style={{ color: token.colorTextSecondary, lineHeight: 1.45 }}
+                                >
+                                    {replyTemplate.message}
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <Button
+                                        icon={<LuCopy size={12} />}
+                                        onClick={() => void handleCopyReply(replyTemplate)}
+                                        size="small"
+                                    >
+                                        Copy
+                                    </Button>
+                                    {canOpenWhatsApp && feedback.customerPhone && (
+                                        <Button
+                                            href={generateWhatsAppLink(feedback.customerPhone, replyTemplate.message)}
+                                            icon={<LuMessageCircle size={12} />}
+                                            rel="noopener noreferrer"
+                                            size="small"
+                                            target="_blank"
+                                            type="link"
+                                        >
+                                            WhatsApp
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="text-xs" style={{ color: token.colorTextTertiary }}>
                     via {feedback.source === 'feedback_qr' ? 'QR Code' : feedback.source === 'direct_link' ? 'Direct Link' : 'Menu Footer'}

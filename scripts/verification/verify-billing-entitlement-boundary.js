@@ -83,7 +83,7 @@ function verifyBillingEntitlementBoundary() {
   const aiBillingExplainerDoc = read('__docs__/ai-enhancement-packs/ai-billing-explainer.md');
   const pricingStrategyDoc = read('__docs__/strategy/pricing-strategy.md');
   const auditDoc = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const lowercaseChangelog = read('__docs__/changelog.md');
 
   assert(
@@ -344,11 +344,11 @@ function verifyBillingEntitlementBoundary() {
   assertIncludes(read('__docs__/razorpay/razorpay_impl.md'), 'MenuList Billing Subscription Scope Document ID Boundary', 'Razorpay implementation docs must record subscription scope boundary');
   assertIncludes(read('__docs__/razorpay/razorpay_firebase.md'), 'MenuList Billing Subscription Scope Document ID Boundary', 'Razorpay Firebase docs must record subscription scope boundary');
   assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'MenuList Billing Subscription Scope Document ID Boundary checkpoint', 'Production audit must record subscription scope boundary');
-  assertIncludes(read('__docs__/CHANGELOG.md'), 'Billing Subscription Scope Document ID Boundary', 'Changelog must record subscription scope boundary');
+  assertIncludes(read('__docs__/changelog.md'), 'Billing Subscription Scope Document ID Boundary', 'Changelog must record subscription scope boundary');
   assertIncludes(read('__docs__/changelog.md'), 'Billing Subscription Scope Document ID Boundary', 'Lowercase changelog must record subscription scope boundary');
   assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'whitespace-mutated subscription IDs', 'Production audit must record strict subscription document ID admission');
   assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'whitespace-mutated order IDs', 'Production audit must record strict top-up order document ID admission');
-  assertIncludes(read('__docs__/CHANGELOG.md'), 'Billing Strict Provider Document ID Boundaries', 'Changelog must record strict billing provider document ID boundaries');
+  assertIncludes(read('__docs__/changelog.md'), 'Billing Strict Provider Document ID Boundaries', 'Changelog must record strict billing provider document ID boundaries');
   assertIncludes(read('__docs__/changelog.md'), 'Billing Strict Provider Document ID Boundaries', 'Lowercase changelog must record strict billing provider document ID boundaries');
 
   [
@@ -411,7 +411,9 @@ function verifyBillingEntitlementBoundary() {
     'await onUpgradePlan(sub, plan, currency)',
     'await onClickPaymentCard(plan, currency',
     'await handleTopupPurchase(pack, currency)',
-    'await onCancelSubscription({ reason: \'mobile_cancellation\'',
+    'await onCancelSubscription({',
+    'reason: cancellationReason',
+    'otherReason: cancellationReason === CANCELLATION_REASON.OTHER',
   ].forEach((token) => assertIncludes(mobileBilling, token, 'mobile billing payment hook parity'));
 
   [
@@ -524,6 +526,23 @@ function verifyBillingEntitlementBoundary() {
     '**Status: Implemented — billing-slice audited; full MenuList certification pending**',
     'AI billing explainer launch boundary',
   );
+  [
+    ['AI billing explainer', aiBillingExplainerDoc],
+    ['AI Enhancement Packs implementation', aiEnhancementImplDoc],
+    ['AI usage audit', aiUsageAuditDoc],
+  ].forEach(([label, content]) => {
+    [
+      'Not current launch certification or deploy approval',
+      'External Certification Runbook',
+      '`npm run verify:production-readiness-local`',
+      '`npm run verify:billing-entitlement-boundary`',
+      '`npm run verify:ai-accounting`',
+      'Razorpay sandbox subscription/top-up/reseller/webhook smoke',
+      'desktop/mobile Billing browser QA',
+      'target deploy evidence',
+      'production-host smoke',
+    ].forEach((token) => assertIncludes(content, token, `${label} top launch boundary`));
+  });
   assertIncludes(
     aiBillingExplainerDoc,
     'monthlyCredits = 200  (full starting balance after subscription activation)',
@@ -618,6 +637,17 @@ function verifyBillingEntitlementBoundary() {
     'no longer present Razorpay, pricing, or AI Enhancement Pack billing evidence as current production certification',
     'Razorpay sandbox subscription/top-up/reseller/webhook smoke',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit billing doc-boundary evidence'));
+
+  [
+    'AI billing and AI System Layer top-boundary checkpoint',
+    'AI billing explainer, implementation plan, and historical usage audit',
+    'Razorpay sandbox subscription/top-up/reseller/webhook smoke',
+  ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit AI billing top-boundary evidence'));
+
+  [
+    'AI Billing and System Layer Doc Boundary',
+    'AI billing and usage docs carry top-level launch boundaries',
+  ].forEach((token) => assertIncludes(changelog, token, 'Changelog AI billing top-boundary evidence'));
 }
 
 verifyBillingEntitlementBoundary();

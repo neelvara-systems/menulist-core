@@ -23,10 +23,17 @@ import {
     type AiMenuManagerPromptSuggestion,
 } from '@lib/ai-menu-manager/projectPromptHints';
 import {
+    buildAiMenuManagerTimeline,
+    getAiMenuManagerProjectStatusLine,
+    type AiMenuManagerTimelineMessage,
+} from '@lib/ai-menu-manager/presentation';
+import {
+    buildAiMenuManagerClientBatchExecution,
     buildAiMenuManagerClientExecutionDirective,
     cancelAiMenuManagerClientOperation,
     completeAiMenuManagerClientProposal,
     completeAiMenuManagerClientOperation,
+    completeAiMenuManagerClientOperations,
     getAiMenuManagerClientInbox,
     sendAiMenuManagerCommand,
     submitAiMenuManagerProposalAction,
@@ -37,13 +44,15 @@ import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem }
 import type { Project } from '@template/main-app/projects/types';
 import type {
     AiMenuManagerCardPayload,
+    AiMenuManagerCommandContextSelection,
     AiMenuManagerPendingOperation,
     AiMenuManagerReceipt,
     AiMenuManagerSessionDoc,
+    AiMenuManagerSuggestedReply,
 } from '@type/aiMenuManager';
 import { removeObjRef } from '@util/utils';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { App, Button, Card, Empty, Input, Modal, Space, Spin, Tag, Typography, theme } from 'antd';
+import { App, Button, Card, Dropdown, Empty, Input, Modal, Space, Spin, Tag, Typography, theme } from 'antd';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuBot,
@@ -58,6 +67,7 @@ import {
     LuMegaphone,
     LuMessageSquare,
     LuPalette,
+    LuPlus,
     LuSearch,
     LuSend,
     LuSlidersHorizontal,
@@ -81,31 +91,6 @@ type ProjectSummary = {
     specialMenuEndsAt?: string;
     specialMenuStatus?: ProjectSelectorItem['specialMenuStatus'];
 };
-
-type TimelineMessage = {
-    id: string;
-    role: 'owner' | 'menu_manager';
-    text: string;
-};
-
-function compactMessagesToTimeline(compactMessages?: AiMenuManagerSessionDoc['compactMessages']): TimelineMessage[] {
-    return (compactMessages || []).reduce<TimelineMessage[]>((messages, entry) => {
-        const role = entry.role === 'owner' ? 'owner' : 'menu_manager';
-        if (role === 'menu_manager') {
-            return messages;
-        }
-        const previous = messages[messages.length - 1];
-        if (previous?.role === role && previous.text === entry.text) {
-            return messages;
-        }
-        messages.push({
-            id: entry.messageId,
-            role,
-            text: entry.text,
-        });
-        return messages;
-    }, []);
-}
 
 const promptIconByKind: Record<AiMenuManagerPromptKind, typeof LuIndianRupee> = {
     availability: LuCircleSlash,
@@ -134,7 +119,7 @@ export default function AiMenuManagerRoute() {
     const [currentSession, setCurrentSession] = useState<AiMenuManagerSessionDoc | null>(null);
     const [operations, setOperations] = useState<AiMenuManagerPendingOperation[]>([]);
     const [receipts, setReceipts] = useState<AiMenuManagerReceipt[]>([]);
-    const [timeline, setTimeline] = useState<TimelineMessage[]>([]);
+    const [timeline, setTimeline] = useState<AiMenuManagerTimelineMessage[]>([]);
     const [input, setInput] = useState('');
     const [composerContext, setComposerContext] = useState<AiMenuManagerComposerContext>({
         selectedEntityIds: [],
@@ -183,6 +168,7 @@ export default function AiMenuManagerRoute() {
     const attentionSuggestions = useMemo(() => getAiMenuManagerAttentionSuggestions(selectedProject), [selectedProject]);
     const starterSuggestions = useMemo(() => getAiMenuManagerStarterSuggestions(promptGroups), [promptGroups]);
     const emptyStateSuggestions = attentionSuggestions.length ? attentionSuggestions : starterSuggestions;
+    const projectStatusLine = useMemo(() => getAiMenuManagerProjectStatusLine(selectedProject), [selectedProject]);
     const composerContextData = useMemo(() => getAiMenuManagerComposerContextData({
         businessType,
         project: selectedProject,
@@ -232,6 +218,25 @@ export default function AiMenuManagerRoute() {
     const pendingSummaryCards = useMemo(() => (
         cards.filter((card) => card.kind === 'proposal' || card.kind === 'manual_task')
     ), [cards]);
+    const approvalGroups = useMemo(() => {
+        const grouped = new Map<string, AiMenuManagerPendingOperation[]>();
+        operations.forEach((operation) => {
+            if (
+                !operation.commandGroupId
+                || operation.executionMode !== 'client_project_mutation'
+                || operation.card.kind !== 'proposal'
+                || operation.card.status !== 'pending_approval'
+                || !operation.patch
+            ) return;
+            grouped.set(operation.commandGroupId, [
+                ...(grouped.get(operation.commandGroupId) || []),
+                operation,
+            ]);
+        });
+        return Array.from(grouped.entries())
+            .filter(([, groupOperations]) => groupOperations.length > 1)
+            .map(([groupId, groupOperations]) => ({ groupId, operations: groupOperations }));
+    }, [operations]);
 
     const removeOperation = useCallback((operationId: string, receipt?: AiMenuManagerReceipt) => {
         setOperations((prev) => prev.filter((entry) => entry.operationId !== operationId));
@@ -240,6 +245,15 @@ export default function AiMenuManagerRoute() {
                 receipt,
                 ...prev.filter((entry) => entry.proposalId !== receipt.proposalId),
             ].slice(0, 20));
+            setTimeline((prev) => [
+                ...prev.filter((entry) => entry.id !== `${receipt.receiptId}_manager`),
+                {
+                    id: `${receipt.receiptId}_manager`,
+                    kind: 'receipt',
+                    role: 'menu_manager',
+                    text: receipt.message,
+                },
+            ]);
         }
     }, []);
 
@@ -285,7 +299,11 @@ export default function AiMenuManagerRoute() {
             setCurrentSession(inbox.session || null);
             setOperations(nextOperations);
             setReceipts(nextReceipts);
-            setTimeline(compactMessagesToTimeline(inbox.session?.compactMessages));
+            setTimeline(buildAiMenuManagerTimeline({
+                activeCards: nextOperations.map((operation) => operation.card),
+                compactMessages: inbox.session?.compactMessages,
+                receipts: nextReceipts,
+            }));
         } catch (error: any) {
             logRuntimeFailure('ai_menu_manager_selected_project_load_failed', error, {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
@@ -429,19 +447,24 @@ export default function AiMenuManagerRoute() {
         setCurrentSession(session);
         setOperations(nextOperations);
         setReceipts(nextReceipts);
-        setTimeline(compactMessagesToTimeline(session.compactMessages));
+        setTimeline(buildAiMenuManagerTimeline({
+            activeCards: nextOperations.map((operation) => operation.card),
+            compactMessages: session.compactMessages,
+            receipts: nextReceipts,
+        }));
     }, []);
 
     const submitPrompt = useCallback(async (
         prompt?: string,
         options?: {
+            composerContext?: AiMenuManagerCommandContextSelection;
             ignoreComposerContext?: boolean;
             replaceOperationId?: string;
         },
     ) => {
         const rawText = (prompt ?? input).trim();
         if (!rawText) return;
-        const shouldUseComposerContext = !options?.ignoreComposerContext;
+        const shouldUseComposerContext = !options?.ignoreComposerContext && !options?.composerContext;
         if (
             shouldUseComposerContext
             && !canUseAiMenuManagerComposerContext({ data: composerContextData, selection: composerContext })
@@ -456,12 +479,18 @@ export default function AiMenuManagerRoute() {
                 selection: composerContext,
             }).trim()
             : rawText;
-        const commandContext = shouldUseComposerContext && composerContext.target
-            ? {
+        let commandContext: AiMenuManagerCommandContextSelection | undefined;
+        if (options?.composerContext?.target) {
+            commandContext = {
+                target: options.composerContext.target,
+                selectedEntityIds: options.composerContext.selectedEntityIds || [],
+            };
+        } else if (shouldUseComposerContext && composerContext.target) {
+            commandContext = {
                 target: composerContext.target,
                 selectedEntityIds: composerContext.selectedEntityIds,
-            }
-            : undefined;
+            };
+        }
         if (!text) return;
         if (!storeId || !selectedProjectId || !selectedProject) {
             message.warning('Choose a store and menu first');
@@ -470,8 +499,9 @@ export default function AiMenuManagerRoute() {
 
         setSubmitting(true);
         setInput('');
-        const ownerMessage: TimelineMessage = {
+        const ownerMessage: AiMenuManagerTimelineMessage = {
             id: `local_owner_${Date.now()}`,
+            kind: 'reply',
             role: 'owner',
             text,
         };
@@ -505,6 +535,7 @@ export default function AiMenuManagerRoute() {
                     ...prev,
                     {
                         id: response.messageId,
+                        kind: 'reply',
                         role: 'menu_manager',
                         text: response.cards[0]?.title || 'Prepared a menu card',
                     },
@@ -524,12 +555,93 @@ export default function AiMenuManagerRoute() {
         }
     }, [applySessionState, businessType, clearComposerContext, composerContext, composerContextData, currentSession, getSessionIdForProject, input, message, rememberSessionId, selectedProject, selectedProjectId, storeId, storeName, storePublicContext]);
 
-    const resolveClarification = useCallback((card: AiMenuManagerCardPayload, prompt: string) => {
-        void submitPrompt(prompt, {
+    const resolveClarification = useCallback((card: AiMenuManagerCardPayload, reply: AiMenuManagerSuggestedReply) => {
+        void submitPrompt(reply.prompt, {
+            composerContext: reply.composerContext,
             ignoreComposerContext: true,
             replaceOperationId: card.cardId,
         });
     }, [submitPrompt]);
+
+    const approveOperationGroup = useCallback(async (groupId: string) => {
+        if (!storeId || !selectedProject) return;
+        const groupOperations = operations.filter((operation) => operation.commandGroupId === groupId);
+        if (groupOperations.length < 2) {
+            message.error('Prepared updates no longer match this request');
+            return;
+        }
+
+        setWorkingCardId(groupId);
+        let projectWasUpdated = false;
+        try {
+            let savedProject = selectedProject;
+            const alreadyApplied = groupOperations.every((operation) => (
+                operation.patch && projectContainsAiMenuManagerPatch(selectedProject, operation.patch)
+            ));
+            if (!alreadyApplied) {
+                const batch = buildAiMenuManagerClientBatchExecution({
+                    operations: groupOperations,
+                    project: selectedProject,
+                    storeName,
+                    businessType,
+                });
+                const saved = await updateProjectWithoutLoader(batch.patchedProject);
+                assertProjectUpdateSucceeded(
+                    saved,
+                    batch.patchedProject.projectId,
+                    'ai_menu_manager_group_project_update_rejected',
+                );
+                savedProject = removeObjRef(saved || batch.patchedProject) as Project;
+                projectWasUpdated = true;
+                setSelectedProject(savedProject);
+            }
+
+            try {
+                const result = await completeAiMenuManagerClientOperations({
+                    operations: groupOperations,
+                    result: 'executed',
+                    sessionSnapshot: currentSession,
+                });
+                applySessionState(result.session);
+                message.success(alreadyApplied
+                    ? 'Menu already matches these updates'
+                    : `${groupOperations.length} menu updates applied`);
+            } catch (error) {
+                logRuntimeFailure('ai_menu_manager_group_receipt_completion_failed', error, {
+                    ...getBoundedRuntimeStringContext('storeId', storeId),
+                    ...getBoundedRuntimeStringContext('projectId', savedProject.projectId),
+                    ...getBoundedRuntimeStringContext('commandGroupId', groupId),
+                    actionCount: groupOperations.length,
+                });
+                message.warning('Menu updated. Receipts could not be saved. Approve these cards again to finish them.');
+            }
+        } catch (error) {
+            logRuntimeFailure('ai_menu_manager_group_apply_failed', error, {
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('projectId', selectedProject.projectId),
+                ...getBoundedRuntimeStringContext('commandGroupId', groupId),
+                actionCount: groupOperations.length,
+            });
+            if (!projectWasUpdated) {
+                const failedResult = await completeAiMenuManagerClientOperations({
+                    operations: groupOperations,
+                    result: 'failed',
+                    sessionSnapshot: currentSession,
+                }).catch((completionError) => {
+                    logRuntimeFailure('ai_menu_manager_group_failed_completion_failed', completionError, {
+                        ...getBoundedRuntimeStringContext('storeId', storeId),
+                        ...getBoundedRuntimeStringContext('projectId', selectedProject.projectId),
+                        ...getBoundedRuntimeStringContext('commandGroupId', groupId),
+                    });
+                    return null;
+                });
+                if (failedResult?.session) applySessionState(failedResult.session);
+            }
+            message.error('Unable to apply these prepared updates.');
+        } finally {
+            setWorkingCardId(null);
+        }
+    }, [applySessionState, businessType, currentSession, message, operations, selectedProject, storeId, storeName]);
 
     const completeDirective = useCallback(async (card: AiMenuManagerCardPayload) => {
         if (!storeId || !selectedProject) return;
@@ -838,8 +950,16 @@ export default function AiMenuManagerRoute() {
                                 <div style={{ minWidth: 0 }}>
                                     <Title level={3} style={{ margin: 0 }}>Menu Manager</Title>
                                     <Paragraph type="secondary" style={{ marginBottom: 0, marginTop: 4 }}>
-                                        Tell MenuList what changed. Review the prepared card before it updates the selected menu.
+                                        Ask a question or prepare a change for the selected menu.
                                     </Paragraph>
+                                    {projectStatusLine ? (
+                                        <Text
+                                            type="secondary"
+                                            style={{ display: 'block', fontSize: 12, marginTop: 6 }}
+                                        >
+                                            {projectStatusLine}
+                                        </Text>
+                                    ) : null}
                                 </div>
                             </Space>
                             <div style={{ flex: '0 1 420px', minWidth: 300 }}>
@@ -870,12 +990,18 @@ export default function AiMenuManagerRoute() {
                                         }}
                                     >
                                         <Title level={4} style={{ marginBottom: 6 }}>
-                                            {attentionSuggestions.length ? 'Needs attention' : 'What should change?'}
+                                            {attentionSuggestions.length ? 'Start with what needs attention' : 'What should change?'}
                                         </Title>
                                         <Text type="secondary">
                                             {attentionSuggestions.length
-                                                ? 'Start with a loaded-menu issue, or type your own message.'
-                                                : 'Start from a message, a suggestion, or a selected menu area.'}
+                                                ? 'Use a loaded-menu issue, ask a question, or type what changed.'
+                                                : 'Type naturally, choose a suggestion, or select what to work on.'}
+                                        </Text>
+                                        <Text
+                                            type="secondary"
+                                            style={{ alignItems: 'center', display: 'inline-flex', gap: 6, marginTop: 10 }}
+                                        >
+                                            <LuCheck size={14} /> Nothing changes before you approve.
                                         </Text>
                                         {emptyStateSuggestions.length ? (
                                             <div
@@ -898,7 +1024,7 @@ export default function AiMenuManagerRoute() {
                                                                 alignItems: 'flex-start',
                                                                 background: token.colorBgElevated,
                                                                 border: `1px solid ${token.colorBorderSecondary}`,
-                                                                borderRadius: 12,
+                                                                borderRadius: 8,
                                                                 color: token.colorText,
                                                                 cursor: 'pointer',
                                                                 display: 'flex',
@@ -913,7 +1039,7 @@ export default function AiMenuManagerRoute() {
                                                                 style={{
                                                                     alignItems: 'center',
                                                                     background: token.colorFillTertiary,
-                                                                    borderRadius: 10,
+                                                                    borderRadius: 8,
                                                                     color: token.colorPrimary,
                                                                     display: 'inline-flex',
                                                                     flexShrink: 0,
@@ -947,23 +1073,68 @@ export default function AiMenuManagerRoute() {
                                     >
                                         <div
                                             style={{
-                                                background: entry.role === 'owner' ? token.colorPrimary : token.colorBgElevated,
-                                                border: entry.role === 'owner' ? undefined : `1px solid ${token.colorBorderSecondary}`,
+                                                alignItems: 'flex-start',
+                                                background: entry.role === 'owner'
+                                                    ? token.colorPrimary
+                                                    : entry.kind === 'receipt'
+                                                        ? token.colorSuccessBg
+                                                        : token.colorBgElevated,
+                                                border: entry.role === 'owner'
+                                                    ? undefined
+                                                    : `1px solid ${entry.kind === 'receipt' ? token.colorSuccessBorder : token.colorBorderSecondary}`,
                                                 borderRadius: 18,
                                                 color: entry.role === 'owner' ? token.colorTextLightSolid : token.colorText,
+                                                display: 'flex',
+                                                gap: 8,
                                                 maxWidth: 620,
                                                 padding: '10px 14px',
                                             }}
                                         >
-                                            {entry.text}
+                                            {entry.kind === 'receipt' ? (
+                                                <LuCheck color={token.colorSuccess} size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                                            ) : null}
+                                            <span>{entry.text}</span>
                                         </div>
+                                    </div>
+                                ))}
+                                {approvalGroups.map((group) => (
+                                    <div
+                                        key={`approval_group_${group.groupId}`}
+                                        style={{
+                                            alignItems: 'center',
+                                            background: token.colorPrimaryBg,
+                                            border: `1px solid ${token.colorPrimaryBorder}`,
+                                            borderRadius: 8,
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            gap: 12,
+                                            justifyContent: 'space-between',
+                                            padding: '12px 14px',
+                                        }}
+                                    >
+                                        <div>
+                                            <Text strong>{group.operations.length} updates prepared together</Text>
+                                            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 2 }}>
+                                                Review the cards below, then apply them with one menu save.
+                                            </Text>
+                                        </div>
+                                        <Button
+                                            type="primary"
+                                            icon={<LuCheck />}
+                                            disabled={Boolean(workingCardId)}
+                                            loading={workingCardId === group.groupId}
+                                            onClick={() => approveOperationGroup(group.groupId)}
+                                            style={{ minHeight: 44 }}
+                                        >
+                                            Approve all
+                                        </Button>
                                     </div>
                                 ))}
                                 {cards.map((card) => (
                                     <AiMenuProposalCard
                                         key={`card_${card.cardId}`}
                                         card={card}
-                                        disabled={workingCardId === card.cardId}
+                                        disabled={Boolean(workingCardId)}
                                         onApprove={completeDirective}
                                         onCancel={cancelCard}
                                         onDraftPrompt={draftPrompt}
@@ -998,7 +1169,7 @@ export default function AiMenuManagerRoute() {
                                 <div>
                                     <Text strong>Suggestions</Text>
                                     <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                                        Choose one to place it in the message box. Send it when ready.
+                                        Pick one to draft it. You can edit before sending.
                                     </Text>
                                 </div>
                                 <Button
@@ -1043,7 +1214,7 @@ export default function AiMenuManagerRoute() {
                                                             alignItems: 'center',
                                                             background: token.colorFillTertiary,
                                                             border: `1px solid ${token.colorBorderSecondary}`,
-                                                            borderRadius: 12,
+                                                            borderRadius: 8,
                                                             color: token.colorText,
                                                             cursor: 'pointer',
                                                             display: 'flex',
@@ -1099,7 +1270,7 @@ export default function AiMenuManagerRoute() {
                                                             alignItems: 'center',
                                                             background: token.colorFillTertiary,
                                                             border: `1px solid ${token.colorBorderSecondary}`,
-                                                            borderRadius: 12,
+                                                            borderRadius: 8,
                                                             color: token.colorText,
                                                             cursor: 'pointer',
                                                             display: 'flex',
@@ -1153,7 +1324,7 @@ export default function AiMenuManagerRoute() {
                                 style={{
                                     background: token.colorFillQuaternary,
                                     border: `1px solid ${token.colorBorderSecondary}`,
-                                    borderRadius: 14,
+                                    borderRadius: 8,
                                     marginBottom: 12,
                                     padding: 12,
                                 }}
@@ -1162,7 +1333,7 @@ export default function AiMenuManagerRoute() {
                                     <div>
                                         <Text strong style={{ display: 'block' }}>Work on</Text>
                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                            Optional context for the next message.
+                                            Optional. Pick a menu area first, then type what to do.
                                         </Text>
                                     </div>
                                     {composerContext.target ? (
@@ -1354,7 +1525,7 @@ export default function AiMenuManagerRoute() {
                                         style={{
                                             background: token.colorFillTertiary,
                                             border: `1px solid ${token.colorBorderSecondary}`,
-                                            borderRadius: 10,
+                                            borderRadius: 8,
                                             marginTop: 12,
                                             padding: '10px 12px',
                                         }}
@@ -1375,10 +1546,40 @@ export default function AiMenuManagerRoute() {
                                 borderRadius: 28,
                                 boxShadow: token.boxShadowTertiary,
                                 display: 'flex',
-                                gap: 10,
-                                padding: '8px 8px 8px 16px',
+                                gap: 8,
+                                padding: 8,
                             }}
                         >
+                            <Dropdown
+                                menu={{
+                                    items: [
+                                        {
+                                            key: 'work_on',
+                                            icon: <LuSlidersHorizontal size={16} />,
+                                            label: 'Work on an item or menu area',
+                                        },
+                                        {
+                                            key: 'suggestions',
+                                            icon: <LuSparkles size={16} />,
+                                            label: 'Show suggestions',
+                                        },
+                                    ],
+                                    onClick: ({ key }) => {
+                                        if (key === 'work_on') toggleContextPicker();
+                                        if (key === 'suggestions') toggleSuggestions();
+                                    },
+                                }}
+                                placement="topLeft"
+                                trigger={['click']}
+                            >
+                                <Button
+                                    aria-label="Choose context or suggestions"
+                                    disabled={!selectedProjectId || submitting}
+                                    icon={<LuPlus size={20} />}
+                                    shape="circle"
+                                    style={{ flexShrink: 0, height: 44, minWidth: 44, width: 44 }}
+                                />
+                            </Dropdown>
                             <Input.TextArea
                                 autoSize={{ minRows: 1, maxRows: 4 }}
                                 value={input}
@@ -1390,7 +1591,7 @@ export default function AiMenuManagerRoute() {
                                         submitPrompt();
                                     }
                                 }}
-                                placeholder="Ask Menu Manager"
+                                placeholder="Message Menu Manager"
                                 style={{
                                     background: 'transparent',
                                     borderColor: 'transparent',
@@ -1418,48 +1619,30 @@ export default function AiMenuManagerRoute() {
                                 type="primary"
                             />
                         </div>
-                        <div
-                            style={{
-                                alignItems: 'center',
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                gap: 8,
-                                justifyContent: 'space-between',
-                                marginTop: 10,
-                            }}
-                        >
-                            <Space size={8} wrap>
-                                <Button
-                                    disabled={!selectedProjectId || submitting}
-                                    icon={<LuSlidersHorizontal size={16} />}
-                                    onClick={toggleContextPicker}
-                                    size="small"
-                                >
+                        {composerContext.target ? (
+                            <div
+                                style={{
+                                    alignItems: 'center',
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: 8,
+                                    justifyContent: 'space-between',
+                                    marginTop: 10,
+                                }}
+                            >
+                                <Tag icon={<LuSlidersHorizontal size={14} />} style={{ marginInlineEnd: 0 }}>
                                     {composerContextLabel}
-                                </Button>
-                                <Button
-                                    disabled={!selectedProjectId || submitting}
-                                    icon={<LuSparkles size={16} />}
-                                    onClick={toggleSuggestions}
-                                    size="small"
-                                >
-                                    {isSuggestionsOpen ? 'Hide suggestions' : 'Suggestions'}
-                                </Button>
-                                {composerContext.target ? (
-                                    <Button
-                                        disabled={submitting}
-                                        onClick={clearComposerContext}
-                                        size="small"
-                                        type="text"
-                                    >
+                                </Tag>
+                                <Space size={8}>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        Applies to the next message
+                                    </Text>
+                                    <Button disabled={submitting} onClick={clearComposerContext} size="small" type="text">
                                         Clear
                                     </Button>
-                                ) : null}
-                            </Space>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                Selection only applies to the next message.
-                            </Text>
-                        </div>
+                                </Space>
+                            </div>
+                        ) : null}
                     </div>
                 </Card>
 
@@ -1496,9 +1679,12 @@ export default function AiMenuManagerRoute() {
                             )}
                         </Card>
 
-                        <Card title="How changes work" style={{ borderRadius: 8 }}>
+                        <Card title="How Menu Manager works" style={{ borderRadius: 8 }}>
                             <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                                <Text strong>Prepared cards change only the selected menu.</Text>
+                                <Text strong>Ask, diagnose, prepare, approve.</Text>
+                                <Text type="secondary">
+                                    Prepared cards change only the selected menu.
+                                </Text>
                                 <Text type="secondary">
                                     Prices, availability, visibility, menu notes, and style changes wait for approval.
                                 </Text>

@@ -81,12 +81,12 @@ export const SKIP_CLIENT_APP_LAYOUT_ROUTINGS = [NAVIGARIONS_ROUTINGS.SIGNIN, HOM
 export type NavItemType = { key?: any, label: string, route: string, defaultRoute?: string, icon: any, isChild?: boolean, sectionLabel?: string, subNav?: NavItemType[], showSubNav?: boolean, active?: boolean, subNavActive?: boolean, allowedPlatformRoles?: string[] };
 
 export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
-    { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard, sectionLabel: 'Status' },
+    { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard, sectionLabel: 'Check feedback and activity' },
     { label: 'Today', route: NAVIGARIONS_ROUTINGS.TODAY, icon: LuCalendarCheck2 },  // Social Content - daily action
-    { label: 'Projects', route: NAVIGARIONS_ROUTINGS.PROJECTS, icon: LuFolderHeart, sectionLabel: 'What customers see' },
-    { label: 'Business Settings', route: NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS, icon: LuHotel },
     { label: 'Feedback', route: NAVIGARIONS_ROUTINGS.FEEDBACK, icon: LuTicket },
-    { label: 'Use MenuList', route: NAVIGARIONS_ROUTINGS.USE_MENULIST, icon: LuShare2, sectionLabel: 'Public links and materials' },
+    { label: 'Projects', route: NAVIGARIONS_ROUTINGS.PROJECTS, icon: LuFolderHeart, sectionLabel: 'Update what customers see' },
+    { label: 'Business Settings', route: NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS, icon: LuHotel },
+    { label: 'Use MenuList', route: NAVIGARIONS_ROUTINGS.USE_MENULIST, icon: LuShare2, sectionLabel: 'Share and place the link' },
     { label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE, icon: LuQrCode },
     { label: 'Assets', route: NAVIGARIONS_ROUTINGS.ASSETS, icon: LuPrinter },
     {

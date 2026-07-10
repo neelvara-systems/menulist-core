@@ -40,7 +40,7 @@ function getStatusConfig(status: OwnerPublicTruthReadinessReport['status']) {
       color: 'success',
       icon: <LuCheckCircle2 size={22} />,
       label: 'Ready',
-      message: 'Your public source has the basics customers need.',
+      message: 'Your official customer source has the basics customers need.',
     };
   }
   if (status === 'missing_basics') {
@@ -48,7 +48,7 @@ function getStatusConfig(status: OwnerPublicTruthReadinessReport['status']) {
       color: 'error',
       icon: <LuAlertCircle size={22} />,
       label: 'Missing basics',
-      message: 'Some public facts need attention before this is a strong customer source.',
+      message: 'Menu, hours, prices, actions, or customer link details need attention before sharing widely.',
     };
   }
   return {
@@ -123,12 +123,12 @@ export function PublicTruthOwnerCheckCard({
             </span>
             <div>
               <Flex align="center" gap={8} wrap="wrap">
-                <Title level={4} style={{ margin: 0 }}>Public readiness</Title>
+                <Title level={4} style={{ margin: 0 }}>Official customer source</Title>
                 <Tag color={status.color}>{status.label}</Tag>
               </Flex>
               <Paragraph style={{ margin: '6px 0 0' }}>{status.message}</Paragraph>
               <Text type="secondary">
-                Checked from MenuList store and menu data. No external sites were scanned.
+                Checked from MenuList store and menu data. External platforms stay owner-confirmed.
               </Text>
             </div>
           </Flex>
@@ -179,7 +179,7 @@ export function PublicTruthOwnerCheckCard({
           <div className={styles.publicTruthSetupJobList}>
             <Flex align="center" gap={8}>
               <LuListChecks size={16} />
-              <Text strong>Fix list</Text>
+              <Text strong>Next public fixes</Text>
               <Tag>{setupJobs.length}</Tag>
             </Flex>
             <div className={styles.publicTruthSetupJobGrid}>

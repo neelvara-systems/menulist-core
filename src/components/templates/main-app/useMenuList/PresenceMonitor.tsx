@@ -6,7 +6,7 @@
  * Guided deployment checklist: "Make your business easy to find."
  * Groups: Online Discovery (manual) + Inside Your Store (auto-detected).
  * Timestamp-only schema: exists = confirmed, missing = not confirmed.
- * Max 6 surfaces forever — do NOT expand.
+ * Eight bounded surfaces; external platforms remain owner-confirmed.
  *
  * @see __docs__/menu-presence-monitor/menu-presence-monitor_impl.md
  */
@@ -30,8 +30,10 @@ import {
     LuInstagram,
     LuInfo,
     LuMessageCircle,
+    LuMap,
     LuMonitor,
     LuQrCode,
+    LuSearch,
     LuX
 } from 'react-icons/lu';
 import type { ManualSurfaceId } from './presenceTypes';
@@ -126,6 +128,32 @@ const MANUAL_SURFACES: ManualSurfaceConfig[] = [
             'Paste your official business link in the Website field',
         ],
         openUrl: 'https://business.google.com',
+    },
+    {
+        id: 'appleBusiness',
+        dalKey: 'appleBusiness',
+        label: 'Apple Business Connect',
+        explanation: 'Customers using Apple Maps can open your official business page',
+        icon: <LuMap size={16} />,
+        guideSteps: [
+            'Open Apple Business Connect and choose your location',
+            'Open the location details or an approved action',
+            'Add your official business link and submit the change',
+        ],
+        openUrl: 'https://businessconnect.apple.com',
+    },
+    {
+        id: 'bingPlaces',
+        dalKey: 'bingPlaces',
+        label: 'Bing Places',
+        explanation: 'Customers searching on Bing can open your official business page',
+        icon: <LuSearch size={16} />,
+        guideSteps: [
+            'Open Bing Places and choose your business',
+            'Edit the business profile information',
+            'Add your official business link as the website or menu link and publish',
+        ],
+        openUrl: 'https://www.bingplaces.com',
     },
     {
         id: 'instagramBio',

@@ -84,10 +84,10 @@ export default async function CampaignCueAppLayout({ children }: { children: Rea
                         refetchOnWindowFocus={false}
                         session={session}
                     >
-                        <SessionExpiryMonitor />
-                        <OwnerAppUpdatePrompt />
                         <NoSSRProvider>
                             <AntdThemeProvider>
+                                <SessionExpiryMonitor />
+                                <OwnerAppUpdatePrompt />
                                 <GlobalKeyboardShortcutsProvider>
                                     <NetworkStatusProvider>
                                         {children}

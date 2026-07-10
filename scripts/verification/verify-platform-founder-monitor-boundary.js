@@ -169,7 +169,8 @@ function verifyRevenueReadModel(source, appConstants, functionsConstants) {
     'const storeId = normalizeFounderRevenueStoreDocumentId(input.storeId);',
     'firestoreAdmin.runTransaction(async (transaction) => {',
     'const movementSnap = await transaction.get(movementRef);',
-    'if (movementSnap.exists) return;',
+    'const recorded = await firestoreAdmin.runTransaction',
+    'if (movementSnap.exists) return false;',
     'firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(movementId)',
     'firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_ONBOARDING_TRANSITIONS).doc(storeId)',
     'FieldValue.arrayUnion(tenantId)',
@@ -460,7 +461,7 @@ function verifyDocsAndPage() {
   const firebaseDoc = read('__docs__/platform-founder-monitor/platform-founder-monitor_firebase.md');
   const validationDoc = read('__docs__/platform-founder-monitor/platform-founder-monitor_validation.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   [
     'precomputed',
     'founderRevenueMovements',

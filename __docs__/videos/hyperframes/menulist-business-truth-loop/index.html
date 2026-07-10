@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=720" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1280px;
+        height: 720px;
+        overflow: hidden;
+        background: #05070d;
+      }
+
+      body {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #f8fafc;
+      }
+
+      .clip {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+
+      .scene {
+        width: 1280px;
+        height: 720px;
+        padding: 46px 56px;
+      }
+
+      .grid {
+        position: absolute;
+        inset: 0;
+        opacity: 0.28;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+        background-size: 40px 40px;
+        mask-image: radial-gradient(circle at 50% 50%, black, transparent 72%);
+      }
+
+      .brand-row {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .brand-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .logo-tile {
+        width: 54px;
+        height: 54px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+      }
+
+      .logo-tile img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .logo-tile.answerlattice img {
+        width: 42px;
+        height: 42px;
+        object-fit: contain;
+      }
+
+      .brand-name {
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 760;
+        letter-spacing: 0;
+      }
+
+      .brand-kicker {
+        margin-top: 6px;
+        font-size: 13px;
+        line-height: 1.2;
+        color: rgba(255, 255, 255, 0.64);
+      }
+
+      .status-pill {
+        min-height: 36px;
+        padding: 9px 15px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 18px currentColor;
+      }
+
+      .mono {
+        font-family: monospace;
+      }
+
+      .card {
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.26);
+      }
+
+      
+      .menulist {
+        color: #0f172a;
+        background:
+          radial-gradient(circle at 78% 20%, rgba(0, 81, 209, 0.16), transparent 27%),
+          linear-gradient(135deg, #f7fbff 0%, #eef5ff 48%, #ffffff 100%);
+      }
+
+      .menulist .grid {
+        opacity: 0.45;
+        background-image:
+          linear-gradient(rgba(0,81,209,0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,81,209,0.08) 1px, transparent 1px);
+      }
+
+      .menulist .brand-name {
+        color: #0b1a35;
+      }
+
+      .menulist .brand-kicker {
+        color: #54657e;
+      }
+
+      .menulist .status-pill {
+        color: #0051d1;
+        background: rgba(255, 255, 255, 0.82);
+        border-color: rgba(0, 81, 209, 0.18);
+      }
+
+      .ml-stage {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: 340px 1fr 306px;
+        gap: 28px;
+        margin-top: 38px;
+        align-items: stretch;
+      }
+
+      .source-card {
+        position: relative;
+        min-height: 468px;
+        border-radius: 26px;
+        padding: 26px;
+        background: #ffffff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 34px 90px rgba(0, 44, 118, 0.16);
+        overflow: hidden;
+      }
+
+      .source-card::after {
+        content: "";
+        position: absolute;
+        inset: auto -70px -90px auto;
+        width: 210px;
+        height: 210px;
+        border-radius: 50%;
+        background: rgba(0, 81, 209, 0.1);
+      }
+
+      .card-label {
+        font-size: 13px;
+        line-height: 1.2;
+        font-weight: 800;
+        color: #0051d1;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .source-title {
+        margin-top: 18px;
+        font-size: 39px;
+        line-height: 1.03;
+        font-weight: 820;
+        letter-spacing: 0;
+        color: #0f172a;
+      }
+
+      .source-copy {
+        margin-top: 16px;
+        font-size: 18px;
+        line-height: 1.45;
+        color: #475569;
+      }
+
+      .approval-box {
+        margin-top: 28px;
+        padding: 18px;
+        border-radius: 18px;
+        background: #f7fbff;
+        border: 1px solid #dce9ff;
+      }
+
+      .approval-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(0, 81, 209, 0.09);
+        font-size: 15px;
+        color: #334155;
+      }
+
+      .approval-row:last-child {
+        border-bottom: 0;
+      }
+
+      .approval-check {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: #0051d1;
+        font-size: 14px;
+        font-weight: 900;
+        background: #ffffff;
+        border: 1px solid rgba(0, 81, 209, 0.24);
+        box-shadow: 0 4px 16px rgba(0, 81, 209, 0.12);
+      }
+
+      .loop-board {
+        position: relative;
+        min-height: 468px;
+      }
+
+      .loop-line {
+        position: absolute;
+        inset: 62px 54px;
+        border: 2px solid rgba(0, 81, 209, 0.16);
+        border-radius: 42px;
+      }
+
+      .flow-dot {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #0051d1;
+        box-shadow: 0 0 0 9px rgba(0, 81, 209, 0.12), 0 14px 34px rgba(0, 81, 209, 0.32);
+      }
+
+      .flow-dot.one {
+        left: 58px;
+        top: 58px;
+      }
+
+      .flow-dot.two {
+        right: 58px;
+        top: 58px;
+      }
+
+      .flow-dot.three {
+        right: 58px;
+        bottom: 58px;
+      }
+
+      .flow-dot.four {
+        left: 58px;
+        bottom: 58px;
+      }
+
+      .node {
+        position: absolute;
+        width: 184px;
+        min-height: 104px;
+        border-radius: 20px;
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(0, 81, 209, 0.13);
+        box-shadow: 0 22px 56px rgba(0, 44, 118, 0.12);
+      }
+
+      .node.approve {
+        left: 0;
+        top: 4px;
+      }
+
+      .node.menu {
+        right: 0;
+        top: 4px;
+      }
+
+      .node.page {
+        right: 0;
+        bottom: 4px;
+      }
+
+      .node.link {
+        left: 0;
+        bottom: 4px;
+      }
+
+      .node-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        color: #0051d1;
+        font-weight: 900;
+        background: #ffffff;
+        border: 1px solid rgba(0, 81, 209, 0.24);
+        box-shadow: 0 8px 20px rgba(0, 81, 209, 0.13);
+      }
+
+      .node-title {
+        margin-top: 12px;
+        font-size: 17px;
+        line-height: 1.15;
+        font-weight: 800;
+        color: #0f172a;
+      }
+
+      .node-sub {
+        margin-top: 5px;
+        font-size: 12px;
+        line-height: 1.35;
+        color: #64748b;
+      }
+
+      .phone {
+        position: relative;
+        min-height: 468px;
+        padding: 14px;
+        border-radius: 34px;
+        background: #0f172a;
+        box-shadow: 0 34px 90px rgba(15, 23, 42, 0.24);
+      }
+
+      .phone-screen {
+        height: 100%;
+        border-radius: 24px;
+        padding: 22px;
+        background: #ffffff;
+        overflow: hidden;
+      }
+
+      .phone-bar {
+        width: 74px;
+        height: 5px;
+        border-radius: 999px;
+        margin: 0 auto 20px;
+        background: #cbd5e1;
+      }
+
+      .restaurant-name {
+        font-size: 24px;
+        line-height: 1.1;
+        font-weight: 820;
+        color: #0f172a;
+      }
+
+      .restaurant-meta {
+        margin-top: 8px;
+        color: #475569;
+        font-size: 13px;
+      }
+
+      .menu-item {
+        margin-top: 16px;
+        padding: 14px;
+        border-radius: 16px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+      }
+
+      .menu-item-title {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 15px;
+        font-weight: 800;
+        color: #0f172a;
+      }
+
+      .menu-item p {
+        margin: 7px 0 0;
+        font-size: 12px;
+        line-height: 1.35;
+        color: #475569;
+      }
+
+      .surface-row {
+        position: absolute;
+        left: 26px;
+        right: 26px;
+        bottom: 26px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .surface {
+        border-radius: 14px;
+        padding: 11px;
+        background: #edf5ff;
+        color: #0051d1;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+      }
+
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-width="1280"
+      data-height="720"
+    >
+      <section id="scene" class="clip scene menulist" data-start="0" data-duration="6" data-track-index="1">
+        
+        <div class="grid"></div>
+        <div class="brand-row">
+          <div class="brand-left">
+            <div class="logo-tile"><img src="./assets/brand/menulist-icon.png" alt="" /></div>
+            <div>
+              <div class="brand-name">MenuList</div>
+              <div class="brand-kicker">Official public business source</div>
+            </div>
+          </div>
+          <div class="status-pill"><span class="status-dot"></span> Public source stable</div>
+        </div>
+        <div class="ml-stage">
+          <div class="source-card">
+            <div class="card-label">Owner-approved source</div>
+            <div class="source-title">Update once. Publish everywhere.</div>
+            <div class="source-copy">A restaurant owner keeps menu, QR, page, and link in sync from one approved source.</div>
+            <div class="approval-box">
+              <div class="approval-row"><span>Menu reviewed</span><span class="approval-check">✓</span></div>
+              <div class="approval-row"><span>Business details checked</span><span class="approval-check">✓</span></div>
+              <div class="approval-row"><span>Public link ready</span><span class="approval-check">✓</span></div>
+            </div>
+          </div>
+          <div class="loop-board">
+            <div class="loop-line"></div>
+            <div class="flow-dot one"></div>
+            <div class="flow-dot two"></div>
+            <div class="flow-dot three"></div>
+            <div class="flow-dot four"></div>
+            <div class="node approve">
+              <div class="node-icon">1</div>
+              <div class="node-title">Owner approval</div>
+              <div class="node-sub">No public change until the owner confirms.</div>
+            </div>
+            <div class="node menu">
+              <div class="node-icon">2</div>
+              <div class="node-title">Public menu</div>
+              <div class="node-sub">Customers see current items and prices.</div>
+            </div>
+            <div class="node page">
+              <div class="node-icon">3</div>
+              <div class="node-title">Official page</div>
+              <div class="node-sub">Hours, address, services, and links align.</div>
+            </div>
+            <div class="node link">
+              <div class="node-icon">4</div>
+              <div class="node-title">QR and screen</div>
+              <div class="node-sub">Printed and display surfaces point back here.</div>
+            </div>
+          </div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="phone-bar"></div>
+              <div class="restaurant-name">The Daily Plate</div>
+              <div class="restaurant-meta">Open today · Menu updated</div>
+              <div class="menu-item">
+                <div class="menu-item-title"><span>Paneer Tikka Bowl</span><span>Rs. 220</span></div>
+                <p>Rice, grilled paneer, mint chutney, salad.</p>
+              </div>
+              <div class="menu-item">
+                <div class="menu-item-title"><span>Cold Coffee</span><span>Rs. 120</span></div>
+                <p>House blend, chilled milk, cocoa finish.</p>
+              </div>
+              <div class="surface-row">
+                <div class="surface">Menu</div>
+                <div class="surface">Page</div>
+                <div class="surface">QR</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const hold = { progress: 0 };
+      tl.to(hold, { progress: 1, duration: 6, ease: "none" }, 0);
+      
+      tl.from(".brand-left", { opacity: 0, y: 16, duration: 0.45, ease: "power2.out" }, 0.12);
+      tl.from(".status-pill", { opacity: 0, x: 18, duration: 0.45, ease: "power2.out" }, 0.2);
+      tl.from(".source-card", { opacity: 0, y: 24, scale: 0.98, duration: 0.65, ease: "power2.out" }, 0.3);
+      tl.from(".phone", { x: 34, scale: 0.98, duration: 0.7, ease: "power2.out" }, 0.52);
+      tl.from(".loop-line", { opacity: 0, scale: 0.94, duration: 0.55, ease: "power2.out" }, 0.74);
+      tl.from(".node", { y: 18, scale: 0.98, stagger: 0.14, duration: 0.44, ease: "power2.out" }, 1.05);
+      tl.from(".approval-check", { scale: 0.4, stagger: 0.16, duration: 0.28, ease: "back.out(2)" }, 1.52);
+      tl.from(".flow-dot", { opacity: 0, scale: 0.2, stagger: 0.18, duration: 0.26, ease: "back.out(2)" }, 1.88);
+      tl.to(".flow-dot.one", { x: 420, duration: 1.2, ease: "power1.inOut" }, 2.15);
+      tl.to(".flow-dot.two", { y: 350, duration: 1.2, ease: "power1.inOut" }, 2.55);
+      tl.to(".flow-dot.three", { x: -420, duration: 1.2, ease: "power1.inOut" }, 2.95);
+      tl.to(".flow-dot.four", { y: -350, duration: 1.2, ease: "power1.inOut" }, 3.35);
+      tl.to(".node-icon", { scale: 1.08, duration: 0.28, yoyo: true, repeat: 1, stagger: 0.13, ease: "power2.inOut" }, 3.88);
+      tl.to(".status-dot", { scale: 1.45, duration: 0.35, yoyo: true, repeat: 3, ease: "power2.inOut" }, 4.2);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

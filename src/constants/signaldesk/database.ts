@@ -86,6 +86,12 @@ export const SIGNALDESK_COLLECTIONS = {
     TRUST_PARTNER_DELIVERABLES: "signaldeskTrustPartnerDeliverables",
     TRUST_PARTNER_METRICS: "signaldeskTrustPartnerMetrics",
     TRUST_PARTNER_RENEWAL_DECISIONS: "signaldeskTrustPartnerRenewalDecisions",
+    REVENUE_ACCOUNTS: "signaldeskRevenueAccounts",
+    COMMERCIAL_OPPORTUNITIES: "signaldeskCommercialOpportunities",
+    COMMERCIAL_OFFERS: "signaldeskCommercialOffers",
+    OPERATING_ENVELOPES: "signaldeskOperatingEnvelopes",
+    ACTIVATION_WATCHES: "signaldeskActivationWatches",
+    REVENUE_CONTROL_SUMMARIES: "signaldeskRevenueControlSummaries",
 } as const;
 
 export const SIGNALDESK_SUMMARY_DOCS = {
@@ -94,4 +100,5 @@ export const SIGNALDESK_SUMMARY_DOCS = {
     QUEUES: "current",
     SOURCE_HEALTH: "current",
     AI_EVALS: "current",
+    REVENUE: "current",
 } as const;

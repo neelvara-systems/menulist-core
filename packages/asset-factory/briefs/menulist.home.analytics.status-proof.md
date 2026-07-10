@@ -1,8 +1,8 @@
 # Asset Brief - menulist.home.analytics.status-proof
 
-**Generated:** 2026-05-31
+**Generated:** 2026-07-10
 **Brand:** menulist
-**Status:** draft
+**Status:** approved
 **Approval:** founder-review
 **Autonomy level:** 3
 **Output file:** packages/asset-factory/briefs/menulist.home.analytics.status-proof.md

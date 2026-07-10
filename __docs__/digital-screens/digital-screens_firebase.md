@@ -5,6 +5,8 @@
 **Last Updated:** July 1, 2026
 **Source:** Codebase analysis (not spec — actual implementation)
 
+> **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Digital Screens state, listener, invalidation, Storage, and Firebase-cost evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:digital-screens-boundary`, browser TV smoke for Menu Board and Highlights modes, authenticated desktop/mobile owner settings QA, physical-device TV/tablet/browser QA, target Firebase deploy evidence where rules, indexes, Storage, or Functions change, target Vercel deploy evidence where app routes or display clients change, and production-host smoke for the target tenant and screen URL.
+
 ---
 
 ## Summary

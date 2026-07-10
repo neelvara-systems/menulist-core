@@ -1,0 +1,29 @@
+{
+  "slot": "answerlattice.product.page-aware-widget.clip",
+  "title": "Answerlattice Page Aware Widget Clip",
+  "durationSeconds": 6,
+  "dimensions": {
+    "width": 1280,
+    "height": 720
+  },
+  "dataPolicy": "Synthetic demo data only. No real customer, tenant, ticket, review, or private business data.",
+  "renderPolicy": "Local HyperFrames plus FFmpeg. No cloud video renderer required.",
+  "shots": [
+    {
+      "time": "0.0-1.2",
+      "beat": "A product page opens with bounded page context."
+    },
+    {
+      "time": "1.2-2.8",
+      "beat": "Allowed context is separated from excluded private fields."
+    },
+    {
+      "time": "2.8-4.6",
+      "beat": "The widget responds from an approved source and holds unsupported escalation."
+    },
+    {
+      "time": "4.6-6.0",
+      "beat": "Final proof state shows page awareness and safety boundary together."
+    }
+  ]
+}

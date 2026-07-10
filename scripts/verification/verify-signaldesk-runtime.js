@@ -7,6 +7,7 @@ const checks = [];
 const SECTIONS = [
   ["dashboard", "DASHBOARD", "/signaldesk", "src/app/(signaldesk)/signaldesk/page.tsx"],
   ["mission", "MISSION", "/signaldesk/mission", "src/app/(signaldesk)/signaldesk/mission/page.tsx"],
+  ["revenue", "REVENUE", "/signaldesk/revenue", "src/app/(signaldesk)/signaldesk/revenue/page.tsx"],
   ["targets", "TARGETS", "/signaldesk/targets", "src/app/(signaldesk)/signaldesk/targets/page.tsx"],
   ["imports", "IMPORTS", "/signaldesk/imports", "src/app/(signaldesk)/signaldesk/imports/page.tsx"],
   ["approvals", "APPROVALS", "/signaldesk/approvals", "src/app/(signaldesk)/signaldesk/approvals/page.tsx"],
@@ -48,6 +49,7 @@ const ACTIONS = [
   "upsert-enrichment-waterfall",
   "upsert-audience-segment",
   "recommend-market-pod-plan",
+  "review-market-pod",
   "upsert-sender-domain",
   "upsert-self-service-cta",
   "create-daily-growth-mission",
@@ -56,6 +58,11 @@ const ACTIONS = [
   "review-experiment-card",
   "upsert-offer-cta",
   "upsert-reply-playbook",
+  "qualify-revenue-account",
+  "upsert-commercial-opportunity",
+  "upsert-commercial-offer",
+  "upsert-operating-envelope",
+  "refresh-activation-watch",
   "create-source-quality-snapshot",
   "refresh-provider-source-retention",
   "create-weekly-strategist-memo",
@@ -196,6 +203,7 @@ function verifyFeatureFlags() {
     "ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL: true",
     "ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL: true",
     "ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER: true",
+    "ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER: true",
     "ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND: false",
   ].forEach((needle) => assertIncludes(flags, needle, "SignalDesk feature flags"));
 
@@ -262,6 +270,20 @@ function verifyRoutesAndUi() {
     "SignalDesk mutation buttons use mobile-aware actionDisabled gate",
   );
   assertIncludes(workspace, "data.setup.providerSendEnabled", "Send-step UI remains gated by provider send flag");
+  assertIncludes(workspace, "Revenue Operating Layer", "SignalDesk revenue workspace title");
+  assertIncludes(workspace, "Revenue Account", "SignalDesk revenue account UI");
+  assertIncludes(workspace, "Commercial Offer Registry", "SignalDesk commercial offer UI");
+  assertIncludes(workspace, "Operating Envelope", "SignalDesk operating envelope UI");
+  assertIncludes(workspace, "Exception-only requests are stored as held", "SignalDesk exception-only UI boundary");
+  assertIncludes(workspace, "read-only MenuList bridge", "SignalDesk activation bridge boundary");
+  assertIncludes(workspace, "Stalled activations", "Revenue summary surfaces derived activation stalls");
+  assertIncludes(workspace, "Recheck Watch", "Manual activation recheck remains a recovery action only");
+  assertIncludes(workspace, "firstRevenueBudgetPolicyId", "Revenue UI selects only compatible budget scope");
+  assertIncludes(workspace, "selectedCommercialOfferId", "Revenue UI supports explicit active offer selection");
+  assertIncludes(workspace, 'fieldset aria-label="Revenue operating layer"', "Revenue mobile workspace uses disabled fieldset");
+  assertIncludes(workspace, "resolvedRevenueMarketPodId", "Revenue envelope requires active market pod in UI");
+  assertIncludes(workspace, "Approve Pod", "Market pod UI requires an explicit founder approval action");
+  assertIncludes(workspace, "canApproveMarketPod", "Market pod approval UI is founder-role gated");
 }
 
 function verifyApiSecurityAndActions() {
@@ -295,6 +317,7 @@ function verifyApiSecurityAndActions() {
 
   assertIncludes(actions, "parseSignalDeskJsonBody", "Actions route shared JSON parser");
   assertIncludes(actions, "logSignalDeskValidationFailure", "Actions route validation logging");
+  assertIncludes(actions, 'if (action === "review-market-pod") return "signaldesk.configure";', "Market-pod review requires founder-only configure permission");
   assertIncludes(killSwitches, "parseSignalDeskJsonBody", "Kill-switch route shared JSON parser");
   assertIncludes(killSwitches, "logSignalDeskValidationFailure", "Kill-switch route validation logging");
   assertIncludes(apiGuards, "readBoundedJsonBody", "SignalDesk API guard bounded JSON body reader");
@@ -416,6 +439,53 @@ function verifyApiSecurityAndActions() {
   assertIncludes(workflow, "ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND", "Workflow checks provider-send flag");
   assertIncludes(workflow, "ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL", "Workflow checks content distribution flag");
   assertIncludes(workflow, "ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER", "Workflow checks operating-layer flag");
+  assertIncludes(workflow, "ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER", "Workflow checks revenue operating-layer flag");
+  assertIncludes(workflow, "qualifySignalDeskRevenueAccountServer", "Revenue account qualification server path");
+  assertIncludes(workflow, "upsertSignalDeskCommercialOpportunityServer", "Commercial opportunity server path");
+  assertIncludes(workflow, "upsertSignalDeskCommercialOfferServer", "Commercial offer registry server path");
+  assertIncludes(workflow, "upsertSignalDeskOperatingEnvelopeServer", "Operating envelope server path");
+  assertIncludes(workflow, "refreshSignalDeskActivationWatchServer", "Activation watch server path");
+  assertIncludes(workflow, "reviewSignalDeskMarketPodServer", "Founder market-pod review server path");
+  assertIncludes(workflow, 'access.role !== "founder-admin"', "Market-pod strategy approval is founder-only");
+  assertIncludes(workflow, 'input.status === "approved" && (access.role !== "founder-admin" || !access.permissions.includes("policy.approve"))', "Operating-envelope approval is founder-only");
+  assertIncludes(workflow, 'marketPod.reviewDecision !== "approved"', "Operating envelopes require founder-approved market pods");
+  assertIncludes(workflow, "currentSourcePolicySnaps", "Operating-envelope transaction revalidates current source policies");
+  assertIncludes(workflow, "currentMarketPodSnap", "Operating-envelope transaction revalidates the current founder-approved market pod");
+  assertIncludes(workflow, "currentBudgetSnap", "Operating-envelope transaction revalidates the current budget");
+  assertIncludes(workflow, "currentSenderSnap", "Operating-envelope transaction revalidates the current sender identity");
+  assertIncludes(workflow, "currentTemplateSnaps", "Operating-envelope transaction revalidates current templates");
+  assertNotIncludes(workflow, 'status: recommendation === "hold" ? "hold" : "active"', "Market-pod recommendation cannot self-activate");
+  assertNotIncludes(workflow, 'status: passCount > 0 ? "active" : "hold"', "Research agent cannot self-activate a market pod");
+  assertIncludes(workflow, "SIGNALDESK_INTERESTED_REPLY_REVENUE_SYNC_FAILED", "Interested reply has bounded revenue-sync diagnostics");
+  assertIncludes(workflow, "revenueSyncStatus", "Interested reply updates the revenue lifecycle automatically");
+  assertIncludes(workflow, "SIGNALDESK_ACTIVATION_WATCH_AUTO_SYNC_FAILED", "Outcome activation auto-sync has bounded diagnostics");
+  assertIncludes(workflow, "activationWatchSyncStatus", "Recorded outcomes update activation state automatically");
+  assertIncludes(workflow, 'reconciliation: "qualification-after-outcome"', "Qualification reconciles outcomes recorded before the revenue account existed");
+  assertIncludes(workflow, "hasTwoSurfaceActivation", "Revenue qualification distinguishes two-surface activation from generic conversion state");
+  assertIncludes(workflow, 'where("outcomeType", "==", "two_surface_activation")', "Activation derivation preserves terminal activation evidence outside the latest window");
+  assertIncludes(workflow, 'orderBy("updatedAt", "desc")', "Activation derivation reads a deterministic latest outcome window");
+  assertIncludes(workflow, 'orderBy("updatedAt", "asc")', "Activation derivation reads the exact first outcome for the seven-day deadline");
+  assertIncludes(workflow, "annotateActivationWatch", "Expired activation deadlines read as stalled without a scheduler");
+  assertIncludes(workflow, 'name: "Bengaluru first proof pod"', "First proof pod matches the maintained Bengaluru recommendation");
+  assertIncludes(workflow, "legacyUnapprovedMarketPod", "Default seeding migrates only the exact unapproved legacy first pod");
+  assertIncludes(workflow, "!existingMarketPodSnap.exists || legacyUnapprovedMarketPod", "Default seeding cannot overwrite a founder-approved market pod");
+  assertIncludes(workflow, "estimated spend today", "Daily founder brief includes spend");
+  assertIncludes(workflow, "overdue revenue next action", "Daily founder brief includes stale revenue work");
+  assertIncludes(workflow, 'const exceptionOnlyHeld = requestedApprovalMode === "exception-only"', "Exception-only envelope is deterministically held");
+  assertIncludes(workflow, 'source: "signaldesk-outcome-summaries"', "Activation watch derives from SignalDesk outcomes");
+  assertIncludes(workflow, "Commercial offer version already exists with different terms", "Commercial offer versions are immutable");
+  assertIncludes(workflow, "Commercial opportunity stage and status do not match", "Commercial opportunity state dimensions stay consistent");
+  assertIncludes(workflow, "Operating envelope total volume must cover the daily cap", "Operating envelope caps stay coherent");
+  assertIncludes(workflow, "Operating envelope exceeds the remaining budget policy", "Operating envelope respects remaining budget");
+  assertIncludes(workflow, "Sender domain is required for email envelope", "Email envelope requires explicit sender identity");
+  assertIncludes(workflow, "Budget policy is not eligible for revenue envelope", "Revenue envelope rejects unrelated provider/model/partner budgets");
+  assertIncludes(workflow, "Market pod is required for operating envelope", "Revenue envelope requires market pod scope");
+  assertIncludes(workflow, "Commercial opportunity currency does not match revenue pipeline", "Revenue summary blocks mixed-currency minor units");
+  assertIncludes(workflow, "Commercial offer is required for valued opportunity", "Valued opportunity requires commercial offer");
+  assertIncludes(workflow, "Operating envelope version already exists with different terms", "Operating envelope versions are immutable");
+  assertIncludes(workflow, "annotateOperatingEnvelope", "Expired operating envelopes read as held");
+  assertIncludes(workflow, 'winLossReason: "Two-surface activation outcome recorded."', "Two-surface activation closes opportunity as won");
+  assertIncludes(workflow, "return db.runTransaction", "Revenue workflow uses transactional integrity guards");
   assertIncludes(workflow, 'throw new Error("SignalDesk provider send is disabled")', "Workflow blocks real send");
   assertIncludes(workflow, "unsupportedClaims?.length", "Approval review blocks unsupported draft claims");
   assertIncludes(workflow, "assertSourcePolicyUsable", "Workflow centralizes source policy active/expiry guard");
@@ -544,9 +614,12 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(workspace, "Market Search", "Dashboard market search UI");
   assertIncludes(workspace, "Find Leads", "Dashboard find-leads action");
   assertIncludes(workspace, "MARKET_SEARCH_PRESETS", "Market search prompt presets");
-  assertIncludes(workspace, "Hadapsar Pune Maharashtra", "Market search supports area/location prompt");
-  assertIncludes(workspace, "setResearchMaxResults(30)", "Market search presets use 30-row batch");
-  assertIncludes(workspace, 'useState("Find cafes in Hadapsar Pune Maharashtra with weak menu presence")', "Market search default prompt");
+  assertIncludes(workspace, "Indiranagar Bengaluru", "Market search supports approved Bengaluru area/location prompt");
+  assertIncludes(workspace, "Public business research", "Manual research defaults to the evidence-only public-business policy");
+  assertIncludes(workspace, "Candidate discovery and evidence review only", "Evidence-only source policy copy blocks contact use");
+  assertIncludes(workspace, "Approve Zero-Spend Trust Test", "First trust-partner test defaults to zero external spend");
+  assertIncludes(workspace, "setResearchMaxResults(25)", "Approved Bengaluru market search presets use the 25-row trial batch");
+  assertIncludes(workspace, 'useState("Find cafes, dessert shops, and QSRs in Indiranagar and Koramangala Bengaluru with weak current-menu presence")', "Market search default prompt");
   assertIncludes(workspace, ".filter((row) => row.fitDecision !== \"fail\")", "Lead batch excludes failed research rows");
   assertIncludes(workspace, "suppressionStatus === \"clear\"", "Fallback lead batch excludes suppressed targets");
   assertIncludes(workspace, "LeadPlanBlock", "Lead batch has structured evidence/contact/share blocks");
@@ -574,6 +647,12 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskResearchRuns"', "Research Agent run indexes");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskResearchTableRows"', "Research Agent row indexes");
   assertIncludes(e2eLocal, "assertResearchAgentTable", "Research Agent local E2E fixture");
+  assertIncludes(e2eLocal, "assertRevenueOperatingLayer", "Revenue operating layer local E2E fixture");
+  assertIncludes(e2eLocal, "new Response(JSON.stringify", "Provider E2E mocks implement bounded Response contract");
+  assertIncludes(e2eLocal, "Promise.all([", "Revenue E2E covers concurrent qualification");
+  assertIncludes(e2eLocal, "Mixed-currency pipeline", "Revenue E2E covers currency aggregation boundary");
+  assertIncludes(e2eLocal, "Revenue envelope with provider budget", "Revenue E2E covers incompatible budget scope");
+  assertIncludes(e2eLocal, "Two-surface activation did not close the commercial opportunity", "Revenue E2E covers activation-driven close");
 
   [
     "providerAccounts",
@@ -597,6 +676,12 @@ function verifyConnectorProviderAndInvestmentControls() {
     "experimentCards",
     "offerCtas",
     "replyPlaybooks",
+    "revenueAccounts",
+    "commercialOpportunities",
+    "commercialOffers",
+    "operatingEnvelopes",
+    "activationWatches",
+    "revenueControlSummaries",
     "sourceQualitySnapshots",
     "researchRuns",
     "researchTableRows",
@@ -669,6 +754,12 @@ function verifyFirebaseIsolation() {
   assertIncludes(firestoreRules, "signaldeskResearchRuns", "SignalDesk research runs are readable through rules");
   assertIncludes(firestoreRules, "signaldeskResearchTableRows", "SignalDesk research table rows are readable through rules");
   assertIncludes(firestoreRules, "signaldeskTrustPartnerProfiles", "SignalDesk partner rail collections remain read-only");
+  assertIncludes(firestoreRules, "signaldeskRevenueAccounts", "SignalDesk revenue accounts remain client read-only");
+  assertIncludes(firestoreRules, "signaldeskCommercialOpportunities", "SignalDesk commercial opportunities remain client read-only");
+  assertIncludes(firestoreRules, "signaldeskCommercialOffers", "SignalDesk commercial offers remain client read-only");
+  assertIncludes(firestoreRules, "signaldeskOperatingEnvelopes", "SignalDesk operating envelopes remain client read-only");
+  assertIncludes(firestoreRules, "signaldeskActivationWatches", "SignalDesk activation watches remain client read-only");
+  assertIncludes(firestoreRules, "signaldeskRevenueControlSummaries", "SignalDesk revenue summaries remain client read-only");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskProviderSourceRetention"', "SignalDesk provider source retention index");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskContentDistributionDrafts"', "SignalDesk content draft indexes");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskContentPerformanceSummaries"', "SignalDesk content performance indexes");
@@ -678,6 +769,13 @@ function verifyFirebaseIsolation() {
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskResearchRuns"', "SignalDesk research run indexes");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskResearchTableRows"', "SignalDesk research table row indexes");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskTrustPartnerMetrics"', "SignalDesk trust partner metrics index");
+  assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskRevenueAccounts"', "SignalDesk revenue account index");
+  assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskCommercialOpportunities"', "SignalDesk commercial opportunity indexes");
+  assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskOperatingEnvelopes"', "SignalDesk operating envelope index");
+  assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskActivationWatches"', "SignalDesk activation watch indexes");
+  assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskOutcomeSummaries"', "SignalDesk outcome summary indexes");
+  assertIncludes(firestoreIndexes, '{ "fieldPath": "targetId", "order": "ASCENDING" },\n        { "fieldPath": "updatedAt", "order": "DESCENDING" }', "SignalDesk latest target outcome index");
+  assertIncludes(firestoreIndexes, '{ "fieldPath": "targetId", "order": "ASCENDING" },\n        { "fieldPath": "updatedAt", "order": "ASCENDING" }', "SignalDesk earliest target outcome index");
   assertIncludes(storageRules, "allow read, write: if false;", "SignalDesk Storage default deny");
   assertIncludes(storageRules, "function canReadSignalDesk()", "SignalDesk Storage read helper");
   assertIncludes(rulesVerifier, "Public summary read", "SignalDesk rules verifier covers unauth summary read denial");
@@ -699,6 +797,12 @@ function verifyFirebaseIsolation() {
   assertIncludes(database, 'OFFER_CTAS: "signaldeskOfferCtas"', "SignalDesk offer CTA collection");
   assertIncludes(database, 'REPLY_PLAYBOOKS: "signaldeskReplyPlaybooks"', "SignalDesk reply playbook collection");
   assertIncludes(database, 'SOURCE_QUALITY_SNAPSHOTS: "signaldeskSourceQualitySnapshots"', "SignalDesk source quality snapshot collection");
+  assertIncludes(database, 'REVENUE_ACCOUNTS: "signaldeskRevenueAccounts"', "SignalDesk revenue account collection");
+  assertIncludes(database, 'COMMERCIAL_OPPORTUNITIES: "signaldeskCommercialOpportunities"', "SignalDesk commercial opportunity collection");
+  assertIncludes(database, 'COMMERCIAL_OFFERS: "signaldeskCommercialOffers"', "SignalDesk commercial offer collection");
+  assertIncludes(database, 'OPERATING_ENVELOPES: "signaldeskOperatingEnvelopes"', "SignalDesk operating envelope collection");
+  assertIncludes(database, 'ACTIVATION_WATCHES: "signaldeskActivationWatches"', "SignalDesk activation watch collection");
+  assertIncludes(database, 'REVENUE_CONTROL_SUMMARIES: "signaldeskRevenueControlSummaries"', "SignalDesk revenue summary collection");
 }
 
 function verifyPublicIsolation() {
@@ -732,6 +836,9 @@ function verifyDocsTruth() {
   const trustPartnerRail = read("__docs__/menulist-signaldesk/signaldesk-trust-partner-rail/README.md");
   const contentDistributionRail = read("__docs__/menulist-signaldesk/signaldesk-content-distribution-rail/README.md");
   const operatingLayer = read("__docs__/menulist-signaldesk/signaldesk-operating-layer/README.md");
+  const revenueOperatingLayer = read("__docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/README.md");
+  const revenueSpec = read("__docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_spec.md");
+  const revenueFirebase = read("__docs__/menulist-signaldesk/signaldesk-revenue-operating-layer/signaldesk-revenue-operating-layer_firebase.md");
 
   assertIncludes(readme, "private growth control room", "SignalDesk README internal boundary");
   assertIncludes(readme, "observe, monitor, and approve", "SignalDesk README solo-owner posture");
@@ -741,7 +848,7 @@ function verifyDocsTruth() {
   assertIncludes(impl, '| Product code | `PRODUCT_IDS.SIGNALDESK = "SD"` is implemented.', "SignalDesk implementation current product code");
   assertIncludes(firebase, "Dedicated SignalDesk Firebase projects", "SignalDesk Firebase dedicated project posture");
   assertIncludes(validation, "No paid campaign automation was implemented.", "SignalDesk paid campaign skip");
-  assertIncludes(validation, "No Firebase deploy was run.", "SignalDesk deploy skip");
+  assertIncludes(validation, "No Firebase deployment completed.", "SignalDesk blocked deployment boundary");
   assertIncludes(validation, "Local emulator data-flow smoke now runs through `scripts/verification/smoke-signaldesk-workflow.js`", "SignalDesk local workflow smoke status");
   assertIncludes(validation, "`npm run verify:signaldesk`", "SignalDesk verifier documented");
   assertIncludes(featureMap, "operating-layer roadmap, not as SignalDesk launch certification", "SignalDesk feature-map launch certification boundary");
@@ -755,6 +862,14 @@ function verifyDocsTruth() {
   assertIncludes(operatingLayer, "Implementation slice approved", "Operating Layer doc status");
   assertIncludes(operatingLayer, "Daily Growth Mission", "Operating Layer Daily Growth Mission doc");
   assertIncludes(operatingLayer, "No provider send", "Operating Layer send boundary");
+  assertIncludes(revenueOperatingLayer, "bounded commercial lifecycle", "Revenue layer scope");
+  assertIncludes(revenueSpec, "MenuList remains authoritative", "Revenue layer MenuList truth boundary");
+  assertIncludes(revenueSpec, "exception-only", "Revenue layer exception-only mode is documented");
+  assertIncludes(revenueSpec, "held", "Revenue layer exception-only hold is documented");
+  assertIncludes(revenueSpec, "Currency Rule", "Revenue layer currency integrity is documented");
+  assertIncludes(revenueSpec, "active market pod is required", "Revenue layer required market pod is documented");
+  assertIncludes(revenueFirebase, "all client writes are denied", "Revenue layer Firestore write boundary");
+  assertIncludes(revenueFirebase, "use transactions", "Revenue layer transactional cost/integrity contract is documented");
 }
 
 verifyProductBoundary();

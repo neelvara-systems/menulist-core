@@ -89,7 +89,7 @@ function verifyManifestRoute() {
   const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
   const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const executableRoute = stripJsComments(route);
   assertIncludes(route, 'getStoreManifestStartUrl', 'manifest route');
   assertIncludes(route, 'startUrl,', 'manifest route');
@@ -130,7 +130,7 @@ function verifyCustomerAppShortcutHandoffBoundary() {
   const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
   const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(shortcutHandoffUrl, 'const TEL_URL_PATTERN = /^tel:\\+[0-9]+$/;', 'Customer App shortcut tel URL shape guard');
   assertIncludes(shortcutHandoffUrl, "const WHATSAPP_HOST = 'wa.me';", 'Customer App shortcut WhatsApp host guard');
@@ -227,7 +227,7 @@ function verifyClientMenuOfflineDocsMatchServiceWorkerPolicy() {
   const autosellImpl = read('__docs__/client-menu/autosell-features/_impl.md');
   const autosellFirebase = read('__docs__/client-menu/autosell-features/autosell-features_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   [
     [readme, 'Client Menu README'],
@@ -360,8 +360,9 @@ function verifyCustomerAppPublicCopyFreshnessBoundary() {
   const customerAppHelp = read('__docs__/customer-app/customer-app_helpdoc.md');
   const customerAppMarketing = read('__docs__/customer-app/customer-app_marketing.md');
   const customerAppWebsite = read('__docs__/customer-app/customer-app_website.md');
+  const customerAppTest = read('__docs__/customer-app/customer-app_test.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   for (const [label, content] of [
     ['Customer App marketing doc', customerAppMarketing],
@@ -425,23 +426,52 @@ function verifyCustomerAppPublicCopyFreshnessBoundary() {
   }
 
   assertIncludes(customerAppSpec, 'return-from-hidden freshness safeguard', 'Customer App spec return-from-hidden freshness boundary');
+  assertIncludes(customerAppSpec, 'Runtime source-gated evidence; not current launch certification', 'Customer App spec top launch boundary status');
+  assertIncludes(customerAppSpec, 'Current Customer App release approval still requires the active [production-readiness audit]', 'Customer App spec current release gate');
   assertIncludes(customerAppSpec, 'must not evolve into periodic background syncing', 'Customer App spec no pseudo-realtime boundary');
   assertIncludes(customerAppSpec, 'Release-specific target; not certified by this spec', 'Customer App spec evidence-bound KPI targets');
   assertIncludes(customerAppSpec, 'Requires cohort analysis before any public claim', 'Customer App spec retention evidence boundary');
+  assertIncludes(customerAppMobile, 'Runtime/mobile source evidence; not current mobile launch certification', 'Customer App mobile top launch boundary status');
+  assertIncludes(customerAppMobile, 'real browser/device Customer App QA', 'Customer App mobile device QA release gate');
   assertIncludes(customerAppMobile, 'Short, thumb-friendly flow?', 'Customer App mobile no fixed-speed admission gate');
+  assertIncludes(customerAppHelp, 'Source-backed help draft; not current support publication or launch certification', 'Customer App helpdoc top launch boundary status');
+  assertIncludes(customerAppHelp, 'Current publication or release approval still requires the active [production-readiness audit]', 'Customer App helpdoc current publication gate');
   assertIncludes(customerAppHelp, 'After the save is acknowledged and the public menu path is available', 'Customer App helpdoc save acknowledgement freshness boundary');
   assertIncludes(customerAppHelp, 'the approved public menu after the supported cache or return-to-app refresh path completes', 'Customer App helpdoc public-cache freshness boundary');
+  assertIncludes(customerAppWebsite, 'Source-backed website draft; not current publication or launch certification', 'Customer App website top launch boundary status');
+  assertIncludes(customerAppWebsite, 'Current publication or release approval still requires the active [production-readiness audit]', 'Customer App website current publication gate');
   assertIncludes(customerAppWebsite, 'Customers see approved changes after the public cache or return-to-app refresh path completes.', 'Customer App website public-cache freshness copy');
   assertIncludes(customerAppWebsite, 'active sessions do not mutate in the background.', 'Customer App website active-session boundary copy');
   assertIncludes(customerAppWebsite, 'Use only an owner-approved quote from a live Customer App customer.', 'Customer App website social-proof evidence boundary');
+  assertIncludes(customerAppMarketing, 'Source-backed marketing draft; not current sales, publication, or launch certification', 'Customer App marketing top launch boundary status');
+  assertIncludes(customerAppMarketing, 'Current sales, publication, or release approval still requires the active [production-readiness audit]', 'Customer App marketing current sales/publication gate');
   assertIncludes(customerAppMarketing, 'Current public menu path', 'Customer App marketing current public path copy');
   assertIncludes(customerAppMarketing, 'supported public cache or return-to-app refresh path', 'Customer App marketing cache/refocus freshness copy');
   assertIncludes(customerAppMarketing, 'Use live Customer App analytics only after release evidence exists.', 'Customer App marketing analytics evidence boundary');
   assertIncludes(customerAppMarketing, 'Use exact cost comparisons only with current market evidence.', 'Customer App marketing cost-comparison evidence boundary');
+  assertIncludes(customerAppTest, 'Pre-production validation checklist; not current launch certification', 'Customer App test top launch boundary status');
+  assertIncludes(customerAppTest, 'This checklist is a release-evidence template, not current Customer App launch approval.', 'Customer App test release-evidence template boundary');
+  assertIncludes(customerAppTest, '`npm run verify:customer-app-pwa`', 'Customer App test current verifier gate');
   assertIncludes(productionAudit, 'Customer App freshness public-copy boundary checkpoint', 'Production audit Customer App public-copy checkpoint');
   assertIncludes(productionAudit, 'Customer App companion evidence-bound docs checkpoint', 'Production audit Customer App companion-doc checkpoint');
+  assertIncludes(productionAudit, 'Customer App top-level launch-boundary checkpoint', 'Production audit Customer App top-level launch-boundary checkpoint');
   assertIncludes(changelog, 'Customer App Freshness Public Copy Boundary', 'Changelog Customer App public-copy checkpoint');
   assertIncludes(changelog, 'Customer App Companion Evidence Boundaries', 'Changelog Customer App companion-doc checkpoint');
+  assertIncludes(changelog, 'Customer App top-level launch boundaries are visible', 'Changelog Customer App top-level launch-boundary checkpoint');
+}
+
+function verifyCustomerAppTechnicalDocBoundaries() {
+  const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
+  const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/changelog.md');
+
+  assertIncludes(customerAppImpl, '**Launch boundary:** Not current launch certification or deploy approval.', 'Customer App implementation top launch boundary');
+  assertIncludes(customerAppImpl, 'This implementation contract is source-gated runtime evidence; Customer App release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:customer-app-pwa`, real browser/device Customer App QA, target deploy evidence where relevant, and production-host smoke.', 'Customer App implementation current release gate');
+  assertIncludes(customerAppFirebase, '**Launch boundary:** Not current launch certification or deploy approval.', 'Customer App Firebase top launch boundary');
+  assertIncludes(customerAppFirebase, 'This Firebase cost doc is source-gated runtime/cost evidence; Customer App release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:customer-app-pwa`, real browser/device Customer App QA, scoped scheduler deploy evidence where relevant, analytics rollup evidence, and production-host smoke.', 'Customer App Firebase current release gate');
+  assertIncludes(productionAudit, 'Customer App technical-doc top-boundary checkpoint', 'Production audit Customer App technical-doc top-boundary checkpoint');
+  assertIncludes(changelog, 'Customer App technical docs have top launch boundaries', 'Changelog Customer App technical-doc top-boundary checkpoint');
 }
 
 function verifyNextPwaScoping() {
@@ -553,7 +583,7 @@ function verifyCustomerAppAssets() {
   const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
   const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
   const executableIconRoute = stripJsComments(appIconRoute);
   const executableSplashRoute = stripJsComments(appSplashRoute);
   const executableScreenshotRoute = stripJsComments(appScreenshotRoute);
@@ -860,12 +890,12 @@ function verifyAnalyticsCoverage() {
     assertNotIncludes(content, 'Ready for Implementation', `${label} stale ready-for-implementation status`);
     assertNotIncludes(content, 'READY FOR IMPLEMENTATION', `${label} stale ready-for-implementation footer`);
   }
-  assertIncludes(customerAppSpec, 'Runtime implemented and source-gated; manual device QA still required', 'Customer App spec source-gated status');
+  assertIncludes(customerAppSpec, 'Runtime source-gated evidence; not current launch certification', 'Customer App spec source-gated status');
   assertIncludes(customerAppFirebase, 'Source-gated runtime evidence; external certification still required', 'Customer App Firebase source-gated status');
-  assertIncludes(customerAppMobile, 'Source-gated runtime evidence; real-device QA still required', 'Customer App mobile source-gated status');
-  assertIncludes(customerAppHelp, 'Source-backed help draft; not standalone launch certification', 'Customer App helpdoc launch boundary');
-  assertIncludes(customerAppMarketing, 'Source-backed marketing draft; not standalone launch certification', 'Customer App marketing launch boundary');
-  assertIncludes(customerAppWebsite, 'Source-backed website draft; not standalone launch certification', 'Customer App website launch boundary');
+  assertIncludes(customerAppMobile, 'Runtime/mobile source evidence; not current mobile launch certification', 'Customer App mobile source-gated status');
+  assertIncludes(customerAppHelp, 'Source-backed help draft; not current support publication or launch certification', 'Customer App helpdoc launch boundary');
+  assertIncludes(customerAppMarketing, 'Source-backed marketing draft; not current sales, publication, or launch certification', 'Customer App marketing launch boundary');
+  assertIncludes(customerAppWebsite, 'Source-backed website draft; not current publication or launch certification', 'Customer App website launch boundary');
 }
 
 function verifyPwaTrackingDiagnostics() {
@@ -882,7 +912,7 @@ function verifyPwaTrackingDiagnostics() {
   const customerAppSpec = read('__docs__/customer-app/customer-app_spec.md');
   const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertNoDirectConsole(diagnostics, 'Customer App PWA diagnostics helper');
   assertNoDirectConsole(installDetection, 'Customer App install detection');
@@ -1256,6 +1286,7 @@ const checks = [
   ['customer service worker policy', verifyCustomerServiceWorkerPolicy],
   ['client menu offline docs', verifyClientMenuOfflineDocsMatchServiceWorkerPolicy],
   ['customer app public copy freshness boundary', verifyCustomerAppPublicCopyFreshnessBoundary],
+  ['customer app technical doc boundaries', verifyCustomerAppTechnicalDocBoundaries],
   ['next-pwa scoping', verifyNextPwaScoping],
   ['owner auth manifest', verifyOwnerAuthManifest],
   ['owner transparent favicons', verifyOwnerFaviconsTransparent],

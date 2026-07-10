@@ -376,7 +376,7 @@ const growthOSKitReadBlock = growthOSServerDal.slice(
 const growthOSImplDoc = fs.readFileSync(path.resolve("__docs__/growthos-addon/growthos-addon_impl.md"), "utf8");
 const growthOSFirebaseDoc = fs.readFileSync(path.resolve("__docs__/growthos-addon/growthos-addon_firebase.md"), "utf8");
 const productionAudit = fs.readFileSync(path.resolve("__docs__/audits/menulist-production-readiness-audit.md"), "utf8");
-const changelog = fs.readFileSync(path.resolve("__docs__/CHANGELOG.md"), "utf8");
+const changelog = fs.readFileSync(path.resolve("__docs__/changelog.md"), "utf8");
 const updatedFacts = buildGrowthOSSourceFacts({
     projectData: {
         ...projectData,

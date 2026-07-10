@@ -6,6 +6,7 @@ import { isFeatureEnabled } from '@config/features';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler from '@hook/usePaymentHandler';
+import type { CancellationReasonCode } from '@lib/billing/cancellationReasons';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { formatDateTime } from '@util/dateTime';
@@ -109,7 +110,7 @@ function ActiveSubscriptionCard({
         background: `linear-gradient(135deg, ${totalCredits > 50 ? token.colorSuccessBg : token.colorErrorBg} 0%, ${token.colorBgContainer} 100%)`,
     }
 
-    const handleConfirmCancellation = async (reason: string, otherReason: string | undefined, consent: boolean) => {
+    const handleConfirmCancellation = async (reason: CancellationReasonCode, otherReason: string | undefined, consent: boolean) => {
         dispatch(startLoader("Cancelling subscription"));
         try {
             await onCancelSubscription({ reason, otherReason, consent });

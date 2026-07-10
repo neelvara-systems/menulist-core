@@ -21,7 +21,7 @@ import {
     isVercelDomainManagementConfigured,
     removeDomainFromVercelProject,
 } from '@lib/domains/vercelDomains';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -39,16 +39,12 @@ const HOSTED_HELP_SETTINGS_SAVE_MAX_BODY_BYTES = 32 * 1024;
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
     if (!answerlatticeScope) return null;
-
-    const tenantId = Number(answerlatticeScope.tenantId);
-    const storeId = Number(answerlatticeScope.storeId);
-    if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return null;
-    return { tenantId, storeId };
+    return { tenantId: answerlatticeScope.tenantId, storeId: answerlatticeScope.storeId };
 };
 
 const registryScopeMatches = (registry: Record<string, any> | null | undefined, scope: { tenantId: number; storeId: number }) => (
-    Number(registry?.tId) === Number(scope.tenantId)
-    && Number(registry?.sId) === Number(scope.storeId)
+    normalizeAnswerlatticeScopeDocumentId(registry?.tId) === scope.tenantId
+    && normalizeAnswerlatticeScopeDocumentId(registry?.sId) === scope.storeId
 );
 
 const RESERVED_HOSTED_HELP_DOMAINS = new Set(ALL_PRODUCT_DOMAINS.map(domain => domain.toLowerCase()));
@@ -210,7 +206,13 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
         }
 
-        const config = normalizeHostedHelpConfig((storeSnap.data() || {}).hostedHelpConfig);
+        const storeData = storeSnap.data() || {};
+        const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+        if (storeTenantId !== scope.tenantId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const config = normalizeHostedHelpConfig(storeData.hostedHelpConfig);
         const refreshDomains = request.nextUrl.searchParams.get('refreshDomains') === '1';
         let domainStatuses;
 
@@ -312,8 +314,8 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         }
 
         const storeData = storeSnap.data() || {};
-        const storeTenantId = Number(storeData.tenantId || storeData.tId);
-        if (Number.isFinite(storeTenantId) && storeTenantId !== Number(scope.tenantId)) {
+        const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+        if (storeTenantId !== scope.tenantId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

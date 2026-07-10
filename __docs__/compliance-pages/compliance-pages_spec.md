@@ -1,12 +1,14 @@
 # Compliance Pages — Product Specification
 
 **Status:** Runtime implemented source evidence; not current launch or legal certification
-**Version:** 1.3
-**Date:** July 2, 2026
+**Version:** 1.4
+**Date:** July 10, 2026
 **Audience:** CEO, PM, Clients
 **Local Source Gate:** `npm run verify:compliance-pages-boundary`
 
-## Current Release Boundary (July 2, 2026)
+> **Launch boundary:** Not current launch certification or deploy approval. This specification is source-gated product and current-runtime evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:compliance-pages-boundary`, browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`, authenticated desktop/mobile owner save/reset QA, owner/legal review of final generated or custom policy text, DNS/custom-domain verification, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+
+## Current Release Boundary (July 10, 2026)
 
 This spec records the product boundary and current source-backed behavior for Compliance Pages. It is not production-launch approval and it is not legal approval of the generated policy text.
 

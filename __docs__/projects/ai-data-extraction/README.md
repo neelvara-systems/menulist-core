@@ -123,8 +123,8 @@ The following files have been **consolidated** into this folder:
 
 | Legacy File                                                   | Status         |
 | ------------------------------------------------------------- | -------------- |
-| `Assessments/assessment-02-ai-extraction.md`                  | → Consolidated |
-| `Assessments/menu-image-processing-job-queue-spec.md`         | → Referenced   |
+| `assessments/assessment-02-ai-extraction.md`                  | → Consolidated |
+| `assessments/menu-image-processing-job-queue-spec.md`         | → Referenced   |
 | `development_done/2-implementation-ai-extraction-complete.md` | → Consolidated |
 | `development_done/2-testing-guide-ai-extraction.md`           | → Consolidated |
 | `development_done/2-cross-check-ai-extraction.md`             | → Consolidated |

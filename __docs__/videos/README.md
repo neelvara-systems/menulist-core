@@ -28,6 +28,7 @@ MenuList launch videos must not sell the product as only a QR menu app or as gen
 | [videos_launch-product-marketing-production-blueprint.md](./videos_launch-product-marketing-production-blueprint.md) | Master design-team handoff for all 12 launch/product marketing videos with timestamps, frame plans, voiceover, motion, sound, assets, thumbnails, sequencing, and review checklist |
 | [videos_founder-review.md](./videos_founder-review.md) | Founder-level review verdict, approved positioning, blocked claims, production gates, and publishing conditions |
 | [videos_hyperframes-production.md](./videos_hyperframes-production.md) | HyperFrames production notes, rendered draft outputs, commands, verification, and next video build order |
+| [videos_hyperframes-operating-guide.md](./videos_hyperframes-operating-guide.md) | MenuList-specific HyperFrames production operating guide based on current HyperFrames docs, local skill status, QA gates, prompt patterns, and render rules |
 | [videos_audio-production-research-and-plan.md](./videos_audio-production-research-and-plan.md) | HyperFrames-only audio production standard, research findings, local voice/BGM/SFX plan, mix/master rules, and audio rescue plan for draft videos |
 | [videos_ai-era-market-strategy.md](./videos_ai-era-market-strategy.md) | 2026 AI/search-era strategy layer: source-quality positioning, trust-over-automation rules, serialized short-form content, safe discoverability language, and future video angle |
 | [videos_future-ai-search-ready-video.md](./videos_future-ai-search-ready-video.md) | Future 13th awareness video concept for AI search readiness, explicitly bounded away from ranking or AI recommendation guarantees |
@@ -87,6 +88,9 @@ This is readiness/source-quality language. It must not become a promise of Googl
 Supporting lines:
 
 - Start from the menu or service list you already have.
+- Upload existing menu photos or a PDF.
+- No typing required to start.
+- Create your customer link in minutes.
 - Review the customer-facing version before publishing.
 - QR, page, print, and customer actions stay tied to the approved list.
 - Menu updates wait for owner approval.
@@ -98,7 +102,8 @@ Allowed:
 
 - Owner-approved customer link.
 - Private preview before publishing.
-- Photo, PDF, owned public link, or typed list as starting sources.
+- Photo, PDF, owned public link, service list, or rate card as starting sources; typed entry is only a fallback, not the primary launch message.
+- Easy setup language such as upload current menu photos, no typing required to start, and create a customer link in minutes.
 - QR, Official Business Page, print files, customer actions, owner phone view, activity, feedback, and Business Health tied to the approved MenuList list.
 - AI Menu Manager prepares cards and waits for approval before important supported work.
 - Multi-location master list plus outlet-level flexibility.
@@ -166,6 +171,8 @@ Rendered drafts now exist for production review:
 - [30-sec Launch Announcement draft MP4](./hyperframes/menulist-launch-announcement-30s/renders/menulist-launch-announcement-30s-draft.mp4)
 - [30-sec Launch Announcement audio-v2 MP4](./hyperframes/menulist-launch-announcement-30s/renders/menulist-launch-announcement-30s-audio-v2.mp4)
 - [30-sec Launch Announcement vertical audio-v2 MP4](./hyperframes/menulist-launch-announcement-30s-vertical/renders/menulist-launch-announcement-30s-vertical-audio-v2.mp4)
+- [Owner Ease 30s v1 MP4](./hyperframes/menulist-owner-ease-30s/renders/menulist-owner-ease-30s-v1.mp4)
+- [Owner Ease 30s v2 Chain Reaction MP4](./hyperframes/menulist-owner-ease-30s-v2/renders/menulist-owner-ease-30s-v2-chain-reaction.mp4)
 - [Founder / Brand POV draft MP4](./hyperframes/menulist-founder-brand-pov/renders/menulist-founder-brand-pov-draft.mp4)
 - [Founder / Brand POV audio-v2 MP4](./hyperframes/menulist-founder-brand-pov/renders/menulist-founder-brand-pov-audio-v2.mp4)
 

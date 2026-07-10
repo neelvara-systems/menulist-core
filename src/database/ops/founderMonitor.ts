@@ -79,7 +79,24 @@ function isRevenueSummary(value: unknown): boolean {
       value.arpaPaise,
       value.arpsPaise,
       value.revenuePerTrustedLiveStorePaise,
-    ].every(isFiniteNumber);
+    ].every(isFiniteNumber)
+    && isRecord(value.churnReasons)
+    && Object.values(value.churnReasons).every(isFiniteNumber);
+}
+
+function isGrowthSourceSummary(value: unknown): boolean {
+  return isRecord(value)
+    && isFiniteNumber(value.draftsCreated)
+    && isFiniteNumber(value.businessesClaimed);
+}
+
+function isGrowthSummary(value: unknown): boolean {
+  return isRecord(value)
+    && isFiniteNumber(value.draftsCreated)
+    && isFiniteNumber(value.businessesClaimed)
+    && isFiniteNumber(value.draftToClaimRatePercent)
+    && isRecord(value.bySource)
+    && Object.values(value.bySource).every(isGrowthSourceSummary);
 }
 
 function isStoreTruthSummary(value: unknown): boolean {
@@ -168,6 +185,7 @@ function isFounderMonitorData(value: unknown): value is FounderMonitorData {
     && isAllowedString(value.status, MONITOR_STATUSES)
     && isScorecard(value.scorecard)
     && isRevenueSummary(value.revenue)
+    && isGrowthSummary(value.growth)
     && isStoreTruthSummary(value.storeTruth)
     && isOnboardingSummary(value.onboarding)
     && isSupportSummary(value.support)

@@ -169,8 +169,8 @@ All items discussed in the Cascade session have been implemented.
 
 | Documentation Claim       | Code Location                    | Verified |
 | ------------------------- | -------------------------------- | -------- |
-| Gemini 2.0 Flash model    | `route.ts:17`                    | ✅       |
-| Imagen 3 model            | `route.ts:111-142`               | ✅       |
+| Gemini 2.5 Flash Image model | `src/constants/AI/models.ts` and `src/app/api/image-generation/generators.ts` | ✅       |
+| Deprecated Imagen branch removed | `src/app/api/image-generation/generators.ts` | ✅       |
 | withAuth middleware       | `route.ts:68`                    | ✅       |
 | Rate limiting (5 req/min) | `route.ts:75`                    | ✅       |
 | Zod validation schemas    | `route.ts:80`                    | ✅       |

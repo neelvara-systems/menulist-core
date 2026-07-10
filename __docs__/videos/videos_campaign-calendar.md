@@ -66,7 +66,7 @@ Goal: convert skeptical owners.
 | Topic | Video angle | Answer |
 | --- | --- | --- |
 | Automatic publishing | Will it publish automatically? | No. Owner approval first. |
-| Existing menu | Can I upload my existing menu? | Yes. Photo, PDF, owned public link, or typed list. |
+| Existing menu | Can I upload my existing menu? | Yes. Upload menu photos, a PDF, or an owned public link. No typing required to start. |
 | After publishing | What happens after publishing? | QR, page, print, actions, activity, and feedback stay tied to the approved list. |
 | Price changes | What if prices change? | Message in, approval card, receipt after supported update. |
 | Multi-location | What about multiple outlets? | Master list with outlet-level flexibility. |

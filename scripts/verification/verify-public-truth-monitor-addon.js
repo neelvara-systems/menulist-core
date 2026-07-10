@@ -91,7 +91,7 @@ const implDoc = read('__docs__/menulist-tools/public-truth-monitor-addon/public-
 const firebaseDoc = read('__docs__/menulist-tools/public-truth-monitor-addon/public-truth-monitor-addon_firebase.md');
 const testsDoc = read('__docs__/menulist-tools/public-truth-monitor-addon/public-truth-monitor-addon_test-cases.md');
 const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 const aggregateVerifier = read('scripts/verification/verify-public-truth-tools.js');
 
 assert(

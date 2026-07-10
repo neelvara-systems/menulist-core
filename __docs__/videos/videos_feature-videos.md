@@ -106,7 +106,7 @@ Create these only after screenshots/mockups are ready:
 
 | Feature | Story |
 | --- | --- |
-| Menu import | Photo/PDF/owned link/typed list becomes a reviewable customer version |
+| Menu import | Menu photos, PDF, or owned link become a reviewable customer version |
 | Menu quality validation | Catch prices, gaps, and readiness issues before publish |
 | QR and print kit | Table, counter, packaging, and print assets point to the approved list |
 | Customer feedback loop | Customers privately report wrong prices, missing items, or outdated details |

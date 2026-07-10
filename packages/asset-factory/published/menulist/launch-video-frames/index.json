@@ -1,0 +1,26 @@
+{
+  "source": "public/images/website/menulist-business-truth-loop.mp4",
+  "dataPolicy": "Synthetic demo data only. Derived from the approved MenuList business-truth motion loop.",
+  "frames": [
+    {
+      "id": "approved-source",
+      "timeSeconds": 0.7,
+      "file": "packages/asset-factory/published/menulist/launch-video-frames/01-approved-source.png"
+    },
+    {
+      "id": "public-surfaces",
+      "timeSeconds": 1.8,
+      "file": "packages/asset-factory/published/menulist/launch-video-frames/02-public-surfaces.png"
+    },
+    {
+      "id": "stable-loop",
+      "timeSeconds": 3.6,
+      "file": "packages/asset-factory/published/menulist/launch-video-frames/03-stable-loop.png"
+    },
+    {
+      "id": "final-proof",
+      "timeSeconds": 4.9,
+      "file": "packages/asset-factory/published/menulist/launch-video-frames/04-final-proof.png"
+    }
+  ]
+}

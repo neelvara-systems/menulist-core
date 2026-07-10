@@ -15,6 +15,64 @@ const menuListRejectionRules = [
   'No campaign/canvas/post-workbench UI inside MenuList.',
 ];
 
+const menuListLaunchFrameSources = [
+  '__docs__/main-website/main-website_image-assets.md',
+  '__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md',
+  'scripts/website-assets/extract-menulist-launch-frames.mjs',
+  'public/images/website/menulist-business-truth-loop.mp4',
+  '__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json',
+];
+
+const menuListLaunchFrameSlots: AssetSlot[] = [
+  {
+    id: 'menulist.launch.video.frame.approved-source',
+    filename: '01-approved-source.png',
+    placement: 'launch-film opening frame',
+    intent: 'Open the launch sequence on MenuList as the owner-approved public source.',
+  },
+  {
+    id: 'menulist.launch.video.frame.public-surfaces',
+    filename: '02-public-surfaces.png',
+    placement: 'launch-film public-surfaces frame',
+    intent: 'Show the approved source reaching the public menu, Official Business Page, QR, and screen surfaces.',
+  },
+  {
+    id: 'menulist.launch.video.frame.stable-loop',
+    filename: '03-stable-loop.png',
+    placement: 'launch-film stable-loop frame',
+    intent: 'Show the public truth loop stabilizing without adding owner monitoring or unsupported sync claims.',
+  },
+  {
+    id: 'menulist.launch.video.frame.final-proof',
+    filename: '04-final-proof.png',
+    placement: 'launch-film closing proof frame',
+    intent: 'Close on the calm final state where the approved public source remains in control.',
+  },
+].map((frame) => ({
+  id: frame.id,
+  brand: 'menulist',
+  productBoundary: 'internal-product-architecture',
+  page: 'MenuList coordinated launch pack',
+  route: '/',
+  placement: frame.placement,
+  type: 'static-image',
+  required: false,
+  blocking: false,
+  intent: frame.intent,
+  narrativeRules: menuListAssetRules,
+  rejectionRules: menuListRejectionRules,
+  outputs: [{ format: 'png', role: 'primary', ratio: '16:9', maxKb: 500 }],
+  destination: `packages/asset-factory/published/menulist/launch-video-frames/${frame.filename}`,
+  approval: 'automatic',
+  autonomyLevel: 2,
+  sources: menuListLaunchFrameSources,
+  mobile: {
+    required: true,
+    maxKb: 500,
+    notes: 'Keep the central source-to-surface story readable when the frame is adapted for vertical launch edits.',
+  },
+}));
+
 export const menuListAssetSlots: AssetSlot[] = [
   {
     id: 'menulist.home.hero.official-source',
@@ -22,7 +80,7 @@ export const menuListAssetSlots: AssetSlot[] = [
     productBoundary: 'internal-product-architecture',
     page: 'MenuList homepage',
     route: '/',
-    placement: 'hero product proof',
+    placement: 'homepage static background fallback and OG source',
     type: 'static-image',
     required: true,
     blocking: true,
@@ -31,13 +89,13 @@ export const menuListAssetSlots: AssetSlot[] = [
     rejectionRules: menuListRejectionRules,
     outputs: [{ format: 'webp', role: 'primary', ratio: '16:9', maxKb: 350 }],
     destination: 'public/images/website/menulist-hero-official-source.webp',
-    component: 'src/components/website/home/HeroSection.tsx',
+    component: 'src/styles/website.css',
     approval: 'automatic',
     autonomyLevel: 2,
     sources: [
       '__docs__/main-website/main-website_image-assets.md',
       'scripts/website-assets/generate-stage6-assets.mjs',
-      'src/components/website/home/HeroSection.tsx',
+      'src/styles/website.css',
     ],
     mobile: {
       required: true,
@@ -68,6 +126,7 @@ export const menuListAssetSlots: AssetSlot[] = [
     autonomyLevel: 2,
     sources: [
       '__docs__/main-website/main-website_image-assets.md',
+      '__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md',
       'scripts/website-assets/generate-stage6-assets.mjs',
       'public/images/website/menulist-hero-official-source.webp',
     ],
@@ -242,12 +301,45 @@ export const menuListAssetSlots: AssetSlot[] = [
     autonomyLevel: 3,
     sources: [
       '__docs__/main-website/main-website_image-assets.md',
+      '__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md',
       'scripts/website-assets/generate-stage6-assets.mjs',
     ],
     mobile: {
       required: true,
       maxKb: 500,
       notes: 'Must read clearly in mobile social previews.',
+    },
+  },
+  {
+    id: 'menulist.launch.device.owner-pwa-dashboard',
+    brand: 'menulist',
+    productBoundary: 'internal-product-architecture',
+    page: 'MenuList launch assets and Owner PWA Dashboard feature page',
+    route: '/features/owner-phone-dashboard',
+    placement: 'owner-device launch mockup and feature-page proof',
+    type: 'static-image',
+    required: false,
+    blocking: false,
+    intent: 'Show the real MenuList owner-mobile information hierarchy inside a restrained phone composition.',
+    narrativeRules: menuListAssetRules,
+    rejectionRules: menuListRejectionRules,
+    outputs: [{ format: 'webp', role: 'primary', ratio: '9:16', maxKb: 220 }],
+    destination: 'public/images/website/product-proof/owner-phone-dashboard.webp',
+    component: 'src/components/website/features/FeatureScreenshotProofGallery.tsx',
+    approval: 'automatic',
+    autonomyLevel: 2,
+    sources: [
+      '__docs__/main-website/main-website_image-assets.md',
+      '__docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md',
+      '__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md',
+      'scripts/website-assets/generate-product-proof-assets.mjs',
+      'src/components/website/features/FeatureScreenshotProofGallery.tsx',
+      'src/components/mobile/MobileShell.tsx',
+    ],
+    mobile: {
+      required: true,
+      maxKb: 220,
+      notes: 'The phone screen must remain readable and clearly labeled as fictional demo data.',
     },
   },
   {
@@ -269,6 +361,7 @@ export const menuListAssetSlots: AssetSlot[] = [
     autonomyLevel: 3,
     sources: [
       '__docs__/main-website/main-website_image-assets.md',
+      '__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md',
       'scripts/website-assets/generate-stage6-assets.mjs',
     ],
     mobile: {
@@ -283,7 +376,7 @@ export const menuListAssetSlots: AssetSlot[] = [
     productBoundary: 'internal-product-architecture',
     page: 'MenuList homepage',
     route: '/',
-    placement: 'future hero motion layer',
+    placement: 'homepage hero motion layer',
     type: 'loop-video',
     required: false,
     blocking: false,
@@ -301,8 +394,14 @@ export const menuListAssetSlots: AssetSlot[] = [
     autonomyLevel: 3,
     sources: [
       '__docs__/main-website/main-website_image-assets.md',
+      'scripts/website-assets/generate-assetos-motion-compositions.mjs',
+      'scripts/website-assets/transcode-assetos-motion-assets.mjs',
+      '__docs__/videos/hyperframes/menulist-business-truth-loop/index.html',
+      '__docs__/videos/hyperframes/menulist-business-truth-loop/shot-plan.json',
+      'public/icons/icon-512x512.png',
       'src/components/website/home/HeroSection.tsx',
       'src/components/website/home/SurfacesSection.tsx',
+      'src/styles/website.css',
     ],
     mobile: {
       required: true,
@@ -310,4 +409,5 @@ export const menuListAssetSlots: AssetSlot[] = [
       notes: 'Motion must have a static poster and reduced-motion fallback.',
     },
   },
+  ...menuListLaunchFrameSlots,
 ];

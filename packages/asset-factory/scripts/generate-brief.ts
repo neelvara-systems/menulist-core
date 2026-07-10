@@ -75,7 +75,7 @@ ${slot.intent}
 - Page: ${slot.page}
 - Route: ${slot.route}
 - Placement: ${slot.placement}
-- Component: ${slot.component ?? 'not mounted yet'}
+- Component: ${slot.component ?? 'not runtime-mounted'}
 - Destination: ${slot.destination}
 
 ## Output Contract
@@ -145,4 +145,3 @@ if (hasFlag('--all')) {
   const outputPath = writeBrief(slotArg);
   console.log(`Generated ${outputPath}`);
 }
-

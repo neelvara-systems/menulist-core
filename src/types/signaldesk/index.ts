@@ -25,6 +25,7 @@ export type SignalDeskPermission =
 export type SignalDeskSection =
     | "dashboard"
     | "mission"
+    | "revenue"
     | "targets"
     | "imports"
     | "approvals"
@@ -98,6 +99,20 @@ export type SignalDeskConnectorKind =
     | "apify";
 export type SignalDeskConnectorSecretState = "missing" | "configured" | "not_required";
 export type SignalDeskConnectorReadiness = "ready" | "partial" | "missing";
+export type SignalDeskRevenueLifecycleStage = "prospect" | "engaged" | "opportunity" | "customer" | "nurture" | "lost";
+export type SignalDeskRevenueEngagementState = "none" | "contactable" | "contacted" | "replied" | "waiting-for-customer" | "opted-out";
+export type SignalDeskRevenueComplianceState = "eligible" | "review-required" | "blocked" | "suppressed";
+export type SignalDeskRevenueAutomationState = "manual" | "shadow" | "approval-only" | "paused";
+export type SignalDeskRevenueActivationState = "not-started" | "routed" | "in-progress" | "stalled" | "activated";
+export type SignalDeskCommercialOpportunityStage = "qualified" | "discovery" | "offer" | "decision" | "won" | "lost" | "nurture";
+export type SignalDeskCommercialOpportunityStatus = "open" | "won" | "lost" | "nurture";
+export type SignalDeskOperatingEnvelopeApprovalMode =
+    | "manual"
+    | "recommendation-only"
+    | "prepare-and-approve-each"
+    | "approve-batch"
+    | "approve-sample"
+    | "exception-only";
 
 export interface SignalDeskAccessContext {
     active: boolean;
@@ -531,6 +546,8 @@ export interface SignalDeskApprovalPacketSummary {
 }
 
 export interface SignalDeskMarketPodSummary {
+    approvedAt?: string | null;
+    approvedBy?: string | null;
     marketPodId: string;
     name: string;
     status: SignalDeskControlStatus;
@@ -544,6 +561,10 @@ export interface SignalDeskMarketPodSummary {
     recommendation?: "activate" | "hold" | "expand" | "cut" | null;
     recommendationReason?: string | null;
     recommendedActions?: string[];
+    reviewDecision?: "approved" | "held" | "rejected" | null;
+    reviewedAt?: string | null;
+    reviewedBy?: string | null;
+    reviewReason?: string | null;
     updatedAt?: string | null;
 }
 
@@ -609,7 +630,7 @@ export interface SignalDeskSenderDomainSummary {
 
 export interface SignalDeskRunTimelineSummary {
     runTimelineId: string;
-    entityType: "target" | "source-run" | "approval" | "provider" | "model" | "market-pod" | "channel-window" | "trust-partner" | "content" | "mission" | "experiment" | "source-quality" | "research";
+    entityType: "target" | "source-run" | "approval" | "provider" | "model" | "market-pod" | "channel-window" | "trust-partner" | "content" | "mission" | "experiment" | "source-quality" | "research" | "revenue-account" | "commercial-opportunity" | "commercial-offer" | "operating-envelope" | "activation-watch";
     entityId: string;
     label: string;
     status: "completed" | "blocked" | "held" | "ready";
@@ -912,6 +933,115 @@ export interface SignalDeskOfferCtaSummary {
     updatedAt?: string | null;
 }
 
+export interface SignalDeskRevenueAccountSummary {
+    activationState: SignalDeskRevenueActivationState;
+    automationState: SignalDeskRevenueAutomationState;
+    category?: string | null;
+    city?: string | null;
+    complianceState: SignalDeskRevenueComplianceState;
+    country?: string | null;
+    displayName: string;
+    engagementState: SignalDeskRevenueEngagementState;
+    lifecycleStage: SignalDeskRevenueLifecycleStage;
+    locationType: "single-location" | "headquarters" | "branch";
+    nextAction: string;
+    organizationId: string;
+    primaryTargetId: string;
+    revenueAccountId: string;
+    targetIds: string[];
+    updatedAt?: string | null;
+}
+
+export interface SignalDeskCommercialOpportunitySummary {
+    commercialOfferId?: string | null;
+    currency?: string | null;
+    expectedCloseAt?: string | null;
+    founderAttentionMinutes: number;
+    nextAction: string;
+    nextActionDueAt?: string | null;
+    opportunityId: string;
+    probabilityPercent: number;
+    revenueAccountId: string;
+    stage: SignalDeskCommercialOpportunityStage;
+    stalledReason?: string | null;
+    status: SignalDeskCommercialOpportunityStatus;
+    targetId: string;
+    title: string;
+    updatedAt?: string | null;
+    valueMinor: number;
+    winLossReason?: string | null;
+}
+
+export interface SignalDeskCommercialOfferSummary {
+    allowedDiscountBps: number;
+    billingCadence: "one-time" | "monthly" | "annual";
+    commercialOfferId: string;
+    contents: string[];
+    currency: string;
+    eligibilitySummary: string;
+    founderApprovalConditions: string[];
+    name: string;
+    offerCtaId?: string | null;
+    priceMinor: number;
+    status: SignalDeskControlStatus;
+    updatedAt?: string | null;
+    version: number;
+}
+
+export interface SignalDeskOperatingEnvelopeSummary {
+    approvalMode: SignalDeskOperatingEnvelopeApprovalMode;
+    approvedAt?: string | null;
+    approvedBy?: string | null;
+    budgetPolicyId?: string | null;
+    channel: "email" | "manual" | "content" | "partner" | "referral";
+    commercialOfferId: string;
+    dailyVolumeCap: number;
+    executionState: "shadow" | "approval-only" | "held" | "paused";
+    expiresAt: string;
+    fallbackAction: "hold" | "pause" | "founder-review";
+    marketPodId?: string | null;
+    maxCostUsd: number;
+    name: string;
+    operatingEnvelopeId: string;
+    requestedApprovalMode: SignalDeskOperatingEnvelopeApprovalMode;
+    senderDomainId?: string | null;
+    sourcePolicyIds: string[];
+    startsAt: string;
+    status: "draft" | "shadow" | "approved" | "held" | "paused" | "expired";
+    stopConditions: string[];
+    templateIds: string[];
+    totalVolumeCap: number;
+    updatedAt?: string | null;
+    version: number;
+}
+
+export interface SignalDeskActivationWatchSummary {
+    activationWatchId: string;
+    deadlineAt?: string | null;
+    lastOutcomeAt?: string | null;
+    nextAction: string;
+    outcomeTypes: SignalDeskOutcomeSummary["outcomeType"][];
+    revenueAccountId: string;
+    source: "signaldesk-outcome-summaries";
+    status: "not-started" | "routed" | "in-progress" | "published" | "activated" | "stalled";
+    targetId: string;
+    updatedAt?: string | null;
+}
+
+export interface SignalDeskRevenueControlSummary {
+    activatedAccountCount: number;
+    founderAttentionMinutes: number;
+    lostOpportunityCount: number;
+    openOpportunityCount: number;
+    pipelineValueMinor: number;
+    pipelineCurrency?: string | null;
+    revenueAccountCount: number;
+    stalledActivationCount: number;
+    updatedAt?: string | null;
+    weightedPipelineValueMinor: number;
+    wonOpportunityCount: number;
+}
+
 export interface SignalDeskReplyPlaybookSummary {
     approvedReply: string;
     escalationRequired: boolean;
@@ -1037,6 +1167,7 @@ export interface SignalDeskAuditEvent {
 }
 
 export interface SignalDeskWorkspaceData {
+    activationWatches: SignalDeskActivationWatchSummary[];
     approvalPackets: SignalDeskApprovalPacketSummary[];
     audienceSegments: SignalDeskAudienceSegmentSummary[];
     budgetPolicies: SignalDeskBudgetPolicySummary[];
@@ -1064,6 +1195,9 @@ export interface SignalDeskWorkspaceData {
     modelRoutes: SignalDeskModelRouteSummary[];
     outcomes: SignalDeskOutcomeSummary[];
     offerCtas: SignalDeskOfferCtaSummary[];
+    commercialOffers: SignalDeskCommercialOfferSummary[];
+    commercialOpportunities: SignalDeskCommercialOpportunitySummary[];
+    operatingEnvelopes: SignalDeskOperatingEnvelopeSummary[];
     policies: SignalDeskSourcePolicy[];
     providerAccounts: SignalDeskProviderAccountSummary[];
     providerEvaluations: SignalDeskProviderEvaluationSummary[];
@@ -1081,6 +1215,8 @@ export interface SignalDeskWorkspaceData {
     sequencerSteps: SignalDeskSequencerStepSummary[];
     strategistMemos: SignalDeskStrategistMemoSummary[];
     replyPlaybooks: SignalDeskReplyPlaybookSummary[];
+    revenueAccounts: SignalDeskRevenueAccountSummary[];
+    revenueControlSummaries: SignalDeskRevenueControlSummary[];
     sourceQualitySnapshots: SignalDeskSourceQualitySnapshotSummary[];
     targets: SignalDeskTargetSummary[];
     teamMembers: SignalDeskTeamMemberSummary[];

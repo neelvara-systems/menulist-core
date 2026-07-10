@@ -204,7 +204,7 @@ const hasProtectedFieldChanges = (original: any, edited: any): boolean => {
 | Document                                   | Purpose               |
 | ------------------------------------------ | --------------------- |
 | `_spec.md`                                 | Product specification |
-| `../Assessments/assessment-10-b2b-view.md` | Original assessment   |
+| `../assessments/assessment-10-b2b-view.md` | Original assessment   |
 
 ---
 

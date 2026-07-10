@@ -305,10 +305,22 @@ function verifyDocsBoundary() {
     'compliance-pages_mobile-support.md',
   ].map((file) => [`__docs__/compliance-pages/${file}`, read(`__docs__/compliance-pages/${file}`)]);
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/CHANGELOG.md');
+  const changelog = read('__docs__/changelog.md');
 
   docs.forEach(([relativePath, content]) => {
     assertIncludes(content, 'npm run verify:compliance-pages-boundary', `${relativePath} local source gate`);
+    [
+      'Launch boundary:** Not current launch certification or deploy approval',
+      'production-readiness audit',
+      'External Certification Runbook',
+      '`npm run verify:production-readiness-local`',
+      'browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`',
+      'authenticated desktop/mobile owner save/reset QA',
+      'owner/legal review of final generated or custom policy text',
+      'DNS/custom-domain verification',
+      'applicable target Firebase/Vercel deploy evidence',
+      'production-host smoke',
+    ].forEach((token) => assertIncludes(content, token, `${relativePath} top launch boundary`));
     assertNotIncludes(content, 'src/app/_client', `${relativePath} must not reference retired source route`);
     assertNotIncludes(content, '/_client', `${relativePath} must not reference retired internal route`);
     assertNotIncludes(content, 'cached 60s by unstable_cache', `${relativePath} must not over-claim compliance override caching`);
@@ -325,7 +337,7 @@ function verifyDocsBoundary() {
   assertIncludes(readme, '`ENABLE_COMPLIANCE_PAGES` | `true`', 'Compliance README current flag default');
   assertIncludes(readme, '/refund', 'Compliance README refund route');
   assertIncludes(spec, 'Runtime implemented source evidence; not current launch or legal certification', 'Compliance spec launch/legal boundary status');
-  assertIncludes(spec, 'Current Release Boundary (July 2, 2026)', 'Compliance spec current release boundary heading');
+  assertIncludes(spec, 'Current Release Boundary (July 10, 2026)', 'Compliance spec current release boundary heading');
   assertIncludes(spec, 'browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`', 'Compliance spec custom-domain smoke gate');
   assertIncludes(spec, 'authenticated desktop and mobile owner save/reset QA', 'Compliance spec owner QA gate');
   assertIncludes(spec, 'owner/legal review of final generated or custom policy text', 'Compliance spec legal review boundary');
@@ -351,11 +363,13 @@ function verifyDocsBoundary() {
   assertIncludes(audit, 'Compliance Pages public override document-ID boundary checkpoint', 'Production readiness audit Compliance public override document ID checkpoint');
   assertIncludes(audit, 'Compliance Pages public override-read diagnostics checkpoint', 'Production readiness audit Compliance public override-read checkpoint');
   assertIncludes(audit, 'Compliance Pages spec launch-boundary checkpoint', 'Production readiness audit Compliance spec checkpoint');
+  assertIncludes(audit, 'Compliance Pages technical-doc top-boundary checkpoint', 'Production readiness audit Compliance technical-doc checkpoint');
   assertIncludes(changelog, 'Compliance Pages Session Document ID Boundary', 'Changelog Compliance session document ID boundary entry');
   assertIncludes(changelog, 'Compliance Pages Public Override Document ID Boundary', 'Changelog Compliance public override document ID boundary entry');
   assertIncludes(changelog, 'Compliance Pages Owner Store-Lookup Diagnostics', 'Changelog Compliance owner store lookup diagnostics entry');
   assertIncludes(changelog, 'Compliance Pages Public Override-Read Diagnostics', 'Changelog Compliance public override-read diagnostics entry');
   assertIncludes(changelog, 'Compliance Pages Spec Launch Boundary', 'Changelog Compliance spec boundary entry');
+  assertIncludes(changelog, 'Compliance Pages Technical Docs Top Boundary', 'Changelog Compliance technical-doc boundary entry');
 }
 
 function verifyCompliancePagesBoundary() {

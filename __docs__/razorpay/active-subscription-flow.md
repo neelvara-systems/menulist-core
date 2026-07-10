@@ -186,7 +186,7 @@ interface FirestoreSubscriptionDoc {
 
 | Route                                     | Action            | Fields Updated                                                         |
 | ----------------------------------------- | ----------------- | ---------------------------------------------------------------------- |
-| `POST /api/razorpay/cancel-subscription`  | User cancels      | `status: "cancelled"`, `statuses`                                      |
+| `POST /api/razorpay/cancel-subscription`  | User cancels      | `status: "cancelled"`, `statuses`, structured `cancellation` audit      |
 | `POST /api/razorpay/pause-subscription`   | Feature-gated self-service pause | Returns unavailable while `ENABLE_SUBSCRIPTION_PAUSE=false`; if enabled, sets `status: "paused"` and calls Razorpay Pause API |
 | `POST /api/razorpay/resume-subscription`  | Feature-gated self-service resume | Returns unavailable while `ENABLE_SUBSCRIPTION_PAUSE=false`; if enabled, sets `status: "active"` and calls Razorpay Resume API |
 | `POST /api/razorpay/upgrade-subscription` | User upgrades     | Old sub: `status: "expired"`. New sub created via create-subscription. |

@@ -92,7 +92,7 @@ function readLocalized(value: unknown, language = 'en', fallback = ''): string {
 function normalizeAlias(value: string) {
     return value
         .toLowerCase()
-        .replace(/[^a-z0-9\s]+/g, ' ')
+        .replace(/[^a-z0-9\u0080-\uFFFD\s]+/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
 }

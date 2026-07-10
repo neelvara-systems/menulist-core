@@ -81,8 +81,8 @@ The viewer should feel: "My public menu is scattered, and one approved customer 
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 0:00-0:05 | 5s | Owner sees WhatsApp menu image, Instagram highlight, old PDF, printed menu | Fast close-up montage on phone and paper | Your menu may be in five places. | Old PDFs. Screenshots. QR links. Printed copies. | Quick cuts, no flashy effects | Start with recognizable owner pain | Phone mockup, WhatsApp mockup, Instagram bio mockup, PDF, printed menu |
 | 0:05-0:12 | 7s | Customer scans QR; stale page opens; another customer sees wrong price | Split screen: customer phone and owner checking price | And when prices, items, or hours change, customers may still find the old version. | One menu change. Many places to fix. | Split-screen slide | Show problem, not blame | QR mockup, stale page mock, wrong price item |
-| 0:12-0:20 | 8s | MenuList source intake shows photo, PDF, existing link, typed list | UI screen recording or clean UI mock | MenuList starts with the menu or service list you already have. | Photo. PDF. Existing link. Typed list. | Source cards enter one by one | Product appears by 20 seconds | Upload UI, link input, typed list UI |
-| 0:20-0:30 | 10s | Private preview with items, categories, prices, business details | Slow pan over preview; highlight "not public yet" | It prepares the customer-facing version for review. Nothing goes public until you approve it. | Private preview first. Owner approval before publishing. | Soft zoom into approval area | Make safety obvious | Private preview UI, approval UI |
+| 0:12-0:20 | 8s | MenuList source intake shows menu photos, PDF, existing link, service list | UI screen recording or clean UI mock | Upload photos of the menu or service list you already have. No typing required to start. | Menu photos. PDF. Existing link. | Source cards enter one by one | Product appears by 20 seconds; owner effort feels small | Upload UI, image upload, PDF upload, link input |
+| 0:20-0:30 | 10s | Private preview with items, categories, prices, business details | Slow pan over preview; highlight "not public yet" | MenuList prepares a private customer preview in minutes. Nothing goes public until you approve it. | Preview in minutes. Owner approval before publishing. | Soft zoom into approval area | Make safety obvious | Private preview UI, approval UI |
 | 0:30-0:42 | 12s | Approved customer link branches to QR, Official Business Page, print files, shared link, table card | Center link, connected lines to surfaces | Once approved, the same list powers your customer link, QR, official business page, print files, and sharing links. | One approved customer link. | Calm branching motion from link to surfaces | Do not imply external platform sync; show owner placement | Customer link UI, QR, OBP, print file, table card |
 | 0:42-0:52 | 10s | Customer browses menu, searches, jumps sections, taps call/WhatsApp/directions | Mobile product capture in phone frame | Customers see the current menu, prices, business details, and actions in one clean place. | Menu. Prices. Hours. Actions. | Tap highlights | Keep customer UI readable | Customer menu page, action buttons |
 | 0:52-1:03 | 11s | Owner message: "Cold coffee sold out today"; AI Menu Manager approval card appears; owner approves | Phone UI with tap indicator | When something changes, MenuList prepares the update and waits for owner approval. | Message in. Card prepared. Approval first. | Message bubble to card transition | No robot/AI visuals | AI Menu Manager card, receipt state |
@@ -96,9 +96,9 @@ Your menu may be in five places.
 
 And when prices, items, or hours change, customers may still find the old version.
 
-MenuList starts with the menu or service list you already have.
+Upload photos of the menu or service list you already have. No typing required to start.
 
-It prepares the customer-facing version for review. Nothing goes public until you approve it.
+MenuList prepares a private customer preview in minutes. Nothing goes public until you approve it.
 
 Once approved, the same list powers your customer link, QR, official business page, print files, and sharing links.
 
@@ -115,8 +115,8 @@ MenuList. One approved customer link for your business.
 
 1. Old PDFs. Screenshots. QR links. Printed copies.
 2. One menu change. Many places to fix.
-3. Photo. PDF. Existing link. Typed list.
-4. Private preview first.
+3. Menu photos. PDF. Existing link.
+4. Preview in minutes.
 5. Owner approval before publishing.
 6. One approved customer link.
 7. Menu. Prices. Hours. Actions.
@@ -126,9 +126,9 @@ MenuList. One approved customer link for your business.
 
 ### K. UI Screens Required
 
-- upload photo/PDF screen;
+- upload menu photo/PDF screen;
 - existing link input;
-- typed list input;
+- service list/rate-card import screen if needed;
 - private preview screen;
 - owner approval screen;
 - customer menu page;

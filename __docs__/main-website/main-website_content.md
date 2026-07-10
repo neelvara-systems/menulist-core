@@ -180,7 +180,7 @@ Industry pages explain how the same official-source layer applies to common list
 
 **Proof strip:** Owner-approved · Use as website link · QR and print ready
 
-**Visual:** Generated official-source composite showing owner source, Official Business Page, customer-list phone preview, and surface pills for QR link, official page, digital screen, web/link, print files, and saved customer shortcut. It uses fictional The Daily Plate demo data and is mounted from `public/images/website/menulist-hero-official-source.webp`. Treat it as a demo product visual until replaced by browser-routed demo tenant screenshots.
+**Visual:** Approved six-second business-truth loop showing owner approval, public menu, Official Business Page, QR, and screen surfaces settling around the same source. It uses fictional The Daily Plate demo data and is mounted from WebM/MP4 with a WebP poster fallback. `menulist-hero-official-source.webp` remains the CSS background fallback and OG source. Treat all variants as demo product visuals until replaced by browser-routed demo tenant screenshots.
 
 **Notes:**
 

@@ -1,4 +1,6 @@
 export const dynamic = 'force-dynamic';
+import { DB_COLLECTIONS } from '@constant/database';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
     createProductInitialSubscription,
@@ -16,6 +18,14 @@ import {
     getRazorpaySubscriptionMutationLogContext,
 } from "@lib/billing/razorpayDiagnostics";
 import { logger } from "@lib/monitoring/logger";
+import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import {
+    clearOwnerReferralCookie,
+    readOwnerReferralCookie,
+    resolveOwnerReferralCookieForAttribution,
+    setOwnerReferralAttributionBeforeSubscription,
+} from '@lib/ownerReferral/ownerReferralAttributionServer';
+import { isOwnerReferralAcquisitionEnabled } from '@lib/ownerReferral/ownerReferralFeature';
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
@@ -60,6 +70,7 @@ export const POST = withAuth(async (request, session) => {
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
     let subscriptionForLog: any = null;
+    let clearReferralCookieOnResponse = false;
 
     try {
         const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
@@ -157,6 +168,32 @@ export const POST = withAuth(async (request, session) => {
         const email = session?.user?.email || '';
         const remainingCredits = 0;
         const quantity = Math.max(1, requestedQuantity);
+
+        if (!isAnswerlatticeBillingProduct(productId)) {
+            const referralCookiePresent = Boolean(readOwnerReferralCookie(request));
+            const resolvedReferral = isOwnerReferralAcquisitionEnabled()
+                ? await resolveOwnerReferralCookieForAttribution(request)
+                : null;
+            if (referralCookiePresent && !resolvedReferral) clearReferralCookieOnResponse = true;
+
+            if (resolvedReferral) {
+                const storeSnapshot = await firestoreAdmin
+                    .collection(DB_COLLECTIONS.STORES)
+                    .doc(String(storeId))
+                    .get();
+                const referredBusinessName = getStoreContextName(
+                    storeSnapshot.exists ? storeSnapshot.data() as any : null,
+                    name || 'Invited business',
+                );
+                await setOwnerReferralAttributionBeforeSubscription({
+                    referredBusinessName,
+                    referredScope: { tenantId: Number(tenantId), storeId: Number(storeId) },
+                    resolvedToken: resolvedReferral,
+                    onboardingSource: 'REGULAR_SUBSCRIPTION',
+                });
+                clearReferralCookieOnResponse = true;
+            }
+        }
 
         // 3. Find Plan Details from Local Constants
         const plans = getBillingPlansForProduct(productId, userType || "B2C");
@@ -315,7 +352,9 @@ export const POST = withAuth(async (request, session) => {
         await createProductInitialSubscription(productId, razorpaySubscription.id, subscriptionPayload);
 
         // 5. Response
-        return NextResponse.json({ subscription: razorpaySubscription });
+        const response = NextResponse.json({ subscription: razorpaySubscription });
+        if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
+        return response;
     } catch (error) {
         const failureData = getRazorpayFailureLogData('razorpay_create_subscription_failed', error, {
             ...getRazorpaySubscriptionMutationLogContext(subscriptionForLog),
@@ -331,9 +370,11 @@ export const POST = withAuth(async (request, session) => {
             data: failureData,
         });
 
-        return NextResponse.json(
+        const response = NextResponse.json(
             { error: 'Failed to create subscription' },
             { status: 500 }
         );
+        if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
+        return response;
     }
 });

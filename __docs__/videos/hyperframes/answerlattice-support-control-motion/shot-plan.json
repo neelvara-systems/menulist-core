@@ -1,0 +1,29 @@
+{
+  "slot": "answerlattice.home.hero.support-control-motion",
+  "title": "Answerlattice Support Control Motion",
+  "durationSeconds": 6,
+  "dimensions": {
+    "width": 1280,
+    "height": 720
+  },
+  "dataPolicy": "Synthetic demo data only. No real customer, tenant, ticket, review, or private business data.",
+  "renderPolicy": "Local HyperFrames plus FFmpeg. No cloud video renderer required.",
+  "shots": [
+    {
+      "time": "0.0-1.2",
+      "beat": "Input surfaces load as controlled knowledge sources."
+    },
+    {
+      "time": "1.2-2.8",
+      "beat": "Canonical answer, review state, and context layer lock into the center."
+    },
+    {
+      "time": "2.8-4.8",
+      "beat": "Hosted help, widget response, product page answer, and review queue receive approved output."
+    },
+    {
+      "time": "4.8-6.0",
+      "beat": "Unsupported fallback remains held while approved answers stay active."
+    }
+  ]
+}

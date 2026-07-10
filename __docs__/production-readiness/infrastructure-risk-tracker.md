@@ -4,7 +4,7 @@
 
 **File:** `__docs__/production-readiness/infrastructure-risk-tracker.md`  
 **Rule:** Rule 10.10 in `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md`  
-**Last Updated:** July 2, 2026
+**Last Updated:** July 9, 2026
 
 ---
 
@@ -85,6 +85,6 @@ Items that were previously open but have been fixed. Kept for historical referen
 
 ---
 
-_Last Updated: July 2, 2026_
+_Last Updated: July 9, 2026_
 _Updated By: Codex (MenuList production-readiness audit continuation)_
-_Note: DS-2 is code-resolved for new first-extraction project auto-save jobs but requires the updated `processMenuImagesJob` Firebase Function to be deployed before it is live. CG-1 is code-resolved as compact-not-delete ledger retention; `ai_operation_detail_cleanup` still requires the updated `menulistMaintenanceScheduler` Firebase Function to be deployed before detailed-mode cleanup is live. SG-4, CG-2, and CS-2 prompt-cache source retention are code-resolved in `menulistMaintenanceScheduler` but require the updated scheduler Firebase Function to be deployed before they are live mitigations. The latest July 2, 2026 `menulist-qa` scheduler deploy attempt passed predeploy lint/build and was blocked by Cloud Resource Manager HTTP 403 caller permission before upload. The latest July 2, 2026 `menulist-qa` Storage rules deploy attempt was blocked before rules upload by Service Usage HTTP 403: project not found or permission denied._
+_Note: DS-2 is code-resolved for new first-extraction project auto-save jobs but requires the updated `processMenuImagesJob` Firebase Function to be deployed before it is live. CG-1 is code-resolved as compact-not-delete ledger retention; `ai_operation_detail_cleanup` still requires the updated `menulistMaintenanceScheduler` Firebase Function to be deployed before detailed-mode cleanup is live. SG-4, CG-2, and CS-2 prompt-cache source retention are code-resolved in `menulistMaintenanceScheduler` but require the updated scheduler Firebase Function to be deployed before they are live mitigations. The latest July 9, 2026 package-local scoped `menulist-qa` Functions retry targeted the current Gate 1 function set, passed predeploy lint/build, and was blocked by Cloud Resource Manager HTTP 403 caller permission before upload. The latest July 9, 2026 `menulist-qa` Storage rules retry passed `npm run verify:storage-paths`, then was blocked before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied._

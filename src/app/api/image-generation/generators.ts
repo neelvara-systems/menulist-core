@@ -4,12 +4,11 @@
  * Extracted from route.ts and batch-generation/route.ts to eliminate code duplication.
  * Both single generation and batch worker share these exact same model calls.
  * 
- * Models used:
- * - Gemini 2.5 Flash: Primary generation (supports reference images)
- * - Imagen 3: Alternative generation (better for text-free images)
+ * Model used:
+ * - Gemini 2.5 Flash Image: Production image generation and editing path.
  */
 
-import { GenerateContentResponse, GenerateImagesResponse, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
+import { GenerateContentResponse, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
 import { GEMINI_MODELS } from "@constant/AI/models";
 import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { getImageAsBase64, type ImageFetchStorageScope } from "@lib/apiUtils";
@@ -20,7 +19,6 @@ import { logger } from "@lib/monitoring/logger";
 import { GenerateImageViaApiPayloadGenerationConfiType } from "@template/main-app/projects/types";
 import { writeLogEntry } from 'logs/utils';
 
-export type AI_MODEL_TYPE = "GEMINI" | "IMAGEN";
 export type GeneratedImagePayload = {
     base64: string;
     cacheHit?: boolean;
@@ -28,15 +26,15 @@ export type GeneratedImagePayload = {
     promptCacheKey?: string;
     uploadedUrl?: string;
 };
-export type ImageProviderResponse = GenerateContentResponse | GenerateImagesResponse;
+export type ImageProviderResponse = GenerateContentResponse;
 export type ImageGenerationPromptRunOptions = {
     referenceImageStorageScope?: ImageFetchStorageScope;
 };
 
 export const IMAGE_AI_MODELS = {
     GEMINI: GEMINI_MODELS.IMAGE_GEN,
-    IMAGEN: GEMINI_MODELS.IMAGEN_3
 } as const;
+export type AI_MODEL_TYPE = keyof typeof IMAGE_AI_MODELS;
 
 const IMAGE_PROMPT_CONCURRENCY = 2;
 
@@ -142,73 +140,12 @@ export async function generateGeminiImageViaFlash(
     }
 }
 
-export async function generateGeminiImageViaImagen3(
-    prompt: string,
-    generationConfig: GenerateImageViaApiPayloadGenerationConfiType,
-    logFile: string,
-    _options: ImageGenerationPromptRunOptions = {},
-): Promise<{ images: { base64: string; mimeType: string }[], response: GenerateImagesResponse } | null> {
-    try {
-        logger.info('Image generation started (Imagen 3)', { promptLength: prompt.length });
-
-        const response = await genAIClient.models.generateImages({
-            model: IMAGE_AI_MODELS.IMAGEN,
-            prompt: prompt,
-            config: {
-                aspectRatio: generationConfig?.aspectRatio || "1:1",
-                numberOfImages: generationConfig?.numberOfImages || 1,
-            },
-        });
-
-        let generatedImages: { base64: string; mimeType: string }[] = [];
-        if (response.generatedImages && response.generatedImages.length > 0) {
-            generatedImages = response.generatedImages.map(img => ({
-                base64: img.image.imageBytes,
-                mimeType: img.image.mimeType,
-            }));
-        }
-        logger.info('Image generation completed (Imagen 3)', { imageCount: generatedImages.length });
-        await writeLogEntry({
-            logFileName: logFile,
-            logType: 'IMAGEN3_SUCCESS',
-            data: {
-                promptLength: prompt.length,
-                response: summarizeImageProviderResponse(response),
-            },
-        });
-        return { images: generatedImages, response };
-    } catch (error) {
-        logAIRouteFailure('image_generation_imagen3_failed', error, {
-            model: IMAGE_AI_MODELS.IMAGEN,
-            promptLength: prompt.length,
-            requestedCount: generationConfig?.numberOfImages || 1,
-        });
-        await writeLogEntry({ logFileName: logFile, logType: 'IMAGEN3_ERROR', error: error });
-        return null;
-    }
-}
-
-/**
- * Select the correct image generation function based on model type and config.
- * Uses Gemini Flash when reference images are provided (Imagen doesn't support them).
- */
-export function selectImageGenerator(
-    aiModel: AI_MODEL_TYPE,
-    generationConfig: GenerateImageViaApiPayloadGenerationConfiType
-) {
-    return (aiModel === "GEMINI" || Boolean(generationConfig?.referanceImage?.url))
-        ? generateGeminiImageViaFlash
-        : generateGeminiImageViaImagen3;
-}
-
 export async function runImageGenerationPrompts({
-    aiModel,
     generationConfig,
     logFile,
     prompts,
     referenceImageStorageScope,
 }: {
-    aiModel: AI_MODEL_TYPE;
     generationConfig: GenerateImageViaApiPayloadGenerationConfiType;
     logFile: string;
     prompts: string[];
@@ -228,9 +165,8 @@ export async function runImageGenerationPrompts({
         };
     }
 
-    const imageGenerator = selectImageGenerator(aiModel, generationConfig);
     const runPrompt = async (prompt: string) => {
-        const result = await imageGenerator(prompt, generationConfig, logFile, {
+        const result = await generateGeminiImageViaFlash(prompt, generationConfig, logFile, {
             referenceImageStorageScope,
         });
         return result || null;

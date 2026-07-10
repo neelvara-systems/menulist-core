@@ -36,7 +36,7 @@ The operating layer exists to prove one narrow acquisition loop before SignalDes
 
 1. Open Dashboard.
 2. Review Today's Lead Batch: up to 30 prepared leads, each with why it matters, where to contact, what to share, and the next safe action.
-3. Run a Market Search prompt such as `Hadapsar Pune Maharashtra cafes with weak menu presence` when a new pod, source, or partner list needs mapping.
+3. Run a Market Search prompt such as `independent cafes in Indiranagar Bengaluru with weak current-menu presence` when the approved pod, source, or partner list needs mapping.
 4. Open Mission for the deeper Research Agent Table, Daily Growth Mission, and experiment controls.
 5. Review no more than five ranked mission actions.
 6. Approve, hold, pause, redirect, or manually complete an action.
@@ -52,7 +52,7 @@ The operating layer exists to prove one narrow acquisition loop before SignalDes
 - Research Agent Table creates governed research runs and table rows with source refs, enrichment columns, pass/fail/unsure decisions, and market-pod updates.
 - Market Search is source-policy governed, capped at 30 rows, and does not infer contact permission from provider/source readiness.
 - Today's Lead Batch excludes failed research rows and suppressed/held/rejected fallback targets.
-- Market Search includes practical area/category prompt presets and defaults to a 30-row batch.
+- Market Search keeps a 30-row hard cap; the approved Bengaluru presets default to the 25-row first-trial batch.
 - Mission generation is deterministic and uses existing SignalDesk data.
 - Mission action list is capped at five actions.
 - Mission generation does not call paid providers.
@@ -76,3 +76,5 @@ one outcome report
 ```
 
 The trial is not passed until SignalDesk can show source rights, evidence, approval, reply state, outcome state, and founder workload.
+
+The first approved Bengaluru trial defaults to manual preparation, 25 candidates, five owner conversations, five private previews, three two-surface activations within seven days, one permissioned proof asset, and zero external provider, media, or partner spend.

@@ -1,67 +1,51 @@
 1
-00:00:00,080 --> 00:00:01,460
+00:00:00,050 --> 00:00:01,550
 Your menu should not live in five
 
 2
-00:00:01,560 --> 00:00:02,620
+00:00:01,640 --> 00:00:02,600
 different places.
 
 3
-00:00:02,700 --> 00:00:05,480
-Old PDF, screenshots, QR pages, and shared
+00:00:02,650 --> 00:00:05,380
+Old PDF screenshots, QR pages, and shared
 
 4
-00:00:05,480 --> 00:00:07,330
+00:00:05,380 --> 00:00:07,240
 menu files can keep showing the wrong
 
 5
-00:00:07,330 --> 00:00:07,960
+00:00:07,240 --> 00:00:07,840
 version.
 
 6
-00:00:08,030 --> 00:00:09,800
-Menu List starts with the menu or service
+00:00:07,890 --> 00:00:09,670
+Upload photos of your existing menu, no
 
 7
-00:00:09,800 --> 00:00:10,800
-list you already have.
+00:00:09,670 --> 00:00:10,670
+typing required.
 
 8
-00:00:10,930 --> 00:00:12,700
-It prepares a private customer version for
+00:00:10,830 --> 00:00:12,330
+Menu List prepares a private customer
 
 9
-00:00:12,700 --> 00:00:13,220
-review.
+00:00:12,420 --> 00:00:13,280
+preview in minutes.
 
 10
-00:00:13,300 --> 00:00:15,140
-Nothing goes public until you approve it.
+00:00:13,330 --> 00:00:15,040
+You review before anything goes public.
 
 11
-00:00:15,210 --> 00:00:17,290
-Then your customer link, QR page, print
+00:00:15,090 --> 00:00:16,590
+Then one approved link powers your QR
 
 12
-00:00:17,290 --> 00:00:19,290
-files, and customer actions stay tied to
+00:00:16,680 --> 00:00:19,160
+page, print files, and customer actions.
 
 13
-00:00:19,310 --> 00:00:20,420
-the approved list.
-
-14
-00:00:20,500 --> 00:00:21,260
-Menu List.
-
-15
-00:00:21,330 --> 00:00:23,160
-One approved customer link for your
-
-16
-00:00:23,160 --> 00:00:23,890
-business.
-
-17
-00:00:23,980 --> 00:00:25,340
-Create your customer link.
+00:00:19,210 --> 00:00:21,180
+Menu List, create your customer link.

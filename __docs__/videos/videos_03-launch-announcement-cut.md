@@ -68,7 +68,7 @@ The viewer should understand: "This solves the scattered menu problem without pu
 
 1. Hook: Your menu should not live in five places.
 2. Problem: Old PDFs, screenshots, wrong prices.
-3. Product entry: Start with what you have.
+3. Product entry: Upload existing menu photos, no typing required.
 4. Proof: Review before publishing.
 5. Outcome: QR, page, print, and customer links stay tied to the approved version.
 6. CTA: Create customer link.
@@ -78,32 +78,35 @@ The viewer should understand: "This solves the scattered menu problem without pu
 | Timecode | Duration | Frame / Visual | Camera / UI direction | Voiceover | On-screen text | Motion / Transition | Design notes | Assets needed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 0:00-0:03 | 3s | Old PDF, QR, WhatsApp menu, printed menu | 4-way split | Your menu should not live in five different places. | Old PDFs. Old screenshots. Wrong prices. | Hard cuts | Hook must be instant | PDF, QR, WhatsApp, print mockups |
-| 0:03-0:09 | 6s | Owner uploads photo/PDF/link | Product UI in phone/laptop frame | MenuList turns your current menu or service list into one official customer link. | Start with what you already have. | UI cards slide into one flow | Show product fast | Upload UI |
-| 0:09-0:15 | 6s | Private preview and approve screen | Zoom to approval | You review it before anything goes public. | Owner approval first. | Soft highlight | Trust moment | Preview and approval UI |
-| 0:15-0:23 | 8s | QR, Official Business Page, print file, owner-shared link, customer page | Approved link at center, outputs around it | Then your QR, page, print files, and customer links stay tied to the approved version. | One approved list. Every customer link. | Connected-line animation | No external sync implication | QR, OBP, print, customer page |
-| 0:23-0:30 | 7s | Logo and CTA | End card | MenuList is ready. Create your customer link. | Create customer link. | Fade to end card | Strong CTA | Logo, CTA card |
+| 0:03-0:09 | 6s | Owner uploads menu photos/PDF/link | Product UI in phone/laptop frame | Upload photos of your existing menu. No typing required. | Upload menu photos. No typing required. | UI cards slide into one flow | Show owner friction removed | Upload UI |
+| 0:09-0:15 | 6s | Private preview and approve screen | Zoom to approval | MenuList prepares a private customer preview in minutes. You review before anything goes public. | Preview in minutes. Owner approval first. | Soft highlight | Trust moment | Preview and approval UI |
+| 0:15-0:23 | 8s | QR, Official Business Page, print file, owner-shared link, customer page | Approved link at center, outputs around it | Then one approved link powers your QR, page, print files, and customer actions. | One approved list. Every customer link. | Connected-line animation | No external sync implication | QR, OBP, print, customer page |
+| 0:23-0:30 | 7s | Logo and CTA | End card | MenuList. Create your customer link. | Create customer link in minutes. | Fade to end card | Strong CTA | Logo, CTA card |
 
 ### I. Full Voiceover Script
 
 ```text
 Your menu should not live in five different places.
 
-MenuList turns your current menu or service list into one official customer link.
+Upload photos of your existing menu. No typing required.
 
-You review it before anything goes public.
+MenuList prepares a private customer preview in minutes.
 
-Then your QR, page, print files, and customer links stay tied to the approved version.
+You review before anything goes public.
 
-MenuList is ready. Create your customer link.
+Then one approved link powers your QR, page, print files, and customer actions.
+
+MenuList. Create your customer link.
 ```
 
 ### J. On-Screen Text List
 
 1. Old PDFs. Old screenshots. Wrong prices.
-2. Start with what you already have.
-3. Owner approval first.
-4. One approved list. Every customer link.
-5. Create customer link.
+2. Upload menu photos. No typing required.
+3. Preview in minutes.
+4. Owner approval first.
+5. One approved list. Every customer link.
+6. Create customer link in minutes.
 
 ### K. UI Screens Required
 

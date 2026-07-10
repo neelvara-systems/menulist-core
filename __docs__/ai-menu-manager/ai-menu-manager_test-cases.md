@@ -2,7 +2,7 @@
 
 **Status:** Current QA plan
 **Audience:** Engineering, QA, product review
-**Last Updated:** June 27, 2026
+**Last Updated:** July 10, 2026
 
 ---
 
@@ -47,7 +47,8 @@ Current executable write boundary: QA treats `AI_MENU_MANAGER_EXECUTABLE_ACTIONS
 **And** the screen shows a needs-attention summary when the loaded selected project has actionable gaps.
 **And** the composer is visible without opening another panel.
 **And** starter prompts include both commands and questions.
-**And** Work On and Suggestions are available but do not crowd the initial composer.
+**And** Work On and Suggestions are available from one `+` tool entry and do not crowd the initial composer.
+**And** the current menu status is derived from the loaded selected project without another read.
 
 ### AMM-HOME-002: First Screen Does Not Feel Like An Action Bot
 
@@ -55,6 +56,13 @@ Current executable write boundary: QA treats `AI_MENU_MANAGER_EXECUTABLE_ACTIONS
 **Then** the main prompt language is conversational, such as "Ask or tell MenuList anything about this menu."
 **And** the owner is not required to choose an action type before typing.
 **And** internal terms such as resolver, patch, hash, execution directive, context packet, action type, or proposal state are not visible.
+
+### AMM-HOME-003: Conversation Keeps Replies And Receipts Together
+
+**Given** the owner has sent a command and completed an approved operation.
+**Then** compact Menu Manager replies and the completion receipt appear in the main conversation timeline on desktop and mobile.
+**And** the mobile screen does not add a separate empty/redundant receipt panel.
+**And** the receipt timeline entry is appended in the same compact-session completion write as the capped receipt summary.
 
 ---
 
@@ -182,7 +190,84 @@ Current executable write boundary: QA treats `AI_MENU_MANAGER_EXECUTABLE_ACTIONS
 **Then** AMM creates a clarification card.
 **When** the owner taps "Veg Sandwich."
 **Then** AMM replaces the clarification with a Veg Sandwich price proposal card.
+**And** the selected option carries the validated Veg Sandwich entity ID into the next resolver pass on desktop and mobile.
 **And** tapping the clarification option does not approve, execute, publish, persist menu truth, or mark work done.
+
+### AMM-INTAKE-011: Compound Command And Restore Semantics
+
+**When** the owner sends `Masala Tea 20 and Cold coffee sold out`.
+**Then** AMM prepares one price card and one availability card in owner order.
+**And** each card shows its own before/after, approval policy, and selected project scope.
+**And** **Approve all** performs one existing project save and one compact completion write.
+**And** `Masala Tea 20 and Masala Tea 25` does not create a conflicting group.
+**And** an item called `Fish and chips` is not split incorrectly when the owner sends `Fish and chips 250 and Masala Tea 20`.
+**And** repeating the identical command immediately returns the existing pending cards without another provider call or session write.
+
+**When** the owner sends `Restore Cold coffee`.
+**Then** a visible sold-out item gets an availability proposal, an available hidden item gets a visibility proposal, and an item that is both hidden and sold out gets a clarification with `Mark available` and `Show on menu` choices.
+
+---
+
+## Guarded Planner Tests
+
+### AMM-PLAN-001: Deterministic Routing Runs First
+
+**When** the owner sends an exact price, availability, local export, unsupported external, known diagnostic, or out-of-scope command.
+**Then** AMM resolves it without calling the cloud planner.
+
+### AMM-PLAN-002: Unresolved In-Domain Language Uses Capped Context
+
+**When** an in-domain message remains unresolved after deterministic routing.
+**Then** AMM may call `/api/ai-menu-manager/plan` with at most 32 relevant items, 18 categories, and 5 pending-card summaries.
+**And** it does not send raw project/files JSON, staff data, billing data, secrets, or unrelated store history.
+**And** the planner route does not re-read or write selected project/session/proposal truth.
+
+### AMM-PLAN-003: Prepare Intent Is Not Execution Authority
+
+**Given** the planner returns `prepare_action` for `item_price_update` with a selected-context item ID and new price.
+**Then** MenuList materializes an owner-readable command and structured entity context.
+**And** the deterministic resolver must reproduce a compatible registered action before a proposal card is created.
+**And** the provider cannot supply the project patch, approval level, execution directive, receipt, or completion state.
+
+### AMM-PLAN-004: Fabricated Or Invalid Provider Output Falls Back Safely
+
+**When** the provider returns an unknown action, fabricated entity ID, invalid schema, raw patch-like output, or no valid response.
+**Then** AMM rejects that result and keeps the normal deterministic clarification fallback.
+**And** no truth mutation, proposal document, or extra compact-session write occurs because of the rejected provider result.
+
+### AMM-PLAN-005: Planner Route Is Guarded Before Provider Work
+
+**Then** the planner route requires authentication, selected-store `MANAGE_MENU`, hashed rate limiting, SAFE_MODE, capacity admission, a 48KB body cap, and Zod validation before Gemini.
+**And** a valid provider result is recorded through existing bounded AI operation accounting without raw provider payload storage.
+
+### AMM-PLAN-006: Structured Planner Contract And Native-Language Context
+
+**Given** an unresolved in-domain message reaches the guarded planner.
+**Then** the provider receives only current executable action IDs with their compact target/value contracts.
+**And** the SDK response schema limits outcomes, action IDs, entity shapes, and known value fields before Zod and deterministic semantic validation.
+**And** every current executable action has exactly one planner contract; checklist-only actions have none.
+**And** native-language item/category names and bounded aliases remain available for relevance ranking inside the capped context packet.
+
+### AMM-PLAN-007: Planner Cannot Originate Receipts Or Completion Claims
+
+**When** the provider returns `receipt_status`, "Done", an unverified update/publish completion claim, an internal action ID, patch hash, execution directive, model name, confidence score, or token detail.
+**Then** the provider result fails the structured/semantic boundary.
+**And** AMM keeps the deterministic clarification fallback without showing that copy, mutating truth, or writing an extra session state.
+
+### AMM-PLAN-008: Planner Clarification IDs Are Selected-Context IDs
+
+**Given** the provider returns a clarification option with an item or category ID.
+**Then** that ID must exist in the capped selected-menu context.
+**And** a fabricated ID rejects the whole planned result.
+**And** a valid ID is preserved in the clarification card and submitted as structured composer context when the owner taps the option.
+
+### AMM-PLAN-009: Read-Only Planner Answers Are Context-Grounded
+
+**When** the provider returns an answer, diagnostic, or recommendation.
+**Then** it must include at least one selected-menu item, category, project, design, store, or surface target that supports the response.
+**And** item/category/project display labels are replaced with canonical labels from the selected MenuList context.
+**And** an ungrounded or fabricated target rejects the provider result and keeps the deterministic fallback.
+**And** this adds no project, session, or proposal read/write.
 
 ---
 
@@ -467,6 +552,18 @@ The parity matrix must be generated from [ai-menu-manager_action-type-checklist.
 **When** the owner sends direct commands such as "Selected items: Masala Tea, Cold coffee. increase price by 10", "increase all drinks price by 10", "Cold coffee sold out", or "Generate image for Masala Tea".
 **Then** the matching registered action resolver wins before `system_context_answer`.
 **And** risky work still creates proposal/manual-task cards according to the action registry.
+
+### AMM-DOMAIN-ANSWER-003: Active Card Reply Appears Once
+
+**When** an answer, clarification, unsupported, or proposal card is active.
+**Then** its Menu Manager reply appears once as the active card instead of repeating as both a chat bubble and card.
+**And** after the card is dismissed, its compact reply remains available in conversation history.
+
+### AMM-PLANNER-001: Empty Numeric Values Are Not Zero
+
+**When** a planner response omits a numeric value or returns an empty numeric string.
+**Then** AMM rejects that planned materialization and keeps the deterministic clarification fallback.
+**And** it does not prepare a zero-price or zero-duration card from type coercion.
 
 ### AMM-MOBILE-MORE-005: Exact Local Export Cards
 
@@ -759,6 +856,7 @@ Disabling `ENABLE_AI_MENU_MANAGER_RULES` stops rule suggestion and rule executio
 - Desktop suggestion chooser stays inside the Menu Manager chat frame as an inline tray and does not open a page-level drawer over the dashboard.
 - Desktop Work on picker stays inside the Menu Manager chat frame near the composer and does not open a page-level drawer.
 - Desktop and mobile Work on/Suggestions surfaces are mutually exclusive: opening one closes the other, including when a nested suggestion layer is active.
+- Desktop and mobile expose Work on and Suggestions through one `+` composer tool entry.
 - Mobile suggestion chooser remains a MobileShell bottom sheet with large touch rows.
 - Mobile Work on picker remains a MobileShell bottom sheet with large touch rows.
 - Mobile suggestion chooser shows back navigation from the second layer and never routes out of `MobileShell`.
@@ -771,6 +869,7 @@ Disabling `ENABLE_AI_MENU_MANAGER_RULES` stops rule suggestion and rule executio
 - Existing image generation page/API still works without AMM enabled.
 - Existing extraction job creation still works without AMM enabled.
 - Existing mobile menu editor still works without AMM enabled.
+- `ENABLE_AI_MENU_MANAGER_VOICE_INPUT=false` hides voice controls without affecting text, suggestion, clarification, or approval flows.
 
 ---
 

@@ -104,7 +104,7 @@ June 30 security-log boundary note: onboarding subscription security events now 
 
 | Route | Reads | Writes | Description |
 |-------|-------|--------|-------------|
-| `cancel-subscription` | 1 (fetch direct store sub or provided sub) | 1 (update status) | Sets cancelled/completed + subscriptionEndDate. Uses direct store lookup, not outlet/master fallback. |
+| `cancel-subscription` | 1 (fetch direct store sub or provided sub) | 1 (update status) | Sets cancelled/completed, subscriptionEndDate, and bounded structured cancellation reason audit. Uses direct store lookup, not outlet/master fallback. |
 | `pause-subscription` | 0 while `ENABLE_SUBSCRIPTION_PAUSE=false` | 0 while disabled | Self-service pause is disabled by default. Route returns unavailable before Razorpay or Firestore mutation. If the flag is enabled later, the route uses the direct store lookup and sets paused. |
 | `resume-subscription` | 0 while `ENABLE_SUBSCRIPTION_PAUSE=false` | 0 while disabled | Self-service resume is disabled by default. Route returns unavailable before Razorpay or Firestore mutation. If the flag is enabled later, the route uses the direct store lookup and sets active. |
 | `upgrade-subscription` | 2 (fetch old + new sub) | 2 (expire old sub + server-computed carry-forward on new sub) | Browser no longer supplies credit authority. New subscription starts with zero top-up credits; upgrade route computes remaining old credits server-side and stamps `carryForwardFromSubscriptionId` for idempotency. |

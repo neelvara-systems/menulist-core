@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "MenuList Serif";
+        src: local("Georgia");
+      }
+
+      @font-face {
+        font-family: "MenuList Sans";
+        src: local("Avenir Next");
+      }
+
+      @font-face {
+        font-family: "MenuList Mono";
+        src: local("Menlo");
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #f8fafc;
+      }
+
+      body {
+        color: #0f172a;
+        font-family: "MenuList Sans", system-ui, sans-serif;
+        font-weight: 400;
+      }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          linear-gradient(135deg, rgba(219, 234, 254, 0.82) 0%, rgba(248, 250, 252, 0) 34%),
+          linear-gradient(225deg, rgba(39, 168, 227, 0.16) 0%, rgba(248, 250, 252, 0) 30%),
+          linear-gradient(90deg, rgba(15, 81, 209, 0.036) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+          #f8fafc;
+        background-repeat: no-repeat, no-repeat, repeat, repeat, no-repeat;
+        background-size: 1120px 720px, 980px 620px, 96px 96px, 96px 96px, auto;
+        background-position: left top, right top, 0 0, 0 0, 0 0;
+      }
+
+      .bg-slab {
+        position: absolute;
+        right: -130px;
+        bottom: 118px;
+        width: 760px;
+        height: 520px;
+        border: 1px solid rgba(0, 81, 209, 0.08);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.48);
+        transform: rotate(-4deg);
+        box-shadow: 0 34px 100px rgba(15, 23, 42, 0.06);
+      }
+
+      .ambient-rule {
+        position: absolute;
+        left: 110px;
+        right: 110px;
+        height: 1px;
+        background: rgba(0, 81, 209, 0.24);
+        transform-origin: left center;
+      }
+
+      .brand-bug {
+        position: absolute;
+        top: 34px;
+        left: 132px;
+        z-index: 8;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px 10px 10px;
+        border: 1px solid rgba(0, 81, 209, 0.14);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.78);
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+      }
+
+      .brand-bug img {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+      }
+
+      .brand-bug span {
+        color: #0f172a;
+        font-size: 20px;
+        font-weight: 900;
+      }
+
+      .ambient-rule.top {
+        top: 92px;
+      }
+
+      .ambient-rule.bottom {
+        bottom: 92px;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .scene-content {
+        width: 100%;
+        height: 100%;
+        padding: 112px 132px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 42px;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 0.98fr 1.02fr;
+        gap: 72px;
+        align-items: center;
+      }
+
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+      }
+
+      .eyebrow {
+        color: #0051d1;
+        font-family: "MenuList Mono", monospace;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2 {
+        font-family: "MenuList Serif", Georgia, serif;
+        font-weight: 900;
+        letter-spacing: 0;
+        line-height: 0.94;
+        color: #0f172a;
+      }
+
+      h1 {
+        max-width: 760px;
+        font-size: 104px;
+      }
+
+      h2 {
+        max-width: 820px;
+        font-size: 86px;
+      }
+
+      .body-copy {
+        max-width: 710px;
+        color: #475569;
+        font-size: 32px;
+        line-height: 1.28;
+        font-weight: 350;
+      }
+
+      .caption {
+        position: absolute;
+        left: 132px;
+        bottom: 116px;
+        max-width: 920px;
+        padding: 20px 26px;
+        border: 1px solid rgba(0, 81, 209, 0.13);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.88);
+        color: #0f172a;
+        font-size: 34px;
+        line-height: 1.18;
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+      }
+
+      .device-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 34px;
+      }
+
+      .phone {
+        position: relative;
+        width: 330px;
+        height: 660px;
+        padding: 18px;
+        border: 10px solid #0f172a;
+        border-radius: 42px;
+        background: #0f172a;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+      }
+
+      .phone.small {
+        width: 255px;
+        height: 510px;
+        border-radius: 34px;
+      }
+
+      .screen {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        border-radius: 30px;
+        background: #ffffff;
+      }
+
+      .phone.small .screen {
+        border-radius: 24px;
+      }
+
+      .mock-header {
+        padding: 20px 22px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+      }
+
+      .mock-title {
+        color: #0f172a;
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .mock-subtitle {
+        margin-top: 5px;
+        color: #64748b;
+        font-size: 13px;
+      }
+
+      .mock-list {
+        padding: 20px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .mock-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 18px;
+        align-items: center;
+        padding: 13px 0;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 15px;
+        color: #0f172a;
+      }
+
+      .mock-item .price {
+        color: #0051d1;
+        font-family: "MenuList Mono", monospace;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .mock-item.problem .price {
+        color: #dc2626;
+        text-decoration: line-through;
+      }
+
+      .tag {
+        width: max-content;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1e40af;
+        font-family: "MenuList Mono", monospace;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .source-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        width: 650px;
+      }
+
+      .source-card {
+        min-height: 152px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+      }
+
+      .source-card strong {
+        color: #0f172a;
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      .source-card span {
+        color: #64748b;
+        font-size: 18px;
+      }
+
+      .workflow-strip {
+        width: 650px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      .step-pill {
+        padding: 14px 16px;
+        border: 1px solid rgba(0, 81, 209, 0.14);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.76);
+        color: #0f172a;
+        font-family: "MenuList Mono", monospace;
+        font-size: 14px;
+        font-weight: 700;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      .preview-panel {
+        width: 690px;
+        padding: 30px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 26px 80px rgba(15, 23, 42, 0.12);
+      }
+
+      .preview-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .preview-title {
+        font-size: 30px;
+        font-weight: 800;
+      }
+
+      .preview-state {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1e40af;
+        font-family: "MenuList Mono", monospace;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .approval-list {
+        margin-top: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .approval-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 24px;
+        padding: 16px 18px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        color: #0f172a;
+        font-size: 20px;
+      }
+
+      .approve-button {
+        width: max-content;
+        padding: 18px 26px;
+        border: 1px solid rgba(0, 81, 209, 0.26);
+        border-radius: 8px;
+        background-color: #dbeafe;
+        color: #1e40af;
+        font-size: 24px;
+        font-weight: 800;
+        box-shadow: 0 16px 32px rgba(0, 81, 209, 0.12);
+      }
+
+      .final-cta {
+        width: max-content;
+        padding: 18px 26px;
+        border: 2px solid #0051d1;
+        border-radius: 8px;
+        background-color: #ffffff;
+        color: #0f172a;
+        font-size: 24px;
+        font-weight: 800;
+        box-shadow: 0 18px 36px rgba(0, 81, 209, 0.16);
+      }
+
+      .approve-button {
+        margin-top: 24px;
+      }
+
+      .surface-hub {
+        position: relative;
+        width: 760px;
+        height: 600px;
+      }
+
+      .link-core {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 340px;
+        padding: 30px;
+        transform: translate(-50%, -50%);
+        border: 2px solid #0051d1;
+        border-radius: 8px;
+        background: #ffffff;
+        text-align: center;
+        box-shadow: 0 22px 70px rgba(15, 23, 42, 0.14);
+      }
+
+      .link-core strong {
+        display: block;
+        color: #0f172a;
+        font-size: 28px;
+      }
+
+      .link-core span {
+        display: block;
+        margin-top: 8px;
+        color: #0051d1;
+        font-family: "MenuList Mono", monospace;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .surface {
+        position: absolute;
+        width: 164px;
+        min-height: 94px;
+        padding: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.88);
+        color: #0f172a;
+        text-align: center;
+        font-size: 22px;
+        font-weight: 800;
+        box-shadow: 0 15px 46px rgba(15, 23, 42, 0.1);
+      }
+
+      .surface.qr {
+        left: 22px;
+        top: 70px;
+      }
+
+      .surface.page {
+        right: 0;
+        top: 88px;
+      }
+
+      .surface.print {
+        left: 36px;
+        bottom: 72px;
+      }
+
+      .surface.actions {
+        right: 18px;
+        bottom: 62px;
+      }
+
+      .connector {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 250px;
+        height: 2px;
+        background: rgba(0, 81, 209, 0.28);
+        transform-origin: left center;
+      }
+
+      .connector.c1 {
+        transform: rotate(214deg);
+      }
+
+      .connector.c2 {
+        transform: rotate(326deg);
+      }
+
+      .connector.c3 {
+        transform: rotate(145deg);
+      }
+
+      .connector.c4 {
+        transform: rotate(34deg);
+      }
+
+      .logo-lockup {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .logo-mark {
+        width: 74px;
+        height: 74px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        border: 1px solid rgba(0, 81, 209, 0.16);
+        border-radius: 18px;
+        background-color: #ffffff;
+        background-image: url("assets/brand/menulist-icon-512.png");
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.1);
+      }
+
+      .logo-name {
+        color: #0f172a;
+        font-size: 48px;
+        font-weight: 900;
+      }
+
+      .end-card {
+        justify-content: center;
+      }
+
+      .final-layout {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 70px;
+        align-items: center;
+        width: 100%;
+      }
+
+      .final-copy {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 30px;
+      }
+
+      .end-card h2 {
+        max-width: 980px;
+        font-size: 98px;
+      }
+
+      .final-proof {
+        width: 560px;
+        padding: 30px;
+        border: 1px solid #dbeafe;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 28px 90px rgba(15, 23, 42, 0.12);
+      }
+
+      .proof-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 18px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .proof-header strong {
+        color: #0f172a;
+        font-size: 26px;
+        font-weight: 900;
+      }
+
+      .proof-header span {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #ecfdf5;
+        color: #047857;
+        font-family: "MenuList Mono", monospace;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .proof-row {
+        display: grid;
+        grid-template-columns: 42px 1fr;
+        gap: 14px;
+        align-items: center;
+        padding: 17px 0;
+        border-bottom: 1px solid #eef2f7;
+      }
+
+      .proof-row:last-child {
+        border-bottom: none;
+      }
+
+      .proof-index {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        background: #dbeafe;
+        color: #1e40af;
+        font-family: "MenuList Mono", monospace;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .proof-copy strong {
+        display: block;
+        color: #0f172a;
+        font-size: 22px;
+        font-weight: 850;
+      }
+
+      .proof-copy span {
+        display: block;
+        margin-top: 4px;
+        color: #64748b;
+        font-size: 16px;
+      }
+
+      .footnote {
+        color: #475569;
+        font-family: "MenuList Mono", monospace;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .wipe {
+        position: absolute;
+        inset: 0;
+        z-index: 20;
+        pointer-events: none;
+      }
+
+      .wipe-panel {
+        width: 125%;
+        height: 100%;
+        background: #dbeafe;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div class="ambient-rule top" data-layout-ignore></div>
+      <div class="ambient-rule bottom" data-layout-ignore></div>
+      <div class="bg-slab" data-layout-ignore></div>
+      <div class="brand-bug" data-layout-ignore>
+        <img src="assets/brand/menulist-icon-512.png" alt="" />
+        <span>MenuList</span>
+      </div>
+
+      <section id="scene-1" class="clip scene" data-start="0" data-duration="4.2" data-track-index="1">
+        <div class="scene-content split">
+          <div class="stack">
+            <div class="eyebrow">For busy owners</div>
+            <h1>Do not type your menu again.</h1>
+            <p class="body-copy">Upload the menu photos or PDF already on your phone.</p>
+          </div>
+          <div class="device-row">
+            <div class="phone small">
+              <div class="screen">
+                <div class="mock-header">
+                  <div class="mock-title">Phone gallery</div>
+                  <div class="mock-subtitle">Menu photos</div>
+                </div>
+                <div class="mock-list">
+                  <div class="tag">existing menu</div>
+                  <div class="mock-item"><span>Photo 1</span><span class="price">menu board</span></div>
+                  <div class="mock-item"><span>Photo 2</span><span class="price">drinks</span></div>
+                  <div class="mock-item"><span>Photo 3</span><span class="price">offers</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="phone small">
+              <div class="screen">
+                <div class="mock-header">
+                  <div class="mock-title">Current PDF</div>
+                  <div class="mock-subtitle">Already shared</div>
+                </div>
+                <div class="mock-list">
+                  <div class="tag">no retyping</div>
+                  <div class="mock-item"><span>Tea</span><span class="price">30</span></div>
+                  <div class="mock-item"><span>Sandwich</span><span class="price">130</span></div>
+                  <div class="mock-item"><span>Cold coffee</span><span class="price">110</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="caption">No new setup work before you can start.</div>
+        </div>
+      </section>
+
+      <section id="scene-2" class="clip scene" data-start="4.2" data-duration="5.4" data-track-index="1">
+        <div class="scene-content split">
+          <div class="stack">
+            <div class="eyebrow">Upload what exists</div>
+            <h2>Photos in. Preview prepared.</h2>
+            <p class="body-copy">MenuList prepares the first customer version, so the owner does not start from a blank screen.</p>
+          </div>
+          <div class="stack">
+            <div class="source-grid">
+              <div class="source-card"><strong>Menu photos</strong><span>Existing menu images</span></div>
+              <div class="source-card"><strong>PDF</strong><span>Existing menu file</span></div>
+              <div class="source-card"><strong>Owned link</strong><span>Current public list</span></div>
+              <div class="source-card"><strong>Service list</strong><span>Catalogue or rate card</span></div>
+            </div>
+            <div class="workflow-strip">
+              <div class="step-pill">Upload</div>
+              <div class="step-pill">Preview</div>
+              <div class="step-pill">Approve</div>
+            </div>
+          </div>
+          <div class="caption">No blank screen. No full retyping.</div>
+        </div>
+      </section>
+
+      <section id="scene-3" class="clip scene" data-start="9.6" data-duration="6.2" data-track-index="1">
+        <div class="scene-content split">
+          <div class="preview-panel">
+            <div class="preview-top">
+              <div>
+                <div class="preview-title">Private customer preview</div>
+                <div class="mock-subtitle">Prepared from uploaded menu photos.</div>
+              </div>
+              <div class="preview-state">not public</div>
+            </div>
+            <div class="approval-list">
+              <div class="approval-row"><span>Cold coffee</span><strong>110</strong></div>
+              <div class="approval-row"><span>Veg sandwich</span><strong>130</strong></div>
+              <div class="approval-row"><span>Lunch combo</span><strong>Sold out today</strong></div>
+            </div>
+            <div class="approve-button">Review and approve</div>
+          </div>
+          <div class="stack">
+            <div class="eyebrow">Owner control</div>
+            <h2>You stay in control.</h2>
+            <p class="body-copy">Check items and prices. Nothing goes public until you approve.</p>
+          </div>
+          <div class="caption">MenuList prepares. Owner approves.</div>
+        </div>
+      </section>
+
+      <section id="scene-4" class="clip scene" data-start="15.8" data-duration="7.4" data-track-index="1">
+        <div class="scene-content split">
+          <div class="stack">
+            <div class="eyebrow">One customer link</div>
+            <h2>QR, page, print, and sharing stay aligned.</h2>
+            <p class="body-copy">After approval, the same current list sits behind the places customers open.</p>
+          </div>
+          <div class="surface-hub">
+            <div class="connector c1"></div>
+            <div class="connector c2"></div>
+            <div class="connector c3"></div>
+            <div class="connector c4"></div>
+            <div class="surface qr">QR</div>
+            <div class="surface page">Menu page</div>
+            <div class="surface print">Print files</div>
+            <div class="surface actions">WhatsApp + actions</div>
+            <div class="link-core">
+              <strong>Approved customer link</strong>
+              <span>menulist.online/demo</span>
+            </div>
+          </div>
+          <div class="caption">One approved customer link.</div>
+        </div>
+      </section>
+
+      <section id="scene-5" class="clip scene" data-start="23.2" data-duration="6.8" data-track-index="1">
+        <div class="scene-content end-card">
+          <div class="final-layout">
+            <div class="final-copy">
+              <div class="logo-lockup">
+                <div class="logo-mark" aria-hidden="true"></div>
+                <div class="logo-name">MenuList</div>
+              </div>
+              <h2>Put one approved customer link online.</h2>
+              <div class="final-cta">Create customer link</div>
+              <div class="footnote">Upload what you have. Owner approved before publishing.</div>
+            </div>
+            <div class="final-proof">
+              <div class="proof-header">
+                <strong>Ready for customers</strong>
+                <span>approved</span>
+              </div>
+              <div class="proof-row">
+                <div class="proof-index">1</div>
+                <div class="proof-copy"><strong>Upload existing menu</strong><span>Photos or PDF from the owner phone</span></div>
+              </div>
+              <div class="proof-row">
+                <div class="proof-index">2</div>
+                <div class="proof-copy"><strong>Review private preview</strong><span>Items, prices, business details</span></div>
+              </div>
+              <div class="proof-row">
+                <div class="proof-index">3</div>
+                <div class="proof-copy"><strong>Share one approved link</strong><span>QR, page, print, WhatsApp, actions</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div id="wipe-1" class="clip wipe" data-start="3.85" data-duration="0.7" data-track-index="2">
+        <div class="wipe-panel"></div>
+      </div>
+      <div id="wipe-2" class="clip wipe" data-start="9.25" data-duration="0.7" data-track-index="2">
+        <div class="wipe-panel"></div>
+      </div>
+      <div id="wipe-3" class="clip wipe" data-start="15.45" data-duration="0.7" data-track-index="2">
+        <div class="wipe-panel"></div>
+      </div>
+      <div id="wipe-4" class="clip wipe" data-start="22.85" data-duration="0.7" data-track-index="2">
+        <div class="wipe-panel"></div>
+      </div>
+
+      <audio
+        id="master-audio"
+        data-start="0"
+        data-duration="30"
+        data-track-index="3"
+        src="assets/mix/owner-ease-30s-v2-chain-reaction-master.wav"
+        data-volume="1"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.from(".ambient-rule.top", { scaleX: 0.15, opacity: 0.25, duration: 0.8, ease: "power3.out" }, 0.2);
+      tl.from(".ambient-rule.bottom", { scaleX: 0.12, opacity: 0.2, duration: 0.9, ease: "expo.out" }, 0.28);
+      tl.to(".ambient-rule.top", { scaleX: 0.92, opacity: 0.52, duration: 6, ease: "sine.inOut", repeat: 4, yoyo: true }, 1);
+      tl.to(".ambient-rule.bottom", { scaleX: 0.82, opacity: 0.42, duration: 7, ease: "sine.inOut", repeat: 3, yoyo: true }, 1.2);
+
+      tl.from("#scene-1 .eyebrow", { y: 24, opacity: 0, duration: 0.45, ease: "power2.out" }, 0.18);
+      tl.from("#scene-1 h1", { y: 54, opacity: 0, scale: 0.985, duration: 0.7, ease: "expo.out" }, 0.32);
+      tl.from("#scene-1 .body-copy", { x: -28, opacity: 0, duration: 0.5, ease: "power3.out" }, 0.78);
+      tl.from("#scene-1 .phone", { y: 70, opacity: 0, rotation: -2, duration: 0.62, stagger: 0.12, ease: "back.out(1.3)" }, 0.6);
+      tl.from("#scene-1 .caption", { y: 28, opacity: 0, duration: 0.45, ease: "circ.out" }, 1.05);
+
+      tl.fromTo("#wipe-1 .wipe-panel", { xPercent: -110 }, { xPercent: 0, duration: 0.32, ease: "power3.in" }, 3.85);
+      tl.to("#wipe-1 .wipe-panel", { xPercent: 105, duration: 0.32, ease: "power3.out" }, 4.19);
+
+      tl.from("#scene-2 .eyebrow", { x: -34, opacity: 0, duration: 0.44, ease: "power2.out" }, 4.45);
+      tl.from("#scene-2 h2", { y: 48, opacity: 0, duration: 0.62, ease: "expo.out" }, 4.62);
+      tl.from("#scene-2 .body-copy", { y: 26, opacity: 0, duration: 0.48, ease: "sine.out" }, 5.05);
+      tl.from("#scene-2 .source-card", { y: 46, opacity: 0, scale: 0.965, duration: 0.5, stagger: 0.1, ease: "back.out(1.15)" }, 4.9);
+      tl.from("#scene-2 .caption", { y: 24, opacity: 0, duration: 0.42, ease: "circ.out" }, 5.72);
+
+      tl.fromTo("#wipe-2 .wipe-panel", { xPercent: -110 }, { xPercent: 0, duration: 0.32, ease: "power3.in" }, 9.25);
+      tl.to("#wipe-2 .wipe-panel", { xPercent: 105, duration: 0.32, ease: "power3.out" }, 9.59);
+
+      tl.from("#scene-3 .preview-panel", { x: -70, opacity: 0, duration: 0.62, ease: "expo.out" }, 9.82);
+      tl.from("#scene-3 .preview-state", { scale: 0.82, opacity: 0, duration: 0.42, ease: "back.out(1.4)" }, 10.2);
+      tl.from("#scene-3 .approval-row", { y: 26, opacity: 0, duration: 0.38, stagger: 0.1, ease: "power2.out" }, 10.35);
+      tl.from("#scene-3 .approve-button", { y: 22, opacity: 0, scale: 0.96, duration: 0.44, ease: "back.out(1.3)" }, 10.92);
+      tl.from("#scene-3 .eyebrow", { y: 24, opacity: 0, duration: 0.4, ease: "power3.out" }, 10.05);
+      tl.from("#scene-3 h2", { y: 52, opacity: 0, duration: 0.64, ease: "expo.out" }, 10.22);
+      tl.from("#scene-3 .body-copy", { x: 28, opacity: 0, duration: 0.46, ease: "sine.out" }, 10.7);
+      tl.from("#scene-3 .caption", { y: 22, opacity: 0, duration: 0.42, ease: "circ.out" }, 11.25);
+
+      tl.fromTo("#wipe-3 .wipe-panel", { xPercent: -110 }, { xPercent: 0, duration: 0.32, ease: "power3.in" }, 15.45);
+      tl.to("#wipe-3 .wipe-panel", { xPercent: 105, duration: 0.32, ease: "power3.out" }, 15.79);
+
+      tl.from("#scene-4 .eyebrow", { y: 24, opacity: 0, duration: 0.42, ease: "power2.out" }, 16.05);
+      tl.from("#scene-4 h2", { y: 54, opacity: 0, duration: 0.68, ease: "expo.out" }, 16.22);
+      tl.from("#scene-4 .body-copy", { y: 28, opacity: 0, duration: 0.48, ease: "sine.out" }, 16.75);
+      tl.from("#scene-4 .connector", { scaleX: 0, opacity: 0, duration: 0.45, stagger: 0.05, ease: "power2.out" }, 16.8);
+      tl.from("#scene-4 .surface", { y: 38, opacity: 0, scale: 0.94, duration: 0.48, stagger: 0.08, ease: "back.out(1.2)" }, 17.05);
+      tl.from("#scene-4 .link-core", { scale: 0.9, opacity: 0, duration: 0.58, ease: "back.out(1.35)" }, 17.42);
+      tl.from("#scene-4 .caption", { y: 22, opacity: 0, duration: 0.42, ease: "circ.out" }, 18.1);
+
+      tl.fromTo("#wipe-4 .wipe-panel", { xPercent: -110 }, { xPercent: 0, duration: 0.32, ease: "power3.in" }, 22.85);
+      tl.to("#wipe-4 .wipe-panel", { xPercent: 105, duration: 0.32, ease: "power3.out" }, 23.19);
+
+      tl.from("#scene-5 .logo-lockup", { y: 34, opacity: 0, duration: 0.48, ease: "power3.out" }, 23.5);
+      tl.from("#scene-5 h2", { y: 62, opacity: 0, duration: 0.72, ease: "expo.out" }, 23.84);
+      tl.from("#scene-5 .final-cta", { y: 30, opacity: 0, scale: 0.96, duration: 0.5, ease: "back.out(1.35)" }, 24.58);
+      tl.from("#scene-5 .footnote", { y: 20, opacity: 0, duration: 0.42, ease: "sine.out" }, 25.08);
+      tl.from("#scene-5 .final-proof", { x: 58, opacity: 0, scale: 0.965, duration: 0.62, ease: "expo.out" }, 24.2);
+      tl.from("#scene-5 .proof-row", { y: 22, opacity: 0, duration: 0.36, stagger: 0.08, ease: "power2.out" }, 24.72);
+      tl.to("#scene-5 .scene-content", { opacity: 0, y: -18, duration: 0.65, ease: "power2.in" }, 29.2);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

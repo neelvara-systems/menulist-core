@@ -93,7 +93,7 @@ const validationDoc = read('__docs__/owner-business-assistant/owner-business-ass
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 
 requireToken(
   packageJson,
@@ -151,22 +151,22 @@ forbidToken(mobileHealthScreen, 'window.location', 'mobile business health route
 forbidToken(ownerAssistantPanel, 'OwnerAssistantActionSheet', 'desktop business health action sheet');
 
 [
-  'Public readiness',
+  'Official customer source',
   'report.modules.map',
   'report.setupJobList',
-  'Fix list',
+  'Next public fixes',
   'job.fixHref',
   'job.actionLabel',
-  'No external sites were scanned',
+  'External platforms stay owner-confirmed',
 ].forEach((token) => requireToken(publicTruthOwnerCard, token, 'desktop public truth owner card'));
 
 [
   'report.modules.map',
   'report?.setupJobList',
-  'Fix list',
+  'Next public fixes',
   'job.mobileFixTarget',
   'job.actionLabel',
-  'No external sites scanned',
+  'External platforms stay owner-confirmed',
 ].forEach((token) => requireToken(mobilePublicTruthOwnerCard, token, 'mobile public truth owner card'));
 forbidToken(mobilePublicTruthOwnerCard, 'window.location', 'mobile public truth owner card route bypass');
 
@@ -500,8 +500,8 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   'read-only AI diagnostic runtime',
   'Business Health must not',
   'update menu/store/outlet/staff/public truth',
-  'Public readiness fix list',
-  'treat public readiness fix-list rows as action drafts',
+  'Official customer source fix list',
+  'treat official customer source fix-list rows as action drafts',
 ].forEach((token) => requireToken(businessHealthDoc, token, 'business health doc'));
 
 [
@@ -510,7 +510,7 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
   'MobileShell read-only screen',
   'desktop route bypass through `window.location`',
   'Asking for a mutation does not mutate truth and does not open an action sheet',
-  'Public readiness fix-list buttons route through',
+  'Official customer source fix-list buttons route through',
 ].forEach((token) => requireToken(mobileSupportDoc, token, 'mobile support doc'));
 
 [

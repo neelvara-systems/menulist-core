@@ -1,7 +1,8 @@
 'use client';
 
-import type { AiMenuManagerCardPayload } from '@type/aiMenuManager';
+import type { AiMenuManagerCardPayload, AiMenuManagerSuggestedReply } from '@type/aiMenuManager';
 import { normalizeAiMenuManagerLocalActionUrl } from '@lib/ai-menu-manager/localActionUrl';
+import { shouldShowAiMenuManagerApprovalReason } from '@lib/ai-menu-manager/presentation';
 import {
     getBoundedRuntimeStringContext,
     hasRuntimeClipboardWrite,
@@ -9,7 +10,20 @@ import {
     logRuntimeFailure,
 } from '@lib/runtime/runtimeDiagnostics';
 import { App, Button, Card, Space, Tag, Typography, theme } from 'antd';
-import { LuCheck, LuCopy, LuDownload, LuExternalLink, LuPencil, LuX } from 'react-icons/lu';
+import {
+    LuArrowRight,
+    LuCheck,
+    LuCircleSlash,
+    LuClipboardCheck,
+    LuCopy,
+    LuDownload,
+    LuExternalLink,
+    LuHelpCircle,
+    LuInfo,
+    LuListChecks,
+    LuPencil,
+    LuX,
+} from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 
@@ -19,6 +33,31 @@ function riskColor(risk: AiMenuManagerCardPayload['risk']) {
     if (risk === 'high') return 'red';
     if (risk === 'medium') return 'gold';
     return 'green';
+}
+
+function getCardKindLabel(card: AiMenuManagerCardPayload) {
+    if (card.localActions?.length) return 'Ready to use';
+    if (card.kind === 'clarification') return 'Choose one';
+    if (card.kind === 'manual_task') return 'Manual step';
+    if (card.kind === 'unsupported') return 'Not available here';
+    if (card.kind === 'answer') return 'Answer';
+    return 'Prepared update';
+}
+
+function getPrimaryActionLabel(card: AiMenuManagerCardPayload) {
+    if (card.actions.includes('approve')) return 'Approve';
+    if (card.actions.includes('mark_done')) return card.localActions?.length ? 'Done' : 'Mark done';
+    if (card.actions.includes('open_existing_screen')) return 'Open';
+    return null;
+}
+
+function getCardKindIcon(card: AiMenuManagerCardPayload) {
+    if (card.localActions?.length) return <LuDownload size={18} />;
+    if (card.kind === 'clarification') return <LuHelpCircle size={18} />;
+    if (card.kind === 'manual_task') return <LuListChecks size={18} />;
+    if (card.kind === 'unsupported') return <LuCircleSlash size={18} />;
+    if (card.kind === 'answer') return <LuInfo size={18} />;
+    return <LuClipboardCheck size={18} />;
 }
 
 async function copyTextToClipboard(value: string) {
@@ -113,12 +152,18 @@ export default function AiMenuProposalCard({
     onDraftPrompt?: (prompt: string) => void;
     onEdit?: (card: AiMenuManagerCardPayload) => void;
     onOpenExisting?: (card: AiMenuManagerCardPayload) => void;
-    onResolveClarification?: (card: AiMenuManagerCardPayload, prompt: string) => void;
+    onResolveClarification?: (card: AiMenuManagerCardPayload, reply: AiMenuManagerSuggestedReply) => void;
 }) {
     const { token } = theme.useToken();
     const { message } = App.useApp();
     const summary = card.beforeAfterSummary;
     const primaryLocalAction = card.localActions?.find((action) => action.type === 'copy_url' || action.type === 'copy_text');
+    const primaryActionLabel = getPrimaryActionLabel(card);
+    const pillButtonStyle = {
+        borderRadius: 999,
+        minHeight: 38,
+        paddingInline: 16,
+    };
 
     const handleLocalAction = async (action: LocalAction, sourceCard: AiMenuManagerCardPayload) => {
         try {
@@ -169,21 +214,63 @@ export default function AiMenuProposalCard({
         <Card
             size="small"
             style={{
-                borderColor: card.risk === 'high' ? token.colorErrorBorder : undefined,
+                background: token.colorBgContainer,
+                borderColor: card.risk === 'high' ? token.colorErrorBorder : token.colorBorderSecondary,
                 borderRadius: 8,
+                boxShadow: token.boxShadowTertiary,
                 maxWidth: 720,
                 width: '100%',
             }}
+            styles={{
+                body: {
+                    padding: 16,
+                },
+            }}
         >
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                <Space wrap>
-                    <Tag color={riskColor(card.risk)}>{card.risk}</Tag>
-                    <Tag>{card.scope.label}</Tag>
-                </Space>
-
-                <div>
-                    <Title level={5} style={{ margin: 0 }}>{card.title}</Title>
-                    <Text type="secondary">{card.message}</Text>
+            <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                <div style={{ display: 'flex', gap: 12 }}>
+                    <span
+                        aria-hidden
+                        style={{
+                            alignItems: 'center',
+                            background: token.colorFillSecondary,
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: 999,
+                            color: token.colorPrimary,
+                            display: 'inline-flex',
+                            flexShrink: 0,
+                            height: 34,
+                            justifyContent: 'center',
+                            marginTop: 2,
+                            width: 34,
+                        }}
+                    >
+                        {getCardKindIcon(card)}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                        <Space size={6} wrap style={{ marginBottom: 6 }}>
+                            <Tag
+                                color={riskColor(card.risk)}
+                                style={{ borderRadius: 999, fontWeight: 600, marginInlineEnd: 0 }}
+                            >
+                                {getCardKindLabel(card)}
+                            </Tag>
+                            <Tag
+                                style={{
+                                    borderRadius: 999,
+                                    lineHeight: '20px',
+                                    marginInlineEnd: 0,
+                                    maxWidth: '100%',
+                                    whiteSpace: 'normal',
+                                    wordBreak: 'break-word',
+                                }}
+                            >
+                                {card.scope.label}
+                            </Tag>
+                        </Space>
+                        <Title level={5} style={{ margin: 0 }}>{card.title}</Title>
+                        <Text type="secondary">{card.message}</Text>
+                    </div>
                 </div>
 
                 <div
@@ -196,28 +283,46 @@ export default function AiMenuProposalCard({
                 >
                     <Text strong>{summary.title}</Text>
                     {summary.beforeValue || summary.afterValue ? (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
-                            <div>
+                        <div
+                            style={{
+                                alignItems: 'center',
+                                display: 'grid',
+                                gap: 10,
+                                gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+                                marginTop: 10,
+                            }}
+                        >
+                            <div style={{ minWidth: 0 }}>
                                 <Text type="secondary">{summary.beforeLabel || 'Before'}</Text>
-                                <div><Text>{summary.beforeValue || '-'}</Text></div>
+                                <Text style={{ display: 'block', wordBreak: 'break-word' }}>
+                                    {summary.beforeValue || '-'}
+                                </Text>
                             </div>
-                            <div>
+                            <LuArrowRight color={token.colorTextQuaternary} size={18} />
+                            <div style={{ minWidth: 0 }}>
                                 <Text type="secondary">{summary.afterLabel || 'After'}</Text>
-                                <div><Text strong>{summary.afterValue || '-'}</Text></div>
+                                <Text strong style={{ display: 'block', wordBreak: 'break-word' }}>
+                                    {summary.afterValue || '-'}
+                                </Text>
                             </div>
                         </div>
                     ) : null}
                     {summary.rows?.length ? (
-                        <Space direction="vertical" size={4} style={{ width: '100%', marginTop: 8 }}>
+                        <Space direction="vertical" size={6} style={{ width: '100%', marginTop: 10 }}>
                             {summary.rows.map((row) => (
                                 <div
                                     key={`${row.label}:${row.before}:${row.after}`}
-                                    style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 8 }}
+                                    style={{
+                                        alignItems: 'center',
+                                        display: 'grid',
+                                        gap: 8,
+                                        gridTemplateColumns: 'minmax(120px, 0.45fr) minmax(0, 1fr)',
+                                    }}
                                 >
-                                    <Text type="secondary">{row.label}</Text>
-                                    <Text>
-                                        {row.before ? `${row.before} -> ` : ''}
-                                        <strong>{row.after || '-'}</strong>
+                                    <Text type="secondary" style={{ wordBreak: 'break-word' }}>{row.label}</Text>
+                                    <Text style={{ wordBreak: 'break-word' }}>
+                                        {row.before ? <>{row.before} <LuArrowRight size={13} style={{ verticalAlign: '-2px' }} /> </> : null}
+                                        <Text strong>{row.after || '-'}</Text>
                                     </Text>
                                 </div>
                             ))}
@@ -232,34 +337,44 @@ export default function AiMenuProposalCard({
 
                 {card.suggestedReplies?.length ? (
                     <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                        <Text strong>Choose an option</Text>
+                        <Text strong>{card.kind === 'clarification' ? 'Choose one to continue' : 'Next options'}</Text>
                         <div style={{ display: 'grid', gap: 8 }}>
                             {card.suggestedReplies.map((reply) => (
                                 <button
                                     key={`${card.cardId}:${reply.prompt}`}
+                                    disabled={disabled}
                                     onClick={() => {
                                         if (card.kind === 'clarification') {
-                                            onResolveClarification?.(card, reply.prompt);
+                                            onResolveClarification?.(card, reply);
                                             return;
                                         }
                                         onDraftPrompt?.(reply.prompt);
                                     }}
                                     style={{
-                                        background: token.colorBgContainer,
+                                        background: token.colorFillQuaternary,
                                         border: `1px solid ${token.colorBorderSecondary}`,
-                                        borderRadius: 10,
+                                        borderRadius: 8,
+                                        boxShadow: 'none',
                                         color: token.colorText,
-                                        cursor: 'pointer',
+                                        cursor: disabled ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        gap: 10,
+                                        justifyContent: 'space-between',
                                         minHeight: 44,
+                                        opacity: disabled ? 0.56 : 1,
                                         padding: '10px 12px',
                                         textAlign: 'left',
+                                        transition: 'border-color 160ms ease, background 160ms ease',
                                     }}
                                     type="button"
                                 >
-                                    <Text strong>{reply.label}</Text>
-                                    {reply.helper ? (
-                                        <Text type="secondary" style={{ display: 'block' }}>{reply.helper}</Text>
-                                    ) : null}
+                                    <span style={{ minWidth: 0 }}>
+                                        <Text strong style={{ display: 'block' }}>{reply.label}</Text>
+                                        {reply.helper ? (
+                                            <Text type="secondary" style={{ display: 'block' }}>{reply.helper}</Text>
+                                        ) : null}
+                                    </span>
+                                    <LuArrowRight color={token.colorTextQuaternary} size={18} style={{ flexShrink: 0, marginTop: 2 }} />
                                 </button>
                             ))}
                         </div>
@@ -272,10 +387,11 @@ export default function AiMenuProposalCard({
                             background: token.colorFillSecondary,
                             border: `1px solid ${token.colorBorderSecondary}`,
                             borderRadius: 8,
+                            boxShadow: 'none',
                             padding: 12,
-                    }}
-                >
-                    <Text strong>Ready to use</Text>
+                        }}
+                    >
+                        <Text strong>Available actions</Text>
                         {primaryLocalAction?.value ? (
                             <Text
                                 code
@@ -285,6 +401,7 @@ export default function AiMenuProposalCard({
                                     maxHeight: primaryLocalAction.type === 'copy_text' ? 180 : undefined,
                                     maxWidth: '100%',
                                     overflow: primaryLocalAction.type === 'copy_text' ? 'auto' : undefined,
+                                    padding: '6px 8px',
                                     whiteSpace: primaryLocalAction.type === 'copy_text' ? 'pre-wrap' : 'normal',
                                     wordBreak: 'break-word',
                                 }}
@@ -292,13 +409,14 @@ export default function AiMenuProposalCard({
                                 {primaryLocalAction.value}
                             </Text>
                         ) : null}
-                        <Space wrap style={{ marginTop: 10 }}>
+                        <Space wrap style={{ marginTop: 12 }}>
                             {card.localActions.map((action) => (
                                 <Button
                                     key={`${card.cardId}:${action.type}:${action.label}`}
                                     icon={getLocalActionIcon(action.type)}
                                     disabled={disabled}
                                     onClick={() => void handleLocalAction(action, card)}
+                                    style={pillButtonStyle}
                                 >
                                     {action.label}
                                 </Button>
@@ -307,57 +425,77 @@ export default function AiMenuProposalCard({
                     </div>
                 ) : null}
 
-                <Text type="secondary">{card.approvalPolicy.reason}</Text>
-
-                <Space wrap>
-                    {card.actions.includes('edit') ? (
-                        <Button
-                            icon={<LuPencil />}
-                            disabled={disabled}
-                            onClick={() => onEdit?.(card)}
-                        >
-                            Edit
-                        </Button>
-                    ) : null}
-                    {card.actions.includes('approve') ? (
-                        <Button
-                            type="primary"
-                            icon={<LuCheck />}
-                            disabled={disabled}
-                            onClick={() => onApprove?.(card)}
-                        >
-                            Approve
-                        </Button>
-                    ) : null}
-                    {card.actions.includes('mark_done') ? (
-                        <Button
-                            type="primary"
-                            icon={<LuCheck />}
-                            disabled={disabled}
-                            onClick={() => onApprove?.(card)}
-                        >
-                            {card.localActions?.length ? 'Done' : 'Mark done'}
-                        </Button>
-                    ) : null}
-                    {card.actions.includes('open_existing_screen') ? (
-                        <Button
-                            icon={<LuExternalLink />}
-                            disabled={disabled}
-                            onClick={() => onOpenExisting?.(card)}
-                        >
-                            Open existing screen
-                        </Button>
-                    ) : null}
-                    {card.actions.includes('cancel') ? (
-                        <Button
-                            icon={<LuX />}
-                            disabled={disabled}
-                            onClick={() => onCancel?.(card)}
-                        >
-                            Cancel
-                        </Button>
-                    ) : null}
-                </Space>
+                <div
+                    style={{
+                        alignItems: 'center',
+                        borderTop: `1px solid ${token.colorSplit}`,
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 8,
+                        justifyContent: 'space-between',
+                        paddingTop: 12,
+                    }}
+                >
+                    {shouldShowAiMenuManagerApprovalReason(card) ? (
+                        <Text type="secondary" style={{ flex: '1 1 240px', fontSize: 12 }}>
+                            {card.approvalPolicy.reason}
+                        </Text>
+                    ) : <span />}
+                    <Space wrap>
+                        {card.actions.includes('approve') ? (
+                            <Button
+                                type="primary"
+                                icon={<LuCheck />}
+                                disabled={disabled}
+                                onClick={() => onApprove?.(card)}
+                                style={pillButtonStyle}
+                            >
+                                {primaryActionLabel}
+                            </Button>
+                        ) : null}
+                        {card.actions.includes('mark_done') ? (
+                            <Button
+                                type="primary"
+                                icon={<LuCheck />}
+                                disabled={disabled}
+                                onClick={() => onApprove?.(card)}
+                                style={pillButtonStyle}
+                            >
+                                {primaryActionLabel}
+                            </Button>
+                        ) : null}
+                        {card.actions.includes('open_existing_screen') ? (
+                            <Button
+                                icon={<LuExternalLink />}
+                                disabled={disabled}
+                                onClick={() => onOpenExisting?.(card)}
+                                style={pillButtonStyle}
+                            >
+                                {primaryActionLabel}
+                            </Button>
+                        ) : null}
+                        {card.actions.includes('edit') ? (
+                            <Button
+                                icon={<LuPencil />}
+                                disabled={disabled}
+                                onClick={() => onEdit?.(card)}
+                                style={pillButtonStyle}
+                            >
+                                Edit
+                            </Button>
+                        ) : null}
+                        {card.actions.includes('cancel') ? (
+                            <Button
+                                icon={<LuX />}
+                                disabled={disabled}
+                                onClick={() => onCancel?.(card)}
+                                style={pillButtonStyle}
+                            >
+                                Cancel
+                            </Button>
+                        ) : null}
+                    </Space>
+                </div>
             </Space>
         </Card>
     );

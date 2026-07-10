@@ -315,7 +315,7 @@ const assertRealtimeDatabaseDirectImportBoundary = () => {
 };
 
 const assertRealtimeDatabaseLoggerBoundaryDocs = () => {
-    const changelog = read('__docs__/CHANGELOG.md');
+    const changelog = read('__docs__/changelog.md');
     const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
 
     [
@@ -344,7 +344,7 @@ const assertRealtimeDatabaseLoggerBoundaryDocs = () => {
 };
 
 const assertBrowserFirebaseAuthBoundaryDocs = () => {
-    const changelog = read('__docs__/CHANGELOG.md');
+    const changelog = read('__docs__/changelog.md');
     const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
 
     [
@@ -1452,7 +1452,7 @@ const formatters = read('src/utils/formatters.ts');
 const exportUtils = read('src/utils/exportUtils.ts');
 const securityInputValidationGuide = read('__docs__/security/input-validation/input-validation-guide.md');
 const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-const changelog = read('__docs__/CHANGELOG.md');
+const changelog = read('__docs__/changelog.md');
 const sharedUtils = read('src/utils/utils.ts');
 const aiSearchActionButtons = read('src/components/organisms/AISearchModal/ActionButtons.tsx');
 const answerlatticeSupportClipboard = read('src/lib/answerlattice/supportClipboard.ts');
@@ -1830,7 +1830,7 @@ assert(!functionsSentry.includes('const DEV_DSN'), 'Functions Sentry must not ke
 assert(!functionsSentry.includes('const PROD_DSN'), 'Functions Sentry must not keep a hard-coded prod DSN fallback.');
 [
     ['production audit', read('__docs__/audits/menulist-production-readiness-audit.md'), 'Root app Sentry DSN fail-closed checkpoint'],
-    ['changelog', read('__docs__/CHANGELOG.md'), 'Root App Sentry DSN Fail Closed'],
+    ['changelog', read('__docs__/changelog.md'), 'Root App Sentry DSN Fail Closed'],
     ['secure logging guide', read('__docs__/security/secure-logging-guide.md'), 'Root app Sentry initialization is fail-closed'],
     ['dev/prod environment guide', read('__docs__/production-readiness/dev-prod-environment-guide.md'), 'Root app runtime rule'],
 ].forEach(([label, content, token]) => {
@@ -2635,8 +2635,8 @@ assertIncludes(read('__docs__/roles-permissions/roles-permissions_firebase.md'),
 assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'Staff store scope document-ID boundary checkpoint', 'Production audit must record staff store scope boundary.');
 assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'Staff mutation strict user-ID boundary checkpoint', 'Production audit must record strict staff user-ID boundary.');
 assertIncludes(read('__docs__/audits/menulist-production-readiness-audit.md'), 'no longer trims `userId` before `normalizeStaffUserId(value) === value`', 'Production audit must record raw staff user-ID schema validation.');
-assertIncludes(read('__docs__/CHANGELOG.md'), 'Staff Store Scope Document ID Boundary', 'Changelog must record staff store scope boundary.');
-assertIncludes(read('__docs__/CHANGELOG.md'), 'Staff Mutation Strict User ID Boundary', 'Changelog must record strict staff user-ID boundary.');
+assertIncludes(read('__docs__/changelog.md'), 'Staff Store Scope Document ID Boundary', 'Changelog must record staff store scope boundary.');
+assertIncludes(read('__docs__/changelog.md'), 'Staff Mutation Strict User ID Boundary', 'Changelog must record strict staff user-ID boundary.');
 assertIncludes(read('__docs__/changelog.md'), 'Staff Store Scope Document ID Boundary', 'Lowercase changelog must record staff store scope boundary.');
 assert((staffServer.match(/if \(!isEligibleStaffTargetStore\(store, input\.tenantId\)\)/g) || []).length >= 2, 'Role save/delete must reject inactive/deleted/platform-blocked target stores.');
 assertNoRandomReactKeys(tooltipElement, 'Tooltip wrapper');
@@ -3860,8 +3860,8 @@ assert(!corsValidation.includes('origin,\n            allowedOrigins: ALLOWED_OR
 [
     ['production audit', read('__docs__/audits/menulist-production-readiness-audit.md'), 'CORS production localhost allowlist checkpoint'],
     ['production audit', read('__docs__/audits/menulist-production-readiness-audit.md'), 'CORS blocked-origin diagnostics checkpoint'],
-    ['changelog', read('__docs__/CHANGELOG.md'), 'CORS Production Localhost Allowlist Boundary'],
-    ['changelog', read('__docs__/CHANGELOG.md'), 'CORS Blocked-Origin Diagnostics'],
+    ['changelog', read('__docs__/changelog.md'), 'CORS Production Localhost Allowlist Boundary'],
+    ['changelog', read('__docs__/changelog.md'), 'CORS Blocked-Origin Diagnostics'],
     ['CORS implementation guide', read('__docs__/security/cors/cors-implementation.md'), 'Localhost origins are filtered out in production'],
     ['CORS implementation guide', read('__docs__/security/cors/cors-implementation.md'), 'Blocked-origin diagnostics use bounded origin metadata'],
     ['CORS completion guide', read('__docs__/security/cors/cors-implementation-complete.md'), 'Localhost origins are development-only'],
@@ -4057,13 +4057,13 @@ assert(!validateClaim.includes('token.length < 20'), 'Validate-claim must not ke
 });
 assert(read('__docs__/auth/README.md').includes('Claim-token lookup boundary'), 'Auth README must document claim-token lookup boundary.');
 assert(read('__docs__/audits/menulist-production-readiness-audit.md').includes('Auth claim-token lookup boundary checkpoint'), 'Production audit must record auth claim-token lookup boundary.');
-assert(read('__docs__/CHANGELOG.md').includes('Auth Claim-Token Lookup Boundary'), 'Changelog must record auth claim-token lookup boundary.');
+assert(read('__docs__/changelog.md').includes('Auth Claim-Token Lookup Boundary'), 'Changelog must record auth claim-token lookup boundary.');
 assert(read('__docs__/changelog.md').includes('Auth Claim-Token Lookup Boundary'), 'Lowercase changelog must record auth claim-token lookup boundary.');
 assert(read('__docs__/auth/README.md').includes('Claim-account tenant/store scope boundary'), 'Auth README must document claim-account tenant/store scope boundary.');
 assert(authFirebaseDoc.includes('Claim-account tenant/store scope boundary'), 'Auth Firebase docs must document claim-account tenant/store scope boundary.');
 assert(authMobileSupportDoc.includes('Claim-account tenant/store scope boundary'), 'Auth mobile docs must document claim-account tenant/store scope boundary.');
 assert(read('__docs__/audits/menulist-production-readiness-audit.md').includes('Auth claim-account tenant/store scope boundary checkpoint'), 'Production audit must record auth claim-account tenant/store scope boundary.');
-assert(read('__docs__/CHANGELOG.md').includes('Auth Claim-Account Tenant/Store Scope Boundary'), 'Changelog must record auth claim-account tenant/store scope boundary.');
+assert(read('__docs__/changelog.md').includes('Auth Claim-Account Tenant/Store Scope Boundary'), 'Changelog must record auth claim-account tenant/store scope boundary.');
 assert(read('__docs__/changelog.md').includes('Auth Claim-Account Tenant/Store Scope Boundary'), 'Lowercase changelog must record auth claim-account tenant/store scope boundary.');
 assertIncludes(
     changePassword,
@@ -4296,7 +4296,7 @@ assert(authFirebaseDoc.includes('Switch-store scope document ID boundary'), 'Aut
 assert(authMobileSupportDoc.includes('Switch-store scope document ID boundary'), 'Auth mobile docs must document switch-store scope document ID boundary.');
 assert(productionReadinessAudit.includes('Switch-store scope document ID boundary checkpoint'), 'Production audit must document switch-store scope document ID boundary.');
 assert(read('__docs__/multi-outlet-consistency/multi-outlet-consistency_firebase.md').includes('Switch-store scope document ID boundary'), 'Multi-outlet Firebase docs must document switch-store scope document ID boundary.');
-assert(read('__docs__/CHANGELOG.md').includes('Switch-Store Scope Document ID Boundary'), 'Changelog must document switch-store scope document ID boundary.');
+assert(read('__docs__/changelog.md').includes('Switch-Store Scope Document ID Boundary'), 'Changelog must document switch-store scope document ID boundary.');
 assert(read('__docs__/changelog.md').includes('Switch-Store Scope Document ID Boundary'), 'Lowercase changelog must document switch-store scope document ID boundary.');
 
 assertIncludes(
@@ -4328,7 +4328,7 @@ assert(!serverUserContext.includes('.doc(String(id)).get()'), 'Auth entity snaps
 assert(authFirebaseDoc.includes('Auth entity snapshot document ID boundary'), 'Auth Firebase docs must document auth entity snapshot document ID boundary.');
 assert(authMobileSupportDoc.includes('Auth entity snapshot document ID boundary'), 'Auth mobile docs must document auth entity snapshot document ID boundary.');
 assert(productionReadinessAudit.includes('Auth entity snapshot document ID boundary checkpoint'), 'Production audit must document auth entity snapshot document ID boundary.');
-assert(read('__docs__/CHANGELOG.md').includes('Auth Entity Snapshot Document ID Boundary'), 'Changelog must document auth entity snapshot document ID boundary.');
+assert(read('__docs__/changelog.md').includes('Auth Entity Snapshot Document ID Boundary'), 'Changelog must document auth entity snapshot document ID boundary.');
 assert(read('__docs__/changelog.md').includes('Auth Entity Snapshot Document ID Boundary'), 'Lowercase changelog must document auth entity snapshot document ID boundary.');
 
 [

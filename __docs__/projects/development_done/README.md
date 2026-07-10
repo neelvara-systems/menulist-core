@@ -22,7 +22,7 @@ Note: X = Assessment number (1, 2, 3, etc.)
 
 ---
 
-## ✅ Completed Assessments
+## ✅ Completed assessments
 
 ### **ASSESSMENT-01: Upload & File Processing** (Nov 13, 2025)
 

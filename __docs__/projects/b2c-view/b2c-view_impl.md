@@ -312,7 +312,7 @@ const ShareModal = ({ projectId, isOpen, onClose }) => {
 | `_spec.md`                                 | Product specification       |
 | `b2c-view_mobile-support.md`               | Mobile parity boundary      |
 | `_marketing.md`                            | Sales collateral            |
-| `../Assessments/assessment-11-b2c-view.md` | Original assessment         |
+| `../assessments/assessment-11-b2c-view.md` | Original assessment         |
 | `../../client-menu/`                       | Detailed B2C implementation |
 
 ---

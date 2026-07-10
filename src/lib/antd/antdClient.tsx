@@ -1,9 +1,9 @@
 "use client";
 import { useAppSelector } from "@hook/useAppSelector";
 import { getDarkColorState, getDarkModeState, getLightColorState, getRTLDirectionState } from '@reduxSlices/clientThemeConfig';
-import { App, ConfigProvider, theme } from "antd";
+import { App, ConfigProvider, theme, type ThemeConfig } from "antd";
 import { useLocale } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { poppinsFont } from "src/fonts/poppins";
 import antdComponentTheme from "./componentTheme";
 
@@ -95,6 +95,18 @@ const AntdClient = ({ children, removeComponent }: any) => {
     const { token } = theme.useToken();
     const appLocale = useLocale();
     const [antdLocale, setAntdLocale] = useState(en_US)
+    const direction = isRTLDirection ? "rtl" : "ltr";
+    const antdThemeConfig = useMemo<ThemeConfig>(() => ({
+        algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        token: {
+            colorPrimary: isDarkMode ? darkThemeColor : lightThemeColor,
+            borderRadius: DEFAULT_APP_BORDER_RADIUS,
+            wireframe: false,
+            fontSize: 13,
+            fontFamily: poppinsFont.style.fontFamily
+        },
+        components: removeComponent ? {} : antdComponentTheme(token),
+    }), [darkThemeColor, isDarkMode, lightThemeColor, removeComponent, token]);
 
     const getAntdLocale = (locale: string) => {
         // Convert locale format if needed (e.g., 'en_US' to 'en-US')
@@ -109,22 +121,27 @@ const AntdClient = ({ children, removeComponent }: any) => {
         }
     }, [appLocale]);
 
+    useEffect(() => {
+        ConfigProvider.config({
+            theme: antdThemeConfig,
+            holderRender: (holderChildren) => (
+                <ConfigProvider
+                    direction={direction}
+                    locale={antdLocale}
+                    theme={antdThemeConfig}
+                >
+                    {holderChildren}
+                </ConfigProvider>
+            ),
+        });
+    }, [antdLocale, antdThemeConfig, direction]);
+
     return (
         <>
             <ConfigProvider
-                direction={isRTLDirection ? "rtl" : "ltr"}
+                direction={direction}
                 locale={antdLocale}
-                theme={{
-                    algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
-                    token: {
-                        colorPrimary: isDarkMode ? darkThemeColor : lightThemeColor,
-                        borderRadius: DEFAULT_APP_BORDER_RADIUS,
-                        wireframe: false,
-                        fontSize: 13,
-                        fontFamily: poppinsFont.style.fontFamily
-                    },
-                    components: removeComponent ? {} : antdComponentTheme(token),
-                }}
+                theme={antdThemeConfig}
             >
                 <App>
                     <ConfigProvider

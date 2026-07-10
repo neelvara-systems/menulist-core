@@ -498,7 +498,7 @@ function verifyPosSyncBoundary() {
   const mobileDoc = read('__docs__/pos-webhook-sync/pos-webhook-sync_mobile-support.md');
   const firebaseDoc = read('__docs__/pos-webhook-sync/pos-webhook-sync_firebase.md');
   const auditDoc = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelogDoc = read('__docs__/CHANGELOG.md');
+  const changelogDoc = read('__docs__/changelog.md');
   const lowercaseChangelogDoc = read('__docs__/changelog.md');
 
   verifyWebhookUrlGuard(webhookUrl, serverWebhookTarget);

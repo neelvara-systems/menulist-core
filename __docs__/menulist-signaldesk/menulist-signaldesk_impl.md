@@ -1,8 +1,9 @@
 # MenuList SignalDesk - Implementation Plan
 
-**Status:** First-build internal workflow, investment-control runtime, FHRS/FHIS UK source provider, Apify source broker, Origami-style Research Agent Table, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation harness, channel-window/source-retention runtime, Content Distribution Rail runtime, and Trust Partner Rail runtime implemented; paid campaigns, external paid-provider adapters, provider send, auto-publish, and deploy skipped
+**Status:** First-build internal workflow, investment controls, governed source/research/content/partner rails, solo-founder Operating Layer, and bounded Revenue Operating Layer implemented; paid campaigns, external paid-provider adapters, provider send, auto-publish, calendar/proposal/payment providers, and deploy remain skipped or blocked
 **Created:** June 23, 2026
-**Runtime:** Product-isolated app shell, API guard, overview API, workspace API, action API, kill-switch API, first-build workflow service, provider registry, budget governor, model routes, model evals, enrichment waterfalls, vendor run ledger, FHRS/FHIS UK source provider, Apify source broker, Research Agent Table, approval packets, sender-domain risk, owned email sequencer queue, content distribution rail, optional external sequencer handoff records, run timelines, Firebase config, rules/indexes/storage rules, and functions skeleton created.
+**Last Updated:** July 10, 2026
+**Runtime:** Product-isolated app shell, guarded APIs, first-build workflow service, provider/budget/model controls, governed source/research/content/partner rails, Revenue Operating Layer, run timelines, Firebase config/rules/indexes/storage rules, and functions skeleton created.
 **Implementation posture:** Product-isolated internal module inside this monorepo first; extraction-ready boundaries.
 
 ## Owner Control Posture
@@ -190,7 +191,8 @@ Provider send stays false until sender identity, physical address, unsubscribe, 
 | 14 | Owned email sequencer | Internal queued email step for approved drafts; actual SMTP send remains behind provider-send and email readiness gates. |
 | 15 | Execution-rail evaluation | Blocked/ready external sequencer handoff records only; no external sequencer send. |
 | 16 | Apify source broker | Env-controlled Actor execution for capped discovery/evidence imports; no arbitrary browser Actor ID, raw dataset storage, or direct-send path. |
-| 17 | Trust partner rail | Partner/creator profiles, 3-5 niche tests, lean briefs, flat-fee deals, deliverables, disclosure gates, outcome attribution, and renewal decisions. Route/read model and disabled action stubs exist, but executable runtime remains behind the false feature flag. |
+| 17 | Trust partner rail | Partner/creator profiles, 3-5 niche tests, lean briefs, flat-fee deals, deliverables, disclosure gates, outcome attribution, and renewal decisions. Internal runtime exists; real partner execution/spend remains gated. |
+| 18 | Revenue operating layer | Revenue accounts, commercial opportunities, immutable offer versions, policy-referenced operating envelopes, activation watches, and materialized revenue/founder-attention summaries. |
 
 ## Founder-Facing UX Contract
 
@@ -272,6 +274,7 @@ Initial route inventory for implementation:
 | `/signaldesk/attribution` | Outcome summaries | Yes |
 | `/signaldesk/policies` | Source/channel/suppression policies | Yes |
 | `/signaldesk/control-room` | Kill switches, channel health, cost state | Yes |
+| `/signaldesk/revenue` | Revenue accounts, opportunities, offers, operating envelopes, activation watches, and compact revenue summary | Yes |
 | `/signaldesk/meta-paid` | Meta paid intent | Gated |
 | `/signaldesk/whatsapp` | Assisted WhatsApp governance | Gated |
 | `/signaldesk/clusters` | Local cluster expansion | Reserved |
@@ -445,15 +448,35 @@ The second implementation slice adds the remaining non-paid, non-deploy runtime 
 12. SMTP/Meta provider-send adapter behind the global provider-send flag, channel readiness checks, manual redirect handling for Meta API calls, bounded Meta response parsing, and `signaldesk_meta_response_parse_failed` diagnostics for malformed successful Meta JSON;
 13. phone, WhatsApp, and Instagram contact identity indexing when source policy allows contact use.
 
+## Implemented Revenue Operating Layer
+
+The bounded commercial lifecycle now adds:
+
+1. a private `/signaldesk/revenue` workspace and protected `revenue` read section;
+2. deterministic revenue-account qualification over existing target, source-policy, suppression, contactability, reply, segment, and score state;
+3. idempotent one-account/one-opportunity creation per target;
+4. commercial opportunity stage, status, value, probability, next action, structured win/loss reason, and founder-attention tracking;
+5. immutable commercial offer versions with price, cadence, discount authority, eligibility, and founder-approval conditions;
+6. founder-only market-pod approve/hold/reject records, with recommendation/research kept held and zero-budget until review;
+7. founder-only approved operating envelopes that require stored founder pod approval and transactionally revalidate existing source policy, offer, compatible optional global/pod budget, explicit email sender, active templates, time window, volume caps, cost cap, stop conditions, and approval mode;
+8. deterministic downgrade/hold of requested `exception-only` mode, with every other approved mode remaining shadow or approval-only;
+9. interested replies automatically invoke the same suppression/contactability/source-policy qualification guard used by the explicit revenue action;
+10. target outcomes automatically refresh activation watches through indexed latest/earliest/terminal summary reads; qualification reconciles a prior outcome when the account is created later; only two-surface activation transactionally closes the linked opportunity;
+11. elapsed seven-day watch deadlines read as stalled without a scheduler, and Daily Growth Mission prioritizes stalls/overdue opportunities with pipeline, founder-attention, and estimated-spend context;
+12. `signaldeskRevenueControlSummaries/current` for one-currency pipeline, weighted pipeline, wins/losses, activation, stalls, and founder-attention totals;
+13. transactional idempotency/delta updates, deterministic immutable offer/envelope IDs, expiry annotation, product-local Firestore rules/indexes, audit events, run timelines, daily cost writes, bounded failure diagnostics, hard mobile form/action denial, runtime verifier coverage, and local emulator E2E.
+
+This layer adds no provider call, send, social publish, scheduler, calendar/proposal/payment connector, or MenuList store/menu/project/billing/customer-truth write.
+
 ## Remaining Implementation Gates
 
 Before real-project usage, provider send, and external integrations:
 
 - Firebase deploy is skipped in this session; create or grant access to `menulist-signaldesk-qa` and `menulist-signaldesk` before any deploy;
 - seed founder/admin team membership or confirm platform admin claims in the active auth environment;
-- confirm first market pod;
-- confirm first approved source list and retention policy;
-- confirm first trust partner niche, flat-fee cap, disclosure wording, and tracking CTA before Trust Partner Rail runtime;
+- store the approved Bengaluru market-pod review in the founder-authenticated QA runtime after Firebase access is restored;
+- supply the first real permissioned business list; the 30-day public-business evidence policy is approved but does not grant contact rights;
+- select the first real menu-photographer or restaurant-consultant introduction; the learning test remains zero-fee and zero-budget;
 - confirm sender identity and physical address policy;
 - confirm unsubscribe, bounce, complaint, DNC, and suppression handling;
 - keep `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND` false until the send/export gate passes.

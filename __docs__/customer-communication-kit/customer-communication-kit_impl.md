@@ -124,6 +124,22 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
     ]),
   });
 
+  // Staff daily replies: one staff handoff for menu, address, and hours.
+  const staffDailyLines = [
+    'Team - customer replies for today',
+    '',
+    `${labels.offeringTitle}: ${input.menuLink}`,
+  ];
+  if (input.address) staffDailyLines.push(`Address: ${input.address}`);
+  if (input.todayHours) staffDailyLines.push(`Hours today: ${input.todayHours.open} - ${input.todayHours.close}`);
+
+  templates.push({
+    id: 'staff_daily_replies',
+    title: 'Staff Daily Replies',
+    description: 'One handoff for menu, address, and hours questions',
+    message: buildMessage(staffDailyLines),
+  });
+
   return templates;
 }
 

@@ -249,7 +249,7 @@ Show "All changes saved ✓"
 | `_impl.md`               | Technical implementation details |
 | `_marketing.md`          | Sales and marketing collateral   |
 | `../ai-data-extraction/` | What happens before editing      |
-| `../Editor/`             | Detailed component documentation |
+| `../editor/`             | Detailed component documentation |
 
 ---
 

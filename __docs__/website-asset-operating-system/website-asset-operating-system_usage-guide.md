@@ -76,7 +76,7 @@ The boundary is important. AssetOS can read Answerlattice docs and summaries as 
 | Firebase writes | It is local repo tooling only. |
 | Automatic public publishing | Founder-review assets stay blocked until approved. |
 | Real customer screenshot publishing | Real customer data needs explicit approval and scrubbing. |
-| Final hero videos | The current version creates the contract and briefs first. |
+| Full launch films | AssetOS can govern short website motion clips, but full launch films still need the separate video production workflow. |
 
 ## Where It Lives
 
@@ -154,7 +154,44 @@ Read the brief before asking Codex or a designer to create the asset. It tells t
 - what must be avoided;
 - whether founder approval is needed.
 
-### 3. Review Asset State
+### 3. Use Creative Helper Skills
+
+After a brief exists, Codex can use installed creative skills as helpers:
+
+| Need | Helper skill |
+| --- | --- |
+| Website hero, section, social, browser, or dashboard-style visual reference | `imagegen-frontend-web` |
+| Phone mockup, mobile walkthrough, onboarding, or app-store-style frame | `imagegen-frontend-mobile` |
+| Brand identity board or visual-world exploration | `brandkit` |
+| Turning an approved visual reference into frontend implementation guidance | `image-to-code-skill` |
+
+The brief still controls the asset. Helper skills cannot invent features, customer proof, private data, unsupported platform sync, or public claims outside the source files.
+
+For MenuList video and motion assets, use local HyperFrames plus FFmpeg by default. Cloud video tools, paid media services, Remotion, or Motion Canvas require explicit founder approval for that specific asset.
+
+Current governed motion source lives under:
+
+```text
+__docs__/videos/hyperframes/
+```
+
+Use these local commands for the current AssetOS motion clips:
+
+```bash
+node scripts/website-assets/generate-assetos-motion-compositions.mjs
+npm --prefix __docs__/videos/hyperframes/menulist-business-truth-loop run check
+npm --prefix __docs__/videos/hyperframes/menulist-business-truth-loop run render -- --output ./renders/menulist-business-truth-loop-source.mp4 --workers 1 --experimental-fast-capture=false --quiet
+node scripts/website-assets/transcode-assetos-motion-assets.mjs
+node scripts/website-assets/generate-assetos-motion-compositions.mjs --approve-manifest
+npm run assets:launch:frames
+npm run assets:fingerprint
+```
+
+Run the equivalent `npm --prefix ... run check` and `render` commands for each HyperFrames source folder before transcoding and approving the manifest.
+
+For a coordinated MenuList launch pack, reuse the approved website motion, social, and device slots, then run `npm run assets:launch:frames` for the four editorial keyframes. Keep those frames under `packages/asset-factory/published/` unless a runtime slot explicitly needs a public file.
+
+### 4. Review Asset State
 
 Run:
 
@@ -171,19 +208,19 @@ Use it to decide:
 - which planned assets are still missing;
 - whether any generated asset is blocked.
 
-### 4. Lock Fingerprints After Approval
+### 5. Lock Fingerprints After Approval
 
 Only after an asset and its source files are accepted, run:
 
 ```bash
-npm run assets:fingerprint
+npm run assets:fingerprint -- --slot menulist.home.hero.official-source
 ```
 
 This records the current watched source hashes in the manifest. After that, if the page, component, brand context, or slot changes, the audit can mark the asset stale.
 
-Do not run this casually to hide drift. Use it only after the source and asset still match.
+Do not run this casually to hide drift. Use it only after the source and asset still match. Use all-slot `npm run assets:fingerprint` only when every non-missing asset in the manifest has been reviewed against current sources.
 
-### 5. Create A Planning Placeholder
+### 6. Create A Planning Placeholder
 
 For a missing future asset, you can create an internal placeholder:
 
@@ -313,17 +350,16 @@ Do not use it for:
 
 ## Current Internal Status
 
-The current implementation is ready for internal testing on our own products.
+The current implementation is active on our own products.
 
-Known expected warnings:
+Current approved motion outputs:
 
-- future MenuList hero motion is missing;
-- future Answerlattice hero motion is missing;
-- future Answerlattice authority-transfer motion is missing;
-- future Answerlattice page-aware widget clip is missing;
-- some draft/social/analytics assets require founder review.
+- MenuList homepage hero uses `public/images/website/menulist-business-truth-loop.webm` with MP4 and WebP poster fallbacks.
+- Answerlattice homepage hero uses `public/answerlattice-support-control-motion.webm` with MP4 and PNG poster fallbacks.
+- Answerlattice learning-loop section uses `public/answerlattice-authority-transfer.webm` with MP4 and PNG poster fallbacks.
+- Answerlattice page-aware widget product page uses `public/answerlattice-page-aware-widget-clip.webm` with MP4 and PNG poster fallbacks.
 
-These are correct warnings. They mean the system is protecting public output instead of silently approving unfinished media.
+Current healthy audit result should be 0 errors, 0 warnings, and 0 founder-review blockers.
 
 Current Answerlattice drift note:
 

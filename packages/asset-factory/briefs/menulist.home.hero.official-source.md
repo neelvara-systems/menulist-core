@@ -1,6 +1,6 @@
 # Asset Brief - menulist.home.hero.official-source
 
-**Generated:** 2026-05-31
+**Generated:** 2026-07-10
 **Brand:** menulist
 **Status:** generated
 **Approval:** automatic
@@ -15,8 +15,8 @@ Show MenuList as the official public source for menu and business truth.
 
 - Page: MenuList homepage
 - Route: /
-- Placement: hero product proof
-- Component: src/components/website/home/HeroSection.tsx
+- Placement: homepage static background fallback and OG source
+- Component: src/styles/website.css
 - Destination: public/images/website/menulist-hero-official-source.webp
 
 ## Output Contract
@@ -53,7 +53,7 @@ Show MenuList as the official public source for menu and business truth.
 - packages/asset-factory/brand/menulist.asset-context.md: MenuList Asset Context
 - __docs__/main-website/main-website_image-assets.md: Website Image & Asset Requirements
 - scripts/website-assets/generate-stage6-assets.mjs: Source file
-- src/components/website/home/HeroSection.tsx: Source file
+- src/styles/website.css: Source file
 
 ## Brand Context Snapshot
 

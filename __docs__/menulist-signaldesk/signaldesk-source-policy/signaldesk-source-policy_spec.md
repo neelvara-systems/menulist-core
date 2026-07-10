@@ -33,6 +33,15 @@ It must exist before imports, enrichment, AI evidence, drafts, or sends.
 | Foursquare | Blocked for prospect outreach unless separate permission exists. |
 | Apify/Outscraper-style | Blocked by default; allowed only through the Apify Source Broker after provider source policy, owner provider approval, env-controlled Actor review, and budget cap. |
 
+### Approved first-trial manual policies
+
+| Policy | Use | Contact | Personalization | Retention |
+| --- | --- | --- | --- | --- |
+| Public business research | Candidate discovery and official-source evidence review | No | No | 30 days |
+| Permissioned manual introduction | Expected founder introduction, explicit referral, partner handoff, or owner-requested follow-up | Yes | Yes, from permitted evidence only | 90 days, then review |
+
+Public research and permissioned contact must not be combined into one default policy. Public availability alone cannot move a candidate into contact-eligible state.
+
 ## Requirements
 
 | ID | Requirement | Priority |
@@ -62,3 +71,5 @@ It must exist before imports, enrichment, AI evidence, drafts, or sends.
 - Outreach cannot use a source where `mayUseForOutreach` is false.
 - Raw payload retention is enforced.
 - Source-policy change is audited.
+- Default manual candidate import selects the evidence-only public-business policy when it exists.
+- Permissioned contact remains a separate operator-selected policy.
